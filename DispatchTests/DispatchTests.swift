@@ -1,0 +1,16 @@
+//
+//  DispatchTests.swift
+//  DispatchTests
+//
+//  Created by Noah Deskin on 2025-12-06.
+//
+
+import Testing
+
+struct DispatchTests {
+
+    @Test func example() async throws {
+        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    }
+
+}
