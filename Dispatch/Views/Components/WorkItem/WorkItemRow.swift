@@ -59,7 +59,7 @@ struct WorkItemRow: View {
                         DueDateBadge(dueDate: item.dueDate)
 
                         // Subtask progress (if any)
-                        if !item.subtasks.isEmpty {
+                        if item.hasSubtasks {
                             HStack(spacing: DS.Spacing.xxs) {
                                 Image(systemName: DS.Icons.Entity.subtask)
                                     .font(.system(size: 10))
