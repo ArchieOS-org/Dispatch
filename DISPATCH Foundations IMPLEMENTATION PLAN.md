@@ -250,25 +250,76 @@ RealtimeSyncable (for Supabase integration)
 
 ## **PHASE 2: SHARED COMPONENTS (Weeks 2-3)**
 
-### **2.1 Design Tokens (Foundation Layer)**
+### **2.1 Design Tokens (Foundation Layer)** ✅ IMPLEMENTED
+
+> **Implementation Status**: Completed 2025-12-06
+>
+> **Files Created** in `Dispatch/Design/`:
+> - `DesignSystem.swift` - Main DS namespace
+> - `Typography.swift` - Font styles (headline, body, bodySecondary, caption, captionSecondary)
+> - `ColorSystem.swift` - Semantic colors with Priority, TaskStatus, ActivityStatus, SyncStatus, ClaimState mappings
+> - `Spacing.swift` - Layout constants (notesStackHeight: 140, noteCascadeOffset: 8, etc.)
+> - `Shadows.swift` - Shadow styles including `notesOverflowGradient` LinearGradient
+> - `IconSystem.swift` - SF Symbols mappings for Entity, Action, StatusIcons, Claim, ActivityType, Time
 
 ```
-DispatchKit/Foundation/
-├─ Typography.swift
-│  └─ [PLACEHOLDER: Additional font variants for multiplatform]
-├─ ColorSystem.swift
-│  └─ Semantic colors + dark mode support
-├─ Spacing.swift
-│  └─ [PLACEHOLDER: iPad/Mac responsive spacing]
-├─ Shadows.swift
-└─ IconSystem.swift [NEW]
-   └─ [PLACEHOLDER: SF Symbols mappings for claim state, sync status]
+Dispatch/Design/
+├─ DesignSystem.swift    - Main DS namespace
+├─ Typography.swift      - Font styles
+├─ ColorSystem.swift     - Semantic colors + dark mode support
+├─ Spacing.swift         - Layout constants
+├─ Shadows.swift         - Shadow styles and gradients
+└─ IconSystem.swift      - SF Symbols mappings
 
 ```
 
 ---
 
-### **2.2 Shared Components**
+### **2.2 Shared Components** ✅ IMPLEMENTED
+
+> **Implementation Status**: Completed 2025-12-06
+>
+> **Architecture Decision**: Used `WorkItem` enum wrapper instead of generics (`WorkItemProtocol`) because:
+> - Only 2 types (TaskItem, Activity) need unification
+> - TaskStatus vs ActivityStatus have different enum types that don't share a common protocol
+> - Simpler debugging and code completion compared to generic constraints
+> - More explicit pattern matching for type-specific behavior (typeLabel, typeIcon)
+>
+> **Files Created** (14 total in `Dispatch/Views/Components/`):
+> ```
+> Dispatch/Views/Components/
+> ├── Shared/
+> │   ├── PriorityDot.swift        - Color-coded priority indicator (sizes: small/medium)
+> │   ├── DueDateBadge.swift       - Contextual due date with overdue/today/upcoming styling
+> │   ├── UserAvatar.swift         - Avatar with initials fallback (sizes: small/medium/large)
+> │   ├── StatusCheckbox.swift     - Animated completion toggle with spring animation
+> │   ├── ClaimButton.swift        - State-dependent claim/release with confirmation dialog
+> │   └── CollapsibleHeader.swift  - Scroll-aware header using PreferenceKey (32pt → 18pt)
+> │
+> ├── WorkItem/
+> │   ├── WorkItem.swift           - Enum wrapper unifying TaskItem and Activity
+> │   ├── WorkItemRow.swift        - List row with swipe actions (edit/delete)
+> │   └── WorkItemDetailView.swift - Full detail view with collapsible header
+> │
+> ├── Notes/
+> │   ├── NoteCard.swift           - Single note with tap-to-show edit/delete actions
+> │   ├── NoteStack.swift          - THE DIFFERENTIATOR: 140pt cascading with gradient shadow
+> │   └── NoteInputArea.swift      - TextEditor with save/cancel buttons
+> │
+> └── Subtasks/
+>     ├── SubtaskRow.swift         - Checkbox + title + delete button
+>     └── SubtasksList.swift       - List with progress bar and add button
+> ```
+>
+> **Key Implementation Notes**:
+> - NoteStack uses `LinearGradient` overlay (NOT `.shadow()` modifier) because shadows get clipped by `.clipped()`
+> - CollapsibleHeader uses `PreferenceKey` pattern for scroll offset tracking with font interpolation
+> - iOS 16.0+ minimum required for `.scrollContentBackground(.hidden)` on TextEditor
+> - All components use closure-based actions for maximum flexibility
+> - All components respect `DS.*` design tokens from Stage 2.1
+> - Comprehensive SwiftUI previews included in each file
+
+---
 
 ### **WorkItemRow**
 

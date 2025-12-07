@@ -34,7 +34,10 @@ final class SupabaseService {
             supabaseKey: Secrets.supabaseAnonKey,
             options: SupabaseClientOptions(
                 db: .init(schema: "public"),
-                auth: .init(flowType: .pkce),
+                auth: .init(
+                    flowType: .pkce,
+                    emitLocalSessionAsInitialSession: true
+                ),
                 global: .init(
                     headers: ["x-app-name": "dispatch-ios"]
                 )
