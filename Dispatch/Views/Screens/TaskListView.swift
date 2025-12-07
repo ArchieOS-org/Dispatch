@@ -26,6 +26,21 @@ struct TaskListView: View {
     @Query private var users: [User]
 
     @EnvironmentObject private var syncManager: SyncManager
+    @Environment(\.modelContext) private var modelContext
+
+    // MARK: - State for Note/Subtask Management
+
+    @State private var showDeleteNoteAlert = false
+    @State private var noteToDelete: Note?
+    @State private var itemForNoteDeletion: WorkItem?
+
+    @State private var showDeleteSubtaskAlert = false
+    @State private var subtaskToDelete: Subtask?
+    @State private var itemForSubtaskDeletion: WorkItem?
+
+    @State private var showAddSubtaskSheet = false
+    @State private var itemForSubtaskAdd: WorkItem?
+    @State private var newSubtaskTitle = ""
 
     // MARK: - Computed Properties
 
@@ -55,31 +70,80 @@ struct TaskListView: View {
             onRefresh: {
                 await syncManager.sync()
             },
-            isActivityList: false
-        ) { item, claimedUser in
-            NavigationLink(value: item) {
-                WorkItemRow(
-                    item: item,
-                    claimedByUser: claimedUser,
-                    onTap: {},
-                    onComplete: { toggleComplete(item) },
-                    onEdit: {},
-                    onDelete: { delete(item) }
+            isActivityList: false,
+            rowBuilder: { item, claimedUser in
+                NavigationLink(value: WorkItemRef.from(item)) {
+                    WorkItemRow(
+                        item: item,
+                        claimedByUser: claimedUser,
+                        onTap: {},
+                        onComplete: { toggleComplete(item) },
+                        onEdit: {},
+                        onDelete: { delete(item) }
+                    )
+                }
+                .buttonStyle(.plain)
+            },
+            destination: { ref in
+                WorkItemResolverView(
+                    ref: ref,
+                    currentUserId: currentUserId,
+                    userLookup: { userCache[$0] },
+                    onComplete: { item in toggleComplete(item) },
+                    onClaim: { item in claim(item) },
+                    onRelease: { item in unclaim(item) },
+                    onEditNote: nil,
+                    onDeleteNote: { note, item in
+                        noteToDelete = note
+                        itemForNoteDeletion = item
+                        showDeleteNoteAlert = true
+                    },
+                    onAddNote: { content, item in addNote(to: item, content: content) },
+                    onToggleSubtask: { subtask in toggleSubtask(subtask) },
+                    onDeleteSubtask: { subtask, item in
+                        subtaskToDelete = subtask
+                        itemForSubtaskDeletion = item
+                        showDeleteSubtaskAlert = true
+                    },
+                    onAddSubtask: { item in
+                        itemForSubtaskAdd = item
+                        showAddSubtaskSheet = true
+                    }
                 )
             }
-            .buttonStyle(.plain)
+        )
+        // MARK: - Alerts and Sheets
+        .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
+            Button("Cancel", role: .cancel) {
+                noteToDelete = nil
+                itemForNoteDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                confirmDeleteNote()
+            }
+        } message: {
+            Text("This note will be permanently deleted.")
         }
-        .navigationDestination(for: WorkItem.self) { item in
-            WorkItemDetailView(
-                item: item,
-                claimState: claimState(for: item),
-                userLookup: { userCache[$0] },
-                onComplete: { toggleComplete(item) },
-                onClaim: { claim(item) },
-                onRelease: { unclaim(item) },
-                onAddNote: { _ in },
-                onToggleSubtask: { _ in }
-            )
+        .alert("Delete Subtask?", isPresented: $showDeleteSubtaskAlert) {
+            Button("Cancel", role: .cancel) {
+                subtaskToDelete = nil
+                itemForSubtaskDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                confirmDeleteSubtask()
+            }
+        } message: {
+            Text("This subtask will be permanently deleted.")
+        }
+        .sheet(isPresented: $showAddSubtaskSheet) {
+            AddSubtaskSheet(title: $newSubtaskTitle) {
+                if let item = itemForSubtaskAdd {
+                    addSubtask(to: item, title: newSubtaskTitle)
+                }
+                newSubtaskTitle = ""
+                itemForSubtaskAdd = nil
+                showAddSubtaskSheet = false
+            }
         }
     }
 
@@ -136,12 +200,194 @@ struct TaskListView: View {
         task.updatedAt = Date()
         syncManager.requestSync()
     }
+
+    // MARK: - Note Actions
+
+    private func addNote(to item: WorkItem, content: String) {
+        guard let task = item.taskItem else { return }
+        let note = Note(
+            content: content,
+            createdBy: currentUserId,
+            parentType: .task,
+            parentId: task.id
+        )
+        task.notes.append(note)
+        task.updatedAt = Date()
+        syncManager.requestSync()
+    }
+
+    private func confirmDeleteNote() {
+        guard let note = noteToDelete, let item = itemForNoteDeletion else { return }
+        guard let task = item.taskItem else { return }
+        task.notes.removeAll { $0.id == note.id }
+        modelContext.delete(note)
+        task.updatedAt = Date()
+        noteToDelete = nil
+        itemForNoteDeletion = nil
+        syncManager.requestSync()
+    }
+
+    // MARK: - Subtask Actions
+
+    private func toggleSubtask(_ subtask: Subtask) {
+        subtask.completed.toggle()
+        syncManager.requestSync()
+    }
+
+    private func confirmDeleteSubtask() {
+        guard let subtask = subtaskToDelete, let item = itemForSubtaskDeletion else { return }
+        guard let task = item.taskItem else { return }
+        task.subtasks.removeAll { $0.id == subtask.id }
+        modelContext.delete(subtask)
+        task.updatedAt = Date()
+        subtaskToDelete = nil
+        itemForSubtaskDeletion = nil
+        syncManager.requestSync()
+    }
+
+    private func addSubtask(to item: WorkItem, title: String) {
+        guard let task = item.taskItem else { return }
+        let subtask = Subtask(
+            title: title,
+            parentType: .task,
+            parentId: task.id
+        )
+        task.subtasks.append(subtask)
+        task.updatedAt = Date()
+        syncManager.requestSync()
+    }
 }
 
 // MARK: - Preview
 
 #Preview("Task List View") {
-    TaskListView()
-        .modelContainer(for: [TaskItem.self, User.self], inMemory: true)
-        .environmentObject(SyncManager.shared)
+    @Previewable @State var syncManager = SyncManager.shared
+    
+    let container = try! ModelContainer(
+        for: TaskItem.self, User.self, Note.self, Subtask.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+    
+    // Create preview data
+    let context = container.mainContext
+    
+    // Create users
+    let currentUser = User(
+        name: "Alice Johnson",
+        email: "alice@dispatch.ca",
+        userType: .admin
+    )
+    context.insert(currentUser)
+    
+    let otherUser = User(
+        name: "Bob Smith",
+        email: "bob@dispatch.ca",
+        userType: .admin
+    )
+    context.insert(otherUser)
+    
+    // Set current user
+    syncManager.currentUserID = currentUser.id
+    
+    // Create overdue task
+    let overdueTask = TaskItem(
+        title: "Order title search",
+        taskDescription: "Contact Stewart Title for property search",
+        dueDate: Calendar.current.date(byAdding: .day, value: -2, to: Date()),
+        priority: .high,
+        status: .open,
+        declaredBy: currentUser.id
+    )
+    context.insert(overdueTask)
+    
+    // Create today task (claimed by current user)
+    let todayTask = TaskItem(
+        title: "Schedule home inspection",
+        taskDescription: "Book with certified inspector - 3 hour window needed",
+        dueDate: Calendar.current.startOfDay(for: Date()),
+        priority: .medium,
+        status: .open,
+        declaredBy: currentUser.id,
+        claimedBy: currentUser.id
+    )
+    todayTask.claimedAt = Date()
+    context.insert(todayTask)
+    
+    // Add a note to today's task
+    let note1 = Note(
+        content: "Inspector prefers morning appointments",
+        createdBy: currentUser.id,
+        parentType: .task,
+        parentId: todayTask.id
+    )
+    todayTask.notes.append(note1)
+    
+    // Add subtasks to today's task
+    let subtask1 = Subtask(
+        title: "Call inspector for availability",
+        parentType: .task,
+        parentId: todayTask.id
+    )
+    subtask1.completed = true
+    todayTask.subtasks.append(subtask1)
+    
+    let subtask2 = Subtask(
+        title: "Confirm with client",
+        parentType: .task,
+        parentId: todayTask.id
+    )
+    todayTask.subtasks.append(subtask2)
+    
+    // Create tomorrow task (claimed by other user)
+    let tomorrowTask = TaskItem(
+        title: "Prepare condition waiver",
+        taskDescription: "Draft waiver documents for buyer signature",
+        dueDate: Calendar.current.date(byAdding: .day, value: 1, to: Date()),
+        priority: .high,
+        status: .open,
+        declaredBy: currentUser.id,
+        claimedBy: otherUser.id
+    )
+    tomorrowTask.claimedAt = Date()
+    context.insert(tomorrowTask)
+    
+    // Create upcoming task (unclaimed)
+    let upcomingTask = TaskItem(
+        title: "Request mortgage approval letter",
+        taskDescription: "Follow up with TD Bank mortgage specialist",
+        dueDate: Calendar.current.date(byAdding: .day, value: 5, to: Date()),
+        priority: .low,
+        status: .open,
+        declaredBy: currentUser.id
+    )
+    context.insert(upcomingTask)
+    
+    // Create completed task
+    let completedTask = TaskItem(
+        title: "Coordinate key exchange",
+        taskDescription: "Arrange handover at closing - confirm lockbox code",
+        dueDate: Calendar.current.date(byAdding: .day, value: -1, to: Date()),
+        priority: .medium,
+        status: .completed,
+        declaredBy: currentUser.id,
+        claimedBy: currentUser.id
+    )
+    completedTask.claimedAt = Calendar.current.date(byAdding: .day, value: -2, to: Date())
+    completedTask.completedAt = Date()
+    context.insert(completedTask)
+    
+    // Create task with no due date
+    let noDueDateTask = TaskItem(
+        title: "Update client database",
+        taskDescription: "Enter new client information into system",
+        dueDate: nil,
+        priority: .medium,
+        status: .open,
+        declaredBy: currentUser.id
+    )
+    context.insert(noDueDateTask)
+    
+    return TaskListView()
+        .modelContainer(container)
+        .environmentObject(syncManager)
 }

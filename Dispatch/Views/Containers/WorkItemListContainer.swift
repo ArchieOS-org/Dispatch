@@ -14,7 +14,8 @@ import SwiftUI
 /// - Date-based sectioned list (Overdue/Today/Tomorrow/Upcoming/No Due Date)
 /// - Pull-to-refresh functionality
 /// - Custom row rendering via @ViewBuilder
-struct WorkItemListContainer<Row: View>: View {
+/// - Navigation destination using WorkItemRef for crash-safe navigation
+struct WorkItemListContainer<Row: View, Destination: View>: View {
     let title: String
     let items: [WorkItem]
     let currentUserId: UUID
@@ -22,6 +23,7 @@ struct WorkItemListContainer<Row: View>: View {
     let onRefresh: () async -> Void
     let isActivityList: Bool
     @ViewBuilder let rowBuilder: (WorkItem, User?) -> Row
+    @ViewBuilder let destinationBuilder: (WorkItemRef) -> Destination
 
     @State private var selectedFilter: ClaimFilter = .mine
 
@@ -32,7 +34,8 @@ struct WorkItemListContainer<Row: View>: View {
         userLookup: @escaping (UUID) -> User?,
         onRefresh: @escaping () async -> Void,
         isActivityList: Bool = false,
-        @ViewBuilder rowBuilder: @escaping (WorkItem, User?) -> Row
+        @ViewBuilder rowBuilder: @escaping (WorkItem, User?) -> Row,
+        @ViewBuilder destination: @escaping (WorkItemRef) -> Destination
     ) {
         self.title = title
         self.items = items
@@ -41,6 +44,7 @@ struct WorkItemListContainer<Row: View>: View {
         self.onRefresh = onRefresh
         self.isActivityList = isActivityList
         self.rowBuilder = rowBuilder
+        self.destinationBuilder = destination
     }
 
     // MARK: - Computed Properties
@@ -82,6 +86,9 @@ struct WorkItemListContainer<Row: View>: View {
             .navigationTitle(title)
             .refreshable {
                 await onRefresh()
+            }
+            .navigationDestination(for: WorkItemRef.self) { ref in
+                destinationBuilder(ref)
             }
         }
     }
@@ -176,15 +183,19 @@ struct WorkItemListContainer<Row: View>: View {
         items: sampleTasks,
         currentUserId: currentUserId,
         userLookup: { _ in sampleUser },
-        onRefresh: { try? await Task.sleep(nanoseconds: 1_000_000_000) }
-    ) { item, claimedUser in
-        WorkItemRow(
-            item: item,
-            claimedByUser: claimedUser,
-            onTap: {},
-            onComplete: {},
-            onEdit: {},
-            onDelete: {}
-        )
-    }
+        onRefresh: { try? await Task.sleep(nanoseconds: 1_000_000_000) },
+        rowBuilder: { item, claimedUser in
+            WorkItemRow(
+                item: item,
+                claimedByUser: claimedUser,
+                onTap: {},
+                onComplete: {},
+                onEdit: {},
+                onDelete: {}
+            )
+        },
+        destination: { _ in
+            Text("Detail View")
+        }
+    )
 }

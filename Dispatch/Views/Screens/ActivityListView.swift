@@ -26,6 +26,21 @@ struct ActivityListView: View {
     @Query private var users: [User]
 
     @EnvironmentObject private var syncManager: SyncManager
+    @Environment(\.modelContext) private var modelContext
+
+    // MARK: - State for Note/Subtask Management
+
+    @State private var showDeleteNoteAlert = false
+    @State private var noteToDelete: Note?
+    @State private var itemForNoteDeletion: WorkItem?
+
+    @State private var showDeleteSubtaskAlert = false
+    @State private var subtaskToDelete: Subtask?
+    @State private var itemForSubtaskDeletion: WorkItem?
+
+    @State private var showAddSubtaskSheet = false
+    @State private var itemForSubtaskAdd: WorkItem?
+    @State private var newSubtaskTitle = ""
 
     // MARK: - Computed Properties
 
@@ -55,31 +70,80 @@ struct ActivityListView: View {
             onRefresh: {
                 await syncManager.sync()
             },
-            isActivityList: true
-        ) { item, claimedUser in
-            NavigationLink(value: item) {
-                WorkItemRow(
-                    item: item,
-                    claimedByUser: claimedUser,
-                    onTap: {},
-                    onComplete: { toggleComplete(item) },
-                    onEdit: {},
-                    onDelete: { delete(item) }
+            isActivityList: true,
+            rowBuilder: { item, claimedUser in
+                NavigationLink(value: WorkItemRef.from(item)) {
+                    WorkItemRow(
+                        item: item,
+                        claimedByUser: claimedUser,
+                        onTap: {},
+                        onComplete: { toggleComplete(item) },
+                        onEdit: {},
+                        onDelete: { delete(item) }
+                    )
+                }
+                .buttonStyle(.plain)
+            },
+            destination: { ref in
+                WorkItemResolverView(
+                    ref: ref,
+                    currentUserId: currentUserId,
+                    userLookup: { userCache[$0] },
+                    onComplete: { item in toggleComplete(item) },
+                    onClaim: { item in claim(item) },
+                    onRelease: { item in unclaim(item) },
+                    onEditNote: nil,
+                    onDeleteNote: { note, item in
+                        noteToDelete = note
+                        itemForNoteDeletion = item
+                        showDeleteNoteAlert = true
+                    },
+                    onAddNote: { content, item in addNote(to: item, content: content) },
+                    onToggleSubtask: { subtask in toggleSubtask(subtask) },
+                    onDeleteSubtask: { subtask, item in
+                        subtaskToDelete = subtask
+                        itemForSubtaskDeletion = item
+                        showDeleteSubtaskAlert = true
+                    },
+                    onAddSubtask: { item in
+                        itemForSubtaskAdd = item
+                        showAddSubtaskSheet = true
+                    }
                 )
             }
-            .buttonStyle(.plain)
+        )
+        // MARK: - Alerts and Sheets
+        .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
+            Button("Cancel", role: .cancel) {
+                noteToDelete = nil
+                itemForNoteDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                confirmDeleteNote()
+            }
+        } message: {
+            Text("This note will be permanently deleted.")
         }
-        .navigationDestination(for: WorkItem.self) { item in
-            WorkItemDetailView(
-                item: item,
-                claimState: claimState(for: item),
-                userLookup: { userCache[$0] },
-                onComplete: { toggleComplete(item) },
-                onClaim: { claim(item) },
-                onRelease: { unclaim(item) },
-                onAddNote: { _ in },
-                onToggleSubtask: { _ in }
-            )
+        .alert("Delete Subtask?", isPresented: $showDeleteSubtaskAlert) {
+            Button("Cancel", role: .cancel) {
+                subtaskToDelete = nil
+                itemForSubtaskDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                confirmDeleteSubtask()
+            }
+        } message: {
+            Text("This subtask will be permanently deleted.")
+        }
+        .sheet(isPresented: $showAddSubtaskSheet) {
+            AddSubtaskSheet(title: $newSubtaskTitle) {
+                if let item = itemForSubtaskAdd {
+                    addSubtask(to: item, title: newSubtaskTitle)
+                }
+                newSubtaskTitle = ""
+                itemForSubtaskAdd = nil
+                showAddSubtaskSheet = false
+            }
         }
     }
 
@@ -133,6 +197,62 @@ struct ActivityListView: View {
         guard let activity = item.activityItem else { return }
         activity.claimedBy = nil
         activity.claimedAt = nil
+        activity.updatedAt = Date()
+        syncManager.requestSync()
+    }
+
+    // MARK: - Note Actions
+
+    private func addNote(to item: WorkItem, content: String) {
+        guard let activity = item.activityItem else { return }
+        let note = Note(
+            content: content,
+            createdBy: currentUserId,
+            parentType: .activity,
+            parentId: activity.id
+        )
+        activity.notes.append(note)
+        activity.updatedAt = Date()
+        syncManager.requestSync()
+    }
+
+    private func confirmDeleteNote() {
+        guard let note = noteToDelete, let item = itemForNoteDeletion else { return }
+        guard let activity = item.activityItem else { return }
+        activity.notes.removeAll { $0.id == note.id }
+        modelContext.delete(note)
+        activity.updatedAt = Date()
+        noteToDelete = nil
+        itemForNoteDeletion = nil
+        syncManager.requestSync()
+    }
+
+    // MARK: - Subtask Actions
+
+    private func toggleSubtask(_ subtask: Subtask) {
+        subtask.completed.toggle()
+        syncManager.requestSync()
+    }
+
+    private func confirmDeleteSubtask() {
+        guard let subtask = subtaskToDelete, let item = itemForSubtaskDeletion else { return }
+        guard let activity = item.activityItem else { return }
+        activity.subtasks.removeAll { $0.id == subtask.id }
+        modelContext.delete(subtask)
+        activity.updatedAt = Date()
+        subtaskToDelete = nil
+        itemForSubtaskDeletion = nil
+        syncManager.requestSync()
+    }
+
+    private func addSubtask(to item: WorkItem, title: String) {
+        guard let activity = item.activityItem else { return }
+        let subtask = Subtask(
+            title: title,
+            parentType: .activity,
+            parentId: activity.id
+        )
+        activity.subtasks.append(subtask)
         activity.updatedAt = Date()
         syncManager.requestSync()
     }
