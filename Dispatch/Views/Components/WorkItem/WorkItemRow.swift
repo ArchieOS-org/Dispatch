@@ -18,70 +18,68 @@ struct WorkItemRow: View {
     let item: WorkItem
     let claimedByUser: User?
 
-    // Closure-based actions
-    var onTap: () -> Void = {}
+    // Closure-based actions (onTap removed - use NavigationLink wrapper instead)
     var onComplete: () -> Void = {}
     var onEdit: () -> Void = {}
     var onDelete: () -> Void = {}
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: DS.Spacing.md) {
-                // Status checkbox
-                StatusCheckbox(isCompleted: item.isCompleted, onToggle: onComplete)
+        HStack(spacing: DS.Spacing.md) {
+            // Status checkbox
+            StatusCheckbox(isCompleted: item.isCompleted, onToggle: onComplete)
 
-                // Content
-                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    // Title row
-                    HStack {
-                        Text(item.title)
-                            .font(DS.Typography.headline)
-                            .strikethrough(item.isCompleted, color: DS.Colors.Text.tertiary)
-                            .foregroundColor(item.isCompleted ? DS.Colors.Text.tertiary : DS.Colors.Text.primary)
-                            .lineLimit(1)
+            // Content
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                // Title row
+                HStack {
+                    Text(item.title)
+                        .font(DS.Typography.headline)
+                        .strikethrough(item.isCompleted, color: DS.Colors.Text.tertiary)
+                        .foregroundColor(item.isCompleted ? DS.Colors.Text.tertiary : DS.Colors.Text.primary)
+                        .lineLimit(1)
 
-                        Spacer()
+                    Spacer()
 
-                        PriorityDot(priority: item.priority)
+                    PriorityDot(priority: item.priority)
+                }
+
+                // Metadata row
+                HStack(spacing: DS.Spacing.sm) {
+                    // Type label with icon
+                    HStack(spacing: DS.Spacing.xxs) {
+                        Image(systemName: item.typeIcon)
+                            .font(.system(size: 10))
+                        Text(item.typeLabel)
+                            .font(DS.Typography.caption)
                     }
+                    .foregroundColor(DS.Colors.Text.secondary)
 
-                    // Metadata row
-                    HStack(spacing: DS.Spacing.sm) {
-                        // Type label with icon
+                    DueDateBadge(dueDate: item.dueDate)
+
+                    // Subtask progress (if any)
+                    if item.hasSubtasks {
                         HStack(spacing: DS.Spacing.xxs) {
-                            Image(systemName: item.typeIcon)
+                            Image(systemName: DS.Icons.Entity.subtask)
                                 .font(.system(size: 10))
-                            Text(item.typeLabel)
+                            Text(item.subtaskProgressText)
                                 .font(DS.Typography.caption)
                         }
-                        .foregroundColor(DS.Colors.Text.secondary)
+                        .foregroundColor(DS.Colors.Text.tertiary)
+                    }
 
-                        DueDateBadge(dueDate: item.dueDate)
+                    Spacer()
 
-                        // Subtask progress (if any)
-                        if item.hasSubtasks {
-                            HStack(spacing: DS.Spacing.xxs) {
-                                Image(systemName: DS.Icons.Entity.subtask)
-                                    .font(.system(size: 10))
-                                Text(item.subtaskProgressText)
-                                    .font(DS.Typography.caption)
-                            }
-                            .foregroundColor(DS.Colors.Text.tertiary)
-                        }
-
-                        Spacer()
-
-                        // Claimed user avatar
-                        if claimedByUser != nil {
-                            UserAvatar(user: claimedByUser, size: .small)
-                        }
+                    // Claimed user avatar
+                    if claimedByUser != nil {
+                        UserAvatar(user: claimedByUser, size: .small)
                     }
                 }
             }
-            .padding(.vertical, DS.Spacing.sm)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, DS.Spacing.sm)
+        .contentShape(Rectangle())
+        // NOTE: Removed .onTapGesture - it was competing with NavigationLink's gesture.
+        // Navigation is now handled by wrapping WorkItemRow in NavigationLink at the call site.
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive, action: onDelete) {
                 Label("Delete", systemImage: DS.Icons.Action.delete)
@@ -128,7 +126,6 @@ struct WorkItemRow: View {
                 declaredBy: UUID()
             )),
             claimedByUser: User(name: "John Doe", email: "john@example.com", userType: .admin),
-            onTap: {},
             onComplete: {},
             onEdit: {},
             onDelete: {}
@@ -147,7 +144,6 @@ struct WorkItemRow: View {
                 return a
             }()),
             claimedByUser: nil,
-            onTap: {},
             onComplete: {},
             onEdit: {},
             onDelete: {}
@@ -163,7 +159,6 @@ struct WorkItemRow: View {
                 declaredBy: UUID()
             )),
             claimedByUser: nil,
-            onTap: {},
             onComplete: {},
             onEdit: {},
             onDelete: {}

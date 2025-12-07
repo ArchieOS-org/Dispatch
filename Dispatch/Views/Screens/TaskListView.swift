@@ -76,7 +76,6 @@ struct TaskListView: View {
                     WorkItemRow(
                         item: item,
                         claimedByUser: claimedUser,
-                        onTap: {},
                         onComplete: { toggleComplete(item) },
                         onEdit: {},
                         onDelete: { delete(item) }

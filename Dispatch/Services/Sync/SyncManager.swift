@@ -258,6 +258,7 @@ final class SyncManager: ObservableObject {
             predicate: #Predicate { $0.id == targetId }
         )
 
+        let task: TaskItem
         if let existing = try context.fetch(descriptor).first {
             debugLog.log("    UPDATE existing task: \(dto.id)", category: .sync)
             // Update (last-write-wins: server wins on syncDown)
@@ -271,13 +272,51 @@ final class SyncManager: ObservableObject {
             existing.completedAt = dto.completedAt
             existing.deletedAt = dto.deletedAt
             existing.updatedAt = dto.updatedAt
+            existing.listingId = dto.listing  // Ensure listingId is updated
             existing.syncedAt = Date()
+            task = existing
         } else {
             debugLog.log("    INSERT new task: \(dto.id)", category: .sync)
             let newTask = dto.toModel()
             newTask.syncedAt = Date()
             context.insert(newTask)
+            task = newTask
         }
+
+        // Establish SwiftData relationship with parent Listing
+        try establishTaskListingRelationship(task: task, listingId: dto.listing, context: context)
+    }
+
+    /// Establishes bidirectional relationship between a task and its parent listing
+    private func establishTaskListingRelationship(task: TaskItem, listingId: UUID?, context: ModelContext) throws {
+        // Remove from old listing if listingId changed
+        if let oldListing = task.listing, oldListing.id != listingId {
+            debugLog.log("      Removing task from old listing: \(oldListing.id)", category: .sync)
+            oldListing.tasks.removeAll { $0.id == task.id }
+            task.listing = nil
+        }
+
+        // Add to new listing if listingId is set
+        guard let listingId = listingId else {
+            debugLog.log("      No listingId - task is standalone", category: .sync)
+            return
+        }
+
+        let listingDescriptor = FetchDescriptor<Listing>(
+            predicate: #Predicate { $0.id == listingId }
+        )
+
+        guard let parentListing = try context.fetch(listingDescriptor).first else {
+            debugLog.log("      ⚠️ Parent listing \(listingId) not found - relationship deferred", category: .sync)
+            return
+        }
+
+        // Establish bidirectional relationship
+        if !parentListing.tasks.contains(where: { $0.id == task.id }) {
+            debugLog.log("      Adding task to listing.tasks: \(listingId)", category: .sync)
+            parentListing.tasks.append(task)
+        }
+        task.listing = parentListing
     }
 
     // MARK: - Sync Down: Activities
@@ -304,6 +343,7 @@ final class SyncManager: ObservableObject {
             predicate: #Predicate { $0.id == targetId }
         )
 
+        let activity: Activity
         if let existing = try context.fetch(descriptor).first {
             debugLog.log("    UPDATE existing activity: \(dto.id)", category: .sync)
             existing.title = dto.title
@@ -318,13 +358,51 @@ final class SyncManager: ObservableObject {
             existing.completedAt = dto.completedAt
             existing.deletedAt = dto.deletedAt
             existing.updatedAt = dto.updatedAt
+            existing.listingId = dto.listing  // Ensure listingId is updated
             existing.syncedAt = Date()
+            activity = existing
         } else {
             debugLog.log("    INSERT new activity: \(dto.id)", category: .sync)
             let newActivity = dto.toModel()
             newActivity.syncedAt = Date()
             context.insert(newActivity)
+            activity = newActivity
         }
+
+        // Establish SwiftData relationship with parent Listing
+        try establishActivityListingRelationship(activity: activity, listingId: dto.listing, context: context)
+    }
+
+    /// Establishes bidirectional relationship between an activity and its parent listing
+    private func establishActivityListingRelationship(activity: Activity, listingId: UUID?, context: ModelContext) throws {
+        // Remove from old listing if listingId changed
+        if let oldListing = activity.listing, oldListing.id != listingId {
+            debugLog.log("      Removing activity from old listing: \(oldListing.id)", category: .sync)
+            oldListing.activities.removeAll { $0.id == activity.id }
+            activity.listing = nil
+        }
+
+        // Add to new listing if listingId is set
+        guard let listingId = listingId else {
+            debugLog.log("      No listingId - activity is standalone", category: .sync)
+            return
+        }
+
+        let listingDescriptor = FetchDescriptor<Listing>(
+            predicate: #Predicate { $0.id == listingId }
+        )
+
+        guard let parentListing = try context.fetch(listingDescriptor).first else {
+            debugLog.log("      ⚠️ Parent listing \(listingId) not found - relationship deferred", category: .sync)
+            return
+        }
+
+        // Establish bidirectional relationship
+        if !parentListing.activities.contains(where: { $0.id == activity.id }) {
+            debugLog.log("      Adding activity to listing.activities: \(listingId)", category: .sync)
+            parentListing.activities.append(activity)
+        }
+        activity.listing = parentListing
     }
 
     // MARK: - Sync Up (SwiftData → Supabase)

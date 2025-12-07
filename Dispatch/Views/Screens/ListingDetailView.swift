@@ -411,22 +411,377 @@ struct ListingDetailView: View {
 // MARK: - Preview
 
 #Preview("Listing Detail View") {
-    let listing = Listing(
-        address: "123 Main Street",
-        city: "Toronto",
-        province: "ON",
-        postalCode: "M5V 1A1",
-        price: 1250000,
-        listingType: .sale,
-        status: .active,
-        ownedBy: UUID()
+    @Previewable @State var syncManager = SyncManager.shared
+
+    let container = try! ModelContainer(
+        for: Listing.self, TaskItem.self, Activity.self, User.self, Note.self, Subtask.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
 
-    let user = User(name: "John Smith", email: "john@example.com", userType: .realtor)
+    let context = container.mainContext
 
-    NavigationStack {
-        ListingDetailView(listing: listing, userLookup: { _ in user })
+    // MARK: - Create Users
+
+    let ownerUser = User(
+        name: "Sarah Mitchell",
+        email: "sarah@remax.ca",
+        userType: .realtor
+    )
+    context.insert(ownerUser)
+
+    let staffUser = User(
+        name: "David Chen",
+        email: "david@dispatch.ca",
+        userType: .admin
+    )
+    context.insert(staffUser)
+
+    let otherUser = User(
+        name: "Emily Rodriguez",
+        email: "emily@dispatch.ca",
+        userType: .admin
+    )
+    context.insert(otherUser)
+
+    syncManager.currentUserID = staffUser.id
+
+    // MARK: - Create Listing
+
+    let listing = Listing(
+        address: "742 Evergreen Terrace",
+        city: "Toronto",
+        province: "ON",
+        postalCode: "M5V 2K7",
+        price: 1895000,
+        mlsNumber: "W9876543",
+        listingType: .sale,
+        status: .active,
+        ownedBy: ownerUser.id,
+        assignedStaff: staffUser.id
+    )
+    context.insert(listing)
+
+    // MARK: - Create Tasks for Listing
+
+    // Overdue high-priority task
+    let titleSearchTask = TaskItem(
+        title: "Order title search",
+        taskDescription: "Contact Stewart Title for property search - need full chain of ownership",
+        dueDate: Calendar.current.date(byAdding: .day, value: -2, to: Date()),
+        priority: .high,
+        status: .open,
+        declaredBy: ownerUser.id,
+        claimedBy: staffUser.id,
+        listingId: listing.id
+    )
+    titleSearchTask.claimedAt = Calendar.current.date(byAdding: .day, value: -3, to: Date())
+    context.insert(titleSearchTask)
+    listing.tasks.append(titleSearchTask)
+
+    // Add subtasks to title search
+    let subtask1 = Subtask(
+        title: "Contact Stewart Title",
+        completed: true,
+        parentType: .task,
+        parentId: titleSearchTask.id
+    )
+    titleSearchTask.subtasks.append(subtask1)
+
+    let subtask2 = Subtask(
+        title: "Submit property details form",
+        completed: true,
+        parentType: .task,
+        parentId: titleSearchTask.id
+    )
+    titleSearchTask.subtasks.append(subtask2)
+
+    let subtask3 = Subtask(
+        title: "Review search results",
+        completed: false,
+        parentType: .task,
+        parentId: titleSearchTask.id
+    )
+    titleSearchTask.subtasks.append(subtask3)
+
+    // Today task
+    let inspectionTask = TaskItem(
+        title: "Schedule home inspection",
+        taskDescription: "Book with certified inspector - 3 hour window needed. Buyer prefers morning slots.",
+        dueDate: Calendar.current.startOfDay(for: Date()),
+        priority: .medium,
+        status: .open,
+        declaredBy: ownerUser.id,
+        listingId: listing.id
+    )
+    context.insert(inspectionTask)
+    listing.tasks.append(inspectionTask)
+
+    // Add note to inspection task
+    let inspectionNote = Note(
+        content: "Inspector Mike (416-555-1234) confirmed availability for Thursday morning",
+        createdBy: staffUser.id,
+        parentType: .task,
+        parentId: inspectionTask.id
+    )
+    inspectionTask.notes.append(inspectionNote)
+
+    // Tomorrow task (claimed by other user)
+    let appraisalTask = TaskItem(
+        title: "Coordinate appraisal visit",
+        taskDescription: "Bank appraiser needs access - coordinate with seller for best time",
+        dueDate: Calendar.current.date(byAdding: .day, value: 1, to: Date()),
+        priority: .high,
+        status: .open,
+        declaredBy: ownerUser.id,
+        claimedBy: otherUser.id,
+        listingId: listing.id
+    )
+    appraisalTask.claimedAt = Date()
+    context.insert(appraisalTask)
+    listing.tasks.append(appraisalTask)
+
+    // Completed task
+    let photographyTask = TaskItem(
+        title: "Professional photography session",
+        taskDescription: "Schedule HDR photos and virtual tour - coordinate with staging",
+        dueDate: Calendar.current.date(byAdding: .day, value: -5, to: Date()),
+        priority: .medium,
+        status: .completed,
+        declaredBy: ownerUser.id,
+        claimedBy: staffUser.id,
+        listingId: listing.id
+    )
+    photographyTask.completedAt = Calendar.current.date(byAdding: .day, value: -4, to: Date())
+    context.insert(photographyTask)
+    listing.tasks.append(photographyTask)
+
+    // MARK: - Create Activities for Listing
+
+    // Upcoming showing
+    let showingActivity = Activity(
+        title: "Property showing - Johnson family",
+        activityDescription: "First-time buyers, pre-approved for $2M. Interested in the backyard and basement.",
+        type: .showProperty,
+        dueDate: Calendar.current.date(byAdding: .hour, value: 4, to: Date()),
+        priority: .high,
+        status: .open,
+        declaredBy: ownerUser.id,
+        claimedBy: staffUser.id,
+        listingId: listing.id,
+        duration: 3600
+    )
+    showingActivity.claimedAt = Date()
+    context.insert(showingActivity)
+    listing.activities.append(showingActivity)
+
+    // Follow-up call
+    let followUpActivity = Activity(
+        title: "Follow up with mortgage broker",
+        activityDescription: "Check on buyer's financing status - TD pre-approval letter pending",
+        type: .call,
+        dueDate: Calendar.current.date(byAdding: .day, value: 1, to: Date()),
+        priority: .medium,
+        status: .open,
+        declaredBy: staffUser.id,
+        listingId: listing.id
+    )
+    context.insert(followUpActivity)
+    listing.activities.append(followUpActivity)
+
+    // Completed meeting
+    let meetingActivity = Activity(
+        title: "Seller consultation meeting",
+        activityDescription: "Discussed pricing strategy and marketing plan",
+        type: .meeting,
+        dueDate: Calendar.current.date(byAdding: .day, value: -3, to: Date()),
+        priority: .medium,
+        status: .completed,
+        declaredBy: ownerUser.id,
+        claimedBy: staffUser.id,
+        listingId: listing.id,
+        duration: 5400
+    )
+    meetingActivity.completedAt = Calendar.current.date(byAdding: .day, value: -3, to: Date())
+    context.insert(meetingActivity)
+    listing.activities.append(meetingActivity)
+
+    // Add note to meeting activity
+    let meetingNote = Note(
+        content: "Seller agreed to price reduction if no offers within 2 weeks",
+        createdBy: staffUser.id,
+        parentType: .activity,
+        parentId: meetingActivity.id
+    )
+    meetingActivity.notes.append(meetingNote)
+
+    // MARK: - Create Listing-Level Notes
+
+    let listingNote1 = Note(
+        content: "Seller is motivated - relocating for work by end of month. Flexible on closing date.",
+        createdBy: ownerUser.id,
+        parentType: .listing,
+        parentId: listing.id,
+        createdAt: Calendar.current.date(byAdding: .day, value: -7, to: Date())!
+    )
+    listing.notes.append(listingNote1)
+
+    let listingNote2 = Note(
+        content: "Property has new roof (2023) and updated HVAC. All permits on file.",
+        createdBy: staffUser.id,
+        parentType: .listing,
+        parentId: listing.id,
+        createdAt: Calendar.current.date(byAdding: .day, value: -5, to: Date())!
+    )
+    listing.notes.append(listingNote2)
+
+    let listingNote3 = Note(
+        content: "Neighbour mentioned interest - might make an offer if it stays on market",
+        createdBy: otherUser.id,
+        parentType: .listing,
+        parentId: listing.id,
+        createdAt: Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+    )
+    listing.notes.append(listingNote3)
+
+    // Build user lookup
+    let userCache: [UUID: User] = [
+        ownerUser.id: ownerUser,
+        staffUser.id: staffUser,
+        otherUser.id: otherUser
+    ]
+
+    return NavigationStack {
+        ListingDetailView(listing: listing, userLookup: { userCache[$0] })
     }
-    .modelContainer(for: [Listing.self, User.self, TaskItem.self, Activity.self, Note.self], inMemory: true)
-    .environmentObject(SyncManager.shared)
+    .modelContainer(container)
+    .environmentObject(syncManager)
+}
+
+#Preview("Listing Detail - Empty") {
+    @Previewable @State var syncManager = SyncManager.shared
+
+    let container = try! ModelContainer(
+        for: Listing.self, TaskItem.self, Activity.self, User.self, Note.self, Subtask.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+
+    let context = container.mainContext
+
+    let ownerUser = User(
+        name: "Sarah Mitchell",
+        email: "sarah@remax.ca",
+        userType: .realtor
+    )
+    context.insert(ownerUser)
+
+    syncManager.currentUserID = ownerUser.id
+
+    // Empty listing with no tasks, activities, or notes
+    let listing = Listing(
+        address: "456 Oak Avenue",
+        city: "Vancouver",
+        province: "BC",
+        postalCode: "V6B 1A1",
+        price: 2450000,
+        listingType: .sale,
+        status: .draft,
+        ownedBy: ownerUser.id
+    )
+    context.insert(listing)
+
+    let userCache: [UUID: User] = [ownerUser.id: ownerUser]
+
+    return NavigationStack {
+        ListingDetailView(listing: listing, userLookup: { userCache[$0] })
+    }
+    .modelContainer(container)
+    .environmentObject(syncManager)
+}
+
+#Preview("Listing Detail - Lease") {
+    @Previewable @State var syncManager = SyncManager.shared
+
+    let container = try! ModelContainer(
+        for: Listing.self, TaskItem.self, Activity.self, User.self, Note.self, Subtask.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+
+    let context = container.mainContext
+
+    let ownerUser = User(
+        name: "Michael Torres",
+        email: "michael@royallepage.ca",
+        userType: .realtor
+    )
+    context.insert(ownerUser)
+
+    let staffUser = User(
+        name: "Lisa Park",
+        email: "lisa@dispatch.ca",
+        userType: .admin
+    )
+    context.insert(staffUser)
+
+    syncManager.currentUserID = staffUser.id
+
+    let listing = Listing(
+        address: "1200 Bay Street, Unit 2405",
+        city: "Toronto",
+        province: "ON",
+        postalCode: "M5R 2A5",
+        price: 3500,
+        listingType: .lease,
+        status: .pending,
+        ownedBy: ownerUser.id,
+        assignedStaff: staffUser.id
+    )
+    context.insert(listing)
+
+    // Add a task
+    let creditCheckTask = TaskItem(
+        title: "Run tenant credit check",
+        taskDescription: "Application received - run background and credit check",
+        dueDate: Calendar.current.date(byAdding: .day, value: 1, to: Date()),
+        priority: .high,
+        status: .open,
+        declaredBy: ownerUser.id,
+        claimedBy: staffUser.id,
+        listingId: listing.id
+    )
+    context.insert(creditCheckTask)
+    listing.tasks.append(creditCheckTask)
+
+    // Add an activity
+    let viewingActivity = Activity(
+        title: "Virtual tour with applicant",
+        activityDescription: "Zoom walkthrough of unit - applicant is relocating from Calgary",
+        type: .meeting,
+        dueDate: Date(),
+        priority: .medium,
+        status: .open,
+        declaredBy: staffUser.id,
+        listingId: listing.id
+    )
+    context.insert(viewingActivity)
+    listing.activities.append(viewingActivity)
+
+    // Add a note
+    let leaseNote = Note(
+        content: "Applicant works remotely for tech company - stable income verified",
+        createdBy: staffUser.id,
+        parentType: .listing,
+        parentId: listing.id
+    )
+    listing.notes.append(leaseNote)
+
+    let userCache: [UUID: User] = [
+        ownerUser.id: ownerUser,
+        staffUser.id: staffUser
+    ]
+
+    return NavigationStack {
+        ListingDetailView(listing: listing, userLookup: { userCache[$0] })
+    }
+    .modelContainer(container)
+    .environmentObject(syncManager)
 }

@@ -188,7 +188,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             WorkItemRow(
                 item: item,
                 claimedByUser: claimedUser,
-                onTap: {},
                 onComplete: {},
                 onEdit: {},
                 onDelete: {}
