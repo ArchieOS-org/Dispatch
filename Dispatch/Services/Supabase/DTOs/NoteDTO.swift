@@ -28,11 +28,19 @@ struct NoteDTO: Codable, Sendable {
     }
 
     func toModel() -> Note {
+        let resolvedParentType: ParentType
+        if let type = ParentType(rawValue: parentType) {
+            resolvedParentType = type
+        } else {
+            debugLog.log("⚠️ Invalid parentType '\(parentType)' for Note \(id), defaulting to .task", category: .sync)
+            resolvedParentType = .task
+        }
+
         let note = Note(
             id: id,
             content: content,
             createdBy: createdBy,
-            parentType: ParentType(rawValue: parentType) ?? .task,
+            parentType: resolvedParentType,
             parentId: parentId,
             createdAt: createdAt
         )
