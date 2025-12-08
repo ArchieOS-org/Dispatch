@@ -64,14 +64,14 @@ struct SubtasksList: View {
                 emptyState
             } else {
                 VStack(spacing: 0) {
-                    ForEach(subtasks) { subtask in
+                    ForEach(Array(subtasks.enumerated()), id: \.element.id) { index, subtask in
                         SubtaskRow(
                             subtask: subtask,
                             onToggle: { onToggle?(subtask) },
                             onDelete: onDelete != nil ? { onDelete?(subtask) } : nil
                         )
 
-                        if subtask.id != subtasks.last?.id {
+                        if index < subtasks.count - 1 {
                             Divider()
                                 .padding(.leading, DS.Spacing.minTouchTarget)
                         }
