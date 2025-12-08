@@ -676,7 +676,7 @@ Last-write-wins: Server wins on syncDown, client wins on syncUp.
 
 Data Transfer Objects for Supabase serialization.
 
-```
+```text
 Model (SwiftData) ←→ DTO (Codable) ←→ JSON (Supabase)
 ```
 
