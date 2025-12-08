@@ -19,6 +19,8 @@ enum DateSection: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    private static let calendar = Calendar.current
+
     /// Returns the appropriate header color for this section
     var headerColor: Color {
         self == .overdue ? DS.Colors.overdue : DS.Colors.Text.primary
@@ -30,7 +32,6 @@ enum DateSection: String, CaseIterable, Identifiable {
     static func section(for date: Date?) -> DateSection {
         guard let date else { return .noDueDate }
 
-        let calendar = Calendar.current
         let startOfToday = calendar.startOfDay(for: Date())
 
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
