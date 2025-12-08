@@ -59,7 +59,7 @@ graph TB
 
 ## File Structure
 
-```
+```text
 Dispatch/
 ├── Models/
 │   ├── TaskItem.swift
