@@ -27,12 +27,14 @@ enum DateSection: String, CaseIterable, Identifiable {
     }
 
     /// Determines which section a given date belongs to
-    /// - Parameter date: The due date to categorize (nil returns .noDueDate)
+    /// - Parameters:
+    ///   - date: The due date to categorize (nil returns .noDueDate)
+    ///   - referenceDate: The reference date for "today" (defaults to current date)
     /// - Returns: The appropriate DateSection for the date
-    static func section(for date: Date?) -> DateSection {
+    static func section(for date: Date?, referenceDate: Date = Date()) -> DateSection {
         guard let date else { return .noDueDate }
 
-        let startOfToday = calendar.startOfDay(for: Date())
+        let startOfToday = calendar.startOfDay(for: referenceDate)
 
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday),
               let startOfDayAfter = calendar.date(byAdding: .day, value: 2, to: startOfToday)
@@ -52,17 +54,21 @@ enum DateSection: String, CaseIterable, Identifiable {
     }
 
     /// Groups work items by date section
-    /// - Parameter items: Array of WorkItem to group
+    /// - Parameters:
+    ///   - items: Array of WorkItem to group
+    ///   - referenceDate: The reference date for "today" (defaults to current date)
     /// - Returns: Dictionary mapping DateSection to arrays of WorkItem
-    static func group(_ items: [WorkItem]) -> [DateSection: [WorkItem]] {
-        Dictionary(grouping: items) { section(for: $0.dueDate) }
+    static func group(_ items: [WorkItem], referenceDate: Date = Date()) -> [DateSection: [WorkItem]] {
+        Dictionary(grouping: items) { section(for: $0.dueDate, referenceDate: referenceDate) }
     }
 
     /// Returns sorted sections with their items, excluding empty sections
-    /// - Parameter items: Array of WorkItem to group and sort
+    /// - Parameters:
+    ///   - items: Array of WorkItem to group and sort
+    ///   - referenceDate: The reference date for "today" (defaults to current date)
     /// - Returns: Array of tuples containing section and its items, in section order
-    static func sortedSections(from items: [WorkItem]) -> [(section: DateSection, items: [WorkItem])] {
-        let grouped = group(items)
+    static func sortedSections(from items: [WorkItem], referenceDate: Date = Date()) -> [(section: DateSection, items: [WorkItem])] {
+        let grouped = group(items, referenceDate: referenceDate)
         return DateSection.allCases.compactMap { section in
             guard let sectionItems = grouped[section], !sectionItems.isEmpty else { return nil }
             // Sort items within section by due date
