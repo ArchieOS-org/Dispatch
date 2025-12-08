@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: macos-14
+    runs-on: macos-15
 
     env:
       SCHEME: Dispatch
@@ -29,6 +29,9 @@ jobs:
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+
+      - name: List available simulators
+        run: xcrun simctl list devices available
 
       - name: Show Xcode version
         run: xcodebuild -version
