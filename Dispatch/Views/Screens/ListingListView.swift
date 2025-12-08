@@ -9,6 +9,12 @@
 import SwiftUI
 import SwiftData
 
+/// A group of listings belonging to a single owner
+private struct ListingGroup {
+    let owner: User?
+    let listings: [Listing]
+}
+
 /// Main listing list screen with:
 /// - Search bar for filtering by address
 /// - Grouped by owner
@@ -65,9 +71,9 @@ struct ListingListView: View {
     }
 
     /// Listings grouped by owner, sorted by owner name
-    private var groupedByOwner: [(owner: User?, listings: [Listing])] {
+    private var groupedByOwner: [ListingGroup] {
         let grouped = Dictionary(grouping: filteredListings) { $0.ownedBy }
-        return grouped.map { (userCache[$0.key], $0.value) }
+        return grouped.map { ListingGroup(owner: userCache[$0.key], listings: $0.value) }
             .sorted { ($0.owner?.name ?? "~") < ($1.owner?.name ?? "~") }
     }
 

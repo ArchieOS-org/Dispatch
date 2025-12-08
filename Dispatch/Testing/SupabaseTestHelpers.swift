@@ -9,6 +9,14 @@
 import Foundation
 import Supabase
 
+/// Counts of entities in Supabase (used to avoid large_tuple)
+struct EntityCounts {
+    let tasks: Int
+    let activities: Int
+    let listings: Int
+    let users: Int
+}
+
 /// Helper methods for directly querying Supabase during testing
 /// Used to verify sync operations independent of SwiftData state
 @MainActor
@@ -143,15 +151,15 @@ enum SupabaseTestHelpers {
     // MARK: - Count Methods
 
     /// Get count of all entities in Supabase
-    /// - Returns: Tuple with counts for each entity type
-    static func fetchCounts() async -> (tasks: Int, activities: Int, listings: Int, users: Int) {
+    /// - Returns: EntityCounts struct with counts for each entity type
+    static func fetchCounts() async -> EntityCounts {
         async let tasks = fetchAllTasks()
         async let activities = fetchAllActivities()
         async let listings = fetchAllListings()
         async let users = fetchAllUsers()
 
         let (t, a, l, u) = await (tasks, activities, listings, users)
-        return (t.count, a.count, l.count, u.count)
+        return EntityCounts(tasks: t.count, activities: a.count, listings: l.count, users: u.count)
     }
 
     // MARK: - Delete Methods (for cleanup)

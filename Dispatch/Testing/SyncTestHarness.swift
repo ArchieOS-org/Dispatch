@@ -22,8 +22,8 @@ struct SyncTestHarness: View {
     #endif
 
     @State private var logMessages: [LogEntry] = []
-    @State private var supabaseCounts: (tasks: Int, activities: Int, listings: Int, users: Int) = (0, 0, 0, 0)
-    @State private var localCounts: (tasks: Int, activities: Int, listings: Int, users: Int) = (0, 0, 0, 0)
+    @State private var supabaseCounts = EntityCounts(tasks: 0, activities: 0, listings: 0, users: 0)
+    @State private var localCounts = EntityCounts(tasks: 0, activities: 0, listings: 0, users: 0)
     @State private var isLoading = false
     @State private var selectedLogFilter: String? = nil
     @State private var showSystemLogs = true
@@ -364,11 +364,11 @@ struct SyncTestHarness: View {
             let listingDescriptor = FetchDescriptor<Listing>()
             let userDescriptor = FetchDescriptor<User>()
 
-            localCounts = (
-                try modelContext.fetchCount(taskDescriptor),
-                try modelContext.fetchCount(activityDescriptor),
-                try modelContext.fetchCount(listingDescriptor),
-                try modelContext.fetchCount(userDescriptor)
+            localCounts = EntityCounts(
+                tasks: try modelContext.fetchCount(taskDescriptor),
+                activities: try modelContext.fetchCount(activityDescriptor),
+                listings: try modelContext.fetchCount(listingDescriptor),
+                users: try modelContext.fetchCount(userDescriptor)
             )
         } catch {
             log("Failed to fetch local counts: \(error.localizedDescription)", isError: true)
