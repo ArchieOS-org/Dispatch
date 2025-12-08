@@ -3,7 +3,7 @@
 //  DispatchTests
 //
 //  Tests for Data Transfer Objects used in Supabase sync
-//  Tests: TaskDTO, ActivityDTO, ListingDTO, UserDTO, NoteDTO, SubtaskDTO
+//  Tests: TaskDTO, ActivityDTO, ListingDTO, UserDTO, NoteDTO, SubtaskDTO, ClaimEventDTO
 //  Created by Test Generation on 2025-12-08.
 //
 
@@ -512,11 +512,191 @@ struct SubtaskDTOTests {
         )
         
         let model = dto.toModel()
-        
+
         #expect(model.id == id)
         #expect(model.title == "Complete checklist")
         #expect(model.completed == true)
         #expect(model.parentType == .activity)
         #expect(model.parentId == parentId)
+    }
+}
+
+struct ClaimEventDTOTests {
+
+    @Test("ClaimEventDTO decodes from JSON correctly")
+    func testDecodeFromJSON() throws {
+        let json = """
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "parent_type": "task",
+            "parent_id": "550e8400-e29b-41d4-a716-446655440001",
+            "action": "claimed",
+            "user_id": "550e8400-e29b-41d4-a716-446655440002",
+            "performed_at": "2025-01-15T10:00:00Z",
+            "reason": "Taking ownership",
+            "created_at": "2025-01-01T00:00:00Z",
+            "updated_at": "2025-01-01T00:00:00Z"
+        }
+        """.data(using: .utf8)!
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let dto = try decoder.decode(ClaimEventDTO.self, from: json)
+
+        #expect(dto.parentType == "task")
+        #expect(dto.action == "claimed")
+        #expect(dto.reason == "Taking ownership")
+    }
+
+    @Test("ClaimEventDTO encodes to JSON correctly")
+    func testEncodeToJSON() throws {
+        let id = UUID()
+        let parentId = UUID()
+        let userId = UUID()
+        let now = Date()
+        let dto = ClaimEventDTO(
+            id: id,
+            parentType: "activity",
+            parentId: parentId,
+            action: "released",
+            userId: userId,
+            performedAt: now,
+            reason: "Reassigning",
+            createdAt: now,
+            updatedAt: now
+        )
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(dto)
+
+        // Verify it can be decoded back
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(ClaimEventDTO.self, from: data)
+
+        #expect(decoded.id == id)
+        #expect(decoded.parentType == "activity")
+        #expect(decoded.action == "released")
+        #expect(decoded.reason == "Reassigning")
+    }
+
+    @Test("ClaimEventDTO converts to ClaimEvent model correctly")
+    func testToModel() {
+        let id = UUID()
+        let parentId = UUID()
+        let userId = UUID()
+        let performedAt = Date()
+        let createdAt = Date().addingTimeInterval(-3600)
+        let updatedAt = Date()
+        let dto = ClaimEventDTO(
+            id: id,
+            parentType: "task",
+            parentId: parentId,
+            action: "claimed",
+            userId: userId,
+            performedAt: performedAt,
+            reason: "I'll handle this",
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+
+        let model = dto.toModel()
+
+        #expect(model.id == id)
+        #expect(model.parentType == .task)
+        #expect(model.parentId == parentId)
+        #expect(model.action == .claimed)
+        #expect(model.userId == userId)
+        #expect(model.reason == "I'll handle this")
+        #expect(model.createdAt == createdAt)
+        #expect(model.updatedAt == updatedAt)
+    }
+
+    @Test("ClaimEventDTO handles nil reason")
+    func testNilReason() {
+        let dto = ClaimEventDTO(
+            id: UUID(),
+            parentType: "task",
+            parentId: UUID(),
+            action: "claimed",
+            userId: UUID(),
+            performedAt: Date(),
+            reason: nil,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+
+        let model = dto.toModel()
+        #expect(model.reason == nil)
+    }
+
+    @Test("ClaimEventDTO handles invalid action gracefully")
+    func testInvalidAction() {
+        let dto = ClaimEventDTO(
+            id: UUID(),
+            parentType: "task",
+            parentId: UUID(),
+            action: "invalid_action",
+            userId: UUID(),
+            performedAt: Date(),
+            reason: nil,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+
+        let model = dto.toModel()
+        #expect(model.action == .claimed) // Falls back to default
+    }
+
+    @Test("ClaimEventDTO handles invalid parentType gracefully")
+    func testInvalidParentType() {
+        let dto = ClaimEventDTO(
+            id: UUID(),
+            parentType: "invalid_type",
+            parentId: UUID(),
+            action: "claimed",
+            userId: UUID(),
+            performedAt: Date(),
+            reason: nil,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+
+        let model = dto.toModel()
+        #expect(model.parentType == .task) // Falls back to default
+    }
+
+    @Test("ClaimEventDTO init(from:) creates DTO from model correctly")
+    func testInitFromModel() {
+        let id = UUID()
+        let parentId = UUID()
+        let userId = UUID()
+        let performedAt = Date()
+        let createdAt = Date().addingTimeInterval(-3600)
+        let updatedAt = Date()
+
+        let model = ClaimEvent(
+            id: id,
+            parentType: .activity,
+            parentId: parentId,
+            action: .released,
+            userId: userId,
+            performedAt: performedAt,
+            reason: "No longer available",
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+
+        let dto = ClaimEventDTO(from: model)
+
+        #expect(dto.id == id)
+        #expect(dto.parentType == "activity")
+        #expect(dto.parentId == parentId)
+        #expect(dto.action == "released")
+        #expect(dto.userId == userId)
+        #expect(dto.reason == "No longer available")
+        #expect(dto.createdAt == createdAt)
+        #expect(dto.updatedAt == updatedAt)
     }
 }

@@ -15,6 +15,8 @@ struct ClaimEventDTO: Codable, Sendable {
     let userId: UUID
     let performedAt: Date
     let reason: String?
+    let createdAt: Date
+    let updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
         case id, action, reason
@@ -22,6 +24,30 @@ struct ClaimEventDTO: Codable, Sendable {
         case parentId = "parent_id"
         case userId = "user_id"
         case performedAt = "performed_at"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+
+    init(
+        id: UUID,
+        parentType: String,
+        parentId: UUID,
+        action: String,
+        userId: UUID,
+        performedAt: Date,
+        reason: String?,
+        createdAt: Date,
+        updatedAt: Date
+    ) {
+        self.id = id
+        self.parentType = parentType
+        self.parentId = parentId
+        self.action = action
+        self.userId = userId
+        self.performedAt = performedAt
+        self.reason = reason
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
     }
 
     func toModel() -> ClaimEvent {
@@ -32,7 +58,21 @@ struct ClaimEventDTO: Codable, Sendable {
             action: ClaimAction(rawValue: action) ?? .claimed,
             userId: userId,
             performedAt: performedAt,
-            reason: reason
+            reason: reason,
+            createdAt: createdAt,
+            updatedAt: updatedAt
         )
+    }
+
+    init(from model: ClaimEvent) {
+        self.id = model.id
+        self.parentType = model.parentType.rawValue
+        self.parentId = model.parentId
+        self.action = model.action.rawValue
+        self.userId = model.userId
+        self.performedAt = model.performedAt
+        self.reason = model.reason
+        self.createdAt = model.createdAt
+        self.updatedAt = model.updatedAt
     }
 }

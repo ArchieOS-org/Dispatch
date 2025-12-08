@@ -17,6 +17,8 @@ final class ClaimEvent {
     var userId: UUID
     var performedAt: Date
     var reason: String?
+    var createdAt: Date
+    var updatedAt: Date
     var syncedAt: Date?
 
     init(
@@ -26,7 +28,9 @@ final class ClaimEvent {
         action: ClaimAction,
         userId: UUID,
         performedAt: Date = Date(),
-        reason: String? = nil
+        reason: String? = nil,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
     ) {
         self.id = id
         self.parentType = parentType
@@ -35,5 +39,15 @@ final class ClaimEvent {
         self.userId = userId
         self.performedAt = performedAt
         self.reason = reason
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+// MARK: - RealtimeSyncable Conformance
+extension ClaimEvent: RealtimeSyncable {
+    var isDirty: Bool {
+        guard let syncedAt = syncedAt else { return true }
+        return updatedAt > syncedAt
     }
 }

@@ -143,6 +143,10 @@ final class SyncManager: ObservableObject {
         debugLog.startTiming("syncDownActivities")
         try await syncDownActivities(context: context, since: lastSyncISO)
         debugLog.endTiming("syncDownActivities")
+
+        debugLog.startTiming("syncDownClaimEvents")
+        try await syncDownClaimEvents(context: context, since: lastSyncISO)
+        debugLog.endTiming("syncDownClaimEvents")
     }
 
     // MARK: - Sync Down: Users (read-only)
@@ -405,15 +409,58 @@ final class SyncManager: ObservableObject {
         activity.listing = parentListing
     }
 
+    // MARK: - Sync Down: ClaimEvents
+    private func syncDownClaimEvents(context: ModelContext, since: String) async throws {
+        debugLog.log("syncDownClaimEvents() - querying Supabase...", category: .sync)
+        let dtos: [ClaimEventDTO] = try await supabase
+            .from("claim_events")
+            .select()
+            .gt("updated_at", value: since)
+            .execute()
+            .value
+
+        debugLog.logSyncOperation(operation: "FETCH", table: "claim_events", count: dtos.count)
+
+        for (index, dto) in dtos.enumerated() {
+            debugLog.log("  Upserting claim event \(index + 1)/\(dtos.count): \(dto.id)", category: .sync)
+            try upsertClaimEvent(dto: dto, context: context)
+        }
+    }
+
+    private func upsertClaimEvent(dto: ClaimEventDTO, context: ModelContext) throws {
+        let targetId = dto.id
+        let descriptor = FetchDescriptor<ClaimEvent>(
+            predicate: #Predicate { $0.id == targetId }
+        )
+
+        if let existing = try context.fetch(descriptor).first {
+            debugLog.log("    UPDATE existing claim event: \(dto.id)", category: .sync)
+            existing.parentType = ParentType(rawValue: dto.parentType) ?? .task
+            existing.parentId = dto.parentId
+            existing.action = ClaimAction(rawValue: dto.action) ?? .claimed
+            existing.userId = dto.userId
+            existing.performedAt = dto.performedAt
+            existing.reason = dto.reason
+            existing.updatedAt = dto.updatedAt
+            existing.syncedAt = Date()
+        } else {
+            debugLog.log("    INSERT new claim event: \(dto.id)", category: .sync)
+            let newClaimEvent = dto.toModel()
+            newClaimEvent.syncedAt = Date()
+            context.insert(newClaimEvent)
+        }
+    }
+
     // MARK: - Sync Up (SwiftData → Supabase)
     private func syncUp(context: ModelContext) async throws {
         debugLog.log("syncUp() - pushing dirty entities to Supabase", category: .sync)
-        debugLog.log("Sync order: Listings → Tasks → Activities (FK dependencies)", category: .sync)
+        debugLog.log("Sync order: Listings → Tasks → Activities → ClaimEvents (FK dependencies)", category: .sync)
 
         // Sync in FK dependency order: Listings first, then Tasks/Activities (which reference Listings)
         try await syncUpListings(context: context)
         try await syncUpTasks(context: context)
         try await syncUpActivities(context: context)
+        try await syncUpClaimEvents(context: context)
         // NOTE: No syncUpUsers() - Users are READ-ONLY (RLS policy prevents non-self updates)
         // Profile edits will be handled in a separate authenticated flow
         debugLog.log("syncUp() complete", category: .sync)
@@ -507,6 +554,34 @@ final class SyncManager: ObservableObject {
         debugLog.log("  Marked \(dirtyListings.count) listings as synced", category: .sync)
     }
 
+    private func syncUpClaimEvents(context: ModelContext) async throws {
+        let descriptor = FetchDescriptor<ClaimEvent>()
+        let allClaimEvents = try context.fetch(descriptor)
+        debugLog.log("syncUpClaimEvents() - fetched \(allClaimEvents.count) total claim events from SwiftData", category: .sync)
+
+        let dirtyClaimEvents = allClaimEvents.filter { $0.isDirty }
+        debugLog.logSyncOperation(operation: "DIRTY", table: "claim_events", count: dirtyClaimEvents.count, details: "of \(allClaimEvents.count) total")
+
+        guard !dirtyClaimEvents.isEmpty else {
+            debugLog.log("  No dirty claim events to sync", category: .sync)
+            return
+        }
+
+        let dtos = dirtyClaimEvents.map { ClaimEventDTO(from: $0) }
+        debugLog.log("  Upserting \(dtos.count) claim events to Supabase...", category: .sync)
+        try await supabase
+            .from("claim_events")
+            .upsert(dtos)
+            .execute()
+        debugLog.log("  Upsert successful", category: .sync)
+
+        let now = Date()
+        for claimEvent in dirtyClaimEvents {
+            claimEvent.syncedAt = now
+        }
+        debugLog.log("  Marked \(dirtyClaimEvents.count) claim events as synced", category: .sync)
+    }
+
     // MARK: - Realtime (Debounced Full Sync)
     private var realtimeListenerTasks: [Task<Void, Never>] = []
 
@@ -568,7 +643,7 @@ final class SyncManager: ObservableObject {
         debugLog.log("✓ Channel object created", category: .channel)
 
         // Configure postgres change subscriptions
-        let tables = ["tasks", "activities", "listings", "users"]
+        let tables = ["tasks", "activities", "listings", "users", "claim_events"]
         debugLog.log("", category: .channel)
         debugLog.log("Configuring postgresChange() for \(tables.count) tables:", category: .channel)
         for table in tables {
@@ -585,6 +660,8 @@ final class SyncManager: ObservableObject {
         debugLog.log("  ✓ listings listener created", category: .channel)
         let usersChanges = channel.postgresChange(AnyAction.self, schema: "public", table: "users")
         debugLog.log("  ✓ users listener created", category: .channel)
+        let claimEventsChanges = channel.postgresChange(AnyAction.self, schema: "public", table: "claim_events")
+        debugLog.log("  ✓ claim_events listener created", category: .channel)
 
         // Subscribe to channel
         debugLog.log("", category: .channel)
@@ -689,6 +766,19 @@ final class SyncManager: ObservableObject {
                 }
                 debugLog.logForAwaitLoop(entering: false, table: "users")
                 debugLog.log("⚠️ users for-await loop EXITED after \(eventCount) events", category: .event)
+            },
+            Task { @MainActor in
+                debugLog.logForAwaitLoop(entering: true, table: "claim_events")
+                var eventCount = 0
+                for await change in claimEventsChanges {
+                    eventCount += 1
+                    debugLog.log("", category: .event)
+                    debugLog.log("🎉🎉🎉 CLAIM_EVENTS EVENT #\(eventCount) RECEIVED! 🎉🎉🎉", category: .event)
+                    debugLog.logEventReceived(table: "claim_events", action: "\(type(of: change))", payload: nil)
+                    requestSync()
+                }
+                debugLog.logForAwaitLoop(entering: false, table: "claim_events")
+                debugLog.log("⚠️ claim_events for-await loop EXITED after \(eventCount) events", category: .event)
             }
         ]
 
