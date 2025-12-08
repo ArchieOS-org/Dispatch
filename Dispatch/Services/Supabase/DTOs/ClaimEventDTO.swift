@@ -51,11 +51,27 @@ struct ClaimEventDTO: Codable, Sendable {
     }
 
     func toModel() -> ClaimEvent {
-        ClaimEvent(
+        let resolvedParentType: ParentType
+        if let type = ParentType(rawValue: parentType) {
+            resolvedParentType = type
+        } else {
+            debugLog.log("⚠️ Invalid parentType '\(parentType)' for ClaimEvent \(id), defaulting to .task", category: .sync)
+            resolvedParentType = .task
+        }
+
+        let resolvedAction: ClaimAction
+        if let act = ClaimAction(rawValue: action) {
+            resolvedAction = act
+        } else {
+            debugLog.log("⚠️ Invalid action '\(action)' for ClaimEvent \(id), defaulting to .claimed", category: .sync)
+            resolvedAction = .claimed
+        }
+
+        return ClaimEvent(
             id: id,
-            parentType: ParentType(rawValue: parentType) ?? .task,
+            parentType: resolvedParentType,
             parentId: parentId,
-            action: ClaimAction(rawValue: action) ?? .claimed,
+            action: resolvedAction,
             userId: userId,
             performedAt: performedAt,
             reason: reason,

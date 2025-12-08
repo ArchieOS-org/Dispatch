@@ -23,11 +23,19 @@ struct SubtaskDTO: Codable, Sendable {
     }
 
     func toModel() -> Subtask {
-        Subtask(
+        let resolvedParentType: ParentType
+        if let type = ParentType(rawValue: parentType) {
+            resolvedParentType = type
+        } else {
+            debugLog.log("⚠️ Invalid parentType '\(parentType)' for Subtask \(id), defaulting to .task", category: .sync)
+            resolvedParentType = .task
+        }
+
+        return Subtask(
             id: id,
             title: title,
             completed: completed,
-            parentType: ParentType(rawValue: parentType) ?? .task,
+            parentType: resolvedParentType,
             parentId: parentId,
             createdAt: createdAt
         )

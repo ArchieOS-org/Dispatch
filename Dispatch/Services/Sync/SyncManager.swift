@@ -435,9 +435,26 @@ final class SyncManager: ObservableObject {
 
         if let existing = try context.fetch(descriptor).first {
             debugLog.log("    UPDATE existing claim event: \(dto.id)", category: .sync)
-            existing.parentType = ParentType(rawValue: dto.parentType) ?? .task
+
+            let resolvedParentType: ParentType
+            if let type = ParentType(rawValue: dto.parentType) {
+                resolvedParentType = type
+            } else {
+                debugLog.log("⚠️ Invalid parentType '\(dto.parentType)' for ClaimEvent \(dto.id), defaulting to .task", category: .sync)
+                resolvedParentType = .task
+            }
+
+            let resolvedAction: ClaimAction
+            if let act = ClaimAction(rawValue: dto.action) {
+                resolvedAction = act
+            } else {
+                debugLog.log("⚠️ Invalid action '\(dto.action)' for ClaimEvent \(dto.id), defaulting to .claimed", category: .sync)
+                resolvedAction = .claimed
+            }
+
+            existing.parentType = resolvedParentType
             existing.parentId = dto.parentId
-            existing.action = ClaimAction(rawValue: dto.action) ?? .claimed
+            existing.action = resolvedAction
             existing.userId = dto.userId
             existing.performedAt = dto.performedAt
             existing.reason = dto.reason

@@ -44,18 +44,50 @@ struct ActivityDTO: Codable, Sendable {
     }
 
     func toModel() -> Activity {
-        Activity(
+        let resolvedType: ActivityType
+        if let t = ActivityType(rawValue: activityType) {
+            resolvedType = t
+        } else {
+            debugLog.log("⚠️ Invalid activityType '\(activityType)' for Activity \(id), defaulting to .other", category: .sync)
+            resolvedType = .other
+        }
+
+        let resolvedPriority: Priority
+        if let p = Priority(rawValue: priority) {
+            resolvedPriority = p
+        } else {
+            debugLog.log("⚠️ Invalid priority '\(priority)' for Activity \(id), defaulting to .medium", category: .sync)
+            resolvedPriority = .medium
+        }
+
+        let resolvedStatus: ActivityStatus
+        if let s = ActivityStatus(rawValue: status) {
+            resolvedStatus = s
+        } else {
+            debugLog.log("⚠️ Invalid status '\(status)' for Activity \(id), defaulting to .open", category: .sync)
+            resolvedStatus = .open
+        }
+
+        let resolvedCreatedVia: CreationSource
+        if let c = CreationSource(rawValue: createdVia) {
+            resolvedCreatedVia = c
+        } else {
+            debugLog.log("⚠️ Invalid createdVia '\(createdVia)' for Activity \(id), defaulting to .dispatch", category: .sync)
+            resolvedCreatedVia = .dispatch
+        }
+
+        return Activity(
             id: id,
             title: title,
             activityDescription: description ?? "",
-            type: ActivityType(rawValue: activityType) ?? .other,
+            type: resolvedType,
             dueDate: dueDate,
-            priority: Priority(rawValue: priority) ?? .medium,
-            status: ActivityStatus(rawValue: status) ?? .open,
+            priority: resolvedPriority,
+            status: resolvedStatus,
             declaredBy: declaredBy,
             claimedBy: claimedBy,
             listingId: listing,
-            createdVia: CreationSource(rawValue: createdVia) ?? .dispatch,
+            createdVia: resolvedCreatedVia,
             sourceSlackMessages: sourceSlackMessages,
             duration: durationMinutes.map { TimeInterval($0 * 60) },
             createdAt: createdAt,

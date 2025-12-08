@@ -25,12 +25,20 @@ struct UserDTO: Codable, Sendable {
     }
 
     func toModel() -> User {
-        User(
+        let resolvedUserType: UserType
+        if let type = UserType(rawValue: userType) {
+            resolvedUserType = type
+        } else {
+            debugLog.log("⚠️ Invalid userType '\(userType)' for User \(id), defaulting to .realtor", category: .sync)
+            resolvedUserType = .realtor
+        }
+
+        return User(
             id: id,
             name: name,
             email: email,
             avatar: nil, // Avatar loaded separately
-            userType: UserType(rawValue: userType) ?? .realtor,
+            userType: resolvedUserType,
             createdAt: createdAt,
             updatedAt: updatedAt
         )

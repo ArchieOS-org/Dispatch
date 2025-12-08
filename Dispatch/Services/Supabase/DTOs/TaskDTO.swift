@@ -40,17 +40,41 @@ struct TaskDTO: Codable, Sendable {
     }
 
     func toModel() -> TaskItem {
-        TaskItem(
+        let resolvedPriority: Priority
+        if let p = Priority(rawValue: priority) {
+            resolvedPriority = p
+        } else {
+            debugLog.log("⚠️ Invalid priority '\(priority)' for Task \(id), defaulting to .medium", category: .sync)
+            resolvedPriority = .medium
+        }
+
+        let resolvedStatus: TaskStatus
+        if let s = TaskStatus(rawValue: status) {
+            resolvedStatus = s
+        } else {
+            debugLog.log("⚠️ Invalid status '\(status)' for Task \(id), defaulting to .open", category: .sync)
+            resolvedStatus = .open
+        }
+
+        let resolvedCreatedVia: CreationSource
+        if let c = CreationSource(rawValue: createdVia) {
+            resolvedCreatedVia = c
+        } else {
+            debugLog.log("⚠️ Invalid createdVia '\(createdVia)' for Task \(id), defaulting to .dispatch", category: .sync)
+            resolvedCreatedVia = .dispatch
+        }
+
+        return TaskItem(
             id: id,
             title: title,
             taskDescription: description ?? "",
             dueDate: dueDate,
-            priority: Priority(rawValue: priority) ?? .medium,
-            status: TaskStatus(rawValue: status) ?? .open,
+            priority: resolvedPriority,
+            status: resolvedStatus,
             declaredBy: declaredBy,
             claimedBy: claimedBy,
             listingId: listing,
-            createdVia: CreationSource(rawValue: createdVia) ?? .dispatch,
+            createdVia: resolvedCreatedVia,
             sourceSlackMessages: sourceSlackMessages,
             createdAt: createdAt,
             updatedAt: updatedAt

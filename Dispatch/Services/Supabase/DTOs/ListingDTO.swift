@@ -47,7 +47,31 @@ struct ListingDTO: Codable, Sendable {
     }
 
     func toModel() -> Listing {
-        Listing(
+        let resolvedListingType: ListingType
+        if let lt = ListingType(rawValue: listingType) {
+            resolvedListingType = lt
+        } else {
+            debugLog.log("⚠️ Invalid listingType '\(listingType)' for Listing \(id), defaulting to .sale", category: .sync)
+            resolvedListingType = .sale
+        }
+
+        let resolvedStatus: ListingStatus
+        if let s = ListingStatus(rawValue: status) {
+            resolvedStatus = s
+        } else {
+            debugLog.log("⚠️ Invalid status '\(status)' for Listing \(id), defaulting to .draft", category: .sync)
+            resolvedStatus = .draft
+        }
+
+        let resolvedCreatedVia: CreationSource
+        if let c = CreationSource(rawValue: createdVia) {
+            resolvedCreatedVia = c
+        } else {
+            debugLog.log("⚠️ Invalid createdVia '\(createdVia)' for Listing \(id), defaulting to .dispatch", category: .sync)
+            resolvedCreatedVia = .dispatch
+        }
+
+        return Listing(
             id: id,
             address: address,
             city: city ?? "",
@@ -56,11 +80,11 @@ struct ListingDTO: Codable, Sendable {
             country: country ?? "Canada",
             price: price.map { Decimal($0) },
             mlsNumber: mlsNumber,
-            listingType: ListingType(rawValue: listingType) ?? .sale,
-            status: ListingStatus(rawValue: status) ?? .draft,
+            listingType: resolvedListingType,
+            status: resolvedStatus,
             ownedBy: ownedBy,
             assignedStaff: assignedStaff,
-            createdVia: CreationSource(rawValue: createdVia) ?? .dispatch,
+            createdVia: resolvedCreatedVia,
             sourceSlackMessages: sourceSlackMessages,
             createdAt: createdAt,
             updatedAt: updatedAt

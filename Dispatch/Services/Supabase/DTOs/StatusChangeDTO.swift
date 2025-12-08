@@ -28,9 +28,17 @@ struct StatusChangeDTO: Codable, Sendable {
     }
 
     func toModel() -> StatusChange {
-        StatusChange(
+        let resolvedParentType: ParentType
+        if let type = ParentType(rawValue: parentType) {
+            resolvedParentType = type
+        } else {
+            debugLog.log("⚠️ Invalid parentType '\(parentType)' for StatusChange \(id), defaulting to .task", category: .sync)
+            resolvedParentType = .task
+        }
+
+        return StatusChange(
             id: id,
-            parentType: ParentType(rawValue: parentType) ?? .task,
+            parentType: resolvedParentType,
             parentId: parentId,
             oldStatus: oldStatus,
             newStatus: newStatus,
