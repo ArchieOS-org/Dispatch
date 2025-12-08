@@ -17,7 +17,7 @@ enum TestDataFactory {
     // MARK: - Deterministic UUID Generation
 
     /// Generate deterministic UUID based on entity type and index
-    /// Format: 00000000-0000-0000-{type}-{index padded to 12 digits}
+    /// Format: 00000000-0000-0000-{type}-{index as 12 hex digits}
     private static func deterministicUUID(type: String, index: Int) -> UUID {
         let typeHex: String
         switch type {
@@ -27,7 +27,9 @@ enum TestDataFactory {
         case "listing": typeHex = "0004"
         default: typeHex = "0000"
         }
-        let indexHex = String(format: "%012d", index)
+        // Mask to 48 bits (12 hex digits max = 0xFFFFFFFFFFFF)
+        let maskedIndex = UInt64(clamping: index) & 0xFFFF_FFFF_FFFF
+        let indexHex = String(format: "%012llx", maskedIndex)
         return UUID(uuidString: "00000000-0000-0000-\(typeHex)-\(indexHex)")!
     }
 

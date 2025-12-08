@@ -604,6 +604,8 @@ final class SyncManager: ObservableObject {
             debugLog.log("  3. Realtime not enabled for project", category: .error)
             debugLog.log("  4. Tables not in supabase_realtime publication", category: .error)
             debugLog.log("  5. WebSocket blocked by firewall/proxy", category: .error)
+            // Cancel the socket status task to prevent leaked monitoring task
+            socketStatusTask.cancel()
             isListening = false
             return
         }

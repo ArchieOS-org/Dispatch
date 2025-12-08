@@ -1,5 +1,5 @@
 //
-//  DispatchTask.swift
+//  TaskItem.swift
 //  Dispatch
 //
 //  Created by Noah Deskin on 2025-12-06.
