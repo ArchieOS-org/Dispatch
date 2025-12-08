@@ -15,9 +15,20 @@ import Combine
 final class SyncManager: ObservableObject {
     static let shared = SyncManager()
 
+    // MARK: - UserDefaults Keys
+    private static let lastSyncTimeKey = "dispatch.lastSyncTime"
+
     // MARK: - Published State
     @Published private(set) var isSyncing = false
-    @Published private(set) var lastSyncTime: Date?  // TODO Phase 2: Persist to UserDefaults
+    @Published private(set) var lastSyncTime: Date? {
+        didSet {
+            if let time = lastSyncTime {
+                UserDefaults.standard.set(time, forKey: Self.lastSyncTimeKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Self.lastSyncTimeKey)
+            }
+        }
+    }
     @Published private(set) var syncError: Error?
     @Published private(set) var syncStatus: SyncStatus = .synced
     @Published var currentUserID: UUID?  // Set when authenticated
@@ -30,7 +41,10 @@ final class SyncManager: ObservableObject {
     private let debounceInterval: TimeInterval = 0.5  // 500ms
 
     private init() {
+        // Restore persisted lastSyncTime
+        self.lastSyncTime = UserDefaults.standard.object(forKey: Self.lastSyncTimeKey) as? Date
         debugLog.log("SyncManager singleton initialized", category: .sync)
+        debugLog.log("  Restored lastSyncTime: \(lastSyncTime?.description ?? "nil")", category: .sync)
     }
 
     // MARK: - Configuration
