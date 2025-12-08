@@ -25,6 +25,14 @@ struct TaskListView: View {
 
     @Query private var users: [User]
 
+    @Query(sort: \Listing.address)
+    private var allListings: [Listing]
+
+    /// Active listings for QuickEntrySheet picker
+    private var activeListings: [Listing] {
+        allListings.filter { $0.status != .deleted }
+    }
+
     @EnvironmentObject private var syncManager: SyncManager
     @Environment(\.modelContext) private var modelContext
 
@@ -41,6 +49,9 @@ struct TaskListView: View {
     @State private var showAddSubtaskSheet = false
     @State private var itemForSubtaskAdd: WorkItem?
     @State private var newSubtaskTitle = ""
+
+    // MARK: - State for Quick Entry
+    @State private var showQuickEntry = false
 
     // MARK: - Computed Properties
 
@@ -142,6 +153,19 @@ struct TaskListView: View {
                 newSubtaskTitle = ""
                 itemForSubtaskAdd = nil
                 showAddSubtaskSheet = false
+            }
+        }
+        .sheet(isPresented: $showQuickEntry) {
+            QuickEntrySheet(
+                defaultItemType: .task,
+                currentUserId: currentUserId,
+                listings: activeListings,
+                onSave: { syncManager.requestSync() }
+            )
+        }
+        .overlay(alignment: .bottomTrailing) {
+            FloatingActionButton {
+                showQuickEntry = true
             }
         }
     }

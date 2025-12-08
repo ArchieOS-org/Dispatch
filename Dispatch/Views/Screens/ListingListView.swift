@@ -44,6 +44,9 @@ struct ListingListView: View {
     @State private var itemForSubtaskAdd: WorkItem?
     @State private var newSubtaskTitle = ""
 
+    // MARK: - State for Add Listing
+    @State private var showAddListing = false
+
     // MARK: - Computed Properties
 
     /// Pre-computed user lookup dictionary for O(1) access
@@ -156,6 +159,17 @@ struct ListingListView: View {
                     newSubtaskTitle = ""
                     itemForSubtaskAdd = nil
                     showAddSubtaskSheet = false
+                }
+            }
+            .sheet(isPresented: $showAddListing) {
+                AddListingSheet(
+                    currentUserId: currentUserId,
+                    onSave: { syncManager.requestSync() }
+                )
+            }
+            .overlay(alignment: .bottomTrailing) {
+                FloatingActionButton {
+                    showAddListing = true
                 }
             }
         }

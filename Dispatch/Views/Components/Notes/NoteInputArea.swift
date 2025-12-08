@@ -26,15 +26,14 @@ struct NoteInputArea: View {
         VStack(spacing: DS.Spacing.sm) {
             // Text Editor with placeholder
             ZStack(alignment: .topLeading) {
-                // Placeholder
-                if text.isEmpty {
-                    Text(placeholder)
-                        .font(DS.Typography.body)
-                        .foregroundColor(DS.Colors.Text.placeholder)
-                        .padding(.horizontal, DS.Spacing.xs)
-                        .padding(.vertical, DS.Spacing.sm)
-                        .allowsHitTesting(false)
-                }
+                // Placeholder - use opacity instead of conditional to avoid layout thrashing
+                Text(placeholder)
+                    .font(DS.Typography.body)
+                    .foregroundColor(DS.Colors.Text.placeholder)
+                    .padding(.horizontal, DS.Spacing.xs)
+                    .padding(.vertical, DS.Spacing.sm)
+                    .allowsHitTesting(false)
+                    .opacity(text.isEmpty ? 1 : 0)
 
                 // Text Editor
                 TextEditor(text: $text)
