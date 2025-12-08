@@ -50,6 +50,8 @@ graph TB
 
     User --> RealtimeSyncable
 
+    ClaimEvent --> RealtimeSyncable
+
     WorkItem --> TaskItem
     WorkItem --> Activity
 
@@ -636,6 +638,8 @@ sequenceDiagram
         SyncManager->>SwiftData: upsert tasks
         SyncManager->>Supabase: fetch activities
         SyncManager->>SwiftData: upsert activities
+        SyncManager->>Supabase: fetch claim_events
+        SyncManager->>SwiftData: upsert claim_events
     end
 
     rect rgb(255, 230, 200)
@@ -646,6 +650,8 @@ sequenceDiagram
         SyncManager->>Supabase: upsert tasks
         SyncManager->>SwiftData: fetch dirty activities
         SyncManager->>Supabase: upsert activities
+        SyncManager->>SwiftData: fetch dirty claim_events
+        SyncManager->>Supabase: upsert claim_events
     end
 
     SyncManager->>SwiftData: context.save()
@@ -654,8 +660,8 @@ sequenceDiagram
 
 ### Sync Order
 
-**Down:** Users → Listings → Tasks → Activities (FK dependencies)
-**Up:** Listings → Tasks → Activities (Users are read-only)
+**Down:** Users → Listings → Tasks → Activities → ClaimEvents (FK dependencies)
+**Up:** Listings → Tasks → Activities → ClaimEvents (Users are read-only)
 
 ### Dirty Detection
 
