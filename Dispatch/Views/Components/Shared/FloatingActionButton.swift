@@ -26,6 +26,7 @@ struct FloatingActionButton: View {
     var size: CGFloat = 56
     var backgroundColor: Color = DS.Colors.accent
     var foregroundColor: Color = .white
+    var accessibilityLabelText: String = "Add new item"
 
     var body: some View {
         Button(action: action) {
@@ -38,7 +39,7 @@ struct FloatingActionButton: View {
                 .dsShadow(DS.Shadows.elevated)
         }
         .padding(DS.Spacing.lg)
-        .accessibilityLabel("Add new item")
+        .accessibilityLabel(accessibilityLabelText)
     }
 }
 
