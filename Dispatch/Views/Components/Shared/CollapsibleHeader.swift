@@ -21,7 +21,7 @@ struct ScrollOffsetKey: PreferenceKey {
 // MARK: - Linear Interpolation Helper
 
 /// Linear interpolation between two values based on progress (0-1)
-func lerp(_ start: CGFloat, _ end: CGFloat, _ progress: CGFloat) -> CGFloat {
+private func lerp(_ start: CGFloat, _ end: CGFloat, _ progress: CGFloat) -> CGFloat {
     start + (end - start) * progress
 }
 
@@ -34,12 +34,12 @@ struct CollapsibleHeader<Content: View>: View {
     let scrollOffset: CGFloat
     let expandedHeight: CGFloat
     let collapsedHeight: CGFloat
+    let maxOffset: CGFloat
     @ViewBuilder let trailingContent: () -> Content
 
     /// Progress of collapse animation (0 = expanded, 1 = collapsed)
     private var collapseProgress: CGFloat {
-        let maxOffset: CGFloat = 80
-        return min(1, max(0, scrollOffset / maxOffset))
+        min(1, max(0, scrollOffset / maxOffset))
     }
 
     /// Interpolated title font size
@@ -62,12 +62,14 @@ struct CollapsibleHeader<Content: View>: View {
         scrollOffset: CGFloat,
         expandedHeight: CGFloat = 100,
         collapsedHeight: CGFloat = 56,
+        maxOffset: CGFloat = 80,
         @ViewBuilder trailingContent: @escaping () -> Content = { EmptyView() }
     ) {
         self.title = title
         self.scrollOffset = scrollOffset
         self.expandedHeight = expandedHeight
         self.collapsedHeight = collapsedHeight
+        self.maxOffset = maxOffset
         self.trailingContent = trailingContent
     }
 
