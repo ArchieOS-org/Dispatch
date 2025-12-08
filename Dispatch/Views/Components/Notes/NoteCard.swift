@@ -19,12 +19,12 @@ struct NoteCard: View {
     @State private var showActions = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var timestampFormatter: DateFormatter {
+    private static let timestampFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter
-    }
+    }()
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.xs) {
@@ -37,7 +37,7 @@ struct NoteCard: View {
                         .foregroundColor(DS.Colors.Text.secondary)
                 }
                 Spacer()
-                Text(timestampFormatter.string(from: note.createdAt))
+                Text(Self.timestampFormatter.string(from: note.createdAt))
                     .font(DS.Typography.caption)
                     .foregroundColor(DS.Colors.Text.tertiary)
             }
@@ -51,7 +51,7 @@ struct NoteCard: View {
 
             // Edit indicator if edited
             if let editedAt = note.editedAt {
-                Text("Edited \(timestampFormatter.string(from: editedAt))")
+                Text("Edited \(Self.timestampFormatter.string(from: editedAt))")
                     .font(DS.Typography.captionSecondary)
                     .foregroundColor(DS.Colors.Text.quaternary)
                     .italic()

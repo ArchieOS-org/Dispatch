@@ -35,29 +35,29 @@ struct DueDateBadge: View {
         let now = Date()
 
         if calendar.isDateInToday(dueDate) {
-            return "Today, \(timeFormatter.string(from: dueDate))"
+            return "Today, \(Self.timeFormatter.string(from: dueDate))"
         } else if calendar.isDateInTomorrow(dueDate) {
-            return "Tomorrow, \(timeFormatter.string(from: dueDate))"
+            return "Tomorrow, \(Self.timeFormatter.string(from: dueDate))"
         } else if calendar.isDateInYesterday(dueDate) {
             return "Yesterday"
         } else if dueDate < now {
-            return "Overdue: \(shortDateFormatter.string(from: dueDate))"
+            return "Overdue: \(Self.shortDateFormatter.string(from: dueDate))"
         } else {
-            return shortDateFormatter.string(from: dueDate)
+            return Self.shortDateFormatter.string(from: dueDate)
         }
     }
 
-    private var timeFormatter: DateFormatter {
+    private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm a"
         return formatter
-    }
+    }()
 
-    private var shortDateFormatter: DateFormatter {
+    private static let shortDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
         return formatter
-    }
+    }()
 
     var body: some View {
         if let _ = dueDate {

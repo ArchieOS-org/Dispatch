@@ -31,6 +31,13 @@ struct WorkItemDetailView: View {
     @State private var noteText = ""
     @State private var showNoteInput = false
 
+    private static let detailDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
     var body: some View {
         CollapsibleHeaderScrollView { offset in
             headerView(scrollOffset: offset)
@@ -287,10 +294,7 @@ struct WorkItemDetailView: View {
     }
 
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
+        Self.detailDateFormatter.string(from: date)
     }
 }
 

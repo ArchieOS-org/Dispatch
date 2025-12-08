@@ -23,6 +23,12 @@ struct WorkItemRow: View {
     var onEdit: () -> Void = {}
     var onDelete: () -> Void = {}
 
+    private static let accessibilityDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter
+    }()
+
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
             // Status checkbox
@@ -102,9 +108,7 @@ struct WorkItemRow: View {
         parts.append(item.isCompleted ? "Completed" : "")
         parts.append("\(item.priority.rawValue) priority")
         if let dueDate = item.dueDate {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .medium
-            parts.append("Due \(formatter.string(from: dueDate))")
+            parts.append("Due \(Self.accessibilityDateFormatter.string(from: dueDate))")
         }
         if let user = claimedByUser {
             parts.append("Claimed by \(user.name)")
