@@ -13,8 +13,16 @@ enum Priority: String, Codable, CaseIterable, Comparable {
     case high
     case urgent
 
+    private var rank: Int {
+        switch self {
+        case .low: return 0
+        case .medium: return 1
+        case .high: return 2
+        case .urgent: return 3
+        }
+    }
+
     static func < (lhs: Priority, rhs: Priority) -> Bool {
-        let order: [Priority] = [.low, .medium, .high, .urgent]
-        return order.firstIndex(of: lhs)! < order.firstIndex(of: rhs)!
+        lhs.rank < rhs.rank
     }
 }
