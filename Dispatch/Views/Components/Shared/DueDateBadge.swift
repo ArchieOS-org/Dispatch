@@ -61,7 +61,7 @@ struct DueDateBadge: View {
     private static let calendar = Calendar.current
 
     var body: some View {
-        if let _ = dueDate {
+        if dueDate != nil {
             HStack(spacing: DS.Spacing.xxs) {
                 Image(systemName: DS.Icons.Time.clock)
                     .font(.system(size: 10))
