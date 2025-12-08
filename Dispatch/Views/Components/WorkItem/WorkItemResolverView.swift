@@ -125,7 +125,7 @@ private struct TaskResolverView: View {
             let workItem = WorkItem.task(task)
             WorkItemDetailView(
                 item: workItem,
-                claimState: claimState(for: workItem),
+                claimState: workItem.claimState(currentUserId: currentUserId, userLookup: userLookup),
                 userLookup: userLookup,
                 onComplete: { onComplete(workItem) },
                 onClaim: { onClaim(workItem) },
@@ -139,23 +139,6 @@ private struct TaskResolverView: View {
             )
         } else {
             notFoundView
-        }
-    }
-
-    private func claimState(for item: WorkItem) -> ClaimState {
-        guard let claimedById = item.claimedBy else {
-            return .unclaimed
-        }
-        if claimedById == currentUserId {
-            if let user = userLookup(claimedById) {
-                return .claimedByMe(user: user)
-            }
-            return .claimedByMe(user: User(name: "You", email: "", userType: .realtor))
-        } else {
-            if let user = userLookup(claimedById) {
-                return .claimedByOther(user: user)
-            }
-            return .claimedByOther(user: User(name: "Unknown", email: "", userType: .realtor))
         }
     }
 
@@ -225,7 +208,7 @@ private struct ActivityResolverView: View {
             let workItem = WorkItem.activity(activity)
             WorkItemDetailView(
                 item: workItem,
-                claimState: claimState(for: workItem),
+                claimState: workItem.claimState(currentUserId: currentUserId, userLookup: userLookup),
                 userLookup: userLookup,
                 onComplete: { onComplete(workItem) },
                 onClaim: { onClaim(workItem) },
@@ -239,23 +222,6 @@ private struct ActivityResolverView: View {
             )
         } else {
             notFoundView
-        }
-    }
-
-    private func claimState(for item: WorkItem) -> ClaimState {
-        guard let claimedById = item.claimedBy else {
-            return .unclaimed
-        }
-        if claimedById == currentUserId {
-            if let user = userLookup(claimedById) {
-                return .claimedByMe(user: user)
-            }
-            return .claimedByMe(user: User(name: "You", email: "", userType: .realtor))
-        } else {
-            if let user = userLookup(claimedById) {
-                return .claimedByOther(user: user)
-            }
-            return .claimedByOther(user: User(name: "Unknown", email: "", userType: .realtor))
         }
     }
 

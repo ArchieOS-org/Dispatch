@@ -254,3 +254,32 @@ extension WorkItem: Hashable {
         hasher.combine(id)
     }
 }
+
+// MARK: - Claim State Helper
+
+extension WorkItem {
+    /// Computes the claim state for this work item relative to the current user.
+    /// - Parameters:
+    ///   - currentUserId: The ID of the currently authenticated user
+    ///   - userLookup: A closure to look up a User by their ID
+    /// - Returns: The appropriate ClaimState for display
+    func claimState(
+        currentUserId: UUID,
+        userLookup: (UUID) -> User?
+    ) -> ClaimState {
+        guard let claimedById = self.claimedBy else {
+            return .unclaimed
+        }
+        if claimedById == currentUserId {
+            if let user = userLookup(claimedById) {
+                return .claimedByMe(user: user)
+            }
+            return .claimedByMe(user: User(name: "You", email: "", userType: .realtor))
+        } else {
+            if let user = userLookup(claimedById) {
+                return .claimedByOther(user: user)
+            }
+            return .claimedByOther(user: User(name: "Unknown", email: "", userType: .realtor))
+        }
+    }
+}
