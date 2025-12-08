@@ -178,25 +178,6 @@ struct ListingListView: View {
         }
     }
 
-    // MARK: - Claim State Helper
-
-    private func claimState(for item: WorkItem) -> ClaimState {
-        guard let claimedById = item.claimedBy else {
-            return .unclaimed
-        }
-        if claimedById == currentUserId {
-            if let user = userCache[claimedById] {
-                return .claimedByMe(user: user)
-            }
-            return .claimedByMe(user: User(name: "You", email: "", userType: .realtor))
-        } else {
-            if let user = userCache[claimedById] {
-                return .claimedByOther(user: user)
-            }
-            return .claimedByOther(user: User(name: "Unknown", email: "", userType: .realtor))
-        }
-    }
-
     // MARK: - Work Item Actions
 
     private func toggleComplete(_ item: WorkItem) {
