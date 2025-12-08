@@ -31,6 +31,9 @@ final class DebugLogger: ObservableObject {
     // MARK: - Timing
     private var operationStartTimes: [String: Date] = [:]
 
+    // MARK: - Cached Formatter
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private init() {
         log("DebugLogger initialized", category: .sync)
     }
@@ -81,7 +84,7 @@ final class DebugLogger: ObservableObject {
         }
 
         // Print to console with detailed formatting
-        let timestamp = ISO8601DateFormatter().string(from: entry.timestamp)
+        let timestamp = Self.isoFormatter.string(from: entry.timestamp)
         let logLine = "[\(timestamp)] [\(category.emoji) \(category.rawValue)] \(message)"
         print(logLine)
 
@@ -194,7 +197,7 @@ final class DebugLogger: ObservableObject {
 
     func exportLogs() -> String {
         logs.map { entry in
-            let timestamp = ISO8601DateFormatter().string(from: entry.timestamp)
+            let timestamp = Self.isoFormatter.string(from: entry.timestamp)
             return "[\(timestamp)] [\(entry.category.rawValue)] \(entry.message)"
         }.joined(separator: "\n")
     }
