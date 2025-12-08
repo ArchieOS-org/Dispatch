@@ -48,7 +48,7 @@ struct QuickEntrySheet: View {
 
     // MARK: - Form State
 
-    @State private var itemType: QuickEntryItemType = .task
+    @State private var itemType: QuickEntryItemType
     @State private var title: String = ""
     @State private var selectedListing: Listing?
     @State private var priority: Priority = .medium
@@ -72,6 +72,7 @@ struct QuickEntrySheet: View {
         self.currentUserId = currentUserId
         self.listings = listings
         self.onSave = onSave
+        self._itemType = State(initialValue: defaultItemType)
     }
 
     // MARK: - Body
@@ -158,9 +159,6 @@ struct QuickEntrySheet: View {
                     }
                     .disabled(!canSave)
                 }
-            }
-            .onAppear {
-                itemType = defaultItemType
             }
         }
         .presentationDetents([.medium])
