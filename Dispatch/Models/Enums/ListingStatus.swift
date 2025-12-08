@@ -13,4 +13,8 @@ enum ListingStatus: String, Codable, CaseIterable {
     case pending
     case closed
     case deleted
+
+    var displayName: String {
+        rawValue.capitalized
+    }
 }

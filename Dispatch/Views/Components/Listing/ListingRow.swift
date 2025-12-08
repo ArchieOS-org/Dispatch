@@ -57,7 +57,7 @@ struct ListingRow: View {
                 .foregroundColor(DS.Colors.Text.tertiary)
 
                 // Status badge
-                Text(listing.status.rawValue.capitalized)
+                Text(listing.status.displayName)
                     .font(DS.Typography.caption)
                     .foregroundColor(statusColor)
                     .padding(.horizontal, DS.Spacing.xs)
@@ -96,7 +96,7 @@ struct ListingRow: View {
         }
         parts.append("\(listing.tasks.count) tasks")
         parts.append("\(listing.activities.count) activities")
-        parts.append("Status: \(listing.status.rawValue.capitalized)")
+        parts.append("Status: \(listing.status.displayName)")
         return parts.joined(separator: ", ")
     }
 }
