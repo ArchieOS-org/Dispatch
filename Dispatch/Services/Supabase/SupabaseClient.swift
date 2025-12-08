@@ -9,10 +9,10 @@ import Foundation
 import Supabase
 
 // MARK: - Supabase Client Singleton
-final class SupabaseService {
-    static let shared = SupabaseService()
+internal final class SupabaseService {
+    internal static let shared = SupabaseService()
 
-    let client: SupabaseClient
+    internal let client: SupabaseClient
 
     private init() {
         #if DEBUG
@@ -54,6 +54,6 @@ final class SupabaseService {
 }
 
 // Convenience accessor
-var supabase: SupabaseClient {
+internal var supabase: SupabaseClient {
     SupabaseService.shared.client
 }
