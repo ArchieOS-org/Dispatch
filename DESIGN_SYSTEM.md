@@ -32,7 +32,7 @@ graph TD
 
 ## File Structure
 
-```
+```text
 Dispatch/Design/
 ├── DesignSystem.swift      # Main DS namespace declaration
 ├── ColorSystem.swift       # DS.Colors - semantic colors
