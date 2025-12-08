@@ -65,9 +65,12 @@ struct ActivityListView: View {
         allActivities.map { .activity($0) }
     }
 
-    /// Current user ID from sync manager (fallback to empty UUID if not set)
+    /// Sentinel UUID for unauthenticated state - stable across all accesses
+    private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+
+    /// Current user ID from sync manager (fallback to stable sentinel if not set)
     private var currentUserId: UUID {
-        syncManager.currentUserID ?? UUID()
+        syncManager.currentUserID ?? Self.unauthenticatedUserId
     }
 
     // MARK: - Body

@@ -38,8 +38,11 @@ struct ListingDetailView: View {
 
     // MARK: - Computed Properties
 
+    /// Sentinel UUID for unauthenticated state - stable across all accesses
+    private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+
     private var currentUserId: UUID {
-        syncManager.currentUserID ?? UUID()
+        syncManager.currentUserID ?? Self.unauthenticatedUserId
     }
 
     private var owner: User? {
