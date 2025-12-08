@@ -65,7 +65,7 @@ struct DispatchApp: App {
                 #endif
         }
         .modelContainer(sharedModelContainer)
-        .onChange(of: scenePhase) { oldPhase, newPhase in
+        .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 Task {
                     await SyncManager.shared.sync()
