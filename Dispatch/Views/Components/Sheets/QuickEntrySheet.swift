@@ -201,11 +201,15 @@ struct QuickEntrySheet: View {
                 declaredBy: currentUserId,
                 listingId: selectedListing?.id
             )
-            task.listing = selectedListing
+            // IMPORTANT: Insert into context BEFORE setting up relationships
+            // SwiftData requires models to be in context before relationship manipulation
+            modelContext.insert(task)
+
+            // Now safe to set up relationships
             if let listing = selectedListing {
+                task.listing = listing
                 listing.tasks.append(task)
             }
-            modelContext.insert(task)
 
         case .activity:
             let activity = Activity(
@@ -215,11 +219,15 @@ struct QuickEntrySheet: View {
                 declaredBy: currentUserId,
                 listingId: selectedListing?.id
             )
-            activity.listing = selectedListing
+            // IMPORTANT: Insert into context BEFORE setting up relationships
+            // SwiftData requires models to be in context before relationship manipulation
+            modelContext.insert(activity)
+
+            // Now safe to set up relationships
             if let listing = selectedListing {
+                activity.listing = listing
                 listing.activities.append(activity)
             }
-            modelContext.insert(activity)
         }
 
         // TODO: Show toast "Task added" / "Activity added"
