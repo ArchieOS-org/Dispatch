@@ -332,7 +332,7 @@ struct ListingListView: View {
 
     private var listView: some View {
         List {
-            ForEach(groupedByOwner, id: \.owner?.id) { group in
+            ForEach(Array(groupedByOwner.enumerated()), id: \.offset) { _, group in
                 Section(group.owner?.name ?? "Unknown Owner") {
                     ForEach(group.listings) { listing in
                         NavigationLink(value: listing) {
