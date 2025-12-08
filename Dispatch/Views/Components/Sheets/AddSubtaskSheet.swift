@@ -36,6 +36,7 @@ struct AddSubtaskSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
+                        title = title.trimmingCharacters(in: .whitespaces)
                         onSave()
                     }
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
