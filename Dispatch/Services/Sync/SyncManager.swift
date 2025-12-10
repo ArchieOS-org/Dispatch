@@ -77,6 +77,24 @@ final class SyncManager: ObservableObject {
         }
     }
 
+    /// Resets lastSyncTime to nil, forcing the next sync to run full reconciliation.
+    /// Use this to manually trigger orphan cleanup when you suspect local/remote mismatch.
+    func resetLastSyncTime() {
+        debugLog.log("resetLastSyncTime() called - next sync will run FULL RECONCILIATION", category: .sync)
+        lastSyncTime = nil
+    }
+
+    /// Performs a full sync with orphan reconciliation, regardless of lastSyncTime.
+    /// This is useful for debugging or when you know data has been deleted on the server.
+    func fullSync() async {
+        debugLog.log("fullSync() called - forcing full reconciliation", category: .sync)
+        let savedLastSyncTime = lastSyncTime
+        lastSyncTime = nil  // Temporarily reset to force reconciliation
+        await sync()
+        // Note: sync() will set a new lastSyncTime on success, so we don't restore savedLastSyncTime
+        _ = savedLastSyncTime  // Silence unused variable warning
+    }
+
     func sync() async {
         debugLog.log("========== sync() STARTED ==========", category: .sync)
         debugLog.log("  isAuthenticated: \(isAuthenticated)", category: .sync)
@@ -139,6 +157,13 @@ final class SyncManager: ObservableObject {
         let lastSyncISO = ISO8601DateFormatter().string(from: lastSync)
         debugLog.log("syncDown() - fetching records updated since: \(lastSyncISO)", category: .sync)
 
+        // Determine if we should run full reconciliation
+        // Run on first sync (no lastSyncTime) to ensure clean slate
+        let shouldReconcile = lastSyncTime == nil
+        if shouldReconcile {
+            debugLog.log("⚠️ First sync detected - will run FULL RECONCILIATION to remove orphan local records", category: .sync)
+        }
+
         // Sync in order: Users → Listings → Tasks → Activities (respects FK dependencies)
         debugLog.log("Sync order: Users → Listings → Tasks → Activities", category: .sync)
 
@@ -161,6 +186,262 @@ final class SyncManager: ObservableObject {
         debugLog.startTiming("syncDownClaimEvents")
         try await syncDownClaimEvents(context: context, since: lastSyncISO)
         debugLog.endTiming("syncDownClaimEvents")
+
+        // ORPHAN RECONCILIATION: Remove local records that no longer exist on Supabase
+        // This handles the case where records are hard-deleted on the server
+        if shouldReconcile {
+            debugLog.startTiming("reconcileOrphans")
+            try await reconcileOrphans(context: context)
+            debugLog.endTiming("reconcileOrphans")
+        }
+    }
+
+    // MARK: - Orphan Reconciliation
+    /// Removes local SwiftData entities that no longer exist on Supabase.
+    /// This handles the case where records are hard-deleted on the server.
+    /// Called on first sync (lastSyncTime == nil) to ensure local and remote are in sync.
+    private func reconcileOrphans(context: ModelContext) async throws {
+        debugLog.log("", category: .sync)
+        debugLog.log("╔════════════════════════════════════════════════════════════╗", category: .sync)
+        debugLog.log("║           ORPHAN RECONCILIATION                            ║", category: .sync)
+        debugLog.log("╚════════════════════════════════════════════════════════════╝", category: .sync)
+
+        var totalDeleted = 0
+
+        // Reconcile Tasks
+        debugLog.log("Reconciling Tasks...", category: .sync)
+        let tasksDeleted = try await reconcileOrphanTasks(context: context)
+        totalDeleted += tasksDeleted
+
+        // Reconcile Activities
+        debugLog.log("Reconciling Activities...", category: .sync)
+        let activitiesDeleted = try await reconcileOrphanActivities(context: context)
+        totalDeleted += activitiesDeleted
+
+        // Reconcile Listings
+        debugLog.log("Reconciling Listings...", category: .sync)
+        let listingsDeleted = try await reconcileOrphanListings(context: context)
+        totalDeleted += listingsDeleted
+
+        // Reconcile Users (read-only but still need to remove orphans)
+        debugLog.log("Reconciling Users...", category: .sync)
+        let usersDeleted = try await reconcileOrphanUsers(context: context)
+        totalDeleted += usersDeleted
+
+        // Reconcile ClaimEvents
+        debugLog.log("Reconciling ClaimEvents...", category: .sync)
+        let claimEventsDeleted = try await reconcileOrphanClaimEvents(context: context)
+        totalDeleted += claimEventsDeleted
+
+        debugLog.log("", category: .sync)
+        debugLog.log("Orphan reconciliation complete: deleted \(totalDeleted) total orphan records", category: .sync)
+    }
+
+    /// Lightweight DTO for fetching only IDs from Supabase
+    private struct IDOnlyDTO: Codable {
+        let id: UUID
+    }
+
+    private func reconcileOrphanTasks(context: ModelContext) async throws -> Int {
+        // Fetch all task IDs from Supabase
+        let remoteDTOs: [IDOnlyDTO] = try await supabase
+            .from("tasks")
+            .select("id")
+            .execute()
+            .value
+        let remoteIds = Set(remoteDTOs.map { $0.id })
+        debugLog.log("  Remote tasks: \(remoteIds.count)", category: .sync)
+
+        // Fetch all local tasks
+        let localDescriptor = FetchDescriptor<TaskItem>()
+        let localTasks = try context.fetch(localDescriptor)
+        debugLog.log("  Local tasks: \(localTasks.count)", category: .sync)
+
+        // Find and delete orphans
+        var deletedCount = 0
+        for task in localTasks {
+            if !remoteIds.contains(task.id) {
+                debugLog.log("  🗑️ Deleting orphan task: \(task.id) - \(task.title)", category: .sync)
+                context.delete(task)
+                deletedCount += 1
+            }
+        }
+
+        debugLog.log("  Deleted \(deletedCount) orphan tasks", category: .sync)
+        return deletedCount
+    }
+
+    private func reconcileOrphanActivities(context: ModelContext) async throws -> Int {
+        let remoteDTOs: [IDOnlyDTO] = try await supabase
+            .from("activities")
+            .select("id")
+            .execute()
+            .value
+        let remoteIds = Set(remoteDTOs.map { $0.id })
+        debugLog.log("  Remote activities: \(remoteIds.count)", category: .sync)
+
+        let localDescriptor = FetchDescriptor<Activity>()
+        let localActivities = try context.fetch(localDescriptor)
+        debugLog.log("  Local activities: \(localActivities.count)", category: .sync)
+
+        var deletedCount = 0
+        for activity in localActivities {
+            if !remoteIds.contains(activity.id) {
+                debugLog.log("  🗑️ Deleting orphan activity: \(activity.id) - \(activity.title)", category: .sync)
+                context.delete(activity)
+                deletedCount += 1
+            }
+        }
+
+        debugLog.log("  Deleted \(deletedCount) orphan activities", category: .sync)
+        return deletedCount
+    }
+
+    private func reconcileOrphanListings(context: ModelContext) async throws -> Int {
+        let remoteDTOs: [IDOnlyDTO] = try await supabase
+            .from("listings")
+            .select("id")
+            .execute()
+            .value
+        let remoteIds = Set(remoteDTOs.map { $0.id })
+        debugLog.log("  Remote listings: \(remoteIds.count)", category: .sync)
+
+        let localDescriptor = FetchDescriptor<Listing>()
+        let localListings = try context.fetch(localDescriptor)
+        debugLog.log("  Local listings: \(localListings.count)", category: .sync)
+
+        var deletedCount = 0
+        for listing in localListings {
+            if !remoteIds.contains(listing.id) {
+                debugLog.log("  🗑️ Deleting orphan listing: \(listing.id) - \(listing.address)", category: .sync)
+                context.delete(listing)
+                deletedCount += 1
+            }
+        }
+
+        debugLog.log("  Deleted \(deletedCount) orphan listings", category: .sync)
+        return deletedCount
+    }
+
+    private func reconcileOrphanUsers(context: ModelContext) async throws -> Int {
+        let remoteDTOs: [IDOnlyDTO] = try await supabase
+            .from("users")
+            .select("id")
+            .execute()
+            .value
+        let remoteIds = Set(remoteDTOs.map { $0.id })
+        debugLog.log("  Remote users: \(remoteIds.count)", category: .sync)
+
+        let localDescriptor = FetchDescriptor<User>()
+        let localUsers = try context.fetch(localDescriptor)
+        debugLog.log("  Local users: \(localUsers.count)", category: .sync)
+
+        var deletedCount = 0
+        for user in localUsers {
+            if !remoteIds.contains(user.id) {
+                debugLog.log("  🗑️ Deleting orphan user: \(user.id) - \(user.name)", category: .sync)
+                context.delete(user)
+                deletedCount += 1
+            }
+        }
+
+        debugLog.log("  Deleted \(deletedCount) orphan users", category: .sync)
+        return deletedCount
+    }
+
+    private func reconcileOrphanClaimEvents(context: ModelContext) async throws -> Int {
+        let remoteDTOs: [IDOnlyDTO] = try await supabase
+            .from("claim_events")
+            .select("id")
+            .execute()
+            .value
+        let remoteIds = Set(remoteDTOs.map { $0.id })
+        debugLog.log("  Remote claim events: \(remoteIds.count)", category: .sync)
+
+        let localDescriptor = FetchDescriptor<ClaimEvent>()
+        let localClaimEvents = try context.fetch(localDescriptor)
+        debugLog.log("  Local claim events: \(localClaimEvents.count)", category: .sync)
+
+        var deletedCount = 0
+        for claimEvent in localClaimEvents {
+            if !remoteIds.contains(claimEvent.id) {
+                debugLog.log("  🗑️ Deleting orphan claim event: \(claimEvent.id)", category: .sync)
+                context.delete(claimEvent)
+                deletedCount += 1
+            }
+        }
+
+        debugLog.log("  Deleted \(deletedCount) orphan claim events", category: .sync)
+        return deletedCount
+    }
+
+    // MARK: - Helper Methods
+
+    /// Extract a UUID from an AnyJSON dictionary (used for realtime DELETE event handling)
+    /// Handles various JSON value representations from supabase-swift
+    private func extractUUID(from record: [String: AnyJSON], key: String) -> UUID? {
+        guard let value = record[key] else { return nil }
+
+        // Try direct string extraction using description
+        let stringValue = String(describing: value)
+
+        // Clean up the string - it might be wrapped in quotes or have "string(" prefix
+        let cleanedValue = stringValue
+            .replacingOccurrences(of: "string(\"", with: "")
+            .replacingOccurrences(of: "\")", with: "")
+            .replacingOccurrences(of: "\"", with: "")
+            .trimmingCharacters(in: .whitespaces)
+
+        return UUID(uuidString: cleanedValue)
+    }
+
+    // MARK: - Entity Deletion Helpers
+    /// Delete a task by ID from local SwiftData (used by cleanup and realtime DELETE handling)
+    func deleteLocalTask(id: UUID, context: ModelContext) throws -> Bool {
+        let descriptor = FetchDescriptor<TaskItem>(predicate: #Predicate { $0.id == id })
+        guard let task = try context.fetch(descriptor).first else {
+            debugLog.log("deleteLocalTask: Task \(id) not found locally", category: .sync)
+            return false
+        }
+        debugLog.log("deleteLocalTask: Deleting task \(id) - \(task.title)", category: .sync)
+        context.delete(task)
+        return true
+    }
+
+    /// Delete an activity by ID from local SwiftData
+    func deleteLocalActivity(id: UUID, context: ModelContext) throws -> Bool {
+        let descriptor = FetchDescriptor<Activity>(predicate: #Predicate { $0.id == id })
+        guard let activity = try context.fetch(descriptor).first else {
+            debugLog.log("deleteLocalActivity: Activity \(id) not found locally", category: .sync)
+            return false
+        }
+        debugLog.log("deleteLocalActivity: Deleting activity \(id) - \(activity.title)", category: .sync)
+        context.delete(activity)
+        return true
+    }
+
+    /// Delete a listing by ID from local SwiftData
+    func deleteLocalListing(id: UUID, context: ModelContext) throws -> Bool {
+        let descriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == id })
+        guard let listing = try context.fetch(descriptor).first else {
+            debugLog.log("deleteLocalListing: Listing \(id) not found locally", category: .sync)
+            return false
+        }
+        debugLog.log("deleteLocalListing: Deleting listing \(id) - \(listing.address)", category: .sync)
+        context.delete(listing)
+        return true
+    }
+
+    /// Delete a user by ID from local SwiftData
+    func deleteLocalUser(id: UUID, context: ModelContext) throws -> Bool {
+        let descriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == id })
+        guard let user = try context.fetch(descriptor).first else {
+            debugLog.log("deleteLocalUser: User \(id) not found locally", category: .sync)
+            return false
+        }
+        debugLog.log("deleteLocalUser: Deleting user \(id) - \(user.name)", category: .sync)
+        context.delete(user)
+        return true
     }
 
     // MARK: - Sync Down: Users (read-only)
@@ -683,6 +964,8 @@ final class SyncManager: ObservableObject {
 
         debugLog.log("", category: .channel)
         debugLog.log("Creating AsyncSequence listeners...", category: .channel)
+
+        // AnyAction listeners for INSERT/UPDATE events (trigger sync)
         let tasksChanges = channel.postgresChange(AnyAction.self, schema: "public", table: "tasks")
         debugLog.log("  ✓ tasks listener created", category: .channel)
         let activitiesChanges = channel.postgresChange(AnyAction.self, schema: "public", table: "activities")
@@ -693,6 +976,17 @@ final class SyncManager: ObservableObject {
         debugLog.log("  ✓ users listener created", category: .channel)
         let claimEventsChanges = channel.postgresChange(AnyAction.self, schema: "public", table: "claim_events")
         debugLog.log("  ✓ claim_events listener created", category: .channel)
+
+        // DELETE-specific listeners for immediate local deletion
+        // Note: These handle hard deletes from Supabase immediately without waiting for sync
+        let tasksDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "tasks")
+        debugLog.log("  ✓ tasks DELETE listener created", category: .channel)
+        let activitiesDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "activities")
+        debugLog.log("  ✓ activities DELETE listener created", category: .channel)
+        let listingsDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "listings")
+        debugLog.log("  ✓ listings DELETE listener created", category: .channel)
+        let usersDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "users")
+        debugLog.log("  ✓ users DELETE listener created", category: .channel)
 
         // Subscribe to channel
         debugLog.log("", category: .channel)
@@ -810,6 +1104,98 @@ final class SyncManager: ObservableObject {
                 }
                 debugLog.logForAwaitLoop(entering: false, table: "claim_events")
                 debugLog.log("⚠️ claim_events for-await loop EXITED after \(eventCount) events", category: .event)
+            },
+            // DELETE-specific handlers for immediate local deletion
+            // Note: These provide immediate deletion when realtime DELETE events are received.
+            // The orphan reconciliation in syncDown() serves as a fallback safety net.
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.log("🗑️ Tasks DELETE listener STARTED", category: .event)
+                for await deleteEvent in tasksDeletes {
+                    debugLog.log("", category: .event)
+                    debugLog.log("🗑️🗑️🗑️ TASKS DELETE EVENT RECEIVED! 🗑️🗑️🗑️", category: .event)
+                    // Extract deleted ID from oldRecord using JSON description and parse
+                    if let deletedId = self.extractUUID(from: deleteEvent.oldRecord, key: "id") {
+                        debugLog.log("  Deleted task ID: \(deletedId)", category: .event)
+                        let context = container.mainContext
+                        do {
+                            _ = try self.deleteLocalTask(id: deletedId, context: context)
+                            try context.save()
+                            debugLog.log("  ✓ Local task deleted successfully", category: .event)
+                        } catch {
+                            debugLog.error("  Failed to delete local task", error: error)
+                        }
+                    } else {
+                        debugLog.log("  ⚠️ Could not extract task ID from DELETE event oldRecord: \(deleteEvent.oldRecord)", category: .event)
+                    }
+                }
+                debugLog.log("🗑️ Tasks DELETE listener ENDED", category: .event)
+            },
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.log("🗑️ Activities DELETE listener STARTED", category: .event)
+                for await deleteEvent in activitiesDeletes {
+                    debugLog.log("", category: .event)
+                    debugLog.log("🗑️🗑️🗑️ ACTIVITIES DELETE EVENT RECEIVED! 🗑️🗑️🗑️", category: .event)
+                    if let deletedId = self.extractUUID(from: deleteEvent.oldRecord, key: "id") {
+                        debugLog.log("  Deleted activity ID: \(deletedId)", category: .event)
+                        let context = container.mainContext
+                        do {
+                            _ = try self.deleteLocalActivity(id: deletedId, context: context)
+                            try context.save()
+                            debugLog.log("  ✓ Local activity deleted successfully", category: .event)
+                        } catch {
+                            debugLog.error("  Failed to delete local activity", error: error)
+                        }
+                    } else {
+                        debugLog.log("  ⚠️ Could not extract activity ID from DELETE event", category: .event)
+                    }
+                }
+                debugLog.log("🗑️ Activities DELETE listener ENDED", category: .event)
+            },
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.log("🗑️ Listings DELETE listener STARTED", category: .event)
+                for await deleteEvent in listingsDeletes {
+                    debugLog.log("", category: .event)
+                    debugLog.log("🗑️🗑️🗑️ LISTINGS DELETE EVENT RECEIVED! 🗑️🗑️🗑️", category: .event)
+                    if let deletedId = self.extractUUID(from: deleteEvent.oldRecord, key: "id") {
+                        debugLog.log("  Deleted listing ID: \(deletedId)", category: .event)
+                        let context = container.mainContext
+                        do {
+                            _ = try self.deleteLocalListing(id: deletedId, context: context)
+                            try context.save()
+                            debugLog.log("  ✓ Local listing deleted successfully", category: .event)
+                        } catch {
+                            debugLog.error("  Failed to delete local listing", error: error)
+                        }
+                    } else {
+                        debugLog.log("  ⚠️ Could not extract listing ID from DELETE event", category: .event)
+                    }
+                }
+                debugLog.log("🗑️ Listings DELETE listener ENDED", category: .event)
+            },
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.log("🗑️ Users DELETE listener STARTED", category: .event)
+                for await deleteEvent in usersDeletes {
+                    debugLog.log("", category: .event)
+                    debugLog.log("🗑️🗑️🗑️ USERS DELETE EVENT RECEIVED! 🗑️🗑️🗑️", category: .event)
+                    if let deletedId = self.extractUUID(from: deleteEvent.oldRecord, key: "id") {
+                        debugLog.log("  Deleted user ID: \(deletedId)", category: .event)
+                        let context = container.mainContext
+                        do {
+                            _ = try self.deleteLocalUser(id: deletedId, context: context)
+                            try context.save()
+                            debugLog.log("  ✓ Local user deleted successfully", category: .event)
+                        } catch {
+                            debugLog.error("  Failed to delete local user", error: error)
+                        }
+                    } else {
+                        debugLog.log("  ⚠️ Could not extract user ID from DELETE event", category: .event)
+                    }
+                }
+                debugLog.log("🗑️ Users DELETE listener ENDED", category: .event)
             }
         ]
 

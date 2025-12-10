@@ -179,12 +179,29 @@ struct SyncTestHarness: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(isLoading || syncManager.isSyncing)
 
+                    Button(action: { Task { await triggerFullSync() } }) {
+                        Label("Full Sync", systemImage: "arrow.triangle.2.circlepath.circle.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.orange)
+                    .disabled(isLoading || syncManager.isSyncing)
+                }
+
+                HStack(spacing: 12) {
                     Button(action: { Task { await triggerDebouncedSync() } }) {
                         Label("Debounced", systemImage: "timer")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
                     .disabled(isLoading)
+
+                    Button(action: { resetSyncState() }) {
+                        Label("Reset State", systemImage: "clock.arrow.circlepath")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.gray)
                 }
 
                 // Data Creation
@@ -395,6 +412,19 @@ struct SyncTestHarness: View {
         await refreshCounts()
     }
 
+    private func triggerFullSync() async {
+        log("Triggering FULL sync with orphan reconciliation...")
+        await syncManager.fullSync()
+        log("Full sync completed (orphans removed if any)")
+        await refreshCounts()
+    }
+
+    private func resetSyncState() {
+        log("Resetting sync state (lastSyncTime = nil)...")
+        syncManager.resetLastSyncTime()
+        log("Next sync will run full reconciliation")
+    }
+
     private func createTestTask() {
         let index = localCounts.tasks + 1
         let task = TestDataFactory.createTestTask(context: modelContext, index: index)
@@ -432,9 +462,62 @@ struct SyncTestHarness: View {
     }
 
     private func cleanupTestData() async {
-        log("Cleaning up test data from Supabase...")
+        log("Cleaning up test data from Supabase AND local SwiftData...")
+
+        // 1. Delete from Supabase first
         await SupabaseTestHelpers.deleteAllTestData()
-        log("Cleanup complete")
+        log("Supabase test data deleted")
+
+        // 2. Delete matching test data from local SwiftData
+        // Test UUIDs follow pattern: 00000000-0000-0000-{type}-{index}
+        // Types: 0001=user, 0002=task, 0003=activity, 0004=listing
+        do {
+            var deletedCounts = (tasks: 0, activities: 0, listings: 0, users: 0)
+
+            // Delete test tasks (type = 0002)
+            let taskDescriptor = FetchDescriptor<TaskItem>()
+            let allTasks = try modelContext.fetch(taskDescriptor)
+            for task in allTasks where task.id.uuidString.lowercased().hasPrefix("00000000-0000-0000-0002-") {
+                modelContext.delete(task)
+                deletedCounts.tasks += 1
+            }
+
+            // Delete test activities (type = 0003)
+            let activityDescriptor = FetchDescriptor<Activity>()
+            let allActivities = try modelContext.fetch(activityDescriptor)
+            for activity in allActivities where activity.id.uuidString.lowercased().hasPrefix("00000000-0000-0000-0003-") {
+                modelContext.delete(activity)
+                deletedCounts.activities += 1
+            }
+
+            // Delete test listings (type = 0004)
+            let listingDescriptor = FetchDescriptor<Listing>()
+            let allListings = try modelContext.fetch(listingDescriptor)
+            for listing in allListings where listing.id.uuidString.lowercased().hasPrefix("00000000-0000-0000-0004-") {
+                modelContext.delete(listing)
+                deletedCounts.listings += 1
+            }
+
+            // Delete test users (type = 0001) - optional, but included for completeness
+            let userDescriptor = FetchDescriptor<User>()
+            let allUsers = try modelContext.fetch(userDescriptor)
+            for user in allUsers where user.id.uuidString.lowercased().hasPrefix("00000000-0000-0000-0001-") {
+                modelContext.delete(user)
+                deletedCounts.users += 1
+            }
+
+            // Save deletions
+            try modelContext.save()
+
+            log("Local test data deleted: \(deletedCounts.tasks) tasks, \(deletedCounts.activities) activities, \(deletedCounts.listings) listings, \(deletedCounts.users) users")
+            #if DEBUG
+            debugLog.log("Cleanup deleted local: tasks=\(deletedCounts.tasks), activities=\(deletedCounts.activities), listings=\(deletedCounts.listings), users=\(deletedCounts.users)", category: .sync)
+            #endif
+        } catch {
+            log("Failed to delete local test data: \(error.localizedDescription)", isError: true)
+        }
+
+        log("Cleanup complete (both Supabase and local)")
         await refreshCounts()
     }
 
