@@ -1,0 +1,326 @@
+//
+//  WorkItemDetailView.swift
+//  Dispatch
+//
+//  WorkItem Component - Full detail view with collapsing header
+//  Created by Claude on 2025-12-06.
+//
+
+import SwiftUI
+
+/// Full detail view for a work item (task or activity).
+/// Features collapsing header, metadata section, subtasks list, and notes section.
+struct WorkItemDetailView: View {
+    let item: WorkItem
+    let claimState: ClaimState
+    let userLookup: (UUID) -> User?
+
+    // Actions
+    var onComplete: () -> Void = {}
+    var onClaim: () -> Void = {}
+    var onRelease: () -> Void = {}
+    var onEditNote: ((Note) -> Void)?
+    var onDeleteNote: ((Note) -> Void)?
+    var onAddNote: ((String) -> Void)?
+    var onToggleSubtask: ((Subtask) -> Void)?
+    var onDeleteSubtask: ((Subtask) -> Void)?
+    var onAddSubtask: (() -> Void)?
+
+    // State
+    @State private var scrollOffset: CGFloat = 0
+    @State private var noteText = ""
+    @State private var showNoteInput = false
+
+    private static let detailDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
+    var body: some View {
+        CollapsibleHeaderScrollView { offset in
+            headerView(scrollOffset: offset)
+        } content: {
+            VStack(alignment: .leading, spacing: DS.Spacing.xl) {
+                // Description Section
+                descriptionSection
+
+                // Metadata Section
+                metadataSection
+
+                // Subtasks Section
+                subtasksSection
+
+                // Notes Section
+                notesSection
+            }
+            .padding(DS.Spacing.md)
+        }
+        .background(DS.Colors.Background.primary)
+    }
+
+    // MARK: - Header
+
+    @ViewBuilder
+    private func headerView(scrollOffset: CGFloat) -> some View {
+        CollapsibleHeader(
+            title: item.title,
+            scrollOffset: scrollOffset
+        ) {
+            HStack(spacing: DS.Spacing.sm) {
+                PriorityDot(priority: item.priority)
+                DueDateBadge(dueDate: item.dueDate)
+            }
+        }
+    }
+
+    // MARK: - Description Section
+
+    private var descriptionSection: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            sectionHeader("Description")
+
+            if item.itemDescription.isEmpty {
+                Text("No description provided")
+                    .font(DS.Typography.body)
+                    .foregroundColor(DS.Colors.Text.tertiary)
+                    .italic()
+            } else {
+                Text(item.itemDescription)
+                    .font(DS.Typography.body)
+                    .foregroundColor(DS.Colors.Text.primary)
+            }
+        }
+        .padding(DS.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DS.Colors.Background.card)
+        .cornerRadius(DS.Spacing.radiusCard)
+    }
+
+    // MARK: - Metadata Section
+
+    private var metadataSection: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            sectionHeader("Details")
+
+            VStack(spacing: DS.Spacing.sm) {
+                // Type
+                metadataRow(
+                    icon: item.typeIcon,
+                    label: "Type",
+                    value: item.typeLabel
+                )
+
+                Divider()
+
+                // Status
+                metadataRow(
+                    icon: item.statusIcon,
+                    label: "Status",
+                    value: item.statusText,
+                    valueColor: item.statusColor
+                )
+
+                Divider()
+
+                // Priority
+                HStack {
+                    Image(systemName: DS.Icons.priorityDot)
+                        .foregroundColor(DS.Colors.Text.secondary)
+                        .frame(width: 24)
+                    Text("Priority")
+                        .font(DS.Typography.bodySecondary)
+                        .foregroundColor(DS.Colors.Text.secondary)
+                    Spacer()
+                    HStack(spacing: DS.Spacing.xs) {
+                        PriorityDot(priority: item.priority)
+                        Text(item.priority.rawValue.capitalized)
+                            .font(DS.Typography.body)
+                            .foregroundColor(DS.Colors.PriorityColors.color(for: item.priority))
+                    }
+                }
+
+                Divider()
+
+                // Created by
+                if let creator = userLookup(item.declaredBy) {
+                    HStack {
+                        Image(systemName: DS.Icons.Entity.user)
+                            .foregroundColor(DS.Colors.Text.secondary)
+                            .frame(width: 24)
+                        Text("Created by")
+                            .font(DS.Typography.bodySecondary)
+                            .foregroundColor(DS.Colors.Text.secondary)
+                        Spacer()
+                        HStack(spacing: DS.Spacing.xs) {
+                            UserAvatar(user: creator, size: .small)
+                            Text(creator.name)
+                                .font(DS.Typography.body)
+                        }
+                    }
+
+                    Divider()
+                }
+
+                // Created at
+                metadataRow(
+                    icon: DS.Icons.Time.clock,
+                    label: "Created",
+                    value: formatDate(item.createdAt)
+                )
+
+                Divider()
+
+                // Updated at
+                metadataRow(
+                    icon: DS.Icons.Time.clock,
+                    label: "Updated",
+                    value: formatDate(item.updatedAt)
+                )
+
+                Divider()
+
+                // Claim section
+                HStack {
+                    Image(systemName: DS.Icons.Claim.unclaimed)
+                        .foregroundColor(DS.Colors.Text.secondary)
+                        .frame(width: 24)
+                    Text("Assignment")
+                        .font(DS.Typography.bodySecondary)
+                        .foregroundColor(DS.Colors.Text.secondary)
+                    Spacer()
+                    ClaimButton(
+                        claimState: claimState,
+                        onClaim: onClaim,
+                        onRelease: onRelease
+                    )
+                }
+            }
+        }
+        .padding(DS.Spacing.md)
+        .background(DS.Colors.Background.card)
+        .cornerRadius(DS.Spacing.radiusCard)
+    }
+
+    // MARK: - Subtasks Section
+
+    private var subtasksSection: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            SubtasksList(
+                subtasks: item.subtasks,
+                onToggle: onToggleSubtask,
+                onDelete: onDeleteSubtask,
+                onAdd: onAddSubtask
+            )
+        }
+        .padding(DS.Spacing.md)
+        .background(DS.Colors.Background.card)
+        .cornerRadius(DS.Spacing.radiusCard)
+    }
+
+    // MARK: - Notes Section
+
+    private var notesSection: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            HStack {
+                sectionHeader("Notes")
+                Spacer()
+                Button(action: { showNoteInput.toggle() }) {
+                    Image(systemName: showNoteInput ? DS.Icons.Action.cancel : DS.Icons.Action.add)
+                        .font(.system(size: 16))
+                        .foregroundColor(DS.Colors.accent)
+                }
+            }
+
+            if showNoteInput {
+                NoteInputArea(
+                    text: $noteText,
+                    placeholder: "Add a note...",
+                    onSave: {
+                        onAddNote?(noteText)
+                        noteText = ""
+                        showNoteInput = false
+                    },
+                    onCancel: {
+                        noteText = ""
+                        showNoteInput = false
+                    }
+                )
+            }
+
+            if item.notes.isEmpty && !showNoteInput {
+                NoteStack.emptyState
+            } else if !item.notes.isEmpty {
+                NoteStack(
+                    notes: item.notes,
+                    userLookup: userLookup,
+                    onEdit: onEditNote,
+                    onDelete: onDeleteNote
+                )
+            }
+        }
+        .padding(DS.Spacing.md)
+        .background(DS.Colors.Background.card)
+        .cornerRadius(DS.Spacing.radiusCard)
+    }
+
+    // MARK: - Helpers
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(DS.Typography.headline)
+            .foregroundColor(DS.Colors.Text.primary)
+    }
+
+    private func metadataRow(
+        icon: String,
+        label: String,
+        value: String,
+        valueColor: Color = DS.Colors.Text.primary
+    ) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(DS.Colors.Text.secondary)
+                .frame(width: 24)
+            Text(label)
+                .font(DS.Typography.bodySecondary)
+                .foregroundColor(DS.Colors.Text.secondary)
+            Spacer()
+            Text(value)
+                .font(DS.Typography.body)
+                .foregroundColor(valueColor)
+        }
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        Self.detailDateFormatter.string(from: date)
+    }
+}
+
+// MARK: - Preview
+
+#Preview("Work Item Detail View") {
+    let sampleTask = TaskItem(
+        title: "Review quarterly report",
+        taskDescription: "Go through the Q4 numbers and prepare a summary for the board meeting. Make sure to highlight key achievements and areas for improvement.",
+        priority: .high,
+        declaredBy: UUID()
+    )
+
+    let sampleUser = User(name: "John Doe", email: "john@example.com", userType: .admin)
+
+    NavigationStack {
+        WorkItemDetailView(
+            item: .task(sampleTask),
+            claimState: .claimedByMe(user: sampleUser),
+            userLookup: { _ in sampleUser },
+            onComplete: {},
+            onClaim: {},
+            onRelease: {},
+            onAddNote: { _ in },
+            onAddSubtask: {}
+        )
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}

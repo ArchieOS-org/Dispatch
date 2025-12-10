@@ -1,5 +1,3 @@
-# DISPATCH: Foundations IMPLEMENTATION PLAN
-
 ## *With Supabase Live Sync + SwiftData + Multi-Platform Support*
 
 ---
@@ -13,15 +11,22 @@
 **Models (SwiftData on-device)**:
 
 ```
-REALTOR (User)
+USER
   ├─ id: UUID
   ├─ name: String
   ├─ email: String
-  ├─ avatar: [PLACEHOLDER: URL or local asset]
-  ├─ listings: [Listing]
-  ├─ claimedTasks: [Task]
-  ├─ claimedActivities: [Activity]
-  └─ [PLACEHOLDER: permissions/roles for admin features]
+  ├─ avatar: Data? (local cache)
+  ├─ userType: UserType (realtor, admin, marketing, exec)
+  ├─ listings: [Listing] = [] (for realtors: listings they own)
+  ├─ claimedTasks: [Task] = [] (for staff: tasks they've claimed)
+  ├─ claimedActivities: [Activity] = [] (for staff: activities they've claimed)
+  └─ assignedListings: [Listing] = [] (for staff: listings they're assigned to work on)
+
+STAFF (subset of User where userType.isStaff == true)
+  └─ Staff members use Dispatch app to claim tasks, add notes, and execute work
+
+REALTOR (subset of User where userType == .realtor)
+  └─ Realtors use a separate app to declare listings and tasks (shared DB)
 
 TASK (WorkItem)
   ├─ id: UUID
@@ -29,45 +34,73 @@ TASK (WorkItem)
   ├─ description: String
   ├─ dueDate: Date?
   ├─ priority: Priority (Low, Medium, High, Urgent)
-  ├─ completed: Bool
-  ├─ claimedBy: UUID? (FK to Realtor)
-  ├─ createdBy: UUID (FK to Realtor)
+  ├─ status: TaskStatus (Open, InProgress, Completed, Deleted)
+  ├─ declaredBy: UUID (FK to User - the Realtor who declared this)
+  ├─ claimedBy: UUID? (FK to User - the Staff member who currently has it claimed)
   ├─ listing: UUID? (FK to Listing, optional)
-  ├─ notes: [Note]
-  ├─ subtasks: [Subtask]
+  ├─ notes: [Note] = []
+  ├─ subtasks: [Subtask] = []
+  ├─ statusHistory: [StatusChange] = [] (audit trail of all status transitions)
+  ├─ claimHistory: [ClaimEvent] = [] (audit trail of all claim/release actions)
+  ├─ createdVia: CreationSource (where this task originated: dispatch, slack, realtorApp, api, import)
+  ├─ sourceSlackMessages: [String]? (if createdVia == .slack: the Slack message URLs/IDs; nil otherwise)
+  ├─ // Key milestone timestamps (for fast queries)
+  ├─ claimedAt: Date? (when staff first claimed this)
+  ├─ completedAt: Date? (when marked completed)
+  ├─ deletedAt: Date? (when soft deleted)
   ├─ createdAt: Date
   ├─ updatedAt: Date
-  ├─ syncedAt: Date? (for sync tracking)
-  └─ [PLACEHOLDER: tags, custom fields, reminder frequency]
+  └─ syncedAt: Date? (for sync tracking)
 
 ACTIVITY (WorkItem)
   ├─ id: UUID
   ├─ title: String
   ├─ description: String
-  ├─ type: ActivityType (Call, Email, Meeting, ShowProperty, FollowUp) [PLACEHOLDER]
+  ├─ type: ActivityType (Call, Email, Meeting, ShowProperty, FollowUp, Other)
   ├─ dueDate: Date?
-  ├─ completed: Bool
-  ├─ claimedBy: UUID? (FK to Realtor)
-  ├─ createdBy: UUID (FK to Realtor)
+  ├─ status: ActivityStatus (Open, InProgress, Completed, Deleted)
+  ├─ declaredBy: UUID (FK to User - the Realtor who declared this)
+  ├─ claimedBy: UUID? (FK to User - the Staff member who currently has it claimed)
   ├─ listing: UUID? (FK to Listing, optional)
-  ├─ notes: [Note]
-  ├─ subtasks: [Subtask]
+  ├─ notes: [Note] = []
+  ├─ subtasks: [Subtask] = []
+  ├─ statusHistory: [StatusChange] = [] (audit trail of all status transitions)
+  ├─ claimHistory: [ClaimEvent] = [] (audit trail of all claim/release actions)
+  ├─ createdVia: CreationSource (where this activity originated: dispatch, slack, realtorApp, api, import)
+  ├─ sourceSlackMessages: [String]? (if createdVia == .slack: the Slack message URLs/IDs; nil otherwise)
+  ├─ // Key milestone timestamps (for fast queries)
+  ├─ claimedAt: Date? (when staff first claimed this)
+  ├─ completedAt: Date? (when marked completed)
+  ├─ deletedAt: Date? (when soft deleted)
   ├─ duration: TimeInterval? [PLACEHOLDER: for call/meeting tracking]
   ├─ createdAt: Date
   ├─ updatedAt: Date
-  ├─ syncedAt: Date?
-  └─ [PLACEHOLDER: attendees, location, recording link]
+  └─ syncedAt: Date?
 
 LISTING (Entity)
   ├─ id: UUID
   ├─ address: String
-  ├─ [PLACEHOLDER: city, state, zip, coordinates]
-  ├─ assignedRealtor: UUID (FK to Realtor)
-  ├─ [PLACEHOLDER: price, bedrooms, bathrooms, mls_number]
-  ├─ tasks: [Task] (filtered by listing.id)
-  ├─ activities: [Activity] (filtered by listing.id)
-  ├─ notes: [Note] (listing-level notes)
-  ├─ status: ListingStatus (Active, Pending, Closed, Draft) [PLACEHOLDER]
+  ├─ city: String
+  ├─ province: String
+  ├─ postalCode: String
+  ├─ country: String (default: "Canada")
+  ├─ price: Decimal?
+  ├─ mlsNumber: String?
+  ├─ type: ListingType (Sale, Lease, PreListing, Rental, Other)
+  ├─ ownedBy: UUID (FK to User - the Realtor who owns this listing)
+  ├─ assignedStaff: UUID? (FK to User - Staff member assigned to work on it)
+  ├─ tasks: [Task] = []
+  ├─ activities: [Activity] = []
+  ├─ notes: [Note] = []
+  ├─ statusHistory: [StatusChange] = [] (audit trail of all status transitions)
+  ├─ createdVia: CreationSource (where this listing originated: dispatch, slack, realtorApp, api, import)
+  ├─ sourceSlackMessages: [String]? (if createdVia == .slack: the Slack message URLs/IDs; nil otherwise)
+  ├─ status: ListingStatus (Draft, Active, Pending, Closed, Deleted)
+  ├─ // Key milestone timestamps (for fast queries)
+  ├─ activatedAt: Date? (when listing went active/live)
+  ├─ pendingAt: Date? (when listing went under contract)
+  ├─ closedAt: Date? (when deal closed)
+  ├─ deletedAt: Date? (when soft deleted)
   ├─ createdAt: Date
   ├─ updatedAt: Date
   ├─ syncedAt: Date?
@@ -76,80 +109,94 @@ LISTING (Entity)
 NOTE (Sub-entity)
   ├─ id: UUID
   ├─ content: String
-  ├─ createdBy: UUID (FK to Realtor)
-  ├─ parentType: ParentType (Task, Activity, Listing)
+  ├─ createdBy: UUID (FK to User - who wrote this note)
+  ├─ parentType: ParentType (task, activity, listing)
   ├─ parentId: UUID (FK to Task/Activity/Listing)
   ├─ createdAt: Date
-  ├─ [PLACEHOLDER: edited/editedBy for edit history]
-  └─ [PLACEHOLDER: mentions (@realtor_name), attachments]
+  ├─ editedAt: Date? (set when note is edited)
+  ├─ editedBy: UUID? (FK to User - who last edited)
+  ├─ syncedAt: Date?
+  └─ [PLACEHOLDER: mentions, attachments]
 
 SUBTASK (Sub-entity)
   ├─ id: UUID
   ├─ title: String
-  ├─ completed: Bool
-  ├─ parentId: UUID (FK to Task or Activity)
-  ├─ [PLACEHOLDER: assignedTo, dueDate]
-  └─ createdAt: Date
+  ├─ completed: Bool = false
+  ├─ parentType: ParentType (task, activity)
+  ├─ parentId: UUID (FK to Task/Activity)
+  ├─ createdAt: Date
+  ├─ syncedAt: Date?
+  └─ [PLACEHOLDER: assignedTo, dueDate]
 
-CLAIMSTATE (Tracking)
-  ├─ itemId: UUID
-  ├─ itemType: ItemType (Task, Activity)
-  ├─ claimedBy: UUID? (null = unclaimed)
-  ├─ claimedAt: Date?
-  └─ releasedAt: Date? (for audit)
+STATUS_CHANGE (Sub-entity) - Audit trail for status transitions
+  ├─ id: UUID
+  ├─ parentType: ParentType (task, activity, listing)
+  ├─ parentId: UUID (FK to Task/Activity/Listing)
+  ├─ oldStatus: String? (nil for initial creation)
+  ├─ newStatus: String
+  ├─ changedBy: UUID (FK to User - who made this change)
+  ├─ changedAt: Date
+  ├─ reason: String? (optional note explaining the change)
+  └─ syncedAt: Date?
 
+CLAIM_EVENT (Sub-entity) - Audit trail for claim/release actions
+  ├─ id: UUID
+  ├─ parentType: ParentType (task, activity)
+  ├─ parentId: UUID (FK to Task/Activity)
+  ├─ action: ClaimAction (claimed, released)
+  ├─ userId: UUID (FK to User - who performed this action)
+  ├─ performedAt: Date
+  ├─ reason: String? (optional note, e.g., "reassigning to marketing")
+  └─ syncedAt: Date? 
 ```
 
 ---
 
-### **1.2 Supabase Schema (PostgreSQL)**
+### **1.2 Supabase Schema Overview**
 
-Create tables matching SwiftData models:
+See **Section 2.1** for full PostgreSQL schema. Tables:
 
-- `realtors` table
-- `tasks` table (with RLS policies)
-- `activities` table (with RLS policies)
-- `listings` table (with RLS policies)
-- `notes` table
-- `subtasks` table
-- `sync_metadata` table (tracks `last_sync_timestamp` per realtor)
-
-**Row-Level Security (RLS) Example**:
-
-```sql
--- A realtor can only see tasks/activities:
--- 1. They created
--- 2. They claimed
--- 3. That belong to their listings
--- 4. (If enabled) That are on shared listings
-
-```
+- `users` (with user_type column for realtor/admin/marketing/exec)
+- `tasks`, `activities`, `listings` (with RLS policies)
+- `notes`, `subtasks` (sub-entities)
+- `status_changes`, `claim_events` (audit trail)
+- `sync_metadata` (tracks last sync per user)
 
 ---
 
-### **1.3 SyncManager Service** (The Orchestrator)
+### **1.3 SyncManager Service** (The Orchestrator) ✅ IMPLEMENTED
 
 ```
-SyncManager (Singleton)
+SyncManager (Singleton) - Location: Dispatch/Services/Sync/SyncManager.swift
   ├─ Properties:
-  │  ├─ supabaseClient: SupabaseClient
-  │  ├─ modelContext: ModelContext (SwiftData)
-  │  ├─ lastSyncTime: Date
-  │  └─ isSyncing: @Published Bool
+  │  ├─ modelContainer: ModelContainer (SwiftData)
+  │  ├─ lastSyncTime: Date? @Published
+  │  ├─ isSyncing: Bool @Published
+  │  ├─ syncStatus: SyncStatus @Published (.synced, .syncing, .pending, .error)
+  │  ├─ syncError: Error? @Published
+  │  └─ currentUserID: UUID? (set when authenticated)
   │
-  ├─ Methods:
-  │  ├─ syncDown() async → Fetch Supabase changes, merge into SwiftData
-  │  ├─ syncUp() async → Push local changes to Supabase
-  │  ├─ listenForRealtimeChanges() → Supabase channel subscriptions
-  │  ├─ handleConflict() → If two realtors modify same item
-  │  └─ [PLACEHOLDER: retryFailedSync(), offlineQueueManager()]
+  ├─ Methods (Implemented):
+  │  ├─ configure(with: ModelContainer, testUserID: UUID?) → Setup
+  │  ├─ sync() async → Full bidirectional sync
+  │  ├─ requestSync() → Debounced sync trigger (500ms)
+  │  ├─ syncDown(context:) async → Supabase → SwiftData
+  │  ├─ syncUp(context:) async → SwiftData → Supabase (dirty entities)
+  │  ├─ startListening() async → Realtime WebSocket subscriptions
+  │  └─ stopListening() async → Disconnect realtime
+  │
+  ├─ Methods (Placeholder):
+  │  ├─ [TODO: handleConflict() → Manual conflict resolution]
+  │  └─ [TODO: retryFailedSync(), offlineQueueManager()]
   │
   └─ Triggers:
-     ├─ App becomes active (scenePhase == .active)
-     ├─ Data saved locally (after user action)
-     ├─ Realtime update received from Supabase channel
+     ├─ ✅ App launch (startListening called in DispatchApp.swift)
+     ├─ ✅ Data modified locally → call requestSync()
+     ├─ ✅ Realtime event received → requestSync() called automatically
      └─ [PLACEHOLDER: Silent push notification received]
 
+USAGE: When modifying data, call SyncManager.shared.requestSync()
+       See Section 3.4 for full developer guide.
 ```
 
 ---
@@ -163,12 +210,15 @@ WorkItemProtocol
   ├─ description: String
   ├─ dueDate: Date?
   ├─ priority: Priority
-  ├─ completed: Bool
-  ├─ claimedBy: UUID?
-  ├─ createdBy: UUID
+  ├─ status: any WorkItemStatus  // TaskStatus or ActivityStatus (use associated type in protocol)
+  ├─ declaredBy: UUID (Realtor who created)
+  ├─ claimedBy: UUID? (Staff who currently has it)
   ├─ listing: UUID?
   ├─ notes: [Note]
   ├─ subtasks: [Subtask]
+  ├─ statusHistory: [StatusChange]
+  ├─ claimHistory: [ClaimEvent]
+  ├─ createdVia: CreationSource
   ├─ createdAt: Date
   ├─ updatedAt: Date
   ├─ syncedAt: Date?
@@ -177,13 +227,14 @@ WorkItemProtocol
 ClaimableProtocol
   ├─ canBeClaimed: Bool
   ├─ claimedBy: UUID?
-  ├─ claim(by: Realtor) async
-  ├─ release() async
+  ├─ claimHistory: [ClaimEvent]
+  ├─ claim(by: User) async  // Only Staff can claim; appends to claimHistory
+  ├─ release(reason: String?) async  // Appends release event to claimHistory
   └─ [PLACEHOLDER: claimExpiresAt, autoRelease logic]
 
 NotableProtocol
   ├─ notes: [Note]
-  ├─ addNote(content: String, by: Realtor) async
+  ├─ addNote(content: String, by: User) async
   ├─ deleteNote(id: UUID) async
   └─ [PLACEHOLDER: editNote functionality]
 
@@ -199,25 +250,76 @@ RealtimeSyncable (for Supabase integration)
 
 ## **PHASE 2: SHARED COMPONENTS (Weeks 2-3)**
 
-### **2.1 Foundation Layer (Design Tokens)**
+### **2.1 Design Tokens (Foundation Layer)** ✅ IMPLEMENTED
+
+> **Implementation Status**: Completed 2025-12-06
+>
+> **Files Created** in `Dispatch/Design/`:
+> - `DesignSystem.swift` - Main DS namespace
+> - `Typography.swift` - Font styles (headline, body, bodySecondary, caption, captionSecondary)
+> - `ColorSystem.swift` - Semantic colors with Priority, TaskStatus, ActivityStatus, SyncStatus, ClaimState mappings
+> - `Spacing.swift` - Layout constants (notesStackHeight: 140, noteCascadeOffset: 8, etc.)
+> - `Shadows.swift` - Shadow styles including `notesOverflowGradient` LinearGradient
+> - `IconSystem.swift` - SF Symbols mappings for Entity, Action, StatusIcons, Claim, ActivityType, Time
 
 ```
-DispatchKit/Foundation/
-├─ Typography.swift
-│  └─ [PLACEHOLDER: Additional font variants for multiplatform]
-├─ ColorSystem.swift
-│  └─ Semantic colors + dark mode support
-├─ Spacing.swift
-│  └─ [PLACEHOLDER: iPad/Mac responsive spacing]
-├─ Shadows.swift
-└─ IconSystem.swift [NEW]
-   └─ [PLACEHOLDER: SF Symbols mappings for claim state, sync status]
+Dispatch/Design/
+├─ DesignSystem.swift    - Main DS namespace
+├─ Typography.swift      - Font styles
+├─ ColorSystem.swift     - Semantic colors + dark mode support
+├─ Spacing.swift         - Layout constants
+├─ Shadows.swift         - Shadow styles and gradients
+└─ IconSystem.swift      - SF Symbols mappings
 
 ```
 
 ---
 
-### **2.2 Tier 4: Shared Components**
+### **2.2 Shared Components** ✅ IMPLEMENTED
+
+> **Implementation Status**: Completed 2025-12-06
+>
+> **Architecture Decision**: Used `WorkItem` enum wrapper instead of generics (`WorkItemProtocol`) because:
+> - Only 2 types (TaskItem, Activity) need unification
+> - TaskStatus vs ActivityStatus have different enum types that don't share a common protocol
+> - Simpler debugging and code completion compared to generic constraints
+> - More explicit pattern matching for type-specific behavior (typeLabel, typeIcon)
+>
+> **Files Created** (14 total in `Dispatch/Views/Components/`):
+> ```
+> Dispatch/Views/Components/
+> ├── Shared/
+> │   ├── PriorityDot.swift        - Color-coded priority indicator (sizes: small/medium)
+> │   ├── DueDateBadge.swift       - Contextual due date with overdue/today/upcoming styling
+> │   ├── UserAvatar.swift         - Avatar with initials fallback (sizes: small/medium/large)
+> │   ├── StatusCheckbox.swift     - Animated completion toggle with spring animation
+> │   ├── ClaimButton.swift        - State-dependent claim/release with confirmation dialog
+> │   └── CollapsibleHeader.swift  - Scroll-aware header using PreferenceKey (32pt → 18pt)
+> │
+> ├── WorkItem/
+> │   ├── WorkItem.swift           - Enum wrapper unifying TaskItem and Activity
+> │   ├── WorkItemRow.swift        - List row with swipe actions (edit/delete)
+> │   └── WorkItemDetailView.swift - Full detail view with collapsible header
+> │
+> ├── Notes/
+> │   ├── NoteCard.swift           - Single note with tap-to-show edit/delete actions
+> │   ├── NoteStack.swift          - THE DIFFERENTIATOR: 140pt cascading with gradient shadow
+> │   └── NoteInputArea.swift      - TextEditor with save/cancel buttons
+> │
+> └── Subtasks/
+>     ├── SubtaskRow.swift         - Checkbox + title + delete button
+>     └── SubtasksList.swift       - List with progress bar and add button
+> ```
+>
+> **Key Implementation Notes**:
+> - NoteStack uses `LinearGradient` overlay (NOT `.shadow()` modifier) because shadows get clipped by `.clipped()`
+> - CollapsibleHeader uses `PreferenceKey` pattern for scroll offset tracking with font interpolation
+> - iOS 16.0+ minimum required for `.scrollContentBackground(.hidden)` on TextEditor
+> - All components use closure-based actions for maximum flexibility
+> - All components respect `DS.*` design tokens from Stage 2.1
+> - Comprehensive SwiftUI previews included in each file
+
+---
 
 ### **WorkItemRow**
 
@@ -630,27 +732,27 @@ This is the complete specification for your pulley-notes interface. The key is:
 - **Cascading offset** for visual depth on previous notes
 
 Sources
-[1] Fix Clipping Issues in SwiftUI ScrollView [[https://fatbobman.com/en/snippet/preventing-scrollview-content-clipping-in-swiftui/](https://fatbobman.com/en/snippet/preventing-scrollview-content-clipping-in-swiftui/)](https://fatbobman.com/en/snippet/preventing-scrollview-content-clipping-in-swiftui/](https://fatbobman.com/en/snippet/preventing-scrollview-content-clipping-in-swiftui/))
-[2] SwiftUI: Why are my shadows clipped?? [[https://www.bam.tech/en/article/swiftui-why-are-my-shadows-clipped](https://www.bam.tech/en/article/swiftui-why-are-my-shadows-clipped)](https://www.bam.tech/en/article/swiftui-why-are-my-shadows-clipped](https://www.bam.tech/en/article/swiftui-why-are-my-shadows-clipped))
-[3] shadow will cut by ScrollView #25703 - facebook/react-native [[https://github.com/facebook/react-native/issues/25703](https://github.com/facebook/react-native/issues/25703)](https://github.com/facebook/react-native/issues/25703](https://github.com/facebook/react-native/issues/25703))
-[4] SwiftUI Live: Peek Scrolling Concept using GeometryReader [[https://www.youtube.com/watch?v=onc2xwzjggU](https://www.youtube.com/watch?v=onc2xwzjggU)](https://www.youtube.com/watch?v=onc2xwzjggU](https://www.youtube.com/watch?v=onc2xwzjggU))
-[5] Shadows clipped by ScrollView [[https://stackoverflow.com/questions/62157340/shadows-clipped-by-scrollview](https://stackoverflow.com/questions/62157340/shadows-clipped-by-scrollview)](https://stackoverflow.com/questions/62157340/shadows-clipped-by-scrollview](https://stackoverflow.com/questions/62157340/shadows-clipped-by-scrollview))
-[6] Fix This Problem with SwiftUI Lists [[https://www.youtube.com/watch?v=cpT02OtOasE](https://www.youtube.com/watch?v=cpT02OtOasE)](https://www.youtube.com/watch?v=cpT02OtOasE](https://www.youtube.com/watch?v=cpT02OtOasE))
-[7] Building a stack of cards – Flashzilla SwiftUI Tutorial 7/13 [[https://www.youtube.com/watch?v=KL1c5Mx3kek](https://www.youtube.com/watch?v=KL1c5Mx3kek)](https://www.youtube.com/watch?v=KL1c5Mx3kek](https://www.youtube.com/watch?v=KL1c5Mx3kek))
-[8] SwiftUI Example: How to adjust the List View Styling with ... [[https://www.youtube.com/watch?v=tjR1hLg4-wc](https://www.youtube.com/watch?v=tjR1hLg4-wc)](https://www.youtube.com/watch?v=tjR1hLg4-wc](https://www.youtube.com/watch?v=tjR1hLg4-wc))
-[9] SwiftUI Card flip with two views [[https://stackoverflow.com/questions/60805244/swiftui-card-flip-with-two-views](https://stackoverflow.com/questions/60805244/swiftui-card-flip-with-two-views)](https://stackoverflow.com/questions/60805244/swiftui-card-flip-with-two-views](https://stackoverflow.com/questions/60805244/swiftui-card-flip-with-two-views))
-[10] Backgrounds and overlays in SwiftUI [[https://www.swiftbysundell.com/articles/backgrounds-and-overlays-in-swiftui](https://www.swiftbysundell.com/articles/backgrounds-and-overlays-in-swiftui)](https://www.swiftbysundell.com/articles/backgrounds-and-overlays-in-swiftui](https://www.swiftbysundell.com/articles/backgrounds-and-overlays-in-swiftui))
-[11] Stacked Cards - Looping Cards - SwiftUI [[https://www.youtube.com/watch?v=mEwlTyTtsmE](https://www.youtube.com/watch?v=mEwlTyTtsmE)](https://www.youtube.com/watch?v=mEwlTyTtsmE](https://www.youtube.com/watch?v=mEwlTyTtsmE))
-[12] SwiftUI: ScrollView clipping [[https://philip-trauner.me/blog/post/swiftui-scrollview-clips-to-bounds](https://philip-trauner.me/blog/post/swiftui-scrollview-clips-to-bounds)](https://philip-trauner.me/blog/post/swiftui-scrollview-clips-to-bounds](https://philip-trauner.me/blog/post/swiftui-scrollview-clips-to-bounds))
-[13] Shadow is not visible with View() and List() [[https://stackoverflow.com/questions/76462407/shadow-is-not-visible-with-view-and-list](https://stackoverflow.com/questions/76462407/shadow-is-not-visible-with-view-and-list)](https://stackoverflow.com/questions/76462407/shadow-is-not-visible-with-view-and-list](https://stackoverflow.com/questions/76462407/shadow-is-not-visible-with-view-and-list))
-[14] Imitating the Card Stack demonstrated by Apple at WWDC [[https://www.reddit.com/r/SwiftUI/comments/1dvb06n/imitating_the_card_stack_demonstrated_by_apple_at/](https://www.reddit.com/r/SwiftUI/comments/1dvb06n/imitating_the_card_stack_demonstrated_by_apple_at/)](https://www.reddit.com/r/SwiftUI/comments/1dvb06n/imitating_the_card_stack_demonstrated_by_apple_at/](https://www.reddit.com/r/SwiftUI/comments/1dvb06n/imitating_the_card_stack_demonstrated_by_apple_at/))
-[15] How to Fix SwiftUI Clipped Images Overlapping Scroll Views [[https://www.youtube.com/watch?v=hSZsqWqg0IM](https://www.youtube.com/watch?v=hSZsqWqg0IM)](https://www.youtube.com/watch?v=hSZsqWqg0IM](https://www.youtube.com/watch?v=hSZsqWqg0IM))
-[16] Creating a list in SwiftUI (4/7) [[https://www.cometchat.com/tutorials/creating-a-list-in-swiftui-3-7](https://www.cometchat.com/tutorials/creating-a-list-in-swiftui-3-7)](https://www.cometchat.com/tutorials/creating-a-list-in-swiftui-3-7](https://www.cometchat.com/tutorials/creating-a-list-in-swiftui-3-7))
-[17] SwiftUI: Infinite Scrolling Slideshow/Image Carousel (The ... [[https://blog.stackademic.com/swiftui-infinite-scrolling-slideshow-image-carousel-739244177bef](https://blog.stackademic.com/swiftui-infinite-scrolling-slideshow-image-carousel-739244177bef)](https://blog.stackademic.com/swiftui-infinite-scrolling-slideshow-image-carousel-739244177bef](https://blog.stackademic.com/swiftui-infinite-scrolling-slideshow-image-carousel-739244177bef))
-[18] Inner Shadow - SwiftUI Handbook [[https://designcode.io/swiftui-handbook-inner-shadow/](https://designcode.io/swiftui-handbook-inner-shadow/)](https://designcode.io/swiftui-handbook-inner-shadow/](https://designcode.io/swiftui-handbook-inner-shadow/))
-[19] SwiftUI animation I made using a combination of materials, ... [[https://www.reddit.com/r/iOSProgramming/comments/1l4tx0m/swiftui_animation_i_made_using_a_combination_of/](https://www.reddit.com/r/iOSProgramming/comments/1l4tx0m/swiftui_animation_i_made_using_a_combination_of/)](https://www.reddit.com/r/iOSProgramming/comments/1l4tx0m/swiftui_animation_i_made_using_a_combination_of/](https://www.reddit.com/r/iOSProgramming/comments/1l4tx0m/swiftui_animation_i_made_using_a_combination_of/))
-[20] notsobigcompany/CardStack: A SwiftUI view that arranges ... [[https://github.com/notsobigcompany/CardStack](https://github.com/notsobigcompany/CardStack)](https://github.com/notsobigcompany/CardStack](https://github.com/notsobigcompany/CardStack))
-[21] Color Shadows and Opacity in SwiftUI [[https://www.youtube.com/watch?v=nGENKnaSWPM](https://www.youtube.com/watch?v=nGENKnaSWPM)](https://www.youtube.com/watch?v=nGENKnaSWPM](https://www.youtube.com/watch?v=nGENKnaSWPM))
+[1] Fix Clipping Issues in SwiftUI ScrollView [https://fatbobman.com/en/snippet/preventing-scrollview-content-clipping-in-swiftui/](https://fatbobman.com/en/snippet/preventing-scrollview-content-clipping-in-swiftui/](https://fatbobman.com/en/snippet/preventing-scrollview-content-clipping-in-swiftui/))
+[2] SwiftUI: Why are my shadows clipped?? [https://www.bam.tech/en/article/swiftui-why-are-my-shadows-clipped](https://www.bam.tech/en/article/swiftui-why-are-my-shadows-clipped](https://www.bam.tech/en/article/swiftui-why-are-my-shadows-clipped))
+[3] shadow will cut by ScrollView #25703 - facebook/react-native [https://github.com/facebook/react-native/issues/25703](https://github.com/facebook/react-native/issues/25703](https://github.com/facebook/react-native/issues/25703))
+[4] SwiftUI Live: Peek Scrolling Concept using GeometryReader [https://www.youtube.com/watch?v=onc2xwzjggU](https://www.youtube.com/watch?v=onc2xwzjggU](https://www.youtube.com/watch?v=onc2xwzjggU))
+[5] Shadows clipped by ScrollView [https://stackoverflow.com/questions/62157340/shadows-clipped-by-scrollview](https://stackoverflow.com/questions/62157340/shadows-clipped-by-scrollview](https://stackoverflow.com/questions/62157340/shadows-clipped-by-scrollview))
+[6] Fix This Problem with SwiftUI Lists [https://www.youtube.com/watch?v=cpT02OtOasE](https://www.youtube.com/watch?v=cpT02OtOasE](https://www.youtube.com/watch?v=cpT02OtOasE))
+[7] Building a stack of cards – Flashzilla SwiftUI Tutorial 7/13 [https://www.youtube.com/watch?v=KL1c5Mx3kek](https://www.youtube.com/watch?v=KL1c5Mx3kek](https://www.youtube.com/watch?v=KL1c5Mx3kek))
+[8] SwiftUI Example: How to adjust the List View Styling with ... [https://www.youtube.com/watch?v=tjR1hLg4-wc](https://www.youtube.com/watch?v=tjR1hLg4-wc](https://www.youtube.com/watch?v=tjR1hLg4-wc))
+[9] SwiftUI Card flip with two views [https://stackoverflow.com/questions/60805244/swiftui-card-flip-with-two-views](https://stackoverflow.com/questions/60805244/swiftui-card-flip-with-two-views](https://stackoverflow.com/questions/60805244/swiftui-card-flip-with-two-views))
+[10] Backgrounds and overlays in SwiftUI [https://www.swiftbysundell.com/articles/backgrounds-and-overlays-in-swiftui](https://www.swiftbysundell.com/articles/backgrounds-and-overlays-in-swiftui](https://www.swiftbysundell.com/articles/backgrounds-and-overlays-in-swiftui))
+[11] Stacked Cards - Looping Cards - SwiftUI [https://www.youtube.com/watch?v=mEwlTyTtsmE](https://www.youtube.com/watch?v=mEwlTyTtsmE](https://www.youtube.com/watch?v=mEwlTyTtsmE))
+[12] SwiftUI: ScrollView clipping [https://philip-trauner.me/blog/post/swiftui-scrollview-clips-to-bounds](https://philip-trauner.me/blog/post/swiftui-scrollview-clips-to-bounds](https://philip-trauner.me/blog/post/swiftui-scrollview-clips-to-bounds))
+[13] Shadow is not visible with View() and List() [https://stackoverflow.com/questions/76462407/shadow-is-not-visible-with-view-and-list](https://stackoverflow.com/questions/76462407/shadow-is-not-visible-with-view-and-list](https://stackoverflow.com/questions/76462407/shadow-is-not-visible-with-view-and-list))
+[14] Imitating the Card Stack demonstrated by Apple at WWDC [https://www.reddit.com/r/SwiftUI/comments/1dvb06n/imitating_the_card_stack_demonstrated_by_apple_at/](https://www.reddit.com/r/SwiftUI/comments/1dvb06n/imitating_the_card_stack_demonstrated_by_apple_at/](https://www.reddit.com/r/SwiftUI/comments/1dvb06n/imitating_the_card_stack_demonstrated_by_apple_at/))
+[15] How to Fix SwiftUI Clipped Images Overlapping Scroll Views [https://www.youtube.com/watch?v=hSZsqWqg0IM](https://www.youtube.com/watch?v=hSZsqWqg0IM](https://www.youtube.com/watch?v=hSZsqWqg0IM))
+[16] Creating a list in SwiftUI (4/7) [https://www.cometchat.com/tutorials/creating-a-list-in-swiftui-3-7](https://www.cometchat.com/tutorials/creating-a-list-in-swiftui-3-7](https://www.cometchat.com/tutorials/creating-a-list-in-swiftui-3-7))
+[17] SwiftUI: Infinite Scrolling Slideshow/Image Carousel (The ... [https://blog.stackademic.com/swiftui-infinite-scrolling-slideshow-image-carousel-739244177bef](https://blog.stackademic.com/swiftui-infinite-scrolling-slideshow-image-carousel-739244177bef](https://blog.stackademic.com/swiftui-infinite-scrolling-slideshow-image-carousel-739244177bef))
+[18] Inner Shadow - SwiftUI Handbook [https://designcode.io/swiftui-handbook-inner-shadow/](https://designcode.io/swiftui-handbook-inner-shadow/](https://designcode.io/swiftui-handbook-inner-shadow/))
+[19] SwiftUI animation I made using a combination of materials, ... [https://www.reddit.com/r/iOSProgramming/comments/1l4tx0m/swiftui_animation_i_made_using_a_combination_of/](https://www.reddit.com/r/iOSProgramming/comments/1l4tx0m/swiftui_animation_i_made_using_a_combination_of/](https://www.reddit.com/r/iOSProgramming/comments/1l4tx0m/swiftui_animation_i_made_using_a_combination_of/))
+[20] notsobigcompany/CardStack: A SwiftUI view that arranges ... [https://github.com/notsobigcompany/CardStack](https://github.com/notsobigcompany/CardStack](https://github.com/notsobigcompany/CardStack))
+[21] Color Shadows and Opacity in SwiftUI [https://www.youtube.com/watch?v=nGENKnaSWPM](https://www.youtube.com/watch?v=nGENKnaSWPM](https://www.youtube.com/watch?v=nGENKnaSWPM))
   │
   └─ Claim/Release Button (bottom)
      ├─ State-dependent styling
@@ -699,7 +801,7 @@ NoteInputArea<T: WorkItemProtocol>
   │  └─ Spacing: `.spacing(12)`
   │
   ├─ User Context
-  │  ├─ "Added by: [Current Realtor Name]"
+  │  ├─ "Added by: [Current User Name]"
   │  ├─ [PLACEHOLDER: Avatar next to name]
   │  └─ Timestamp (will be set on save)
   │
@@ -721,7 +823,7 @@ ClaimButton<T: WorkItemProtocol>
   │  │  └─ Button: "Claim" (primary blue)
   │  ├─ .claimedByMe
   │  │  └─ Button: "Release" (secondary grey)
-  │  └─ .claimedByOther(realtor)
+  │  └─ .claimedByOther(user)
   │     └─ Button: "Claimed by [Name]" (disabled grey)
   │
   ├─ On Tap:
@@ -769,8 +871,8 @@ TaskListView
   │  └─ [PLACEHOLDER: Sync status indicator (top-right)]
   │
   ├─ SegmentedFilter (3 options)
-  │  ├─ "My Tasks" (claimedBy == currentRealtor)
-  │  ├─ "Others'" (claimedBy != currentRealtor AND claimedBy != null)
+  │  ├─ "My Tasks" (claimedBy == currentStaff)
+  │  ├─ "Others'" (claimedBy != currentStaff AND claimedBy != null)
   │  └─ "Unclaimed" (claimedBy == null)
   │
   ├─ List (`.listStyle(.plain)`, `.scrollContentBackground(.hidden)`)
@@ -802,7 +904,7 @@ ActivityListView (Identical structure to TaskListView)
 ListingListView
   ├─ NavigationStack
   ├─ List
-  │  ├─ Grouped by assignedRealtor [PLACEHOLDER: Or searchable by address]
+  │  ├─ Grouped by ownedBy (Realtor) or assignedStaff [PLACEHOLDER: Or searchable by address]
   │  └─ ForEach(listings)
   │     ├─ ListingRow
   │     │  ├─ Address (prominent, bold)
@@ -833,7 +935,7 @@ ActivityDetailView (Wrapper)
 ListingDetailView (Full Custom Screen)
   ├─ Header:
   │  ├─ Address (large, bold)
-  │  ├─ Assigned Realtor badge
+  │  ├─ Owner (Realtor) badge + Assigned Staff badge
   │  ├─ Status badge + [Edit] button
   │  └─ [PLACEHOLDER: Price, bedrooms, bathrooms]
   │
@@ -885,7 +987,7 @@ ClaimConfirmationSheet
   ├─ Message: "This task will be assigned to you"
   ├─ [Confirm] [Cancel] buttons
   ├─ On Confirm:
-  │  ├─ Update task.claimedBy = currentRealtor.id
+  │  ├─ Update task.claimedBy = [currentStaff.id](http://currentStaff.id)
   │  ├─ Save to SwiftData
   │  ├─ Sync to Supabase
   │  └─ [PLACEHOLDER: Notify other team members via push]
@@ -965,7 +1067,7 @@ class SyncManager: ObservableObject {
 
     let supabaseClient: SupabaseClient
     let modelContext: ModelContext
-    let realtorID: UUID
+    let currentUserID: UUID
 
     // SYNC DOWN (Supabase → SwiftData)
     func syncDown() async {
@@ -995,7 +1097,7 @@ class SyncManager: ObservableObject {
                 }
             }
 
-            try modelContext.save()
+            try [modelContext.save](http://modelContext.save)()
             lastSyncTime = Date()
 
         } catch {
@@ -1029,7 +1131,7 @@ class SyncManager: ObservableObject {
                 task.syncedAt = Date()
             }
 
-            try modelContext.save()
+            try [modelContext.save](http://modelContext.save)()
 
         } catch {
             syncError = error.localizedDescription
@@ -1041,7 +1143,7 @@ class SyncManager: ObservableObject {
 
     // REALTIME LISTENER (Supabase → SwiftData, live)
     func listenForRealtimeChanges() {
-        let channel = supabaseClient.channel("tasks")
+        let channel = [supabaseClient.channel](http://supabaseClient.channel)("tasks")
 
         channel.on(
             .insert,
@@ -1049,7 +1151,7 @@ class SyncManager: ObservableObject {
                 // Decode and insert into SwiftData
                 let task = try JSONDecoder().decode(Task.self, from: message.payload)
                 self.modelContext.insert(task)
-                try? self.modelContext.save()
+                try? [self.modelContext.save](http://self.modelContext.save)()
             }
         )
 
@@ -1213,12 +1315,12 @@ extension View {
 
 ## **KEY PLACEHOLDERS TO FILL IN LATER**
 
-- [ ]  ActivityType enum (Call, Email, Meeting, ShowProperty, etc.)
+- [x]  ~~ActivityType enum (Call, Email, Meeting, ShowProperty, etc.)~~ → Implemented in Section 1.1
 - [ ]  Custom field system (extensible metadata per listing)
 - [ ]  Mention system (@realtor notifications)
 - [ ]  File/image attachments in notes
 - [ ]  Edit history for notes (show who edited what when)
-- [ ]  Permission/role system (admin, agent, broker)
+- [x]  ~~Permission/role system (admin, agent, broker)~~ → Implemented as UserType enum (realtor, admin, marketing, exec)
 - [ ]  Listing photos + MLS integration
 - [ ]  Background sync retry logic + exponential backoff
 - [ ]  Silent push notifications
@@ -1242,6 +1344,13 @@ Before starting, ensure you have:
 - [ ]  Xcode 15.1+ (iOS 17+ minimum)
 - [ ]  Swift 5.9+
 - [ ]  Supabase project created ([`supabase.co`](http://supabase.co))
+
+### **Supabase Credentials**
+
+| Key | Value |
+| --- | --- |
+| **Project URL** | [`https://kukmshbkzlskyuacgzbo.supabase.co`](https://kukmshbkzlskyuacgzbo.supabase.co) |
+| **Anon Key** | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1a21zaGJremxza3l1YWNnemJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3OTUyOTAsImV4cCI6MjA3ODM3MTI5MH0.Jax3HtgBuu5COWr_p0mXiVuXlCFDsQaj9VUEQGxUOcE` |
 - [ ]  `supabase-swift` package added to Xcode
 - [ ]  Local Supabase instance (optional, but recommended): `supabase start` via Docker
 - [ ]  Basic SwiftUI knowledge (State, Binding, List, NavigationStack)
@@ -1307,9 +1416,71 @@ enum ListingStatus: String, Codable, CaseIterable {
     case active = "active"
     case pending = "pending"
     case closed = "closed"
+    case deleted = "deleted"  // Soft delete
 
     var displayName: String {
         self.rawValue.capitalized
+    }
+}
+
+// Listing type
+enum ListingType: String, Codable, CaseIterable {
+    case sale = "sale"              // For sale listing
+    case lease = "lease"            // For lease/rent
+    case preListing = "pre_listing" // Coming soon / pocket listing
+    case rental = "rental"          // Property management rental
+    case other = "other"
+
+    var displayName: String {
+        switch self {
+        case .sale: return "For Sale"
+        case .lease: return "For Lease"
+        case .preListing: return "Pre-Listing"
+        case .rental: return "Rental"
+        case .other: return "Other"
+        }
+    }
+}
+
+// Task status (replaces simple completed Bool)
+enum TaskStatus: String, Codable, CaseIterable {
+    case open = "open"
+    case inProgress = "in_progress"
+    case completed = "completed"
+    case deleted = "deleted"  // Soft delete
+
+    var displayName: String {
+        switch self {
+        case .open: return "Open"
+        case .inProgress: return "In Progress"
+        case .completed: return "Completed"
+        case .deleted: return "Deleted"
+        }
+    }
+
+    var isActive: Bool {
+        self != .deleted && self != .completed
+    }
+}
+
+// Activity status (replaces simple completed Bool)
+enum ActivityStatus: String, Codable, CaseIterable {
+    case open = "open"
+    case inProgress = "in_progress"
+    case completed = "completed"
+    case deleted = "deleted"  // Soft delete
+
+    var displayName: String {
+        switch self {
+        case .open: return "Open"
+        case .inProgress: return "In Progress"
+        case .completed: return "Completed"
+        case .deleted: return "Deleted"
+        }
+    }
+
+    var isActive: Bool {
+        self != .deleted && self != .completed
     }
 }
 
@@ -1320,16 +1491,29 @@ enum ParentType: String, Codable {
     case listing = "listing"
 }
 
-// Claim state
+// Claim state (for UI display)
 enum ClaimState: Codable {
     case unclaimed
-    case claimedBy(realtor: Realtor)
-    case claimedByOther(realtor: Realtor)
+    case claimedBy(user: User)
+    case claimedByOther(user: User)
 
     var isClaimed: Bool {
         switch self {
         case .unclaimed: return false
         case .claimedBy, .claimedByOther: return true
+        }
+    }
+}
+
+// Claim action type (for history tracking)
+enum ClaimAction: String, Codable {
+    case claimed = "claimed"     // Staff member claimed this item
+    case released = "released"   // Staff member released/unclaimed this item
+
+    var displayName: String {
+        switch self {
+        case .claimed: return "Claimed"
+        case .released: return "Released"
         }
     }
 }
@@ -1348,6 +1532,60 @@ enum SyncStatus: String, Codable {
     case error = "error"
     case syncing = "syncing"
 }
+
+// Creation source - where was this item created?
+enum CreationSource: String, Codable, CaseIterable {
+    case dispatch = "dispatch"       // Created directly in Dispatch app
+    case slack = "slack"             // Created via Slack (through Vecrel)
+    case realtorApp = "realtor_app"  // Created in the Realtor-facing app
+    case api = "api"                 // Created via API/webhook
+    case import_ = "import"          // Bulk imported
+
+    var displayName: String {
+        switch self {
+        case .dispatch: return "Dispatch App"
+        case .slack: return "Slack"
+        case .realtorApp: return "Realtor App"
+        case .api: return "API"
+        case .import_: return "Import"
+        }
+    }
+
+    var isExternal: Bool {
+        self != .dispatch && self != .realtorApp
+    }
+}
+
+// User types
+enum UserType: String, Codable, CaseIterable {
+    case realtor = "realtor"       // Declares listings & tasks, uses separate app
+    case admin = "admin"           // Staff: claims & executes tasks in Dispatch
+    case marketing = "marketing"   // Staff: marketing-specific tasks in Dispatch
+    case exec = "exec"             // Oversight, dashboards, approvals
+
+    var isStaff: Bool {
+        switch self {
+        case .admin, .marketing: return true
+        case .realtor, .exec: return false
+        }
+    }
+
+    var usesDispatchApp: Bool {
+        switch self {
+        case .admin, .marketing, .exec: return true
+        case .realtor: return false
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .realtor: return "Realtor"
+        case .admin: return "Admin"
+        case .marketing: return "Marketing"
+        case .exec: return "Executive"
+        }
+    }
+}
 ```
 
 ---
@@ -1360,195 +1598,29 @@ Create `DispatchKit/Models/Models.swift`:
 import Foundation
 import SwiftData
 
-// REALTOR (User)
-@Model final class Realtor: Codable, Identifiable {
+// USER (with UserType to distinguish Realtor, Staff, Exec)
+@Model final class User: Codable, Identifiable {
     var id: UUID
     var name: String
     var email: String
     var avatarURL: URL?
-    @Relationship(deleteRule: .cascade) var listings: [Listing] = []
+    var userType: UserType
+    @Relationship(deleteRule: .cascade) var ownedListings: [Listing] = []  // For realtors
+    @Relationship var assignedListings: [Listing] = []  // For staff
+    @Relationship var claimedTasks: [Task] = []  // For staff
+    @Relationship var claimedActivities: [Activity] = []  // For staff
+
+    var isStaff: Bool { userType.isStaff }
+    var usesDispatchApp: Bool { userType.usesDispatchApp }
 
     enum CodingKeys: String, CodingKey {
         case id, name, email
         case avatarURL = "avatar_url"
+        case userType = "user_type"
     }
 
-    init(id: UUID = UUID(), name: String, email: String, avatarURL: URL? = nil) {
-        [self.id](http://self.id) = id
-        [self.name](http://self.name) = name
-        [self.email](http://self.email) = email
-        self.avatarURL = avatarURL
-    }
-}
-
-// SUBTASK (Embedded in Task/Activity)
-@Model final class Subtask: Codable, Identifiable {
-    var id: UUID
-    var title: String
-    var completed: Bool = false
-    var createdAt: Date = Date()
-
-    init(id: UUID = UUID(), title: String, completed: Bool = false) {
-        [self.id](http://self.id) = id
-        self.title = title
-        self.completed = completed
-    }
-}
-
-// NOTE (Embedded in Task/Activity/Listing)
-@Model final class Note: Codable, Identifiable {
-    var id: UUID
-    var content: String
-    var createdBy: Realtor
-    var createdAt: Date = Date()
-    var editedAt: Date?
-    var syncStatus: SyncStatus = .pending
-
-    enum CodingKeys: String, CodingKey {
-        case id, content, createdAt, editedAt
-        case createdBy = "created_by"
-        case syncStatus = "sync_status"
-    }
-
-    init(id: UUID = UUID(), content: String, createdBy: Realtor) {
-        [self.id](http://self.id) = id
-        self.content = content
-        self.createdBy = createdBy
-    }
-}
-
-// TASK (WorkItem)
-@Model final class Task: Codable, Identifiable {
-    var id: UUID
-    var title: String
-    var description: String = ""
-    var dueDate: Date?
-    var priority: Priority = .medium
-    var completed: Bool = false
-    var claimedBy: UUID? // FK to Realtor
-    var createdBy: UUID // FK to Realtor
-    var listing: UUID? // FK to Listing (optional)
-    @Relationship(deleteRule: .cascade) var notes: [Note] = []
-    @Relationship(deleteRule: .cascade) var subtasks: [Subtask] = []
-    var createdAt: Date = Date()
-    var updatedAt: Date = Date()
-    var syncedAt: Date?
-    var isDirty: Bool = true // Mark for sync
-    var syncStatus: SyncStatus = .pending
-    var conflictStrategy: ConflictStrategy = .lastWriteWins
-
-    enum CodingKeys: String, CodingKey {
-        case id, title, description, dueDate, priority, completed
-        case claimedBy = "claimed_by"
-        case createdBy = "created_by"
-        case listing, notes, subtasks, createdAt, updatedAt, syncedAt, isDirty
-        case syncStatus = "sync_status"
-        case conflictStrategy = "conflict_strategy"
-    }
-
-    init(id: UUID = UUID(), title: String, description: String = "",
-         priority: Priority = .medium, createdBy: UUID, dueDate: Date? = nil) {
-        [self.id](http://self.id) = id
-        self.title = title
-        self.description = description
-        self.priority = priority
-        self.createdBy = createdBy
-        self.dueDate = dueDate
-    }
-}
-
-// ACTIVITY (WorkItem)
-@Model final class Activity: Codable, Identifiable {
-    var id: UUID
-    var title: String
-    var description: String = ""
-    var type: ActivityType = .other
-    var dueDate: Date?
-    var completed: Bool = false
-    var duration: TimeInterval? // In minutes
-    var claimedBy: UUID? // FK to Realtor
-    var createdBy: UUID // FK to Realtor
-    var listing: UUID? // FK to Listing (optional)
-    @Relationship(deleteRule: .cascade) var notes: [Note] = []
-    @Relationship(deleteRule: .cascade) var subtasks: [Subtask] = []
-    var createdAt: Date = Date()
-    var updatedAt: Date = Date()
-    var syncedAt: Date?
-    var isDirty: Bool = true
-    var syncStatus: SyncStatus = .pending
-    var conflictStrategy: ConflictStrategy = .lastWriteWins
-
-    enum CodingKeys: String, CodingKey {
-        case id, title, description, type, dueDate, completed, duration
-        case claimedBy = "claimed_by"
-        case createdBy = "created_by"
-        case listing, notes, subtasks, createdAt, updatedAt, syncedAt, isDirty
-        case syncStatus = "sync_status"
-        case conflictStrategy = "conflict_strategy"
-    }
-
-    init(id: UUID = UUID(), title: String, type: ActivityType = .other,
-         createdBy: UUID, dueDate: Date? = nil) {
-        [self.id](http://self.id) = id
-        self.title = title
-        self.type = type
-        self.createdBy = createdBy
-        self.dueDate = dueDate
-    }
-}
-
-// LISTING
-@Model final class Listing: Codable, Identifiable {
-    var id: UUID
-    var address: String
-    var city: String = ""
-    var state: String = ""
-    var zip: String = ""
-    var assignedRealtor: UUID // FK to Realtor
-    var status: ListingStatus = .draft
-    @Relationship(deleteRule: .cascade) var tasks: [Task] = []
-    @Relationship(deleteRule: .cascade) var activities: [Activity] = []
-    @Relationship(deleteRule: .cascade) var notes: [Note] = []
-    var createdAt: Date = Date()
-    var updatedAt: Date = Date()
-    var syncedAt: Date?
-    var isDirty: Bool = true
-    var syncStatus: SyncStatus = .pending
-
-    enum CodingKeys: String, CodingKey {
-        case id, address, city, state, zip, status
-        case assignedRealtor = "assigned_realtor"
-        case tasks, activities, notes, createdAt, updatedAt, syncedAt, isDirty
-        case syncStatus = "sync_status"
-    }
-
-    init(id: UUID = UUID(), address: String, assignedRealtor: UUID) {
-        [self.id](http://self.id) = id
-        self.address = address
-        self.assignedRealtor = assignedRealtor
-    }
-}
-
-// Protocol conformance for reusability
-protocol WorkItemProtocol: Identifiable {
-    var id: UUID { get }
-    var title: String { get set }
-    var description: String { get set }
-    var dueDate: Date? { get set }
-    var priority: Priority { get set }
-    var completed: Bool { get set }
-    var claimedBy: UUID? { get set }
-    var createdBy: UUID { get }
-    var listing: UUID? { get set }
-    var notes: [Note] { get set }
-    var subtasks: [Subtask] { get set }
-    var updatedAt: Date { get set }
-    var isDirty: Bool { get set }
-}
-
-// Conformance for Task and Activity
-extension Task: WorkItemProtocol {}
-extension Activity: WorkItemProtocol {}
+    init(id: UUID = UUID(), name: String, email: String, userType: UserType, avatarURL: URL? = nil) {
+        
 ```
 
 **Acceptance Criteria**:
@@ -1567,131 +1639,343 @@ extension Activity: WorkItemProtocol {}
 Create file `supabase/schema.sql`:
 
 ```sql
--- REALTORS
-CREATE TABLE realtors (
+-- =============================================
+-- USERS (Realtors, Staff, Execs - all in one table)
+-- =============================================
+CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     avatar_url TEXT,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    user_type TEXT NOT NULL DEFAULT 'admin',  -- 'realtor', 'admin', 'marketing', 'exec'
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_realtors_email ON realtors(email);
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_user_type ON users(user_type);
 
+-- =============================================
 -- LISTINGS
+-- =============================================
 CREATE TABLE listings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     address TEXT NOT NULL,
     city TEXT DEFAULT '',
     state TEXT DEFAULT '',
     zip TEXT DEFAULT '',
-    assigned_realtor UUID NOT NULL REFERENCES realtors(id) ON DELETE CASCADE,
-    status TEXT DEFAULT 'draft',
-    created_by UUID NOT NULL REFERENCES realtors(id),
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    listing_type TEXT DEFAULT 'sale',  -- 'sale', 'lease', 'pre_listing', 'rental', 'other'
+    status TEXT DEFAULT 'draft',       -- 'draft', 'active', 'pending', 'closed', 'deleted'
+    
+    -- Ownership & Assignment
+    owned_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,      -- Realtor who owns this listing
+    assigned_staff UUID REFERENCES users(id) ON DELETE SET NULL,        -- Staff member assigned to work on it
+    
+    -- Creation source tracking
+    created_via TEXT DEFAULT 'dispatch',  -- 'dispatch', 'slack', 'realtor_app', 'api', 'import'
+    source_slack_messages JSONB,          -- Array of Slack message URLs if created_via = 'slack'
+    
+    -- Milestone timestamps
+    activated_at TIMESTAMPTZ,             -- When listing went active/live
+    pending_at TIMESTAMPTZ,               -- When listing went under contract
+    closed_at TIMESTAMPTZ,                -- When deal closed
+    deleted_at TIMESTAMPTZ,               -- When soft deleted
+    
+    -- Standard timestamps
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    synced_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_listings_assigned_realtor ON listings(assigned_realtor);
-CREATE INDEX idx_listings_created_by ON listings(created_by);
+CREATE INDEX idx_listings_owned_by ON listings(owned_by);
+CREATE INDEX idx_listings_assigned_staff ON listings(assigned_staff);
+CREATE INDEX idx_listings_status ON listings(status);
 CREATE INDEX idx_listings_updated_at ON listings(updated_at);
 
+-- =============================================
 -- TASKS
+-- =============================================
 CREATE TABLE tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
     description TEXT DEFAULT '',
-    due_date TIMESTAMP,
-    priority TEXT DEFAULT 'medium',
-    completed BOOLEAN DEFAULT FALSE,
-    claimed_by UUID REFERENCES realtors(id) ON DELETE SET NULL,
-    created_by UUID NOT NULL REFERENCES realtors(id),
+    due_date TIMESTAMPTZ,
+    priority TEXT DEFAULT 'medium',        -- 'low', 'medium', 'high', 'urgent'
+    status TEXT DEFAULT 'open',            -- 'open', 'in_progress', 'completed', 'deleted'
+    
+    -- Ownership & Claims
+    declared_by UUID NOT NULL REFERENCES users(id),           -- Realtor who declared this task
+    claimed_by UUID REFERENCES users(id) ON DELETE SET NULL,  -- Staff member who currently has it claimed
     listing UUID REFERENCES listings(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    
+    -- Creation source tracking
+    created_via TEXT DEFAULT 'dispatch',   -- 'dispatch', 'slack', 'realtor_app', 'api', 'import'
+    source_slack_messages JSONB,           -- Array of Slack message URLs if created_via = 'slack'
+    
+    -- Milestone timestamps
+    claimed_at TIMESTAMPTZ,                -- When staff first claimed this
+    completed_at TIMESTAMPTZ,              -- When marked completed
+    deleted_at TIMESTAMPTZ,                -- When soft deleted
+    
+    -- Standard timestamps
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    synced_at TIMESTAMPTZ
 );
 
+CREATE INDEX idx_tasks_declared_by ON tasks(declared_by);
 CREATE INDEX idx_tasks_claimed_by ON tasks(claimed_by);
-CREATE INDEX idx_tasks_created_by ON tasks(created_by);
 CREATE INDEX idx_tasks_listing ON tasks(listing);
+CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_tasks_due_date ON tasks(due_date);
 CREATE INDEX idx_tasks_updated_at ON tasks(updated_at);
 
+-- =============================================
 -- ACTIVITIES
+-- =============================================
 CREATE TABLE activities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
     description TEXT DEFAULT '',
-    type TEXT DEFAULT 'other',
-    due_date TIMESTAMP,
-    completed BOOLEAN DEFAULT FALSE,
-    duration_minutes INTEGER,
-    claimed_by UUID REFERENCES realtors(id) ON DELETE SET NULL,
-    created_by UUID NOT NULL REFERENCES realtors(id),
+    activity_type TEXT DEFAULT 'other',    -- 'call', 'email', 'meeting', 'show_property', 'follow_up', 'other'
+    due_date TIMESTAMPTZ,
+    status TEXT DEFAULT 'open',            -- 'open', 'in_progress', 'completed', 'deleted'
+    duration_minutes INTEGER,              -- For call/meeting tracking
+    
+    -- Ownership & Claims
+    declared_by UUID NOT NULL REFERENCES users(id),           -- Realtor who declared this activity
+    claimed_by UUID REFERENCES users(id) ON DELETE SET NULL,  -- Staff member who currently has it claimed
     listing UUID REFERENCES listings(id) ON DELETE SET NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    
+    -- Creation source tracking
+    created_via TEXT DEFAULT 'dispatch',   -- 'dispatch', 'slack', 'realtor_app', 'api', 'import'
+    source_slack_messages JSONB,           -- Array of Slack message URLs if created_via = 'slack'
+    
+    -- Milestone timestamps
+    claimed_at TIMESTAMPTZ,                -- When staff first claimed this
+    completed_at TIMESTAMPTZ,              -- When marked completed
+    deleted_at TIMESTAMPTZ,                -- When soft deleted
+    
+    -- Standard timestamps
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    synced_at TIMESTAMPTZ
 );
 
+CREATE INDEX idx_activities_declared_by ON activities(declared_by);
 CREATE INDEX idx_activities_claimed_by ON activities(claimed_by);
-CREATE INDEX idx_activities_created_by ON activities(created_by);
 CREATE INDEX idx_activities_listing ON activities(listing);
+CREATE INDEX idx_activities_status ON activities(status);
+CREATE INDEX idx_activities_due_date ON activities(due_date);
 CREATE INDEX idx_activities_updated_at ON activities(updated_at);
 
--- NOTES
+-- =============================================
+-- NOTES (Sub-entity, can attach to Task/Activity/Listing)
+-- =============================================
 CREATE TABLE notes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     content TEXT NOT NULL,
-    created_by UUID NOT NULL REFERENCES realtors(id),
-    parent_type TEXT NOT NULL, -- 'task' | 'activity' | 'listing'
+    parent_type TEXT NOT NULL,             -- 'task', 'activity', 'listing'
     parent_id UUID NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    edited_at TIMESTAMP
+    created_by UUID NOT NULL REFERENCES users(id),
+    edited_at TIMESTAMPTZ,
+    edited_by UUID REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    synced_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_notes_parent ON notes(parent_type, parent_id);
 CREATE INDEX idx_notes_created_by ON notes(created_by);
 CREATE INDEX idx_notes_created_at ON notes(created_at DESC);
 
--- SUBTASKS
+-- =============================================
+-- SUBTASKS (Sub-entity, can attach to Task/Activity)
+-- =============================================
 CREATE TABLE subtasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
     completed BOOLEAN DEFAULT FALSE,
-    parent_type TEXT NOT NULL, -- 'task' | 'activity'
+    parent_type TEXT NOT NULL,             -- 'task', 'activity'
     parent_id UUID NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    synced_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_subtasks_parent ON subtasks(parent_type, parent_id);
 
--- SYNC METADATA (Track last sync per realtor)
-CREATE TABLE sync_metadata (
-    realtor_id UUID PRIMARY KEY REFERENCES realtors(id) ON DELETE CASCADE,
-    last_sync_tasks TIMESTAMP DEFAULT NOW(),
-    last_sync_activities TIMESTAMP DEFAULT NOW(),
-    last_sync_listings TIMESTAMP DEFAULT NOW(),
-    last_sync_notes TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+-- =============================================
+-- STATUS_CHANGES (Audit trail for status transitions)
+-- =============================================
+CREATE TABLE status_changes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    parent_type TEXT NOT NULL,             -- 'task', 'activity', 'listing'
+    parent_id UUID NOT NULL,
+    old_status TEXT,                       -- NULL for initial creation
+    new_status TEXT NOT NULL,
+    changed_by UUID NOT NULL REFERENCES users(id),
+    reason TEXT,                           -- Optional note explaining the change
+    changed_at TIMESTAMPTZ DEFAULT NOW(),
+    synced_at TIMESTAMPTZ
 );
 
+CREATE INDEX idx_status_changes_parent ON status_changes(parent_type, parent_id);
+CREATE INDEX idx_status_changes_changed_at ON status_changes(changed_at DESC);
+
+-- =============================================
+-- CLAIM_EVENTS (Audit trail for claim/release actions)
+-- =============================================
+CREATE TABLE claim_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    parent_type TEXT NOT NULL,             -- 'task', 'activity'
+    parent_id UUID NOT NULL,
+    action TEXT NOT NULL,                  -- 'claimed', 'released'
+    user_id UUID NOT NULL REFERENCES users(id),
+    reason TEXT,                           -- Optional note (e.g., "reassigning to marketing")
+    performed_at TIMESTAMPTZ DEFAULT NOW(),
+    synced_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_claim_events_parent ON claim_events(parent_type, parent_id);
+CREATE INDEX idx_claim_events_user ON claim_events(user_id);
+CREATE INDEX idx_claim_events_performed_at ON claim_events(performed_at DESC);
+
+-- =============================================
+-- SYNC_METADATA (Track last sync per user)
+-- =============================================
+CREATE TABLE sync_metadata (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    last_sync_tasks TIMESTAMPTZ DEFAULT NOW(),
+    last_sync_activities TIMESTAMPTZ DEFAULT NOW(),
+    last_sync_listings TIMESTAMPTZ DEFAULT NOW(),
+    last_sync_notes TIMESTAMPTZ DEFAULT NOW(),
+    last_sync_subtasks TIMESTAMPTZ DEFAULT NOW(),
+    last_sync_status_changes TIMESTAMPTZ DEFAULT NOW(),
+    last_sync_claim_events TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 -- ROW-LEVEL SECURITY (RLS)
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+
+-- =============================================
+-- =============================================
+-- =============================================
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
+-- ROW-LEVEL SECURITY (RLS)
 ALTER TABLE listings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
-
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 -- Policy: Realtors can see tasks they created, claimed, or belong to their listings
-CREATE POLICY task_access ON tasks
-    FOR SELECT
-    USING (
-        created_by = auth.uid()
-        OR claimed_by = auth.uid()
-        OR listing IN (SELECT id FROM listings WHERE assigned_realtor = auth.uid())
-    );
+ALTER TABLE status_changes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE claim_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subtasks ENABLE ROW LEVEL SECURITY;
+-- Realtors can see tasks they declared (via separate app)
+    FOR ALL
 
+-- TASKS: Staff see claimed + assigned listings; Realtors see declared + owned listings; Execs see all
+CREATE POLICY task_access ON tasks
+        OR claimed_by = auth.uid()
+    USING (
+        declared_by = auth.uid()  -- Realtor who declared it
+        OR claimed_by = auth.uid()  -- Staff who claimed it
+        OR listing IN (SELECT id FROM listings WHERE assigned_staff = auth.uid())  -- Staff assigned to listing
+        OR listing IN (SELECT id FROM listings WHERE owned_by = auth.uid())  -- Realtor who owns listing
+        OR EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND user_type = 'exec')  -- Execs see all
+    );
 -- Similar policies for activities, listings, notes...
 ```
+
+-- ACTIVITIES: Same pattern as tasks
+
+CREATE POLICY activity_access ON activities
+
+FOR ALL
+
+USING (
+
+declared_by = auth.uid()
+
+OR claimed_by = auth.uid()
+
+OR listing IN (SELECT id FROM listings WHERE assigned_staff = auth.uid())
+
+OR listing IN (SELECT id FROM listings WHERE owned_by = auth.uid())
+
+OR EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND user_type = 'exec')
+
+);
+
+-- LISTINGS: Realtors see owned; Staff see assigned; Execs see all
+
+CREATE POLICY listing_access ON listings
+
+FOR ALL
+
+USING (
+
+owned_by = auth.uid()
+
+OR assigned_staff = auth.uid()
+
+OR EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND user_type = 'exec')
+
+);
+
+-- NOTES: Can see notes on entities you can access
+
+CREATE POLICY note_access ON notes
+
+FOR ALL
+
+USING (
+
+(parent_type = 'task' AND parent_id IN (SELECT id FROM tasks))
+
+OR (parent_type = 'activity' AND parent_id IN (SELECT id FROM activities))
+
+OR (parent_type = 'listing' AND parent_id IN (SELECT id FROM listings))
+
+);
+
+-- SUBTASKS: Can see subtasks on entities you can access
+
+CREATE POLICY subtask_access ON subtasks
+
+FOR ALL
+
+USING (
+
+(parent_type = 'task' AND parent_id IN (SELECT id FROM tasks))
+
+OR (parent_type = 'activity' AND parent_id IN (SELECT id FROM activities))
+
+);
+
+-- STATUS_CHANGES: Can see history on entities you can access
+
+CREATE POLICY status_change_access ON status_changes
+
+FOR ALL
+
+USING (
+
+(parent_type = 'task' AND parent_id IN (SELECT id FROM tasks))
+
+OR (parent_type = 'activity' AND parent_id IN (SELECT id FROM activities))
+
+OR (parent_type = 'listing' AND parent_id IN (SELECT id FROM listings))
+
+);
+
+-- CLAIM_EVENTS: Can see history on entities you can access
+
+CREATE POLICY claim_event_access ON claim_events
+
+FOR ALL
+
+USING (
+
+(parent_type = 'task' AND parent_id IN (SELECT id FROM tasks))
+
+OR (parent_type = 'activity' AND parent_id IN (SELECT id FROM activities))
+
+);
 
 ---
 
@@ -1701,116 +1985,128 @@ Create `DispatchKit/API/DTOs.swift`:
 
 ```swift
 import Foundation
+// =============================================
+// USER DTO
+// =============================================
+struct SupabaseUserDTO: Codable {
+    let id: UUID
+    let name: String
+    let email: String
+    let avatar_url: String?
+    let user_type: String
+    let created_at: Date
+    let updated_at: Date
 
-// Supabase response wraps the model + metadata
+        let user = User(
+            id: id,
+            name: name,
+            email: email,
+            userType: UserType(rawValue: user_type) ?? .admin,
+            avatarURL: avatar_url.flatMap { URL(string: $0) }
+        )
+        return user
+    }
+}
+
+// =============================================
+// =============================================
 struct SupabaseTaskDTO: Codable {
     let id: UUID
     let title: String
     let description: String
     let due_date: Date?
     let priority: String
-    let completed: Bool
-    let claimed_by: UUID?
-    let created_by: UUID
+    let status: String
+    
+    // Ownership & Claims
+    let declared_by: UUID           // Realtor who declared this task
     let listing: UUID?
+    
+    // Creation source tracking
+    let created_via: String
+    let source_slack_messages: [String]?
+    // Milestone timestamps
+    let claimed_at: Date?
+    let completed_at: Date?
+    let deleted_at: Date?
+    // Standard timestamps
     let created_at: Date
     let updated_at: Date
+    let synced_at: Date?
 
-    // Convert from Supabase DTO to SwiftData Task
-    func toTask() -> Task {
         let task = Task(
             id: id,
             title: title,
             description: description,
             priority: Priority(rawValue: priority) ?? .medium,
-            createdBy: created_by,
-            dueDate: due_date
+            declaredBy: declared_by,
         )
+            dueDate: due_date
         task.claimedBy = claimed_by
         task.listing = listing
         task.createdAt = created_at
+        task.sourceSlackMessages = source_slack_messages
+        task.claimedAt = claimed_at
+        task.completedAt = completed_at
+        task.deletedAt = deleted_at
         task.updatedAt = updated_at
         task.isDirty = false
+        task.createdAt = created_at
+        task.syncedAt = synced_at
+        task.syncedAt = synced_at
         return task
-    }
 }
 
-struct SupabaseActivityDTO: Codable {
-    let id: UUID
-    let title: String
-    let description: String
-    let type: String
-    let due_date: Date?
-    let completed: Bool
-    let duration_minutes: Int?
-    let claimed_by: UUID?
-    let created_by: UUID
-    let listing: UUID?
-    let created_at: Date
-    let updated_at: Date
-
-    func toActivity() -> Activity {
-        let activity = Activity(
-            id: id,
-            title: title,
-            type: ActivityType(rawValue: type) ?? .other,
-            createdBy: created_by,
-            dueDate: due_date
-        )
-        activity.claimedBy = claimed_by
-        activity.listing = listing
-        activity.duration = duration_[minutes.map](http://minutes.map) { TimeInterval($0 * 60) }
-        activity.createdAt = created_at
-        activity.updatedAt = updated_at
-        activity.isDirty = false
-        return activity
-    }
-}
-
-// Push models (Task/Activity to JSON for Supabase)
-extension Task {
-    func toSupabaseJSON() -> [String: Any] {
-        return [
-            "id": id.uuidString,
-            "title": title,
-            "description": description,
-            "due_date": dueDate?.ISO8601Format(),
-            "priority": priority.rawValue,
-            "completed": completed,
-            "claimed_by": claimedBy?.uuidString,
-            "created_by": createdBy.uuidString,
-            "listing": listing?.uuidString,
-            "created_at": createdAt.ISO8601Format(),
-            "updated_at": updatedAt.ISO8601Format()
-        ]
-    }
-}
-
-extension Activity {
-    func toSupabaseJSON() -> [String: Any] {
-        return [
-            "id": id.uuidString,
-            "title": title,
-            "description": description,
-            "type": type.rawValue,
-            "due_date": dueDate?.ISO8601Format(),
-            "completed": completed,
-            "duration_minutes": [duration.map](http://duration.map) { Int($0 / 60) },
-            "claimed_by": claimedBy?.uuidString,
-            "created_by": createdBy.uuidString,
-            "listing": listing?.uuidString,
-            "created_at": createdAt.ISO8601Format(),
-            "updated_at": updatedAt.ISO8601Format()
-        ]
-    }
-}
+    static func fromTask(_ task: Task) -> [String: Any] {
+            "id": 
 ```
+
+"id": [task.id](http://task.id).uuidString,
+
+"title": task.title,
+
+"description": task.description,
+
+"priority": task.priority.rawValue,
+
+"status": task.status.rawValue,
+
+"declared_by": task.declaredBy.uuidString,
+
+"created_via": task.createdVia.rawValue,
+
+"created_at": task.createdAt.ISO8601Format(),
+
+"updated_at": task.updatedAt.ISO8601Format()
+
+]
+
+if let dueDate = task.dueDate { json["due_date"] = dueDate.ISO8601Format() }
+
+if let claimedBy = task.claimedBy { json["claimed_by"] = claimedBy.uuidString }
+
+if let listing = task.listing { json["listing"] = listing.uuidString }
+
+if let sourceSlack = task.sourceSlackMessages { json["source_slack_messages"] = sourceSlack }
+
+if let claimedAt = task.claimedAt { json["claimed_at"] = claimedAt.ISO8601Format() }
+
+if let completedAt = task.completedAt { json["completed_at"] = completedAt.ISO8601Format() }
+
+if let deletedAt = task.deletedAt { json["deleted_at"] = deletedAt.ISO8601Format() }
+
+return json
+
+}
+
+}
 
 **Acceptance Criteria**:
 
-- [ ]  DTOs compile and `Codable` matches Postgres schema
-- [ ]  `toTask()` and `toActivity()` correctly map DTO → SwiftData model
-- [ ]  `toSupabaseJSON()` correctly serializes model → JSON for push
+- [ ]  All DTOs compile and `Codable` matches Postgres schema
+- [ ]  `to*()` methods correctly map DTO → SwiftData model
+- [ ]  `from*()` static methods correctly serialize model → JSON for push
+- [ ]  All new fields included: `status`, `declared_by`, `created_via`, milestone timestamps, audit history
 
 ---
 
@@ -1823,22 +2119,12 @@ When to set `isDirty = true`:
 ```swift
 // In SwiftUI views, whenever user edits:
 @State var task: Task
-
 // On save:
 Button("Save") {
     task.title = newTitle // User edit
     task.isDirty = true   // MARK FOR SYNC
     task.updatedAt = Date()
-    try? [modelContext.save](http://modelContext.save)() // Save to local SwiftData
-
-    // Async push to Supabase in background
-    Task {
-        await syncManager.syncUp()
-    }
-}
-
-// IMPORTANT: When receiving from Supabase (syncDown), DO NOT mark dirty:
-// DTO → Task conversion in syncDown() should set isDirty = false
+    try? 
 ```
 
 ---
@@ -1849,10 +2135,8 @@ Create `DispatchKit/Services/ConflictResolver.swift`:
 
 ```swift
 import Foundation
-
 class ConflictResolver {
 
-    // Resolve conflicting task updates
     static func resolveTaskConflict(
         local: Task,
         remote: Task,
@@ -1868,38 +2152,10 @@ class ConflictResolver {
             }
 
         case .serverWins:
-            // Always trust remote (server is source of truth)
             return remote
 
         case .manual:
             // Flag for manual review
-            print("⚠️ Conflict detected for task: \([local.id](http://local.id))")
-            print("Local version updated: \(local.updatedAt)")
-            print("Remote version updated: \(remote.updatedAt)")
-            // Return remote by default, but UI should prompt user
-            return remote
-        }
-    }
-
-    // Merge specific fields (e.g., if both sides modified different fields)
-    static func mergeTaskFields(local: Task, remote: Task) -> Task {
-        var merged = remote // Start with remote
-
-        // If local has newer claim, keep it
-        if let localClaim = local.claimedBy,
-           local.updatedAt > remote.updatedAt {
-            merged.claimedBy = localClaim
-        }
-
-        // Merge notes: combine unique notes
-        let mergedNotes = Set([local.notes.map](http://local.notes.map) { $[0.id](http://0.id) })
-            .union(Set([remote.notes.map](http://remote.notes.map) { $[0.id](http://0.id) }))
-            .compactMap { id in local.notes.first { $[0.id](http://0.id) == id } ?? remote.notes.first { $[0.id](http://0.id) == id } }
-        merged.notes = mergedNotes.sorted { $0.createdAt > $1.createdAt }
-
-        return merged
-    }
-}
 ```
 
 ---
@@ -1911,29 +2167,24 @@ Create `DispatchKit/Services/SyncManager.swift`:
 ```swift
 import Foundation
 import SwiftData
-
 class SyncManager: ObservableObject {
     @Published var isSyncing = false
     @Published var lastSyncTime: Date?
     @Published var syncError: String?
     @Published var syncStatus: SyncStatus = .synced
 
-    let supabaseClient: SupabaseClient
     let modelContext: ModelContext
-    let currentRealtorID: UUID
+    let currentUserID: UUID
 
     private var realtimeChannel: RealtimeChannelV2?
-
-    init(supabaseClient: SupabaseClient, modelContext: ModelContext, currentRealtorID: UUID) {
+    init(supabaseClient: SupabaseClient, modelContext: ModelContext, currentUserID: UUID) {
         self.supabaseClient = supabaseClient
-        self.modelContext = modelContext
-        self.currentRealtorID = currentRealtorID
+        self.currentUserID = currentUserID
     }
 
     // SYNC DOWN: Supabase → SwiftData
     func syncDown() async {
         await syncTasks()
-        await syncActivities()
         await syncListings()
         await syncNotes()
         lastSyncTime = Date()
@@ -1943,182 +2194,117 @@ class SyncManager: ObservableObject {
         do {
             isSyncing = true
             syncStatus = .syncing
-
             // Fetch tasks updated since last sync
             let lastSync = lastSyncTime?.ISO8601Format() ?? "2000-01-01T00:00:00Z"
             let response = try await supabaseClient
                 .from("tasks")
                 .select()
-                .gt("updated_at", value: lastSync)
                 .execute()
 
-            let dtos = try JSONDecoder().decode([SupabaseTaskDTO].self, from: [response.data](http://response.data))
-
-            for dto in dtos {
-                let remoteTask = dto.toTask()
-
-                // Check if exists locally
-                let descriptor = FetchDescriptor<Task>(
-                    predicate: #Predicate { $[0.id](http://0.id) == [dto.id](http://dto.id) }
-                )
-                let existingTasks = try modelContext.fetch(descriptor)
-
-                if let existingTask = existingTasks.first {
-                    // MERGE: apply conflict resolution
-                    let merged = ConflictResolver.resolveTaskConflict(
-                        local: existingTask,
-                        remote: remoteTask,
-                        strategy: existingTask.conflictStrategy
-                    )
-
-                    // Update existing
-                    existingTask.title = merged.title
-                    existingTask.description = merged.description
-                    existingTask.dueDate = merged.dueDate
-                    existingTask.priority = merged.priority
-                    existingTask.completed = merged.completed
-                    existingTask.claimedBy = merged.claimedBy
-                    existingTask.updatedAt = merged.updatedAt
-                    existingTask.isDirty = false
-                    existingTask.syncedAt = Date()
-                    existingTask.syncStatus = .synced
-                } else {
-                    // INSERT new
-                    remoteTask.syncedAt = Date()
-                    remoteTask.syncStatus = .synced
-                    modelContext.insert(remoteTask)
-                }
-            }
-
-            try [modelContext.save](http://modelContext.save)()
-            syncStatus = .synced
-
-        } catch {
-            syncError = "Failed to sync tasks: \(error.localizedDescription)"
-            syncStatus = .error
-            print("❌ syncTasks error: \(error)")
-        }
-
-        isSyncing = false
-    }
-
-    private func syncActivities() async {
-        // Identical pattern to syncTasks()
-        // [PLACEHOLDER: Implement similarly]
-    }
-
-    private func syncListings() async {
-        // Identical pattern
-        // [PLACEHOLDER: Implement similarly]
-    }
-
-    private func syncNotes() async {
-        // Fetch notes for all local tasks/activities/listings
-        // [PLACEHOLDER: Implement similarly]
-    }
-
-    // SYNC UP: SwiftData → Supabase
-    func syncUp() async {
-        await syncUpTasks()
-        await syncUpActivities()
-    }
-
-    private func syncUpTasks() async {
-        do {
-            isSyncing = true
-            syncStatus = .syncing
-
-            // Find all dirty tasks
-            let descriptor = FetchDescriptor<Task>(
-                predicate: #Predicate { $0.isDirty == true }
-            )
-            let dirtyTasks = try modelContext.fetch(descriptor)
-
-            for task in dirtyTasks {
-                // UPSERT: POST to Supabase
-                let json = task.toSupabaseJSON()
-                _ = try await supabaseClient
-                    .from("tasks")
-                    .upsert(json)
-                    .execute()
-
-                // Mark clean
-                task.isDirty = false
-                task.syncedAt = Date()
-                task.syncStatus = .synced
-            }
-
-            try [modelContext.save](http://modelContext.save)()
-            syncStatus = .synced
-
-        } catch {
-            syncError = "Failed to sync up tasks: \(error.localizedDescription)"
-            syncStatus = .error
-            print("❌ syncUpTasks error: \(error)")
-        }
-
-        isSyncing = false
-    }
-
-    private func syncUpActivities() async {
-        // Identical pattern to syncUpTasks()
-        // [PLACEHOLDER: Implement similarly]
-    }
-
-    // REALTIME LISTENER: Subscribe to Supabase changes
-    func listenForRealtimeChanges() {
-        // Subscribe to tasks table
-        let channel = [supabaseClient.channel](http://supabaseClient.channel)("public:tasks")
-
-        channel.on(
-            .insert,
-            handler: { [weak self] message in
-                self?.handleRealtimeInsert(message, type: .task)
-            }
-        )
-
-        channel.on(
-            .update,
-            handler: { [weak self] message in
-                self?.handleRealtimeUpdate(message, type: .task)
-            }
-        )
-
-        Task {
-            try? await channel.subscribe()
-        }
-
-        self.realtimeChannel = channel
-    }
-
-    private func handleRealtimeInsert(_ message: Message, type: ItemType) {
-        // Decode new item from message payload
-        // Insert into SwiftData if not already present
-        // [PLACEHOLDER: Implementation]
-    }
-
-    private func handleRealtimeUpdate(_ message: Message, type: ItemType) {
-        // Decode updated item
-        // Apply merge/conflict logic
-        // Update in SwiftData
-        // [PLACEHOLDER: Implementation]
-    }
-}
-
-enum ItemType {
-    case task
-    case activity
-}
+            let dtos = try JSONDecoder().decode([SupabaseTaskDTO].self, from: 
 ```
 
 **Acceptance Criteria**:
 
-- [ ]  `syncDown()` fetches tasks with `updated_at > lastSyncTime`
-- [ ]  Insert vs update logic works (checks local ID first)
-- [ ]  `isDirty` correctly set to `false` on sync from server
+- [x]  `syncDown()` fetches tasks with `updated_at > lastSyncTime`
+- [x]  Insert vs update logic works (checks local ID first)
+- [x]  `isDirty` correctly set to `false` on sync from server
 - [ ]  Conflict resolution applied when both sides modified same field
-- [ ]  `syncUp()` finds dirty tasks and pushes to Supabase
-- [ ]  After sync, `isSyncing = false` and `syncStatus = .synced`
+- [x]  `syncUp()` finds dirty tasks and pushes to Supabase
+- [x]  After sync, `isSyncing = false` and `syncStatus = .synced`
+
+---
+
+### **3.4 SyncManager Developer Guide (How to Use)**
+
+The sync system is fully operational. Here's how to integrate it when building new features:
+
+#### **Architecture Overview**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     BIDIRECTIONAL SYNC                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   LOCAL → SUPABASE (You trigger this)                           │
+│   ─────────────────────────────────────                         │
+│   1. Modify SwiftData entity                                    │
+│   2. Set entity.updatedAt = Date()                              │
+│   3. Call SyncManager.shared.requestSync()                      │
+│   4. [500ms debounce] → sync() uploads dirty entities           │
+│                                                                  │
+│   SUPABASE → LOCAL (Automatic via Realtime)                     │
+│   ─────────────────────────────────────────                     │
+│   1. Remote change triggers WebSocket event                     │
+│   2. Event received → requestSync() called automatically        │
+│   3. sync() downloads and merges changes                        │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### **Usage Pattern: When Modifying Data**
+
+```swift
+// In any View or Service where you modify data:
+func updateTask(_ task: TaskItem, newTitle: String) {
+    task.title = newTitle
+    task.updatedAt = Date()  // Mark as dirty
+
+    // Trigger sync (debounced - safe to call frequently)
+    SyncManager.shared.requestSync()
+}
+
+func createNewTask(in context: ModelContext) {
+    let task = TaskItem(
+        title: "New Task",
+        // ... other properties
+        updatedAt: Date(),
+        syncedAt: nil  // nil = never synced = dirty
+    )
+    context.insert(task)
+
+    SyncManager.shared.requestSync()
+}
+```
+
+#### **The "Dirty" Detection Logic**
+
+Entities are considered dirty (need upload) when:
+```swift
+var isDirty: Bool {
+    guard let syncedAt = syncedAt else { return true }  // Never synced
+    return updatedAt > syncedAt  // Modified since last sync
+}
+```
+
+#### **Realtime Events (Already Configured)**
+
+The app listens to these tables via WebSocket:
+- `tasks` - Task changes
+- `activities` - Activity changes
+- `listings` - Listing changes
+- `users` - User changes
+
+When any row changes in Supabase (from another device/user), the app automatically:
+1. Receives the WebSocket event
+2. Calls `requestSync()`
+3. Downloads the updated data
+
+#### **Key Files**
+
+| File | Purpose |
+|------|---------|
+| `SyncManager.swift` | Orchestrates all sync operations |
+| `SupabaseClient.swift` | Singleton Supabase client |
+| `DebugLogger.swift` | DEBUG-only logging (stripped in Release) |
+
+#### **Testing Sync**
+
+Use `SyncTestHarness` (DEBUG builds only) to:
+- View local vs Supabase entity counts
+- Create test entities
+- Manually trigger sync
+- Monitor realtime events
 
 ---
 
@@ -2131,32 +2317,27 @@ Create `DispatchKit/Environment/NavigationState.swift`:
 ```swift
 import Foundation
 import SwiftUI
-
 // Centralized navigation state
 class NavigationState: ObservableObject {
     @Published var selectedTask: Task?
     @Published var selectedActivity: Activity?
     @Published var selectedListing: Listing?
 
-    @Published var showTaskDetail = false
     @Published var showActivityDetail = false
     @Published var showListingDetail = false
 
     // Select a task (used by list row tap)
-    func selectTask(_ task: Task) {
         selectedTask = task
         showTaskDetail = true
     }
 
     func selectActivity(_ activity: Activity) {
         selectedActivity = activity
-        showActivityDetail = true
     }
 
     func clearSelection() {
         selectedTask = nil
         selectedActivity = nil
-        selectedListing = nil
     }
 }
 ```
@@ -2170,14 +2351,12 @@ Create `DispatchApp.swift`:
 ```swift
 import SwiftUI
 import SwiftData
-
 @main
 struct DispatchApp: App {
     @StateObject private var navigationState = NavigationState()
     @StateObject private var syncManager: SyncManager
     @Environment(\.modelContext) var modelContext
 
-    var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(navigationState)
@@ -2194,73 +2373,13 @@ struct DispatchApp: App {
 }
 
 // MAIN CONTENT VIEW (Tab navigation)
-struct ContentView: View {
     @State private var selectedTab = 0
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Tab 1: Tasks
             TaskListContainer()
                 .tabItem {
-                    Label("Tasks", systemImage: "[checkmark.circle](http://checkmark.circle)")
-                }
-                .tag(0)
-
-            // Tab 2: Activities
-            ActivityListContainer()
-                .tabItem {
-                    Label("Activities", systemImage: "calendar")
-                }
-                .tag(1)
-
-            // Tab 3: Listings
-            ListingListContainer()
-                .tabItem {
-                    Label("Listings", systemImage: "house")
-                }
-                .tag(2)
-
-            // Tab 4: Settings
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gear")
-                }
-                .tag(3)
-        }
-    }
-}
-
-// TASK LIST CONTAINER (with navigation)
-struct TaskListContainer: View {
-    @EnvironmentObject var navigationState: NavigationState
-
-    var body: some View {
-        NavigationStack {
-            TaskListView()
-                .navigationDestination(isPresented: $navigationState.showTaskDetail) {
-                    if let task = navigationState.selectedTask {
-                        TaskDetailView(task: task)
-                    }
-                }
-        }
-    }
-}
-
-// ACTIVITY LIST CONTAINER (identical pattern)
-struct ActivityListContainer: View {
-    @EnvironmentObject var navigationState: NavigationState
-
-    var body: some View {
-        NavigationStack {
-            ActivityListView()
-                .navigationDestination(isPresented: $navigationState.showActivityDetail) {
-                    if let activity = navigationState.selectedActivity {
-                        ActivityDetailView(activity: activity)
-                    }
-                }
-        }
-    }
-}
+                    Label("Tasks", systemImage: "
 ```
 
 ---
@@ -2271,60 +2390,16 @@ Create `DispatchApp_iPad.swift`:
 
 ```swift
 import SwiftUI
-
 struct ContentView_iPad: View {
     @State private var selectedTab = 0
     @EnvironmentObject var navigationState: NavigationState
 
-    var body: some View {
         NavigationSplitView {
             // SIDEBAR: Tab picker
             VStack {
                 List(selection: $selectedTab) {
                     NavigationLink(value: 0) {
-                        Label("Tasks", systemImage: "[checkmark.circle](http://checkmark.circle)")
-                    }
-                    NavigationLink(value: 1) {
-                        Label("Activities", systemImage: "calendar")
-                    }
-                    NavigationLink(value: 2) {
-                        Label("Listings", systemImage: "house")
-                    }
-                    NavigationLink(value: 3) {
-                        Label("Settings", systemImage: "gear")
-                    }
-                }
-            }
-        } content: {
-            // CONTENT: List based on tab
-            Group {
-                switch selectedTab {
-                case 0:
-                    TaskListView()
-                case 1:
-                    ActivityListView()
-                case 2:
-                    ListingListView()
-                default:
-                    SettingsView()
-                }
-            }
-        } detail: {
-            // DETAIL: Selected item
-            Group {
-                if let task = navigationState.selectedTask {
-                    TaskDetailView(task: task)
-                } else if let activity = navigationState.selectedActivity {
-                    ActivityDetailView(activity: activity)
-                } else if let listing = navigationState.selectedListing {
-                    ListingDetailView(listing: listing)
-                } else {
-                    Text("Select an item")
-                }
-            }
-        }
-    }
-}
+                        Label("Tasks", systemImage: "
 ```
 
 **Acceptance Criteria**:
@@ -2344,20 +2419,17 @@ Create `DispatchKit/Foundation/Typography.swift`:
 
 ```swift
 import SwiftUI
-
 struct DispatchFont {
     // Large displays
     static let titleLarge = Font.system(size: 32, weight: .bold, design: .default)
     static let titleMedium = Font.system(size: 20, weight: .semibold, design: .default)
     static let titleSmall = Font.system(size: 18, weight: .semibold, design: .default)
 
-    // Body text
     static let body = Font.system(size: 16, weight: .regular, design: .default)
     static let bodyBold = Font.system(size: 16, weight: .semibold, design: .default)
     static let bodySmall = Font.system(size: 14, weight: .regular, design: .default)
 
     // Captions
-    static let caption = Font.system(size: 12, weight: .regular, design: .default)
     static let captionBold = Font.system(size: 12, weight: .semibold, design: .default)
 }
 ```
@@ -2368,7 +2440,6 @@ Create `DispatchKit/Foundation/ColorSystem.swift`:
 
 ```swift
 import SwiftUI
-
 struct DispatchColor {
     // Semantic background
     static let background = Color(UIColor { traitCollection in
@@ -2377,42 +2448,17 @@ struct DispatchColor {
             : UIColor(red: 0.98, green: 0.98, blue: 0.96, alpha: 1)
     })
 
-    static let surface = Color(UIColor { traitCollection in
         traitCollection.userInterfaceStyle == .dark
             ? UIColor(red: 0.15, green: 0.15, blue: 0.16, alpha: 1)
             : UIColor.white
     })
 
     // Text
-    static let textPrimary = Color.primary
     static let textSecondary = Color.secondary
 
     // Priority colors
     static let priorityLow = Color.gray
-    static let priorityMedium = Color.yellow
-    static let priorityHigh = [Color.orange](http://Color.orange)
-    static let priorityUrgent = [Color.red](http://Color.red)
-
-    // Status colors
-    static let success = [Color.green](http://Color.green)
-    static let error = [Color.red](http://Color.red)
-    static let warning = [Color.orange](http://Color.orange)
-
-    // Claim state
-    static let claimed = [Color.blue](http://Color.blue)
-    static let unclaimed = Color.gray
-}
-
-extension Priority {
-    var color: Color {
-        switch self {
-        case .low: return DispatchColor.priorityLow
-        case .medium: return DispatchColor.priorityMedium
-        case .high: return DispatchColor.priorityHigh
-        case .urgent: return DispatchColor.priorityUrgent
-        }
-    }
-}
+    static let priorityHigh = 
 ```
 
 ### **5.3 Component Examples Using Tokens**
@@ -2421,65 +2467,14 @@ Create `DispatchKit/Components/WorkItemRow.swift`:
 
 ```swift
 import SwiftUI
-
 struct WorkItemRow<T: WorkItemProtocol>: View {
     let item: T
     @EnvironmentObject var navigationState: NavigationState
 
-    var body: some View {
         HStack(alignment: .top, spacing: 12) {
             // CHECKBOX
             Button(action: { /* toggle completion */ }) {
-                Image(systemName: item.completed ? "[checkmark.circle](http://checkmark.circle).fill" : "circle")
-                    .resizable()
-                    .frame(width: 22, height: 22)
-                    .foregroundColor(item.completed ? .gray : .primary)
-                    .font(.system(size: 22, weight: .thin))
-            }
-            .buttonStyle(.plain)
-
-            // CONTENT
-            VStack(alignment: .leading, spacing: 4) {
-                // Title
-                Text(item.title)
-                    .font(DispatchFont.bodyBold)
-                    .foregroundColor(item.completed ? .gray : DispatchColor.textPrimary)
-                    .strikethrough(item.completed)
-
-                // Metadata row
-                HStack(spacing: 8) {
-                    // Priority dot
-                    Circle()
-                        .fill(item.priority.color)
-                        .frame(width: 8, height: 8)
-
-                    // Claimed by badge
-                    if let _ = item.claimedBy {
-                        Text("@Realtor")
-                            .font(DispatchFont.caption)
-                            .foregroundColor(DispatchColor.textSecondary)
-                    }
-
-                    // Due date
-                    if let dueDate = item.dueDate {
-                        Text(dueDate.formatted(date: .abbreviated, time: .omitted))
-                            .font(DispatchFont.caption)
-                            .foregroundColor(DispatchColor.textSecondary)
-                    }
-
-                    Spacer()
-                }
-            }
-        }
-        .padding(.vertical, 8)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if let task = item as? Task {
-                navigationState.selectTask(task)
-            }
-        }
-    }
-}
+                Image(systemName: item.completed ? "
 ```
 
 **Acceptance Criteria**:
@@ -2496,26 +2491,21 @@ Create `DispatchKit/Documentation/[EdgeCases.md](http://EdgeCases.md)`:
 
 ```markdown
 # Edge Cases & Implementation Rules
-
 ## Sync Failures
 
-**Scenario**: User saves a note while offline.
 - **Expected**: Note saves locally, marked `isDirty = true`, `syncStatus = .pending`
 - **UI Feedback**: Show cloud icon with arrow (pending) next to note
 - **Retry**: On next sync (app opened), automatically push
 - **User Action**: If sync fails 3x, show error banner with "Retry" button
 
 **Scenario**: Sync push fails (network timeout).
-- **Retry Strategy**: Exponential backoff (1s, 2s, 4s, 8s, stop after 5 attempts)
 - **User Awareness**: Badge on tab shows "!" if items pending
 - **Recovery**: Automatic retry on scenePhase .active
 
 ## Offline Behavior
 
-**Allowed Offline**:
 - ✅ Create task/activity
 - ✅ Edit task/activity
-- ✅ Add note
 - ✅ Complete task/activity
 - ✅ Claim task/activity (optimistic update locally)
 
@@ -2523,65 +2513,49 @@ Create `DispatchKit/Documentation/[EdgeCases.md](http://EdgeCases.md)`:
 - ❌ Delete task (server-side cascades notes/subtasks)
 - ❌ Delete listing (complex cascade)
 
-**Sync On Return Online**:
 1. Sync down (fetch latest from server)
 2. Check for conflicts
 3. Sync up (push local changes)
 4. Realtime subscribe
-
 ## Claim Conflicts
 
-**Scenario**: Two realtors claim same task simultaneously.
+**Scenario**: Two staff members claim same task simultaneously.
 
 - **Resolution**: Last-write-wins (compare `updated_at` timestamps)
 - **Server-side**: RLS policy ensures only one can claim (unique constraint)
-- **Client-side**: If local claim loses, reload task from server, show toast "Task claimed by [Name]"
 - **UX**: If current user loses claim mid-edit, show modal: "This task was claimed by [Name]. Review?"
 
-## Multi-User Notes
-
 **Scenario**: Two realtors add notes to same task.
-
 - **Expected**: Both notes appear, sorted by `createdAt DESC`
 - **Realtime**: New note from other user appears in 1-2 seconds
 - **Conflict**: None—notes are independent rows
 
 **Scenario**: Realtor edits a note while another realtor reads it.
-
 - **Expected**: Edited note marked with `editedAt` timestamp, badge shows "edited"
 - **Realtime**: List of notes refreshes to show edit
-
 ## Permissions
 
-**Rule**: A realtor can only see tasks/activities they:
-1. Created
-2. Claimed
-3. That belong to their listings (if they're the assigned realtor)
+1. Declared
+2. That belong to their owned listings
 
-**Rule**: A realtor can only edit/delete their own notes, unless they're an admin
+**Rule**: Staff can see tasks/activities they:
+2. That belong to their assigned listings
 
-**Rule**: Admin can see/edit/delete anything (RLS enforced server-side)
-
-## Sync Metadata
+**Rule**: Admin/Exec can see all tasks (RLS enforced server-side)
 
 Track last sync time per entity type per realtor:
-- On successful `syncDown()` for tasks, update `sync_metadata.last_sync_tasks = NOW()`
 - On `syncDown()` call, query only rows where `updated_at > sync_metadata.last_sync_*`
 - This avoids fetching the entire table every sync
 
 ## Conflict Resolution: Last-Write-Wins Algorithm
-
 Given:
 localTask.updatedAt = 2025-11-29 16:00:00
 remoteTask.updatedAt = 2025-11-29 16:05:00
 
-Result: Remote wins (16:05 > 16:00)
 → Discard all local changes to this field
 → Adopt remote value
-→ Log: "Task sync: remote version applied (local: 16:00, remote: 16:05)"
 
 If times are equal (within 1 second):
-→ Manual review required, or use secondary sort (e.g., Realtor ID alphabetically)
 ```
 
 ---
@@ -2594,97 +2568,19 @@ Create `DispatchKit/Components/NoteCard.swift`:
 
 ```swift
 import SwiftUI
-
 struct NoteCard: View {
     let note: Note
     @State private var showEditOptions = false
     let onDelete: () -> Void
     let onEdit: () -> Void
 
-    var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // HEADER: Timestamp + User + Actions
             HStack {
                 // User badge
                 HStack(spacing: 6) {
                     Circle()
-                        .fill([Color.blue](http://Color.blue).opacity(0.5))
-                        .frame(width: 20, height: 20)
-                        .overlay(
-                            Text([note.createdBy.name](http://note.createdBy.name).prefix(1))
-                                .font(.caption2.bold())
-                                .foregroundColor(.white)
-                        )
-
-                    Text([note.createdBy.name](http://note.createdBy.name))
-                        .font(DispatchFont.bodySmall)
-                        .foregroundColor(DispatchColor.textPrimary)
-                }
-
-                Spacer()
-
-                // Timestamp
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(note.createdAt.formatted(date: .abbreviated, time: .shortened))
-                        .font(DispatchFont.caption)
-                        .foregroundColor(DispatchColor.textSecondary)
-
-                    if let editedAt = note.editedAt, editedAt > note.createdAt {
-                        Text("edited")
-                            .font(DispatchFont.caption)
-                            .foregroundColor(.orange)
-                    }
-                }
-
-                // Edit/Delete buttons
-                Menu {
-                    Button(action: onEdit) {
-                        Label("Edit", systemImage: "pencil")
-                    }
-                    Button(action: onDelete, role: .destructive) {
-                        Label("Delete", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .foregroundColor(DispatchColor.textSecondary)
-                }
-            }
-
-            // CONTENT: Truncated to 2 lines
-            Text(note.content)
-                .font(DispatchFont.body)
-                .foregroundColor(DispatchColor.textPrimary)
-                .lineLimit(2)
-                .truncationMode(.tail)
-
-            // SYNC STATUS
-            HStack(spacing: 4) {
-                switch note.syncStatus {
-                case .synced:
-                    Image(systemName: "[checkmark.circle](http://checkmark.circle).fill")
-                        .foregroundColor(.green)
-                case .pending:
-                    Image(systemName: "[arrow.up.circle](http://arrow.up.circle)")
-                        .foregroundColor(.orange)
-                case .syncing:
-                    ProgressView()
-                        .scaleEffect(0.8)
-                case .error:
-                    Image(systemName: "[exclamationmark.circle](http://exclamationmark.circle).fill")
-                        .foregroundColor(.red)
-                }
-
-                Text(note.syncStatus.rawValue.capitalized)
-                    .font(DispatchFont.caption)
-                    .foregroundColor(DispatchColor.textSecondary)
-            }
-        }
-        .padding(12)
-        .background(Color(UIColor.systemGray6))
-        .cornerRadius(10)
-        .border(Color.gray.opacity(0.2), width: 1)
-    }
-}
+                        .fill(
 ```
 
 ---
@@ -2695,45 +2591,15 @@ Create `DispatchKit/Components/NoteStack.swift`:
 
 ```swift
 import SwiftUI
-
 struct NoteStack<T: WorkItemProtocol>: View {
     let item: T
     let onDeleteNote: (UUID) -> Void
 
-    var body: some View {
         ZStack(alignment: .top) {
             // NOTES CONTAINER (clipped at 140pt)
             VStack(spacing: 12) {
                 ForEach(Array(item.notes.sorted { $0.createdAt > $1.createdAt }.enumerated()),
-                         id: \.[element.id](http://element.id)) { index, note in
-                    NoteCard(
-                        note: note,
-                        onDelete: { onDeleteNote([note.id](http://note.id)) },
-                        onEdit: { /* TODO: Edit mode */ }
-                    )
-                    .offset(y: CGFloat(index) * 8) // Cascade effect
-                }
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity)
-            .frame(height: 140)
-            .clipped() // HARD CUTOFF at 140pt
-
-            // SHADOW GRADIENT OVERLAY (indicates more notes above)
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    [Color.black](http://Color.black).opacity(0.15),
-                    [Color.black](http://Color.black).opacity(0.05),
-                    Color.clear
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 12)
-            .allowsHitTesting(false)
-        }
-    }
-}
+                         id: \.
 ```
 
 ---
@@ -2744,15 +2610,13 @@ Create `DispatchKit/Components/NoteInputArea.swift`:
 
 ```swift
 import SwiftUI
-
 struct NoteInputArea<T: WorkItemProtocol>: View {
     let item: T
-    let currentRealtor: Realtor
+    let currentUser: User
     @State private var noteText = ""
     @State private var isSaving = false
     let onSave: (String) -> Void
 
-    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // TEXT EDITOR
             TextEditor(text: $noteText)
@@ -2764,64 +2628,9 @@ struct NoteInputArea<T: WorkItemProtocol>: View {
                 .scrollContentBackground(.hidden)
 
             // USER CONTEXT
-            HStack {
                 HStack(spacing: 6) {
                     Circle()
-                        .fill([Color.blue](http://Color.blue).opacity(0.5))
-                        .frame(width: 16, height: 16)
-                        .overlay(
-                            Text([currentRealtor.name](http://currentRealtor.name).prefix(1))
-                                .font(.caption2.bold())
-                                .foregroundColor(.white)
-                        )
-
-                    Text("Adding as \([currentRealtor.name](http://currentRealtor.name))")
-                        .font(DispatchFont.caption)
-                        .foregroundColor(DispatchColor.textSecondary)
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, 4)
-
-            // ACTION BUTTONS
-            HStack(spacing: 12) {
-                Button(action: { noteText = "" }) {
-                    Text("Cancel")
-                        .frame(maxWidth: .infinity)
-                        .padding(10)
-                        .background(Color.gray.opacity(0.2))
-                        .foregroundColor(.primary)
-                        .cornerRadius(8)
-                }
-
-                Button(action: {
-                    isSaving = true
-                    onSave(noteText)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        noteText = ""
-                        isSaving = false
-                    }
-                }) {
-                    if isSaving {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                            .padding(10)
-                    } else {
-                        Text("Save Note")
-                            .frame(maxWidth: .infinity)
-                            .padding(10)
-                            .background([Color.blue](http://Color.blue))
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
-                    }
-                }
-                .disabled(noteText.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
-            }
-        }
-        .padding(12)
-    }
-}
+                        .fill(
 ```
 
 ---
@@ -2832,11 +2641,9 @@ Create `DispatchKit/Components/ScrollableDetailView.swift`:
 
 ```swift
 import SwiftUI
-
 struct ScrollableDetailView<T: WorkItemProtocol>: View {
     @State var item: T
 
-    var body: some View {
         ScrollView {
             VStack(spacing: 0) {
                 // COLLAPSING HEADER
@@ -2844,52 +2651,7 @@ struct ScrollableDetailView<T: WorkItemProtocol>: View {
                     item: item
                 )
                 .frame(height: 200)
-                .background([Color.blue](http://Color.blue).opacity(0.1))
-
-                // DETAILS SECTION
-                DetailsSection(item: $item)
-                    .padding(16)
-
-                // METADATA SECTION
-                MetadataSection(item: item)
-                    .padding(16)
-
-                // SUBTASKS SECTION
-                SubtasksSection(item: $item)
-                    .padding(16)
-
-                // NOTES SECTION (Your unique feature)
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Notes")
-                        .font(DispatchFont.titleSmall)
-
-                    NoteStack(
-                        item: item,
-                        onDeleteNote: { noteID in
-                            item.notes.removeAll { $[0.id](http://0.id) == noteID }
-                        }
-                    )
-                    .frame(height: 140)
-
-                    NoteInputArea(
-                        item: item,
-                        currentRealtor: Realtor(name: "Me", email: "me@dispatch"),
-                        onSave: { noteText in
-                            let note = Note(
-                                content: noteText,
-                                createdBy: Realtor(name: "Me", email: "me@dispatch")
-                            )
-                            item.notes.append(note)
-                        }
-                    )
-                }
-                .padding(16)
-            }
-            .scrollClipDisabled(true) // iOS 17+: Prevent shadow clipping
-            .background(DispatchColor.background)
-        }
-    }
-}
+                .background(
 ```
 
 **Acceptance Criteria**:
@@ -2972,39 +2734,31 @@ Create `Tests/ConflictResolverTests.swift`:
 ```swift
 import XCTest
 @testable import DispatchKit
-
 class ConflictResolverTests: XCTestCase {
 
-    func testLastWriteWins_RemoteNewer() {
         let local = Task(title: "Old", createdBy: UUID())
         local.updatedAt = Date(timeIntervalSince1970: 1000)
 
         let remote = Task(title: "New", createdBy: UUID())
-        remote.updatedAt = Date(timeIntervalSince1970: 2000)
 
         let merged = ConflictResolver.resolveTaskConflict(
             local: local,
-            remote: remote,
             strategy: .lastWriteWins
         )
 
         XCTAssertEqual(merged.title, "New")
     }
 
-    func testLastWriteWins_LocalNewer() {
         let local = Task(title: "New", createdBy: UUID())
         local.updatedAt = Date(timeIntervalSince1970: 3000)
 
-        let remote = Task(title: "Old", createdBy: UUID())
         remote.updatedAt = Date(timeIntervalSince1970: 2000)
 
         let merged = ConflictResolver.resolveTaskConflict(
             local: local,
-            remote: remote,
             strategy: .lastWriteWins
         )
 
-        XCTAssertEqual(merged.title, "New")
     }
 }
 ```
@@ -3015,24 +2769,19 @@ Create `Tests/NoteCardUITests.swift`:
 
 ```swift
 import XCTest
-
 class NoteCardUITests: XCTestCase {
 
-    func testNoteCardDisplay() {
         let app = XCUIApplication()
         app.launch()
 
         // Navigate to task with notes
-        app.buttons["task-row-0"].tap()
 
         // Verify note card visible
         let noteCard = app.staticTexts["note-preview"]
-        XCTAssertTrue(noteCard.exists)
 
         // Verify truncation (2 lines max)
         let noteHeight = noteCard.frame.height
         XCTAssert(noteHeight < 60) // Roughly 2 lines of text
-    }
 }
 ```
 
@@ -3042,13 +2791,11 @@ Create `LOCAL_DEV_[SETUP.md](http://SETUP.md)`:
 
 ```markdown
 # Local Development Setup
-
 ## Prerequisites
 - Xcode 15.1+
 - Swift 5.9+
 - Docker (for local Supabase)
 
-## Step 1: Clone & Install
 ```
 
 git clone <repo>
@@ -3057,47 +2804,35 @@ cd dispatch
 
 [xcode-build.sh](http://xcode-build.sh)
 
-```
-
+```jsx
 ## Step 2: Set Up Local Supabase
 ```
 
-# Install supabase CLI (<[https://supabase.com/docs/guides/cli/getting-started](https://supabase.com/docs/guides/cli/getting-started)>)
+# Install supabase CLI (<https://supabase.com/docs/guides/cli/getting-started>)
 
 supabase init
 
 supabase start
 
-```
-
+```jsx
 This spins up:
-- PostgreSQL on [localhost:5432](http://localhost:5432)
-- Supabase Studio on [localhost:54323](http://localhost:54323)
-- API on [localhost:54321](http://localhost:54321)
-
-## Step 3: Load Schema
+- PostgreSQL on 
 ```
 
 supabase db pull # Or manually import supabase/schema.sql
 
-```
-
+```jsx
 ## Step 4: Configure Xcode
 Set environment variable in scheme:
-- `SUPABASE_URL = [http://localhost:54321`](http://localhost:54321`)
-- `SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (from `supabase status`)
-
-## Step 5: Run Tests
+- `SUPABASE_URL = 
 ```
 
 xcodebuild test -scheme Dispatch
 
-```
-
+```jsx
 ## Step 6: Run App
 ⌘R in Xcode (select iPhone 15 Pro simulator)
 
-## Debugging
 - View PostgreSQL logs: `supabase logs --debug`
 - View API requests: Check Supabase Studio Network tab
 - Reset database: `supabase db reset`
@@ -3120,7 +2855,7 @@ Before beginning Phase 1, confirm:
 - [ ]  Understand SwiftUI `@State`, `@Binding`, `@Observable`
 - [ ]  Familiar with `Codable` protocol
 - [ ]  SwiftData `@Model` and `@Relationship` basics understood
-- [ ]  Read Apple's SwiftData docs: [https://developer.apple.com/documentation/swiftdata](https://developer.apple.com/documentation/swiftdata)
+- [ ]  Read Apple's SwiftData docs: https://developer.apple.com/documentation/swiftdata
 - [ ]  Supabase project created, PostgreSQL access confirmed
 - [ ]  Git repo initialized with `.gitignore`
 - [ ]  This entire guide downloaded and bookmarked
@@ -3129,6 +2864,6 @@ Before beginning Phase 1, confirm:
 
 This guide should give a jr dev everything they need to start coding without getting stuck. Each ticket is ~3-5 hours, compilable, and testable independently.
 
-```
+```jsx
 
 ```

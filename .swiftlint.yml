@@ -1,0 +1,63 @@
+# SwiftLint Configuration for Dispatch
+
+# Paths to include
+included:
+  - Dispatch
+  - DispatchTests
+
+# Paths to exclude
+excluded:
+  - Dispatch.xcodeproj
+  - DispatchUITests
+  - .build
+  - DerivedData
+
+# Disabled rules
+disabled_rules:
+  - trailing_whitespace
+  - line_length
+  - identifier_name
+  - type_body_length
+  - file_length
+  - function_body_length
+  - cyclomatic_complexity
+
+# Opt-in rules
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - closure_spacing
+  - contains_over_first_not_nil
+  - discouraged_object_literal
+  - explicit_init
+  - first_where
+  - force_unwrapping
+  - implicit_return
+  - last_where
+  - modifier_order
+  - overridden_super_call
+  - private_action
+  - private_outlet
+  - prohibited_super_call
+  - redundant_nil_coalescing
+  - sorted_first_last
+  - toggle_bool
+  - unneeded_parentheses_in_closure_argument
+  - yoda_condition
+
+# Rule configurations
+force_cast:
+  severity: warning
+
+force_try:
+  severity: warning
+
+force_unwrapping:
+  severity: warning
+
+nesting:
+  type_level: 3
+  function_level: 3
+
+vertical_whitespace:
+  max_empty_lines: 2

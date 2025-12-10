@@ -1,0 +1,361 @@
+//
+//  ListingListView.swift
+//  Dispatch
+//
+//  Main screen for displaying and managing listings
+//  Created by Claude on 2025-12-06.
+//
+
+import SwiftUI
+import SwiftData
+
+/// A group of listings belonging to a single owner
+private struct ListingGroup {
+    let owner: User?
+    let listings: [Listing]
+}
+
+/// Main listing list screen with:
+/// - Search bar for filtering by address
+/// - Grouped by owner
+/// - Pull-to-refresh sync
+/// - Navigation to listing detail
+struct ListingListView: View {
+    @Query(sort: \Listing.address)
+    private var allListingsRaw: [Listing]
+
+    /// Filter out deleted listings (SwiftData predicates can't compare enums directly)
+    private var allListings: [Listing] {
+        allListingsRaw.filter { $0.status != .deleted }
+    }
+
+    @Query private var users: [User]
+
+    @EnvironmentObject private var syncManager: SyncManager
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var searchText = ""
+
+    // MARK: - State for Note/Subtask Management (for drill-down)
+
+    @State private var showDeleteNoteAlert = false
+    @State private var noteToDelete: Note?
+    @State private var itemForNoteDeletion: WorkItem?
+
+    @State private var showDeleteSubtaskAlert = false
+    @State private var subtaskToDelete: Subtask?
+    @State private var itemForSubtaskDeletion: WorkItem?
+
+    @State private var showAddSubtaskSheet = false
+    @State private var itemForSubtaskAdd: WorkItem?
+    @State private var newSubtaskTitle = ""
+
+    // MARK: - State for Add Listing
+    @State private var showAddListing = false
+
+    // MARK: - Computed Properties
+
+    /// Pre-computed user lookup dictionary for O(1) access
+    private var userCache: [UUID: User] {
+        Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
+    }
+
+    /// Listings filtered by search text
+    private var filteredListings: [Listing] {
+        if searchText.isEmpty {
+            return Array(allListings)
+        }
+        return allListings.filter {
+            $0.address.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    /// Listings grouped by owner, sorted by owner name
+    private var groupedByOwner: [ListingGroup] {
+        let grouped = Dictionary(grouping: filteredListings) { $0.ownedBy }
+        return grouped.map { ListingGroup(owner: userCache[$0.key], listings: $0.value) }
+            .sorted { ($0.owner?.name ?? "~") < ($1.owner?.name ?? "~") }
+    }
+
+    /// Whether the list is empty (after filtering)
+    private var isEmpty: Bool {
+        filteredListings.isEmpty
+    }
+
+    /// Sentinel UUID for unauthenticated state - stable across all accesses
+    private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+
+    /// Current user ID from sync manager (fallback to stable sentinel if not set)
+    private var currentUserId: UUID {
+        syncManager.currentUserID ?? Self.unauthenticatedUserId
+    }
+
+    // MARK: - Body
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if isEmpty {
+                    emptyStateView
+                } else {
+                    listView
+                }
+            }
+            .navigationTitle("Listings")
+            .searchable(text: $searchText, prompt: "Search by address")
+            .refreshable {
+                await syncManager.sync()
+            }
+            .navigationDestination(for: Listing.self) { listing in
+                ListingDetailView(listing: listing, userLookup: { userCache[$0] })
+            }
+            .navigationDestination(for: WorkItemRef.self) { ref in
+                // For drill-down from listing -> task/activity detail
+                WorkItemResolverView(
+                    ref: ref,
+                    currentUserId: currentUserId,
+                    userLookup: { userCache[$0] },
+                    onComplete: { item in toggleComplete(item) },
+                    onClaim: { item in claim(item) },
+                    onRelease: { item in unclaim(item) },
+                    onEditNote: nil,
+                    onDeleteNote: { note, item in
+                        noteToDelete = note
+                        itemForNoteDeletion = item
+                        showDeleteNoteAlert = true
+                    },
+                    onAddNote: { content, item in addNote(to: item, content: content) },
+                    onToggleSubtask: { subtask in toggleSubtask(subtask) },
+                    onDeleteSubtask: { subtask, item in
+                        subtaskToDelete = subtask
+                        itemForSubtaskDeletion = item
+                        showDeleteSubtaskAlert = true
+                    },
+                    onAddSubtask: { item in
+                        itemForSubtaskAdd = item
+                        showAddSubtaskSheet = true
+                    }
+                )
+            }
+            // MARK: - Alerts and Sheets
+            .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
+                Button("Cancel", role: .cancel) {
+                    noteToDelete = nil
+                    itemForNoteDeletion = nil
+                }
+                Button("Delete", role: .destructive) {
+                    confirmDeleteNote()
+                }
+            } message: {
+                Text("This note will be permanently deleted.")
+            }
+            .alert("Delete Subtask?", isPresented: $showDeleteSubtaskAlert) {
+                Button("Cancel", role: .cancel) {
+                    subtaskToDelete = nil
+                    itemForSubtaskDeletion = nil
+                }
+                Button("Delete", role: .destructive) {
+                    confirmDeleteSubtask()
+                }
+            } message: {
+                Text("This subtask will be permanently deleted.")
+            }
+            .sheet(isPresented: $showAddSubtaskSheet) {
+                AddSubtaskSheet(title: $newSubtaskTitle) {
+                    if let item = itemForSubtaskAdd {
+                        addSubtask(to: item, title: newSubtaskTitle)
+                    }
+                    newSubtaskTitle = ""
+                    itemForSubtaskAdd = nil
+                    showAddSubtaskSheet = false
+                }
+            }
+            .sheet(isPresented: $showAddListing) {
+                AddListingSheet(
+                    currentUserId: currentUserId,
+                    onSave: { syncManager.requestSync() }
+                )
+            }
+            .overlay(alignment: .bottomTrailing) {
+                FloatingActionButton {
+                    showAddListing = true
+                }
+            }
+        }
+    }
+
+    // MARK: - Work Item Actions
+
+    private func toggleComplete(_ item: WorkItem) {
+        switch item {
+        case .task(let task, _):
+            task.status = task.status == .completed ? .open : .completed
+            task.completedAt = task.status == .completed ? Date() : nil
+            task.updatedAt = Date()
+        case .activity(let activity, _):
+            activity.status = activity.status == .completed ? .open : .completed
+            activity.completedAt = activity.status == .completed ? Date() : nil
+            activity.updatedAt = Date()
+        }
+        syncManager.requestSync()
+    }
+
+    private func claim(_ item: WorkItem) {
+        switch item {
+        case .task(let task, _):
+            task.claimedBy = currentUserId
+            task.claimedAt = Date()
+            task.updatedAt = Date()
+        case .activity(let activity, _):
+            activity.claimedBy = currentUserId
+            activity.claimedAt = Date()
+            activity.updatedAt = Date()
+        }
+        syncManager.requestSync()
+    }
+
+    private func unclaim(_ item: WorkItem) {
+        switch item {
+        case .task(let task, _):
+            task.claimedBy = nil
+            task.claimedAt = nil
+            task.updatedAt = Date()
+        case .activity(let activity, _):
+            activity.claimedBy = nil
+            activity.claimedAt = nil
+            activity.updatedAt = Date()
+        }
+        syncManager.requestSync()
+    }
+
+    // MARK: - Note Actions
+
+    private func addNote(to item: WorkItem, content: String) {
+        switch item {
+        case .task(let task, _):
+            let note = Note(
+                content: content,
+                createdBy: currentUserId,
+                parentType: .task,
+                parentId: item.id
+            )
+            task.notes.append(note)
+            task.updatedAt = Date()
+        case .activity(let activity, _):
+            let note = Note(
+                content: content,
+                createdBy: currentUserId,
+                parentType: .activity,
+                parentId: item.id
+            )
+            activity.notes.append(note)
+            activity.updatedAt = Date()
+        }
+        syncManager.requestSync()
+    }
+
+    private func confirmDeleteNote() {
+        guard let note = noteToDelete, let item = itemForNoteDeletion else { return }
+        switch item {
+        case .task(let task, _):
+            task.notes.removeAll { $0.id == note.id }
+            task.updatedAt = Date()
+        case .activity(let activity, _):
+            activity.notes.removeAll { $0.id == note.id }
+            activity.updatedAt = Date()
+        }
+        modelContext.delete(note)
+        noteToDelete = nil
+        itemForNoteDeletion = nil
+        syncManager.requestSync()
+    }
+
+    // MARK: - Subtask Actions
+
+    private func toggleSubtask(_ subtask: Subtask) {
+        subtask.completed.toggle()
+        syncManager.requestSync()
+    }
+
+    private func confirmDeleteSubtask() {
+        guard let subtask = subtaskToDelete, let item = itemForSubtaskDeletion else { return }
+        switch item {
+        case .task(let task, _):
+            task.subtasks.removeAll { $0.id == subtask.id }
+            task.updatedAt = Date()
+        case .activity(let activity, _):
+            activity.subtasks.removeAll { $0.id == subtask.id }
+            activity.updatedAt = Date()
+        }
+        modelContext.delete(subtask)
+        subtaskToDelete = nil
+        itemForSubtaskDeletion = nil
+        syncManager.requestSync()
+    }
+
+    private func addSubtask(to item: WorkItem, title: String) {
+        switch item {
+        case .task(let task, _):
+            let subtask = Subtask(
+                title: title,
+                parentType: .task,
+                parentId: item.id
+            )
+            task.subtasks.append(subtask)
+            task.updatedAt = Date()
+        case .activity(let activity, _):
+            let subtask = Subtask(
+                title: title,
+                parentType: .activity,
+                parentId: item.id
+            )
+            activity.subtasks.append(subtask)
+            activity.updatedAt = Date()
+        }
+        syncManager.requestSync()
+    }
+
+    // MARK: - Subviews
+
+    private var listView: some View {
+        List {
+            ForEach(Array(groupedByOwner.enumerated()), id: \.offset) { _, group in
+                Section(group.owner?.name ?? "Unknown Owner") {
+                    ForEach(group.listings) { listing in
+                        NavigationLink(value: listing) {
+                            ListingRow(listing: listing, owner: group.owner)
+                        }
+                    }
+                }
+            }
+        }
+        .listStyle(.plain)
+    }
+
+    private var emptyStateView: some View {
+        ContentUnavailableView {
+            Label(emptyTitle, systemImage: DS.Icons.Entity.listing)
+        } description: {
+            Text(emptyDescription)
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    private var emptyTitle: String {
+        searchText.isEmpty ? "No Listings" : "No Results"
+    }
+
+    private var emptyDescription: String {
+        searchText.isEmpty
+            ? "Listings will appear here"
+            : "No listings match \"\(searchText)\""
+    }
+}
+
+// MARK: - Preview
+
+#Preview("Listing List View") {
+    ListingListView()
+        .modelContainer(for: [Listing.self, User.self], inMemory: true)
+        .environmentObject(SyncManager.shared)
+}
