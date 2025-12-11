@@ -41,6 +41,12 @@ final class SyncManager: ObservableObject {
     private var syncRequestedDuringSync = false
     private var wasDisconnected = false  // Track disconnection for reconnect sync
 
+    /// Tasks currently being synced up - skip realtime echoes for these
+    private var inFlightTaskIds: Set<UUID> = []
+
+    /// Activities currently being synced up - skip realtime echoes for these
+    private var inFlightActivityIds: Set<UUID> = []
+
     private init() {
         // Restore persisted lastSyncTime
         self.lastSyncTime = UserDefaults.standard.object(forKey: Self.lastSyncTimeKey) as? Date
@@ -815,6 +821,12 @@ final class SyncManager: ObservableObject {
             return
         }
 
+        // Mark as in-flight before upsert to prevent realtime echo from overwriting local state
+        // NOTE: Assumes batch upsert of all dirty tasks succeeds/fails as a unit.
+        // If we ever move to per-task sync with partial failures, clear IDs per-record instead.
+        inFlightTaskIds = Set(dirtyTasks.map { $0.id })
+        defer { inFlightTaskIds.removeAll() }  // Always clear, even on error
+
         // Batch upsert for efficiency (fewer network calls)
         let dtos = dirtyTasks.map { TaskDTO(from: $0) }
         debugLog.log("  Upserting \(dtos.count) tasks to Supabase...", category: .sync)
@@ -844,6 +856,10 @@ final class SyncManager: ObservableObject {
             debugLog.log("  No dirty activities to sync", category: .sync)
             return
         }
+
+        // Mark as in-flight before upsert to prevent realtime echo from overwriting local state
+        inFlightActivityIds = Set(dirtyActivities.map { $0.id })
+        defer { inFlightActivityIds.removeAll() }  // Always clear, even on error
 
         let dtos = dirtyActivities.map { ActivityDTO(from: $0) }
         debugLog.log("  Upserting \(dtos.count) activities to Supabase...", category: .sync)
@@ -1093,6 +1109,14 @@ final class SyncManager: ObservableObject {
                     do {
                         let dto = try insertion.decodeRecord(as: TaskDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
                         debugLog.log("  ✓ Decoded task: \(dto.id) - \(dto.title)", category: .event)
+
+                        // Skip in-flight records (self-originated events)
+                        // We skip both INSERT and UPDATE to be safe across different upsert patterns.
+                        if self.inFlightTaskIds.contains(dto.id) {
+                            debugLog.log("  ⏭️ Skipping in-flight task (self-originated): \(dto.id)", category: .event)
+                            continue
+                        }
+
                         let context = container.mainContext
                         try self.upsertTask(dto: dto, context: context)
                         try context.save()
@@ -1112,6 +1136,13 @@ final class SyncManager: ObservableObject {
                     do {
                         let dto = try update.decodeRecord(as: TaskDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
                         debugLog.log("  ✓ Decoded task: \(dto.id) - \(dto.title)", category: .event)
+
+                        // Skip in-flight records to prevent echo overwriting local changes
+                        if self.inFlightTaskIds.contains(dto.id) {
+                            debugLog.log("  ⏭️ Skipping in-flight task (self-originated echo): \(dto.id)", category: .event)
+                            continue
+                        }
+
                         let context = container.mainContext
                         try self.upsertTask(dto: dto, context: context)
                         try context.save()
@@ -1132,6 +1163,13 @@ final class SyncManager: ObservableObject {
                     do {
                         let dto = try insertion.decodeRecord(as: ActivityDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
                         debugLog.log("  ✓ Decoded activity: \(dto.id) - \(dto.title)", category: .event)
+
+                        // Skip in-flight records (self-originated events)
+                        if self.inFlightActivityIds.contains(dto.id) {
+                            debugLog.log("  ⏭️ Skipping in-flight activity (self-originated): \(dto.id)", category: .event)
+                            continue
+                        }
+
                         let context = container.mainContext
                         try self.upsertActivity(dto: dto, context: context)
                         try context.save()
@@ -1151,6 +1189,13 @@ final class SyncManager: ObservableObject {
                     do {
                         let dto = try update.decodeRecord(as: ActivityDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
                         debugLog.log("  ✓ Decoded activity: \(dto.id) - \(dto.title)", category: .event)
+
+                        // Skip in-flight records to prevent echo overwriting local changes
+                        if self.inFlightActivityIds.contains(dto.id) {
+                            debugLog.log("  ⏭️ Skipping in-flight activity (self-originated echo): \(dto.id)", category: .event)
+                            continue
+                        }
+
                         let context = container.mainContext
                         try self.upsertActivity(dto: dto, context: context)
                         try context.save()
