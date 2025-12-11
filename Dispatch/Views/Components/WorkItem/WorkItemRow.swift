@@ -43,10 +43,6 @@ struct WorkItemRow: View {
                         .strikethrough(item.isCompleted, color: DS.Colors.Text.tertiary)
                         .foregroundColor(item.isCompleted ? DS.Colors.Text.tertiary : DS.Colors.Text.primary)
                         .lineLimit(1)
-
-                    Spacer()
-
-                    PriorityDot(priority: item.priority)
                 }
 
                 // Metadata row
@@ -74,12 +70,14 @@ struct WorkItemRow: View {
                     }
 
                     Spacer()
-
-                    // Claimed user avatar
-                    if claimedByUser != nil {
-                        UserAvatar(user: claimedByUser, size: .small)
-                    }
                 }
+            }
+
+            Spacer()
+
+            if let user = claimedByUser {
+                UserAvatar(user: user, size: .small)
+                    .padding(.trailing, DS.Spacing.md)
             }
         }
         .padding(.vertical, DS.Spacing.sm)
