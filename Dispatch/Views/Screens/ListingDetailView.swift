@@ -150,9 +150,6 @@ struct ListingDetailView: View {
                     HStack(spacing: DS.Spacing.xs) {
                         UserAvatar(user: owner, size: .small)
                         VStack(alignment: .leading, spacing: 0) {
-                            Text("Owner")
-                                .font(DS.Typography.caption)
-                                .foregroundColor(DS.Colors.Text.tertiary)
                             Text(owner.name)
                                 .font(DS.Typography.bodySecondary)
                                 .foregroundColor(DS.Colors.Text.primary)
