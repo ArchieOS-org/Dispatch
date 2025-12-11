@@ -32,9 +32,6 @@ final class User {
     @Relationship(deleteRule: .nullify, inverse: \Activity.claimedByUser)
     var claimedActivities: [Activity] = []
 
-    @Relationship(deleteRule: .nullify, inverse: \Listing.assignedStaffUser)
-    var assignedListings: [Listing] = []
-
     init(
         id: UUID = UUID(),
         name: String,

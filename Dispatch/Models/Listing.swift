@@ -23,7 +23,6 @@ final class Listing: NotableProtocol {
 
     // Foreign keys
     var ownedBy: UUID
-    var assignedStaff: UUID?
 
     // Metadata
     var createdVia: CreationSource
@@ -53,7 +52,6 @@ final class Listing: NotableProtocol {
 
     // Inverse relationships
     var owner: User?
-    var assignedStaffUser: User?
 
     init(
         id: UUID = UUID(),
@@ -67,7 +65,6 @@ final class Listing: NotableProtocol {
         listingType: ListingType = .sale,
         status: ListingStatus = .draft,
         ownedBy: UUID,
-        assignedStaff: UUID? = nil,
         createdVia: CreationSource = .dispatch,
         sourceSlackMessages: [String]? = nil,
         createdAt: Date = Date(),
@@ -84,7 +81,6 @@ final class Listing: NotableProtocol {
         self.listingType = listingType
         self.status = status
         self.ownedBy = ownedBy
-        self.assignedStaff = assignedStaff
         self.createdVia = createdVia
         self.sourceSlackMessages = sourceSlackMessages
         self.createdAt = createdAt

@@ -22,7 +22,6 @@ extension ListingDTO {
         self.listingType = model.listingType.rawValue
         self.status = model.status.rawValue
         self.ownedBy = model.ownedBy
-        self.assignedStaff = model.assignedStaff
         self.createdVia = model.createdVia.rawValue
         self.sourceSlackMessages = model.sourceSlackMessages
         self.activatedAt = model.activatedAt

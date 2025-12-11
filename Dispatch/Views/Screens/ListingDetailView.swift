@@ -49,11 +49,6 @@ struct ListingDetailView: View {
         userLookup(listing.ownedBy)
     }
 
-    private var assignedStaff: User? {
-        guard let staffId = listing.assignedStaff else { return nil }
-        return userLookup(staffId)
-    }
-
     private var activeTasks: [TaskItem] {
         listing.tasks.filter { $0.status != .deleted }
     }
@@ -144,31 +139,13 @@ struct ListingDetailView: View {
                     .foregroundColor(DS.Colors.Text.secondary)
             }
 
-            // Owner and Staff badges
-            HStack(spacing: DS.Spacing.md) {
-                if let owner = owner {
-                    HStack(spacing: DS.Spacing.xs) {
-                        UserAvatar(user: owner, size: .small)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(owner.name)
-                                .font(DS.Typography.bodySecondary)
-                                .foregroundColor(DS.Colors.Text.primary)
-                        }
-                    }
-                }
-
-                if let staff = assignedStaff {
-                    HStack(spacing: DS.Spacing.xs) {
-                        UserAvatar(user: staff, size: .small)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text("Assigned")
-                                .font(DS.Typography.caption)
-                                .foregroundColor(DS.Colors.Text.tertiary)
-                            Text(staff.name)
-                                .font(DS.Typography.bodySecondary)
-                                .foregroundColor(DS.Colors.Text.primary)
-                        }
-                    }
+            // Owner badge
+            if let owner = owner {
+                HStack(spacing: DS.Spacing.xs) {
+                    UserAvatar(user: owner, size: .small)
+                    Text(owner.name)
+                        .font(DS.Typography.bodySecondary)
+                        .foregroundColor(DS.Colors.Text.primary)
                 }
             }
 
@@ -456,8 +433,7 @@ struct ListingDetailView: View {
         mlsNumber: "W9876543",
         listingType: .sale,
         status: .active,
-        ownedBy: ownerUser.id,
-        assignedStaff: staffUser.id
+        ownedBy: ownerUser.id
     )
     context.insert(listing)
 
@@ -732,8 +708,7 @@ struct ListingDetailView: View {
         price: 3500,
         listingType: .lease,
         status: .pending,
-        ownedBy: ownerUser.id,
-        assignedStaff: staffUser.id
+        ownedBy: ownerUser.id
     )
     context.insert(listing)
 

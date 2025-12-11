@@ -518,7 +518,6 @@ final class SyncManager: ObservableObject {
             existing.mlsNumber = dto.mlsNumber
             existing.listingType = ListingType(rawValue: dto.listingType) ?? .sale
             existing.status = ListingStatus(rawValue: dto.status) ?? .draft
-            existing.assignedStaff = dto.assignedStaff
             existing.activatedAt = dto.activatedAt
             existing.pendingAt = dto.pendingAt
             existing.closedAt = dto.closedAt
