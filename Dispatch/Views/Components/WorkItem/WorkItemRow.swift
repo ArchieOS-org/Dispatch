@@ -12,16 +12,18 @@ import SwiftUI
 /// - Status checkbox
 /// - Title with strikethrough when completed
 /// - Type label, due date badge, priority dot
-/// - Claimed user avatar
+/// - Compact ClaimButton for claim/release actions
 /// - Swipe actions for edit/delete
 struct WorkItemRow: View {
     let item: WorkItem
-    let claimedByUser: User?
+    let claimState: ClaimState
 
     // Closure-based actions (onTap removed - use NavigationLink wrapper instead)
     var onComplete: () -> Void = {}
     var onEdit: () -> Void = {}
     var onDelete: () -> Void = {}
+    var onClaim: () -> Void = {}
+    var onRelease: () -> Void = {}
 
     private static let accessibilityDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -75,10 +77,13 @@ struct WorkItemRow: View {
 
             Spacer()
 
-            if let user = claimedByUser {
-                UserAvatar(user: user, size: .small)
-                    .padding(.trailing, DS.Spacing.md)
-            }
+            ClaimButton(
+                claimState: claimState,
+                style: .compact,
+                onClaim: onClaim,
+                onRelease: onRelease
+            )
+            .padding(.trailing, DS.Spacing.md)
         }
         .padding(.vertical, DS.Spacing.sm)
         .contentShape(Rectangle())
@@ -108,7 +113,12 @@ struct WorkItemRow: View {
         if let dueDate = item.dueDate {
             parts.append("Due \(Self.accessibilityDateFormatter.string(from: dueDate))")
         }
-        if let user = claimedByUser {
+        switch claimState {
+        case .unclaimed:
+            parts.append("Unclaimed")
+        case .claimedByMe:
+            parts.append("Claimed by you")
+        case .claimedByOther(let user):
             parts.append("Claimed by \(user.name)")
         }
         return parts.filter { !$0.isEmpty }.joined(separator: ", ")
@@ -118,8 +128,11 @@ struct WorkItemRow: View {
 // MARK: - Preview
 
 #Preview("Work Item Row") {
+    let claimedUser = User(name: "John Doe", email: "john@example.com", userType: .admin)
+    let otherUser = User(name: "Jane Smith", email: "jane@example.com", userType: .admin)
+
     List {
-        // Task example
+        // Task example - claimed by other
         WorkItemRow(
             item: .task(TaskItem(
                 title: "Review quarterly report",
@@ -127,13 +140,15 @@ struct WorkItemRow: View {
                 priority: .high,
                 declaredBy: UUID()
             )),
-            claimedByUser: User(name: "John Doe", email: "john@example.com", userType: .admin),
+            claimState: .claimedByOther(user: otherUser),
             onComplete: {},
             onEdit: {},
-            onDelete: {}
+            onDelete: {},
+            onClaim: {},
+            onRelease: {}
         )
 
-        // Activity example
+        // Activity example - unclaimed
         WorkItemRow(
             item: .activity({
                 let a = Activity(
@@ -145,13 +160,31 @@ struct WorkItemRow: View {
                 )
                 return a
             }()),
-            claimedByUser: nil,
+            claimState: .unclaimed,
             onComplete: {},
             onEdit: {},
-            onDelete: {}
+            onDelete: {},
+            onClaim: {},
+            onRelease: {}
         )
 
-        // Completed task
+        // Task example - claimed by me
+        WorkItemRow(
+            item: .task(TaskItem(
+                title: "My claimed task",
+                taskDescription: "Working on this",
+                priority: .medium,
+                declaredBy: UUID()
+            )),
+            claimState: .claimedByMe(user: claimedUser),
+            onComplete: {},
+            onEdit: {},
+            onDelete: {},
+            onClaim: {},
+            onRelease: {}
+        )
+
+        // Completed task - unclaimed
         WorkItemRow(
             item: .task(TaskItem(
                 title: "Completed task example",
@@ -160,10 +193,12 @@ struct WorkItemRow: View {
                 status: .completed,
                 declaredBy: UUID()
             )),
-            claimedByUser: nil,
+            claimState: .unclaimed,
             onComplete: {},
             onEdit: {},
-            onDelete: {}
+            onDelete: {},
+            onClaim: {},
+            onRelease: {}
         )
     }
     .listStyle(.plain)

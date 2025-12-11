@@ -85,14 +85,16 @@ struct ActivityListView: View {
                 await syncManager.sync()
             },
             isActivityList: true,
-            rowBuilder: { item, claimedUser in
+            rowBuilder: { item, claimState in
                 NavigationLink(value: WorkItemRef.from(item)) {
                     WorkItemRow(
                         item: item,
-                        claimedByUser: claimedUser,
+                        claimState: claimState,
                         onComplete: { toggleComplete(item) },
                         onEdit: {},
-                        onDelete: { delete(item) }
+                        onDelete: { delete(item) },
+                        onClaim: { claim(item) },
+                        onRelease: { unclaim(item) }
                     )
                 }
                 .buttonStyle(.plain)
@@ -196,6 +198,16 @@ struct ActivityListView: View {
         activity.claimedBy = currentUserId
         activity.claimedAt = Date()
         activity.updatedAt = Date()
+
+        // Create audit record
+        let event = ClaimEvent(
+            parentType: .activity,
+            parentId: activity.id,
+            action: .claimed,
+            userId: currentUserId
+        )
+        activity.claimHistory.append(event)
+
         syncManager.requestSync()
     }
 
@@ -204,6 +216,16 @@ struct ActivityListView: View {
         activity.claimedBy = nil
         activity.claimedAt = nil
         activity.updatedAt = Date()
+
+        // Create audit record
+        let event = ClaimEvent(
+            parentType: .activity,
+            parentId: activity.id,
+            action: .released,
+            userId: currentUserId
+        )
+        activity.claimHistory.append(event)
+
         syncManager.requestSync()
     }
 

@@ -22,7 +22,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     let userLookup: (UUID) -> User?
     let onRefresh: () async -> Void
     let isActivityList: Bool
-    @ViewBuilder let rowBuilder: (WorkItem, User?) -> Row
+    @ViewBuilder let rowBuilder: (WorkItem, ClaimState) -> Row
     @ViewBuilder let destinationBuilder: (WorkItemRef) -> Destination
 
     @State private var selectedFilter: ClaimFilter = .mine
@@ -34,7 +34,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         userLookup: @escaping (UUID) -> User?,
         onRefresh: @escaping () async -> Void,
         isActivityList: Bool = false,
-        @ViewBuilder rowBuilder: @escaping (WorkItem, User?) -> Row,
+        @ViewBuilder rowBuilder: @escaping (WorkItem, ClaimState) -> Row,
         @ViewBuilder destination: @escaping (WorkItemRef) -> Destination
     ) {
         self.title = title
@@ -100,7 +100,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             ForEach(groupedItems, id: \.section) { section, sectionItems in
                 Section {
                     ForEach(sectionItems) { item in
-                        rowBuilder(item, item.claimedBy.flatMap { userLookup($0) })
+                        rowBuilder(item, item.claimState(currentUserId: currentUserId, userLookup: userLookup))
                     }
                 } header: {
                     DateSectionHeader(section: section)
@@ -184,13 +184,15 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         currentUserId: currentUserId,
         userLookup: { _ in sampleUser },
         onRefresh: { try? await Task.sleep(nanoseconds: 1_000_000_000) },
-        rowBuilder: { item, claimedUser in
+        rowBuilder: { item, claimState in
             WorkItemRow(
                 item: item,
-                claimedByUser: claimedUser,
+                claimState: claimState,
                 onComplete: {},
                 onEdit: {},
-                onDelete: {}
+                onDelete: {},
+                onClaim: {},
+                onRelease: {}
             )
         },
         destination: { _ in

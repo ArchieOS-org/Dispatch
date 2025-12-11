@@ -206,7 +206,12 @@ struct ListingDetailView: View {
                     NavigationLink(value: WorkItemRef.task(task)) {
                         WorkItemRow(
                             item: .task(task),
-                            claimedByUser: task.claimedBy.flatMap { userLookup($0) }
+                            claimState: WorkItem.task(task).claimState(
+                                currentUserId: currentUserId,
+                                userLookup: userLookup
+                            ),
+                            onClaim: { claimTask(task) },
+                            onRelease: { unclaimTask(task) }
                         )
                     }
                     .buttonStyle(.plain)
@@ -239,7 +244,12 @@ struct ListingDetailView: View {
                     NavigationLink(value: WorkItemRef.activity(activity)) {
                         WorkItemRow(
                             item: .activity(activity),
-                            claimedByUser: activity.claimedBy.flatMap { userLookup($0) }
+                            claimState: WorkItem.activity(activity).claimState(
+                                currentUserId: currentUserId,
+                                userLookup: userLookup
+                            ),
+                            onClaim: { claimActivity(activity) },
+                            onRelease: { unclaimActivity(activity) }
                         )
                     }
                     .buttonStyle(.plain)
@@ -364,6 +374,70 @@ struct ListingDetailView: View {
         listing.updatedAt = Date()
         syncManager.requestSync()
         dismiss()
+    }
+
+    // MARK: - Task Claim Actions
+
+    private func claimTask(_ task: TaskItem) {
+        task.claimedBy = currentUserId
+        task.claimedAt = Date()
+        task.updatedAt = Date()
+
+        let event = ClaimEvent(
+            parentType: .task,
+            parentId: task.id,
+            action: .claimed,
+            userId: currentUserId
+        )
+        task.claimHistory.append(event)
+        syncManager.requestSync()
+    }
+
+    private func unclaimTask(_ task: TaskItem) {
+        task.claimedBy = nil
+        task.claimedAt = nil
+        task.updatedAt = Date()
+
+        let event = ClaimEvent(
+            parentType: .task,
+            parentId: task.id,
+            action: .released,
+            userId: currentUserId
+        )
+        task.claimHistory.append(event)
+        syncManager.requestSync()
+    }
+
+    // MARK: - Activity Claim Actions
+
+    private func claimActivity(_ activity: Activity) {
+        activity.claimedBy = currentUserId
+        activity.claimedAt = Date()
+        activity.updatedAt = Date()
+
+        let event = ClaimEvent(
+            parentType: .activity,
+            parentId: activity.id,
+            action: .claimed,
+            userId: currentUserId
+        )
+        activity.claimHistory.append(event)
+        syncManager.requestSync()
+    }
+
+    private func unclaimActivity(_ activity: Activity) {
+        activity.claimedBy = nil
+        activity.claimedAt = nil
+        activity.updatedAt = Date()
+
+        let event = ClaimEvent(
+            parentType: .activity,
+            parentId: activity.id,
+            action: .released,
+            userId: currentUserId
+        )
+        activity.claimHistory.append(event)
+        syncManager.requestSync()
     }
 
     // MARK: - Helpers
