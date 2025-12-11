@@ -21,14 +21,14 @@ extension DS {
 
         /// Icons for sync state indicators
         enum Sync {
-            /// Synced successfully
-            static let synced = "checkmark.icloud.fill"
+            /// Synced successfully (ok)
+            static let ok = "checkmark.icloud.fill"
 
             /// Currently syncing
             static let syncing = "arrow.triangle.2.circlepath.icloud"
 
-            /// Pending sync (queued)
-            static let pending = "icloud.and.arrow.up"
+            /// Idle state (nothing happening)
+            static let idle = "icloud"
 
             /// Sync error
             static let error = "exclamationmark.icloud.fill"
@@ -39,9 +39,9 @@ extension DS {
             /// Returns the appropriate icon for a sync status
             static func icon(for status: SyncStatus) -> String {
                 switch status {
-                case .synced: return synced
+                case .idle: return idle
                 case .syncing: return syncing
-                case .pending: return pending
+                case .ok: return ok
                 case .error: return error
                 }
             }

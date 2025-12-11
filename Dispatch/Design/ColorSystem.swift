@@ -66,17 +66,17 @@ extension DS {
 
         /// Colors for sync state indicators
         enum Sync {
-            static let synced = Color.green
+            static let ok = Color.green
             static let syncing = Color.blue
-            static let pending = Color.orange
+            static let idle = Color.gray
             static let error = Color.red
 
             /// Returns the appropriate color for a sync status
             static func color(for status: SyncStatus) -> Color {
                 switch status {
-                case .synced: return synced
+                case .idle: return idle
                 case .syncing: return syncing
-                case .pending: return pending
+                case .ok: return ok
                 case .error: return error
                 }
             }

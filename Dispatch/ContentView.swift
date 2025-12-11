@@ -14,23 +14,37 @@ import SwiftData
 /// - Activities: ActivityListView with same structure
 /// - Listings: ListingListView grouped by owner with search
 struct ContentView: View {
+    @EnvironmentObject private var syncManager: SyncManager
+
     var body: some View {
-        TabView {
-            TaskListView()
-                .tabItem {
-                    Label("Tasks", systemImage: DS.Icons.Entity.task)
-                }
+        ZStack(alignment: .top) {
+            TabView {
+                TaskListView()
+                    .tabItem {
+                        Label("Tasks", systemImage: DS.Icons.Entity.task)
+                    }
 
-            ActivityListView()
-                .tabItem {
-                    Label("Activities", systemImage: DS.Icons.Entity.activity)
-                }
+                ActivityListView()
+                    .tabItem {
+                        Label("Activities", systemImage: DS.Icons.Entity.activity)
+                    }
 
-            ListingListView()
-                .tabItem {
-                    Label("Listings", systemImage: DS.Icons.Entity.listing)
-                }
+                ListingListView()
+                    .tabItem {
+                        Label("Listings", systemImage: DS.Icons.Entity.listing)
+                    }
+            }
+
+            if case .error = syncManager.syncStatus {
+                SyncStatusBanner(
+                    message: syncManager.lastSyncErrorMessage ?? "Sync failed",
+                    onRetry: { syncManager.requestSync() }
+                )
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .zIndex(1)
+            }
         }
+        .animation(.easeInOut(duration: 0.3), value: syncManager.syncStatus)
     }
 }
 

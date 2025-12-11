@@ -53,6 +53,9 @@ struct ActivityListView: View {
     // MARK: - State for Quick Entry
     @State private var showQuickEntry = false
 
+    // MARK: - State for Sync Failure Toast
+    @State private var showSyncFailedToast = false
+
     // MARK: - Computed Properties
 
     /// Pre-computed user lookup dictionary for O(1) access
@@ -173,6 +176,11 @@ struct ActivityListView: View {
                 showQuickEntry = true
             }
         }
+        .alert("Sync Issue", isPresented: $showSyncFailedToast) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("We couldn't sync your last change. We'll retry shortly.")
+        }
     }
 
     // MARK: - Actions
@@ -208,7 +216,19 @@ struct ActivityListView: View {
         )
         activity.claimHistory.append(event)
 
+        // Capture sync run ID for correlating with sync result
+        let runIdAtStart = syncManager.syncRunId
         syncManager.requestSync()
+
+        // Check for sync failure after delay
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            // Only show toast if we're on or past that run AND in error
+            if syncManager.syncRunId >= runIdAtStart,
+               case .error = syncManager.syncStatus {
+                showSyncFailedToast = true
+            }
+        }
     }
 
     private func unclaim(_ item: WorkItem) {
@@ -226,7 +246,19 @@ struct ActivityListView: View {
         )
         activity.claimHistory.append(event)
 
+        // Capture sync run ID for correlating with sync result
+        let runIdAtStart = syncManager.syncRunId
         syncManager.requestSync()
+
+        // Check for sync failure after delay
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            // Only show toast if we're on or past that run AND in error
+            if syncManager.syncRunId >= runIdAtStart,
+               case .error = syncManager.syncStatus {
+                showSyncFailedToast = true
+            }
+        }
     }
 
     // MARK: - Note Actions

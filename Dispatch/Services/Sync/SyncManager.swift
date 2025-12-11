@@ -31,8 +31,14 @@ final class SyncManager: ObservableObject {
         }
     }
     @Published private(set) var syncError: Error?
-    @Published private(set) var syncStatus: SyncStatus = .synced
+    @Published private(set) var syncStatus: SyncStatus = .idle
     @Published var currentUserID: UUID?  // Set when authenticated
+
+    /// User-facing error message when syncStatus is .error
+    @Published private(set) var lastSyncErrorMessage: String?
+
+    /// Sync run counter for correlating claim actions with sync results
+    @Published private(set) var syncRunId: Int = 0
 
     // MARK: - Private Properties
     private var modelContainer: ModelContainer?
@@ -84,6 +90,23 @@ final class SyncManager: ObservableObject {
         currentUserID != nil
     }
 
+    // MARK: - Error Message Helper
+    /// Convert sync errors to user-friendly messages
+    private func userFacingMessage(for error: Error) -> String {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost:
+                return "No internet connection. Check your network."
+            case .timedOut:
+                return "Connection timed out. We'll retry shortly."
+            default:
+                return "Network error. Check your connection."
+            }
+        }
+        // Add auth check if needed in future
+        return "Sync failed. We'll retry shortly."
+    }
+
     // MARK: - Main Sync
     func requestSync() {
         debugLog.log("requestSync() called - triggering sync()", category: .sync)
@@ -109,7 +132,11 @@ final class SyncManager: ObservableObject {
     }
 
     func sync() async {
-        debugLog.log("========== sync() STARTED ==========", category: .sync)
+        // Increment sync run ID for correlating claim actions with sync results
+        syncRunId &+= 1
+        let runId = syncRunId
+
+        debugLog.log("========== sync() STARTED (runId: \(runId)) ==========", category: .sync)
         debugLog.log("  isAuthenticated: \(isAuthenticated)", category: .sync)
         debugLog.log("  isSyncing: \(isSyncing)", category: .sync)
         debugLog.log("  currentUserID: \(currentUserID?.uuidString ?? "nil")", category: .sync)
@@ -117,7 +144,9 @@ final class SyncManager: ObservableObject {
 
         guard isAuthenticated else {
             debugLog.log("SKIPPING sync - not authenticated", category: .sync)
-            syncStatus = .pending
+            if syncRunId == runId {
+                syncStatus = .idle
+            }
             return
         }
 
@@ -164,14 +193,22 @@ final class SyncManager: ObservableObject {
                 debugLog.log("ModelContext saved successfully", category: .sync)
 
                 lastSyncTime = Date()
-                syncStatus = .synced
+                // Only update status if this is still the current sync run
+                if syncRunId == runId {
+                    syncStatus = .ok(Date())
+                    lastSyncErrorMessage = nil
+                }
                 debugLog.endTiming("Full Sync")
                 debugLog.log("========== sync() COMPLETED at \(lastSyncTime!) ==========", category: .sync)
             } catch {
                 debugLog.endTiming("Full Sync")
                 debugLog.error("========== sync() FAILED ==========", error: error)
                 syncError = error
-                syncStatus = .error
+                // Only update status if this is still the current sync run
+                if syncRunId == runId {
+                    syncStatus = .error
+                    lastSyncErrorMessage = userFacingMessage(for: error)
+                }
             }
 
             isSyncing = false

@@ -116,9 +116,9 @@ struct SyncTestHarness: View {
 
     private var statusInfo: (Color, String) {
         switch syncManager.syncStatus {
-        case .synced: return (.green, "SYNCED")
+        case .idle: return (.gray, "IDLE")
         case .syncing: return (.blue, "SYNCING")
-        case .pending: return (.orange, "PENDING")
+        case .ok: return (.green, "OK")
         case .error: return (.red, "ERROR")
         }
     }
