@@ -37,15 +37,31 @@ final class SyncManager: ObservableObject {
     // MARK: - Private Properties
     private var modelContainer: ModelContainer?
     private var realtimeChannel: RealtimeChannelV2?
+    private var broadcastChannel: RealtimeChannelV2?
     private var isListening = false
     private var syncRequestedDuringSync = false
     private var wasDisconnected = false  // Track disconnection for reconnect sync
 
+    /// Feature flag: Enable broadcast-based realtime (v2)
+    /// When true, subscribes to broadcast channel IN ADDITION to postgres_changes
+    /// Phase 1: Both run simultaneously for validation
+    /// Phase 2: Remove postgres_changes listeners
+    /// Phase 3: Remove inFlightTaskIds tracking (origin_user_id replaces it)
+    private let useBroadcastRealtime: Bool = true
+
     /// Tasks currently being synced up - skip realtime echoes for these
+    /// NOTE: Will be removed in Phase 3 once origin_user_id filtering is validated
     private var inFlightTaskIds: Set<UUID> = []
 
     /// Activities currently being synced up - skip realtime echoes for these
+    /// NOTE: Will be removed in Phase 3 once origin_user_id filtering is validated
     private var inFlightActivityIds: Set<UUID> = []
+
+    #if DEBUG
+    /// Track recently processed IDs to detect duplicate processing (DEBUG only)
+    /// Used during Phase 1 to log when both postgres_changes and broadcast process same event
+    private var recentlyProcessedIds: Set<UUID> = []
+    #endif
 
     private init() {
         // Restore persisted lastSyncTime
@@ -1448,6 +1464,9 @@ final class SyncManager: ObservableObject {
         debugLog.log("Waiting for database changes...", category: .realtime)
         debugLog.log("  To test: UPDATE a row in Supabase dashboard", category: .realtime)
         debugLog.log("  Expected: '[EVENT] 🎉🎉🎉 EVENT RECEIVED!' message", category: .realtime)
+
+        // Start broadcast listener if enabled (runs in parallel with postgres_changes)
+        await startBroadcastListening()
     }
 
     func stopListening() async {
@@ -1463,12 +1482,320 @@ final class SyncManager: ObservableObject {
         debugLog.log("  All tasks cancelled and removed", category: .realtime)
 
         if let channel = realtimeChannel {
-            debugLog.log("  Unsubscribing from channel...", category: .realtime)
+            debugLog.log("  Unsubscribing from postgres_changes channel...", category: .realtime)
             await channel.unsubscribe()
-            debugLog.log("  Channel unsubscribed", category: .realtime)
+            debugLog.log("  postgres_changes channel unsubscribed", category: .realtime)
         }
         realtimeChannel = nil
+
+        // Cleanup broadcast channel
+        if let channel = broadcastChannel {
+            debugLog.log("  Unsubscribing from broadcast channel...", category: .realtime)
+            await channel.unsubscribe()
+            debugLog.log("  Broadcast channel unsubscribed", category: .realtime)
+        }
+        broadcastChannel = nil
+
         isListening = false
         debugLog.log("✓ Realtime stopped. isListening = false", category: .realtime)
+    }
+
+    // MARK: - Broadcast Realtime (v2 Pattern)
+
+    /// Starts listening to broadcast channel (v2 pattern).
+    /// Coexists with postgres_changes during Phase 1 migration.
+    private func startBroadcastListening() async {
+        guard useBroadcastRealtime else {
+            debugLog.log("Broadcast realtime disabled (useBroadcastRealtime = false)", category: .channel)
+            return
+        }
+        guard isAuthenticated, let container = modelContainer else {
+            debugLog.log("Skipping broadcast listener - not authenticated or no container", category: .channel)
+            return
+        }
+
+        debugLog.log("", category: .channel)
+        debugLog.log("╔════════════════════════════════════════════════════════════╗", category: .channel)
+        debugLog.log("║       BROADCAST REALTIME (v2) STARTING                     ║", category: .channel)
+        debugLog.log("╚════════════════════════════════════════════════════════════╝", category: .channel)
+
+        // CRITICAL: Set auth token for Realtime Authorization (RLS on realtime.messages)
+        // This must be called BEFORE subscribing to private channels
+        debugLog.log("Setting Realtime auth token...", category: .channel)
+        await supabase.realtimeV2.setAuth()
+        debugLog.log("✓ Realtime auth token set", category: .channel)
+
+        // Create broadcast channel
+        // NOTE: Testing WITHOUT isPrivate to debug subscription timeout
+        // realtime.broadcast_changes() may use public channels by default
+        debugLog.log("Creating channel 'dispatch:broadcast' (testing without isPrivate)...", category: .channel)
+        let channel = supabase.realtimeV2.channel("dispatch:broadcast") {
+            // $0.isPrivate = true  // DISABLED for testing - may be causing timeout
+            $0.broadcast.receiveOwnBroadcasts = true  // We filter by origin_user_id instead
+        }
+
+        // Subscribe to all broadcast events
+        let broadcastStream = channel.broadcastStream(event: "*")
+
+        debugLog.log("Calling channel.subscribeWithError() for broadcast...", category: .channel)
+        do {
+            // Add timeout to detect hanging subscriptions
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    try await channel.subscribeWithError()
+                }
+                group.addTask {
+                    try await Task.sleep(for: .seconds(10))
+                    throw NSError(domain: "Broadcast", code: -1, userInfo: [NSLocalizedDescriptionKey: "Subscription timed out after 10s"])
+                }
+                // Wait for first to complete (subscription or timeout)
+                try await group.next()
+                group.cancelAll()
+            }
+            debugLog.log("✅ Broadcast channel subscribed successfully", category: .channel)
+        } catch {
+            debugLog.error("❌ Broadcast subscription failed", error: error)
+            return
+        }
+
+        broadcastChannel = channel
+
+        // Create listener task for broadcast events
+        let listenerTask = Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            debugLog.log("📡 Broadcast listener task STARTED", category: .event)
+            for await event in broadcastStream {
+                await self.handleBroadcastEvent(event, container: container)
+            }
+            debugLog.log("📡 Broadcast listener task ENDED", category: .event)
+        }
+
+        realtimeListenerTasks.append(listenerTask)
+
+        debugLog.log("", category: .channel)
+        debugLog.log("Broadcast channel ready - listening for events on 'dispatch:broadcast'", category: .channel)
+    }
+
+    /// Handles broadcast events - routes to existing upsert/delete methods
+    /// The event parameter is the raw JSON message from broadcastStream
+    private func handleBroadcastEvent(_ event: JSONObject, container: ModelContainer) async {
+        do {
+            // Log raw payload for debugging
+            debugLog.log("", category: .event)
+            debugLog.log("📡 RAW BROADCAST EVENT RECEIVED", category: .event)
+
+            // JSONObject is [String: AnyJSON] - use JSONEncoder for AnyJSON (Codable)
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            if let jsonData = try? encoder.encode(event),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                debugLog.log("Raw payload:\n\(jsonString)", category: .event)
+            } else {
+                debugLog.log("Raw payload (keys): \(event.keys.joined(separator: ", "))", category: .event)
+            }
+
+            // Supabase Realtime wraps our payload in: { event, type, payload, meta }
+            // Our BroadcastChangePayload is inside the "payload" field
+            guard let innerPayload = event["payload"]?.objectValue else {
+                debugLog.log("Missing or invalid 'payload' field in broadcast event - keys: \(event.keys.joined(separator: ", "))", category: .event)
+                return
+            }
+
+            // Use PostgrestClient's decoder for consistency with other DTO decoding
+            guard let payloadData = try? encoder.encode(innerPayload),
+                  let payload = try? PostgrestClient.Configuration.jsonDecoder.decode(BroadcastChangePayload.self, from: payloadData) else {
+                debugLog.log("Failed to decode broadcast payload - inner keys: \(innerPayload.keys.joined(separator: ", "))", category: .event)
+                return
+            }
+
+            // Version check: log unknown versions for visibility when we bump the version
+            if payload.eventVersion != 1 {
+                debugLog.log("Unknown event version \(payload.eventVersion) for table \(payload.table)", category: .event)
+                // For now, still try to handle. Later, can gate behavior on version.
+            }
+
+            // Self-echo filtering: skip if originated from current user
+            // NOTE: nil originUserId means system-originated - do NOT skip those
+            if let originUserId = payload.originUserId,
+               let currentUser = currentUserID,
+               originUserId == currentUser {
+                debugLog.log("⏭️ Skipping self-originated broadcast: \(payload.table) \(payload.type)", category: .event)
+                return
+            }
+
+            debugLog.log("", category: .event)
+            debugLog.log("📡 BROADCAST EVENT: \(payload.table) \(payload.type)", category: .event)
+
+            let context = container.mainContext
+
+            // Route to appropriate handler based on table (type-safe enum switch)
+            switch payload.table {
+            case .tasks:
+                try await handleTaskBroadcast(payload: payload, context: context)
+            case .activities:
+                try await handleActivityBroadcast(payload: payload, context: context)
+            case .listings:
+                try await handleListingBroadcast(payload: payload, context: context)
+            case .users:
+                try await handleUserBroadcast(payload: payload, context: context)
+            case .claimEvents:
+                try await handleClaimEventBroadcast(payload: payload, context: context)
+            }
+
+            try context.save()
+
+        } catch {
+            debugLog.error("Failed to handle broadcast event", error: error)
+        }
+    }
+
+    // MARK: - Broadcast Handlers
+
+    /// Handles task broadcast - converts payload to TaskDTO and calls existing upsertTask
+    private func handleTaskBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+        if payload.type == .delete {
+            if let oldRecord = payload.cleanedOldRecord(),
+               let idString = oldRecord["id"] as? String,
+               let id = UUID(uuidString: idString) {
+                _ = try deleteLocalTask(id: id, context: context)
+                debugLog.log("  ✓ Broadcast: Deleted task \(id)", category: .event)
+            }
+        } else {
+            // INSERT or UPDATE - use centralized cleanedRecord() helper
+            guard let cleanRecord = payload.cleanedRecord() else { return }
+
+            let recordData = try JSONSerialization.data(withJSONObject: cleanRecord)
+            let dto = try PostgrestClient.Configuration.jsonDecoder.decode(TaskDTO.self, from: recordData)
+
+            // Use existing in-flight check as backup (will be removed in Phase 3)
+            if inFlightTaskIds.contains(dto.id) {
+                debugLog.log("  ⏭️ Broadcast: Skipping in-flight task \(dto.id)", category: .event)
+                return
+            }
+
+            #if DEBUG
+            // Phase 1 duplicate detection: log if processed recently via postgres_changes
+            if recentlyProcessedIds.contains(dto.id) {
+                debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for task \(dto.id)", category: .event)
+            }
+            recentlyProcessedIds.insert(dto.id)
+            #endif
+
+            try upsertTask(dto: dto, context: context)
+            debugLog.log("  ✓ Broadcast: Upserted task \(dto.id)", category: .event)
+        }
+    }
+
+    /// Handles activity broadcast - converts payload to ActivityDTO and calls existing upsertActivity
+    private func handleActivityBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+        if payload.type == .delete {
+            if let oldRecord = payload.cleanedOldRecord(),
+               let idString = oldRecord["id"] as? String,
+               let id = UUID(uuidString: idString) {
+                _ = try deleteLocalActivity(id: id, context: context)
+                debugLog.log("  ✓ Broadcast: Deleted activity \(id)", category: .event)
+            }
+        } else {
+            guard let cleanRecord = payload.cleanedRecord() else { return }
+
+            let recordData = try JSONSerialization.data(withJSONObject: cleanRecord)
+            let dto = try PostgrestClient.Configuration.jsonDecoder.decode(ActivityDTO.self, from: recordData)
+
+            if inFlightActivityIds.contains(dto.id) {
+                debugLog.log("  ⏭️ Broadcast: Skipping in-flight activity \(dto.id)", category: .event)
+                return
+            }
+
+            #if DEBUG
+            if recentlyProcessedIds.contains(dto.id) {
+                debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for activity \(dto.id)", category: .event)
+            }
+            recentlyProcessedIds.insert(dto.id)
+            #endif
+
+            try upsertActivity(dto: dto, context: context)
+            debugLog.log("  ✓ Broadcast: Upserted activity \(dto.id)", category: .event)
+        }
+    }
+
+    /// Handles listing broadcast - converts payload to ListingDTO and calls existing upsertListing
+    private func handleListingBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+        if payload.type == .delete {
+            if let oldRecord = payload.cleanedOldRecord(),
+               let idString = oldRecord["id"] as? String,
+               let id = UUID(uuidString: idString) {
+                _ = try deleteLocalListing(id: id, context: context)
+                debugLog.log("  ✓ Broadcast: Deleted listing \(id)", category: .event)
+            }
+        } else {
+            guard let cleanRecord = payload.cleanedRecord() else { return }
+
+            let recordData = try JSONSerialization.data(withJSONObject: cleanRecord)
+            let dto = try PostgrestClient.Configuration.jsonDecoder.decode(ListingDTO.self, from: recordData)
+
+            #if DEBUG
+            if recentlyProcessedIds.contains(dto.id) {
+                debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for listing \(dto.id)", category: .event)
+            }
+            recentlyProcessedIds.insert(dto.id)
+            #endif
+
+            try upsertListing(dto: dto, context: context)
+            debugLog.log("  ✓ Broadcast: Upserted listing \(dto.id)", category: .event)
+        }
+    }
+
+    /// Handles user broadcast - converts payload to UserDTO and calls existing upsertUser
+    private func handleUserBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+        if payload.type == .delete {
+            if let oldRecord = payload.cleanedOldRecord(),
+               let idString = oldRecord["id"] as? String,
+               let id = UUID(uuidString: idString) {
+                _ = try deleteLocalUser(id: id, context: context)
+                debugLog.log("  ✓ Broadcast: Deleted user \(id)", category: .event)
+            }
+        } else {
+            guard let cleanRecord = payload.cleanedRecord() else { return }
+
+            let recordData = try JSONSerialization.data(withJSONObject: cleanRecord)
+            let dto = try PostgrestClient.Configuration.jsonDecoder.decode(UserDTO.self, from: recordData)
+
+            #if DEBUG
+            if recentlyProcessedIds.contains(dto.id) {
+                debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for user \(dto.id)", category: .event)
+            }
+            recentlyProcessedIds.insert(dto.id)
+            #endif
+
+            try upsertUser(dto: dto, context: context)
+            debugLog.log("  ✓ Broadcast: Upserted user \(dto.id)", category: .event)
+        }
+    }
+
+    /// Handles claim event broadcast - converts payload to ClaimEventDTO and calls existing upsertClaimEvent
+    private func handleClaimEventBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+        if payload.type == .delete {
+            if let oldRecord = payload.cleanedOldRecord(),
+               let idString = oldRecord["id"] as? String,
+               let id = UUID(uuidString: idString) {
+                _ = try deleteLocalClaimEvent(id: id, context: context)
+                debugLog.log("  ✓ Broadcast: Deleted claim event \(id)", category: .event)
+            }
+        } else {
+            guard let cleanRecord = payload.cleanedRecord() else { return }
+
+            let recordData = try JSONSerialization.data(withJSONObject: cleanRecord)
+            let dto = try PostgrestClient.Configuration.jsonDecoder.decode(ClaimEventDTO.self, from: recordData)
+
+            #if DEBUG
+            if recentlyProcessedIds.contains(dto.id) {
+                debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for claim event \(dto.id)", category: .event)
+            }
+            recentlyProcessedIds.insert(dto.id)
+            #endif
+
+            try upsertClaimEvent(dto: dto, context: context)
+            debugLog.log("  ✓ Broadcast: Upserted claim event \(dto.id)", category: .event)
+        }
     }
 }
