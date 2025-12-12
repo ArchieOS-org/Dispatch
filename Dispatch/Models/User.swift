@@ -21,10 +21,15 @@ final class User {
     var updatedAt: Date
     var syncedAt: Date?
 
-    // Sync state tracking (initialized in init to avoid SwiftData macro issues)
+    // Sync state tracking - optional storage with computed wrapper for schema migration compatibility
     // Note: Users sync DOWN only (RLS prevents non-self updates), so these are primarily for protocol conformance
-    var syncState: EntitySyncState
+    var syncStateRaw: EntitySyncState?
     var lastSyncError: String?
+
+    var syncState: EntitySyncState {
+        get { syncStateRaw ?? .synced }
+        set { syncStateRaw = newValue }
+    }
 
     // Relationships (for realtors)
     @Relationship(deleteRule: .nullify, inverse: \Listing.owner)
@@ -53,7 +58,7 @@ final class User {
         self.userType = userType
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        self.syncState = .synced
+        self.syncStateRaw = .synced
     }
 }
 

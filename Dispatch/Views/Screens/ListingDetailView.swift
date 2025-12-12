@@ -76,8 +76,8 @@ struct ListingDetailView: View {
 
                 // Tab Picker
                 Picker("Content", selection: $selectedTab) {
-                    Text("Tasks (\(activeTasks.count))").tag(0)
-                    Text("Activities (\(activeActivities.count))").tag(1)
+                    Text("Activities (\(activeActivities.count))").tag(0)
+                    Text("Tasks (\(activeTasks.count))").tag(1)
                     Text("Notes (\(listing.notes.count))").tag(2)
                 }
                 .pickerStyle(.segmented)
@@ -86,16 +86,14 @@ struct ListingDetailView: View {
                 // Tab Content
                 switch selectedTab {
                 case 0:
-                    tasksTab
-                case 1:
                     activitiesTab
+                case 1:
+                    tasksTab
                 case 2:
                     notesTab
                 default:
                     EmptyView()
                 }
-
-                bottomActions
             }
             .padding(.vertical, DS.Spacing.md)
         }
@@ -149,7 +147,7 @@ struct ListingDetailView: View {
                 }
             }
 
-            // Status and Edit row
+            // Status row
             HStack {
                 // Status badge
                 Text(listing.status.rawValue.capitalized)
@@ -170,19 +168,22 @@ struct ListingDetailView: View {
                     .cornerRadius(DS.Spacing.radiusSmall)
 
                 Spacer()
-
-                // Edit button (placeholder)
-                Button(action: { /* Phase 4: Edit listing */ }) {
-                    Image(systemName: DS.Icons.Action.edit)
-                        .foregroundColor(DS.Colors.accent)
-                }
             }
 
-            // Price (if available)
-            if let price = listing.price {
-                Text("$\(NSDecimalNumber(decimal: price).intValue.formatted())")
-                    .font(DS.Typography.headline)
-                    .foregroundColor(DS.Colors.success)
+            // Price + menu
+            HStack(alignment: .firstTextBaseline) {
+                if let price = listing.price {
+                    Text("$\(NSDecimalNumber(decimal: price).intValue.formatted())")
+                        .font(DS.Typography.headline)
+                        .foregroundColor(DS.Colors.success)
+                }
+
+                Spacer()
+
+                Button(action: { /* Phase 4: Edit listing */ }) {
+                    Image(systemName: "ellipsis")
+                        .foregroundColor(DS.Colors.accent)
+                }
             }
         }
         .padding(DS.Spacing.md)
@@ -319,31 +320,6 @@ struct ListingDetailView: View {
         .padding(.horizontal, DS.Spacing.md)
     }
 
-    // MARK: - Bottom Actions
-
-    private var bottomActions: some View {
-        HStack(spacing: DS.Spacing.md) {
-            Button(action: { /* Phase 4: Edit listing sheet */ }) {
-                HStack {
-                    Image(systemName: DS.Icons.Action.edit)
-                    Text("Edit Listing")
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-
-            Button(role: .destructive, action: { showDeleteListingAlert = true }) {
-                HStack {
-                    Image(systemName: DS.Icons.Action.delete)
-                    Text("Delete")
-                }
-            }
-            .buttonStyle(.bordered)
-            .tint(.red)
-        }
-        .padding(.horizontal, DS.Spacing.md)
-        .padding(.top, DS.Spacing.md)
-    }
 
     // MARK: - Actions
 

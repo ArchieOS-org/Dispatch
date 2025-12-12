@@ -36,9 +36,14 @@ final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     var updatedAt: Date
     var syncedAt: Date?
 
-    // Sync state tracking (initialized in init to avoid SwiftData macro issues)
-    var syncState: EntitySyncState
+    // Sync state tracking - optional storage with computed wrapper for schema migration compatibility
+    var syncStateRaw: EntitySyncState?
     var lastSyncError: String?
+
+    var syncState: EntitySyncState {
+        get { syncStateRaw ?? .synced }
+        set { syncStateRaw = newValue }
+    }
 
     // Relationships
     @Relationship(deleteRule: .cascade)
@@ -89,7 +94,7 @@ final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
         self.duration = duration
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        self.syncState = .synced
+        self.syncStateRaw = .synced
     }
 }
 
