@@ -191,11 +191,11 @@ struct ListingListView: View {
         case .task(let task, _):
             task.status = task.status == .completed ? .open : .completed
             task.completedAt = task.status == .completed ? Date() : nil
-            task.updatedAt = Date()
+            task.markPending()
         case .activity(let activity, _):
             activity.status = activity.status == .completed ? .open : .completed
             activity.completedAt = activity.status == .completed ? Date() : nil
-            activity.updatedAt = Date()
+            activity.markPending()
         }
         syncManager.requestSync()
     }
@@ -205,11 +205,11 @@ struct ListingListView: View {
         case .task(let task, _):
             task.claimedBy = currentUserId
             task.claimedAt = Date()
-            task.updatedAt = Date()
+            task.markPending()
         case .activity(let activity, _):
             activity.claimedBy = currentUserId
             activity.claimedAt = Date()
-            activity.updatedAt = Date()
+            activity.markPending()
         }
         syncManager.requestSync()
     }
@@ -219,11 +219,11 @@ struct ListingListView: View {
         case .task(let task, _):
             task.claimedBy = nil
             task.claimedAt = nil
-            task.updatedAt = Date()
+            task.markPending()
         case .activity(let activity, _):
             activity.claimedBy = nil
             activity.claimedAt = nil
-            activity.updatedAt = Date()
+            activity.markPending()
         }
         syncManager.requestSync()
     }
@@ -240,7 +240,7 @@ struct ListingListView: View {
                 parentId: item.id
             )
             task.notes.append(note)
-            task.updatedAt = Date()
+            task.markPending()
         case .activity(let activity, _):
             let note = Note(
                 content: content,
@@ -249,7 +249,7 @@ struct ListingListView: View {
                 parentId: item.id
             )
             activity.notes.append(note)
-            activity.updatedAt = Date()
+            activity.markPending()
         }
         syncManager.requestSync()
     }
@@ -259,10 +259,10 @@ struct ListingListView: View {
         switch item {
         case .task(let task, _):
             task.notes.removeAll { $0.id == note.id }
-            task.updatedAt = Date()
+            task.markPending()
         case .activity(let activity, _):
             activity.notes.removeAll { $0.id == note.id }
-            activity.updatedAt = Date()
+            activity.markPending()
         }
         modelContext.delete(note)
         noteToDelete = nil
@@ -274,6 +274,7 @@ struct ListingListView: View {
 
     private func toggleSubtask(_ subtask: Subtask) {
         subtask.completed.toggle()
+        // Note: Subtasks sync with parent - parent will be marked pending when saved
         syncManager.requestSync()
     }
 
@@ -282,10 +283,10 @@ struct ListingListView: View {
         switch item {
         case .task(let task, _):
             task.subtasks.removeAll { $0.id == subtask.id }
-            task.updatedAt = Date()
+            task.markPending()
         case .activity(let activity, _):
             activity.subtasks.removeAll { $0.id == subtask.id }
-            activity.updatedAt = Date()
+            activity.markPending()
         }
         modelContext.delete(subtask)
         subtaskToDelete = nil
@@ -302,7 +303,7 @@ struct ListingListView: View {
                 parentId: item.id
             )
             task.subtasks.append(subtask)
-            task.updatedAt = Date()
+            task.markPending()
         case .activity(let activity, _):
             let subtask = Subtask(
                 title: title,
@@ -310,7 +311,7 @@ struct ListingListView: View {
                 parentId: item.id
             )
             activity.subtasks.append(subtask)
-            activity.updatedAt = Date()
+            activity.markPending()
         }
         syncManager.requestSync()
     }

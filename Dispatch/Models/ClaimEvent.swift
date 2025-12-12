@@ -21,6 +21,10 @@ final class ClaimEvent {
     var updatedAt: Date
     var syncedAt: Date?
 
+    // Sync state tracking (initialized in init to avoid SwiftData macro issues)
+    var syncState: EntitySyncState
+    var lastSyncError: String?
+
     init(
         id: UUID = UUID(),
         parentType: ParentType,
@@ -41,13 +45,33 @@ final class ClaimEvent {
         self.reason = reason
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.syncState = .pending  // Local creates start pending, server upserts mark .synced
     }
 }
 
 // MARK: - RealtimeSyncable Conformance
 extension ClaimEvent: RealtimeSyncable {
-    var isDirty: Bool {
-        guard let syncedAt = syncedAt else { return true }
-        return updatedAt > syncedAt
+    // syncState, lastSyncError, syncedAt are stored properties
+    // isDirty, isSyncFailed computed from syncState via protocol extension
+    // conflictResolution uses default from protocol extension (.lastWriteWins)
+
+    /// Mark as pending when modified
+    func markPending() {
+        syncState = .pending
+        lastSyncError = nil
+        updatedAt = Date()
+    }
+
+    /// Mark as synced after successful sync
+    func markSynced() {
+        syncState = .synced
+        lastSyncError = nil
+        syncedAt = Date()
+    }
+
+    /// Mark as failed with error message
+    func markFailed(_ message: String) {
+        syncState = .failed
+        lastSyncError = message
     }
 }

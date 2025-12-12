@@ -24,6 +24,10 @@ struct WorkItemRow: View {
     var onDelete: () -> Void = {}
     var onClaim: () -> Void = {}
     var onRelease: () -> Void = {}
+    var onRetrySync: () -> Void = {}
+
+    // State for retry animation
+    @State private var isRetrying = false
 
     private static let accessibilityDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -77,13 +81,30 @@ struct WorkItemRow: View {
 
             Spacer()
 
-            ClaimButton(
-                claimState: claimState,
-                style: .compact,
-                onClaim: onClaim,
-                onRelease: onRelease
-            )
-            .padding(.trailing, DS.Spacing.md)
+            // Show sync error indicator if failed, otherwise show claim button
+            if item.isSyncFailed {
+                SyncRetryButton(
+                    errorMessage: item.lastSyncError,
+                    isRetrying: isRetrying,
+                    onRetry: {
+                        isRetrying = true
+                        onRetrySync()
+                        // Reset after a delay (sync completion will trigger UI refresh)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            isRetrying = false
+                        }
+                    }
+                )
+                .padding(.trailing, DS.Spacing.sm)
+            } else {
+                ClaimButton(
+                    claimState: claimState,
+                    style: .compact,
+                    onClaim: onClaim,
+                    onRelease: onRelease
+                )
+                .padding(.trailing, DS.Spacing.md)
+            }
         }
         .padding(.vertical, DS.Spacing.sm)
         .contentShape(Rectangle())
@@ -120,6 +141,12 @@ struct WorkItemRow: View {
             parts.append("Claimed by you")
         case .claimedByOther(let user):
             parts.append("Claimed by \(user.name)")
+        }
+        if item.isSyncFailed {
+            parts.append("Sync failed")
+            if let error = item.lastSyncError {
+                parts.append(error)
+            }
         }
         return parts.filter { !$0.isEmpty }.joined(separator: ", ")
     }

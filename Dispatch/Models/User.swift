@@ -21,6 +21,11 @@ final class User {
     var updatedAt: Date
     var syncedAt: Date?
 
+    // Sync state tracking (initialized in init to avoid SwiftData macro issues)
+    // Note: Users sync DOWN only (RLS prevents non-self updates), so these are primarily for protocol conformance
+    var syncState: EntitySyncState
+    var lastSyncError: String?
+
     // Relationships (for realtors)
     @Relationship(deleteRule: .nullify, inverse: \Listing.owner)
     var listings: [Listing] = []
@@ -48,15 +53,34 @@ final class User {
         self.userType = userType
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.syncState = .synced
     }
 }
 
 // MARK: - RealtimeSyncable Conformance
 // NOTE: Users sync DOWN only (RLS prevents non-self updates)
 extension User: RealtimeSyncable {
-    var isDirty: Bool {
-        guard let syncedAt = syncedAt else { return true }
-        return updatedAt > syncedAt
-    }
+    // syncState, lastSyncError, syncedAt are stored properties
+    // isDirty, isSyncFailed computed from syncState via protocol extension
     // conflictResolution uses default from protocol extension (.lastWriteWins)
+
+    /// Mark as pending when modified (rarely used for User - sync is mostly down)
+    func markPending() {
+        syncState = .pending
+        lastSyncError = nil
+        updatedAt = Date()
+    }
+
+    /// Mark as synced after successful sync
+    func markSynced() {
+        syncState = .synced
+        lastSyncError = nil
+        syncedAt = Date()
+    }
+
+    /// Mark as failed with error message
+    func markFailed(_ message: String) {
+        syncState = .failed
+        lastSyncError = message
+    }
 }

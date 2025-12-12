@@ -355,7 +355,7 @@ struct ListingDetailView: View {
             parentId: listing.id
         )
         listing.notes.append(note)
-        listing.updatedAt = Date()
+        listing.markPending()
         syncManager.requestSync()
     }
 
@@ -363,7 +363,7 @@ struct ListingDetailView: View {
         guard let note = noteToDelete else { return }
         listing.notes.removeAll { $0.id == note.id }
         modelContext.delete(note)
-        listing.updatedAt = Date()
+        listing.markPending()
         noteToDelete = nil
         syncManager.requestSync()
     }
@@ -371,7 +371,7 @@ struct ListingDetailView: View {
     private func deleteListing() {
         listing.status = .deleted
         listing.deletedAt = Date()
-        listing.updatedAt = Date()
+        listing.markPending()
         syncManager.requestSync()
         dismiss()
     }
@@ -381,8 +381,9 @@ struct ListingDetailView: View {
     private func claimTask(_ task: TaskItem) {
         task.claimedBy = currentUserId
         task.claimedAt = Date()
-        task.updatedAt = Date()
+        task.markPending()
 
+        // ClaimEvent starts as .pending in init
         let event = ClaimEvent(
             parentType: .task,
             parentId: task.id,
@@ -396,8 +397,9 @@ struct ListingDetailView: View {
     private func unclaimTask(_ task: TaskItem) {
         task.claimedBy = nil
         task.claimedAt = nil
-        task.updatedAt = Date()
+        task.markPending()
 
+        // ClaimEvent starts as .pending in init
         let event = ClaimEvent(
             parentType: .task,
             parentId: task.id,
@@ -413,8 +415,9 @@ struct ListingDetailView: View {
     private func claimActivity(_ activity: Activity) {
         activity.claimedBy = currentUserId
         activity.claimedAt = Date()
-        activity.updatedAt = Date()
+        activity.markPending()
 
+        // ClaimEvent starts as .pending in init
         let event = ClaimEvent(
             parentType: .activity,
             parentId: activity.id,
@@ -428,8 +431,9 @@ struct ListingDetailView: View {
     private func unclaimActivity(_ activity: Activity) {
         activity.claimedBy = nil
         activity.claimedAt = nil
-        activity.updatedAt = Date()
+        activity.markPending()
 
+        // ClaimEvent starts as .pending in init
         let event = ClaimEvent(
             parentType: .activity,
             parentId: activity.id,

@@ -189,7 +189,7 @@ struct TaskListView: View {
         guard let task = item.taskItem else { return }
         task.status = task.status == .completed ? .open : .completed
         task.completedAt = task.status == .completed ? Date() : nil
-        task.updatedAt = Date()
+        task.markPending()
         syncManager.requestSync()
     }
 
@@ -197,7 +197,7 @@ struct TaskListView: View {
         guard let task = item.taskItem else { return }
         task.status = .deleted
         task.deletedAt = Date()
-        task.updatedAt = Date()
+        task.markPending()
         syncManager.requestSync()
     }
 
@@ -205,9 +205,9 @@ struct TaskListView: View {
         guard let task = item.taskItem else { return }
         task.claimedBy = currentUserId
         task.claimedAt = Date()
-        task.updatedAt = Date()
+        task.markPending()
 
-        // Create audit record
+        // Create audit record (ClaimEvent starts as .pending in init)
         let event = ClaimEvent(
             parentType: .task,
             parentId: task.id,
@@ -235,9 +235,9 @@ struct TaskListView: View {
         guard let task = item.taskItem else { return }
         task.claimedBy = nil
         task.claimedAt = nil
-        task.updatedAt = Date()
+        task.markPending()
 
-        // Create audit record
+        // Create audit record (ClaimEvent starts as .pending in init)
         let event = ClaimEvent(
             parentType: .task,
             parentId: task.id,
@@ -272,7 +272,7 @@ struct TaskListView: View {
             parentId: task.id
         )
         task.notes.append(note)
-        task.updatedAt = Date()
+        task.markPending()
         syncManager.requestSync()
     }
 
@@ -281,7 +281,7 @@ struct TaskListView: View {
         guard let task = item.taskItem else { return }
         task.notes.removeAll { $0.id == note.id }
         modelContext.delete(note)
-        task.updatedAt = Date()
+        task.markPending()
         noteToDelete = nil
         itemForNoteDeletion = nil
         syncManager.requestSync()
@@ -291,6 +291,7 @@ struct TaskListView: View {
 
     private func toggleSubtask(_ subtask: Subtask) {
         subtask.completed.toggle()
+        // Note: Subtasks sync with parent task - parent will be marked pending when saved
         syncManager.requestSync()
     }
 
@@ -299,7 +300,7 @@ struct TaskListView: View {
         guard let task = item.taskItem else { return }
         task.subtasks.removeAll { $0.id == subtask.id }
         modelContext.delete(subtask)
-        task.updatedAt = Date()
+        task.markPending()
         subtaskToDelete = nil
         itemForSubtaskDeletion = nil
         syncManager.requestSync()
@@ -313,7 +314,7 @@ struct TaskListView: View {
             parentId: task.id
         )
         task.subtasks.append(subtask)
-        task.updatedAt = Date()
+        task.markPending()
         syncManager.requestSync()
     }
 }

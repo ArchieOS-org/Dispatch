@@ -32,6 +32,10 @@ struct WorkItemSnapshot {
 
     // For activity type-specific properties
     let activityType: ActivityType?
+
+    // Sync state for per-entity error display
+    let syncState: EntitySyncState
+    let lastSyncError: String?
 }
 
 /// A unified wrapper for TaskItem and Activity that provides
@@ -102,6 +106,12 @@ enum WorkItem: Identifiable {
     }
 
     var statusText: String { snapshot.statusRawValue.capitalized }
+
+    // MARK: - Sync State (from cached snapshot)
+
+    var syncState: EntitySyncState { snapshot.syncState }
+    var lastSyncError: String? { snapshot.lastSyncError }
+    var isSyncFailed: Bool { syncState == .failed }
 
     // MARK: - Type Label (from cached snapshot)
 
@@ -183,7 +193,9 @@ extension WorkItem {
             typeLabel: "Task",
             typeIcon: DS.Icons.Entity.task,
             statusRawValue: task.status.rawValue,
-            activityType: nil
+            activityType: nil,
+            syncState: task.syncState,
+            lastSyncError: task.lastSyncError
         )
         return .task(task, snapshot: snapshot)
     }
@@ -231,7 +243,9 @@ extension WorkItem {
             typeLabel: typeLabel,
             typeIcon: typeIcon,
             statusRawValue: activity.status.rawValue,
-            activityType: activity.type
+            activityType: activity.type,
+            syncState: activity.syncState,
+            lastSyncError: activity.lastSyncError
         )
         return .activity(activity, snapshot: snapshot)
     }

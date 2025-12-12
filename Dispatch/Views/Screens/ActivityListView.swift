@@ -189,7 +189,7 @@ struct ActivityListView: View {
         guard let activity = item.activityItem else { return }
         activity.status = activity.status == .completed ? .open : .completed
         activity.completedAt = activity.status == .completed ? Date() : nil
-        activity.updatedAt = Date()
+        activity.markPending()
         syncManager.requestSync()
     }
 
@@ -197,7 +197,7 @@ struct ActivityListView: View {
         guard let activity = item.activityItem else { return }
         activity.status = .deleted
         activity.deletedAt = Date()
-        activity.updatedAt = Date()
+        activity.markPending()
         syncManager.requestSync()
     }
 
@@ -205,9 +205,9 @@ struct ActivityListView: View {
         guard let activity = item.activityItem else { return }
         activity.claimedBy = currentUserId
         activity.claimedAt = Date()
-        activity.updatedAt = Date()
+        activity.markPending()
 
-        // Create audit record
+        // Create audit record (ClaimEvent starts as .pending in init)
         let event = ClaimEvent(
             parentType: .activity,
             parentId: activity.id,
@@ -235,9 +235,9 @@ struct ActivityListView: View {
         guard let activity = item.activityItem else { return }
         activity.claimedBy = nil
         activity.claimedAt = nil
-        activity.updatedAt = Date()
+        activity.markPending()
 
-        // Create audit record
+        // Create audit record (ClaimEvent starts as .pending in init)
         let event = ClaimEvent(
             parentType: .activity,
             parentId: activity.id,
@@ -272,7 +272,7 @@ struct ActivityListView: View {
             parentId: activity.id
         )
         activity.notes.append(note)
-        activity.updatedAt = Date()
+        activity.markPending()
         syncManager.requestSync()
     }
 
@@ -281,7 +281,7 @@ struct ActivityListView: View {
         guard let activity = item.activityItem else { return }
         activity.notes.removeAll { $0.id == note.id }
         modelContext.delete(note)
-        activity.updatedAt = Date()
+        activity.markPending()
         noteToDelete = nil
         itemForNoteDeletion = nil
         syncManager.requestSync()
@@ -291,6 +291,7 @@ struct ActivityListView: View {
 
     private func toggleSubtask(_ subtask: Subtask) {
         subtask.completed.toggle()
+        // Note: Subtasks sync with parent activity - parent will be marked pending when saved
         syncManager.requestSync()
     }
 
@@ -299,7 +300,7 @@ struct ActivityListView: View {
         guard let activity = item.activityItem else { return }
         activity.subtasks.removeAll { $0.id == subtask.id }
         modelContext.delete(subtask)
-        activity.updatedAt = Date()
+        activity.markPending()
         subtaskToDelete = nil
         itemForSubtaskDeletion = nil
         syncManager.requestSync()
@@ -313,7 +314,7 @@ struct ActivityListView: View {
             parentId: activity.id
         )
         activity.subtasks.append(subtask)
-        activity.updatedAt = Date()
+        activity.markPending()
         syncManager.requestSync()
     }
 }

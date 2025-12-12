@@ -36,6 +36,10 @@ final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     var updatedAt: Date
     var syncedAt: Date?
 
+    // Sync state tracking (initialized in init to avoid SwiftData macro issues)
+    var syncState: EntitySyncState
+    var lastSyncError: String?
+
     // Relationships
     @Relationship(deleteRule: .cascade)
     var notes: [Note] = []
@@ -85,14 +89,33 @@ final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
         self.duration = duration
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.syncState = .synced
     }
 }
 
 // MARK: - RealtimeSyncable Conformance
 extension Activity: RealtimeSyncable {
-    var isDirty: Bool {
-        guard let syncedAt = syncedAt else { return true }
-        return updatedAt > syncedAt
-    }
+    // syncState, lastSyncError, syncedAt are stored properties
+    // isDirty, isSyncFailed computed from syncState via protocol extension
     // conflictResolution uses default from protocol extension (.lastWriteWins)
+
+    /// Mark as pending when modified
+    func markPending() {
+        syncState = .pending
+        lastSyncError = nil
+        updatedAt = Date()
+    }
+
+    /// Mark as synced after successful sync
+    func markSynced() {
+        syncState = .synced
+        lastSyncError = nil
+        syncedAt = Date()
+    }
+
+    /// Mark as failed with error message
+    func markFailed(_ message: String) {
+        syncState = .failed
+        lastSyncError = message
+    }
 }
