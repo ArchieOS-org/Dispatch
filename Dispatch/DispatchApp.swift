@@ -65,9 +65,17 @@ struct DispatchApp: App {
                 #endif
         }
         .modelContainer(sharedModelContainer)
-        .onChange(of: scenePhase) { _, newPhase in
+        .onChange(of: scenePhase) { newPhase in
             if newPhase == .active {
                 Task {
+                    // Check app compatibility before sync
+                    let compatStatus = await AppCompatManager.shared.checkCompatibility()
+                    if compatStatus.isBlocked {
+                        // TODO: Show force update alert
+                        debugLog.log("App version incompatible: \(AppCompatManager.shared.statusMessage)", category: .error)
+                        return
+                    }
+
                     await SyncManager.shared.sync()
                     await SyncManager.shared.startListening()
                 }
