@@ -33,12 +33,12 @@ struct NoteCard: View {
                 if let author {
                     UserAvatar(user: author, size: .small)
                     Text(author.name)
-                        .font(DS.Typography.caption)
+                        .font(DS.Typography.bodySecondary)
                         .foregroundColor(DS.Colors.Text.secondary)
                 }
                 Spacer()
                 Text(Self.timestampFormatter.string(from: note.createdAt))
-                    .font(DS.Typography.caption)
+                    .font(DS.Typography.bodySecondary)
                     .foregroundColor(DS.Colors.Text.tertiary)
             }
 
@@ -46,8 +46,8 @@ struct NoteCard: View {
             Text(note.content)
                 .font(DS.Typography.body)
                 .foregroundColor(DS.Colors.Text.primary)
-                .lineLimit(2)
                 .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
 
             // Edit indicator if edited
             if let editedAt = note.editedAt {
@@ -66,7 +66,7 @@ struct NoteCard: View {
                             Image(systemName: DS.Icons.Action.edit)
                                 .font(.system(size: 14))
                         }
-                        .buttonStyle(.borderless)
+                        .buttonStyle(.plain)
                         .tint(DS.Colors.info)
                     }
                     if let onDelete {
@@ -74,21 +74,15 @@ struct NoteCard: View {
                             Image(systemName: DS.Icons.Action.delete)
                                 .font(.system(size: 14))
                         }
-                        .buttonStyle(.borderless)
+                        .buttonStyle(.plain)
                         .tint(DS.Colors.destructive)
                     }
                 }
                 .transition(.opacity.combined(with: .scale(scale: 0.8)))
             }
         }
-        .padding(DS.Spacing.cardPadding)
-        .background(DS.Colors.Background.card)
-        .cornerRadius(DS.Spacing.radiusCard)
-        .overlay(
-            RoundedRectangle(cornerRadius: DS.Spacing.radiusCard)
-                .stroke(DS.Colors.border, lineWidth: 1)
-        )
-        .dsShadow(DS.Shadows.card)
+        .padding(.horizontal, DS.Spacing.md)
+        .padding(.vertical, DS.Spacing.sm)
         .contentShape(Rectangle())
         .onTapGesture {
             withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.7)) {

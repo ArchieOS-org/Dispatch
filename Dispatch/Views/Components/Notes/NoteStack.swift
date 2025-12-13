@@ -2,57 +2,42 @@
 //  NoteStack.swift
 //  Dispatch
 //
-//  Notes Component - 140pt cascading notes with shadow gradient
+//  Notes Component - flat, full-height list
 //  Created by Claude on 2025-12-06.
-//
-//  CRITICAL: This is THE DIFFERENTIATOR feature. Uses LinearGradient overlay
-//  for shadow effect instead of .shadow() modifier because shadows get clipped
-//  by the .clipped() modifier required for the fixed height container.
 //
 
 import SwiftUI
 
-/// A fixed-height (140pt) cascading stack of notes with overflow indication.
-/// Shows up to 5 most recent notes with cascading offset effect.
-/// Uses gradient overlay (not .shadow()) to indicate more content above.
+/// A full-height flat list of notes sorted newest-first.
+/// Shows all notes with dividers between them.
 struct NoteStack: View {
     let notes: [Note]
     let userLookup: (UUID) -> User?
     var onEdit: ((Note) -> Void)?
     var onDelete: ((Note) -> Void)?
 
-    private var displayNotes: [Note] {
-        Array(notes.sorted { $0.createdAt > $1.createdAt }.prefix(5))
+    private var sortedNotes: [Note] {
+        notes.sorted { $0.createdAt > $1.createdAt }
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            // Notes container - CLIPPED at 140pt
-            VStack(spacing: DS.Spacing.stackSpacing) {
-                ForEach(Array(displayNotes.enumerated()), id: \.element.id) { index, note in
-                    NoteCard(
-                        note: note,
-                        author: userLookup(note.createdBy),
-                        onEdit: onEdit != nil ? { onEdit?(note) } : nil,
-                        onDelete: onDelete != nil ? { onDelete?(note) } : nil
-                    )
-                    .offset(y: CGFloat(index) * DS.Spacing.noteCascadeOffset)
-                    .zIndex(Double(displayNotes.count - index)) // Top cards on top
+        LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(sortedNotes) { note in
+                NoteCard(
+                    note: note,
+                    author: userLookup(note.createdBy),
+                    onEdit: onEdit != nil ? { onEdit?(note) } : nil,
+                    onDelete: onDelete != nil ? { onDelete?(note) } : nil
+                )
+
+                if note.id != sortedNotes.last?.id {
+                    Divider()
+                        .padding(.leading, DS.Spacing.md)
                 }
             }
-            .frame(height: DS.Spacing.notesStackHeight, alignment: .top)
-            .clipped()
 
-            // Shadow gradient OUTSIDE clipping boundary to indicate overflow
-            // CRITICAL: Use LinearGradient, NOT .shadow() - shadows get clipped!
-            if notes.count > 3 {
-                VStack {
-                    Spacer()
-                    DS.Shadows.notesOverflowGradient
-                        .frame(height: DS.Spacing.shadowGradientHeight)
-                        .allowsHitTesting(false)
-                }
-                .frame(height: DS.Spacing.notesStackHeight)
+            if sortedNotes.isEmpty {
+                NoteStack.emptyState
             }
         }
         .accessibilityElement(children: .contain)
@@ -77,10 +62,9 @@ extension NoteStack {
                 .foregroundColor(DS.Colors.Text.tertiary)
                 .multilineTextAlignment(.center)
         }
-        .frame(height: DS.Spacing.notesStackHeight)
-        .frame(maxWidth: .infinity)
-        .background(DS.Colors.Background.secondary)
-        .cornerRadius(DS.Spacing.radiusCard)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.vertical, DS.Spacing.lg)
+        .padding(.horizontal, DS.Spacing.md)
     }
 }
 
