@@ -67,6 +67,17 @@ struct ListingDetailView: View {
         }
     }
 
+    private var listingActions: [OverflowMenu.Action] {
+        [
+            OverflowMenu.Action(id: "edit", title: "Edit Listing", icon: DS.Icons.Action.edit) {
+                // Phase 4: Edit listing placeholder
+            },
+            OverflowMenu.Action(id: "delete", title: "Delete Listing", icon: DS.Icons.Action.delete, role: .destructive) {
+                showDeleteListingAlert = true
+            }
+        ]
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -180,10 +191,7 @@ struct ListingDetailView: View {
 
                 Spacer()
 
-                Button(action: { /* Phase 4: Edit listing */ }) {
-                    Image(systemName: "ellipsis")
-                        .foregroundColor(DS.Colors.accent)
-                }
+                OverflowMenu(actions: listingActions)
             }
         }
         .padding(DS.Spacing.md)
