@@ -28,6 +28,7 @@ extension ListingDTO {
         self.pendingAt = model.pendingAt
         self.closedAt = model.closedAt
         self.deletedAt = model.deletedAt
+        self.dueDate = model.dueDate
         self.createdAt = model.createdAt
         self.updatedAt = model.updatedAt
     }

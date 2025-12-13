@@ -178,6 +178,9 @@ struct ListingDetailView: View {
                     .background(DS.Colors.Background.secondary)
                     .cornerRadius(DS.Spacing.radiusSmall)
 
+                // Due date badge
+                DueDateBadge(dueDate: listing.dueDate)
+
                 Spacer()
             }
 

@@ -25,6 +25,7 @@ struct ListingDTO: Codable, Sendable {
     let pendingAt: Date?
     let closedAt: Date?
     let deletedAt: Date?
+    let dueDate: Date?
     let createdAt: Date
     let updatedAt: Date
 
@@ -40,6 +41,7 @@ struct ListingDTO: Codable, Sendable {
         case pendingAt = "pending_at"
         case closedAt = "closed_at"
         case deletedAt = "deleted_at"
+        case dueDate = "due_date"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -83,6 +85,7 @@ struct ListingDTO: Codable, Sendable {
             ownedBy: ownedBy,
             createdVia: resolvedCreatedVia,
             sourceSlackMessages: sourceSlackMessages,
+            dueDate: dueDate,
             createdAt: createdAt,
             updatedAt: updatedAt
         )

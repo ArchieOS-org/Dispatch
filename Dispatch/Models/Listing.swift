@@ -33,6 +33,7 @@ final class Listing: NotableProtocol {
     var pendingAt: Date?
     var closedAt: Date?
     var deletedAt: Date?
+    var dueDate: Date?
     var createdAt: Date
     var updatedAt: Date
     var syncedAt: Date?
@@ -76,6 +77,7 @@ final class Listing: NotableProtocol {
         ownedBy: UUID,
         createdVia: CreationSource = .dispatch,
         sourceSlackMessages: [String]? = nil,
+        dueDate: Date? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -92,6 +94,7 @@ final class Listing: NotableProtocol {
         self.ownedBy = ownedBy
         self.createdVia = createdVia
         self.sourceSlackMessages = sourceSlackMessages
+        self.dueDate = dueDate
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.syncStateRaw = .synced

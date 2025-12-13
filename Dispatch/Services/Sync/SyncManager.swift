@@ -661,6 +661,7 @@ final class SyncManager: ObservableObject {
             existing.pendingAt = dto.pendingAt
             existing.closedAt = dto.closedAt
             existing.deletedAt = dto.deletedAt
+            existing.dueDate = dto.dueDate
             existing.updatedAt = dto.updatedAt
             existing.markSynced()
         } else {

@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS listings (
     pending_at TIMESTAMPTZ,
     closed_at TIMESTAMPTZ,
     deleted_at TIMESTAMPTZ,
+    due_date TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     synced_at TIMESTAMPTZ
@@ -65,6 +66,7 @@ CREATE TABLE IF NOT EXISTS listings (
 CREATE INDEX IF NOT EXISTS idx_listings_owned_by ON listings(owned_by);
 CREATE INDEX IF NOT EXISTS idx_listings_assigned_staff ON listings(assigned_staff);
 CREATE INDEX IF NOT EXISTS idx_listings_status ON listings(status);
+CREATE INDEX IF NOT EXISTS idx_listings_due_date ON listings(due_date);
 CREATE INDEX IF NOT EXISTS idx_listings_updated_at ON listings(updated_at);
 
 ALTER TABLE listings ENABLE ROW LEVEL SECURITY;
