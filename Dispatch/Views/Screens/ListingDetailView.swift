@@ -83,20 +83,29 @@ struct ListingDetailView: View {
             VStack(alignment: .leading, spacing: DS.Spacing.lg) {
                 headerSection
 
-                Divider()
-                    .padding(.horizontal, DS.Spacing.md)
+                VStack(alignment: .leading, spacing: 0) {
+                    notesHeader
+                    Divider()
+                        .padding(.top, DS.Spacing.sm)
+                        .padding(.horizontal, DS.Spacing.md)
+                    notesSection
+                }
 
-                notesSection
+                VStack(alignment: .leading, spacing: 0) {
+                    tasksHeader
+                    Divider()
+                        .padding(.top, DS.Spacing.sm)
+                        .padding(.horizontal, DS.Spacing.md)
+                    tasksSection
+                }
 
-                Divider()
-                    .padding(.horizontal, DS.Spacing.md)
-
-                tasksSection
-
-                Divider()
-                    .padding(.horizontal, DS.Spacing.md)
-
-                activitiesSection
+                VStack(alignment: .leading, spacing: 0) {
+                    activitiesHeader
+                    Divider()
+                        .padding(.top, DS.Spacing.sm)
+                        .padding(.horizontal, DS.Spacing.md)
+                    activitiesSection
+                }
             }
             .padding(.vertical, DS.Spacing.md)
         }
@@ -133,10 +142,15 @@ struct ListingDetailView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            // Address
-            Text(listing.address)
-                .font(.title.bold())
-                .foregroundColor(DS.Colors.Text.primary)
+            // Address with progress indicator
+            HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.sm) {
+                ProgressCircle(progress: listing.progress, size: 20)
+                    .alignmentGuide(.firstTextBaseline) { d in d[.bottom] - 2 }
+
+                Text(listing.address)
+                    .font(.title.bold())
+                    .foregroundColor(DS.Colors.Text.primary)
+            }
 
             // Location
             if !listing.city.isEmpty {
@@ -194,21 +208,56 @@ struct ListingDetailView: View {
         .padding(.top, DS.Spacing.md)
     }
 
+    // MARK: - Section Headers
+
+    private var notesHeader: some View {
+        HStack {
+            Text("Notes")
+                .font(DS.Typography.headline)
+                .foregroundColor(DS.Colors.Text.primary)
+            Text("(\(listing.notes.count))")
+                .font(DS.Typography.bodySecondary)
+                .foregroundColor(DS.Colors.Text.secondary)
+            Spacer()
+            Button(action: { showNoteInput.toggle() }) {
+                Image(systemName: showNoteInput ? DS.Icons.Action.cancel : DS.Icons.Action.add)
+                    .font(.system(size: 16))
+                    .foregroundColor(DS.Colors.accent)
+            }
+        }
+        .padding(.horizontal, DS.Spacing.md)
+    }
+
+    private var tasksHeader: some View {
+        HStack {
+            Text("Tasks")
+                .font(DS.Typography.headline)
+                .foregroundColor(DS.Colors.Text.primary)
+            Text("(\(activeTasks.count))")
+                .font(DS.Typography.bodySecondary)
+                .foregroundColor(DS.Colors.Text.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, DS.Spacing.md)
+    }
+
+    private var activitiesHeader: some View {
+        HStack {
+            Text("Activities")
+                .font(DS.Typography.headline)
+                .foregroundColor(DS.Colors.Text.primary)
+            Text("(\(activeActivities.count))")
+                .font(DS.Typography.bodySecondary)
+                .foregroundColor(DS.Colors.Text.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, DS.Spacing.md)
+    }
+
     // MARK: - Tasks Section
 
     private var tasksSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            HStack {
-                Text("Tasks")
-                    .font(DS.Typography.headline)
-                    .foregroundColor(DS.Colors.Text.primary)
-                Text("(\(activeTasks.count))")
-                    .font(DS.Typography.bodySecondary)
-                    .foregroundColor(DS.Colors.Text.secondary)
-                Spacer()
-            }
-            .padding(.horizontal, DS.Spacing.md)
-
             if activeTasks.isEmpty {
                 emptyStateView(
                     icon: DS.Icons.Entity.task,
@@ -242,24 +291,12 @@ struct ListingDetailView: View {
                 }
             }
         }
-        .padding(.vertical, DS.Spacing.sm)
     }
 
     // MARK: - Activities Section
 
     private var activitiesSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            HStack {
-                Text("Activities")
-                    .font(DS.Typography.headline)
-                    .foregroundColor(DS.Colors.Text.primary)
-                Text("(\(activeActivities.count))")
-                    .font(DS.Typography.bodySecondary)
-                    .foregroundColor(DS.Colors.Text.secondary)
-                Spacer()
-            }
-            .padding(.horizontal, DS.Spacing.md)
-
             if activeActivities.isEmpty {
                 emptyStateView(
                     icon: DS.Icons.Entity.activity,
@@ -293,29 +330,12 @@ struct ListingDetailView: View {
                 }
             }
         }
-        .padding(.vertical, DS.Spacing.sm)
     }
 
     // MARK: - Notes Section
 
     private var notesSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            HStack {
-                Text("Notes")
-                    .font(DS.Typography.headline)
-                    .foregroundColor(DS.Colors.Text.primary)
-                Text("(\(listing.notes.count))")
-                    .font(DS.Typography.bodySecondary)
-                    .foregroundColor(DS.Colors.Text.secondary)
-                Spacer()
-                Button(action: { showNoteInput.toggle() }) {
-                    Image(systemName: showNoteInput ? DS.Icons.Action.cancel : DS.Icons.Action.add)
-                        .font(.system(size: 16))
-                        .foregroundColor(DS.Colors.accent)
-                }
-            }
-            .padding(.horizontal, DS.Spacing.md)
-
             if showNoteInput {
                 NoteInputArea(
                     text: $noteText,
@@ -349,7 +369,6 @@ struct ListingDetailView: View {
                 .padding(.horizontal, DS.Spacing.md)
             }
         }
-        .padding(.vertical, DS.Spacing.sm)
     }
 
 

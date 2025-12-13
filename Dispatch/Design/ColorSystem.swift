@@ -184,5 +184,13 @@ extension DS {
 
         /// Color for normal due dates
         static let dueNormal = Color.secondary
+
+        // MARK: - Progress Colors
+
+        /// Colors for progress indicators (e.g., ProgressCircle)
+        enum Progress {
+            /// Track ring color - subtle background for unfilled portion
+            static let track = DS.Colors.Text.tertiary.opacity(0.3)
+        }
     }
 }
