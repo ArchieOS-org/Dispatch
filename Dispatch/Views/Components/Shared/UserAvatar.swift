@@ -8,6 +8,12 @@
 
 import SwiftUI
 
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+
 /// Displays a user's avatar image or falls back to colored initials.
 /// Supports three sizes: small (24pt), medium (32pt), large (44pt).
 struct UserAvatar: View {
@@ -56,24 +62,39 @@ struct UserAvatar: View {
 
     var body: some View {
         Group {
+            #if canImport(UIKit)
             if let avatarData = user?.avatar,
                let uiImage = UIImage(data: avatarData) {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
             } else {
-                ZStack {
-                    Circle()
-                        .fill(backgroundColor)
-                    Text(initials)
-                        .font(.system(size: size.fontSize, weight: .semibold))
-                        .foregroundColor(.white)
-                }
+                initialsView
             }
+            #elseif canImport(AppKit)
+            if let avatarData = user?.avatar,
+               let nsImage = NSImage(data: avatarData) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                initialsView
+            }
+            #endif
         }
         .frame(width: size.dimension, height: size.dimension)
         .clipShape(Circle())
         .accessibilityLabel(user?.name ?? "Unknown user")
+    }
+
+    private var initialsView: some View {
+        ZStack {
+            Circle()
+                .fill(backgroundColor)
+            Text(initials)
+                .font(.system(size: size.fontSize, weight: .semibold))
+                .foregroundColor(.white)
+        }
     }
 }
 

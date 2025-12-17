@@ -47,7 +47,7 @@ struct FloatingActionButton: View {
 
 #Preview("Floating Action Button") {
     ZStack(alignment: .bottomTrailing) {
-        Color(uiColor: .systemGroupedBackground)
+        DS.Colors.Background.grouped
             .ignoresSafeArea()
 
         FloatingActionButton {
@@ -58,7 +58,7 @@ struct FloatingActionButton: View {
 
 #Preview("FAB with Custom Icon") {
     ZStack(alignment: .bottomTrailing) {
-        Color(uiColor: .systemGroupedBackground)
+        DS.Colors.Background.grouped
             .ignoresSafeArea()
 
         FloatingActionButton(action: {}, icon: "pencil")

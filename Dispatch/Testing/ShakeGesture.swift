@@ -6,7 +6,7 @@
 //  Shake gesture detection for opening test harness
 //
 
-#if DEBUG
+#if DEBUG && canImport(UIKit) && !os(macOS)
 import SwiftUI
 import UIKit
 
