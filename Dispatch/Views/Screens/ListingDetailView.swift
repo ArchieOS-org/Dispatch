@@ -124,8 +124,11 @@ struct ListingDetailView: View {
         }
         .background(DS.Colors.Background.primary)
         .navigationTitle("")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
         .toolbar {
+            #if os(iOS)
             ToolbarItem(placement: .topBarTrailing) {
                 OverflowMenu(
                     actions: listingActions,
@@ -134,6 +137,16 @@ struct ListingDetailView: View {
                     onFilterSelect: { viewFilter = $0 }
                 )
             }
+            #else
+            ToolbarItem(placement: .automatic) {
+                OverflowMenu(
+                    actions: listingActions,
+                    viewFilter: viewFilter,
+                    onLongPress: { viewFilter = viewFilter.next },
+                    onFilterSelect: { viewFilter = $0 }
+                )
+            }
+            #endif
         }
         // MARK: - Alerts
         .alert("Delete Listing?", isPresented: $showDeleteListingAlert) {

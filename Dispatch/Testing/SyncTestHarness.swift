@@ -8,6 +8,9 @@
 
 import SwiftUI
 import SwiftData
+#if os(macOS)
+import AppKit
+#endif
 
 /// Debug console for testing SyncManager operations
 /// Only available in DEBUG builds
@@ -43,14 +46,25 @@ struct SyncTestHarness: View {
                 .padding()
             }
             .navigationTitle("Sync Test Harness")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Refresh") {
                         Task { await refreshCounts() }
                     }
                     .disabled(isLoading)
                 }
+                #else
+                ToolbarItem(placement: .automatic) {
+                    Button("Refresh") {
+                        Task { await refreshCounts() }
+                    }
+                    .disabled(isLoading)
+                }
+                #endif
             }
             .onAppear {
                 Task { await refreshCounts() }
@@ -340,7 +354,12 @@ struct SyncTestHarness: View {
                     Spacer()
 
                     Button("Copy All") {
+                        #if os(iOS)
                         UIPasteboard.general.string = debugLogger.exportLogs()
+                        #elseif os(macOS)
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(debugLogger.exportLogs(), forType: .string)
+                        #endif
                     }
                     .font(.caption)
                 }

@@ -171,11 +171,24 @@ struct ActivityListView: View {
                 onSave: { syncManager.requestSync() }
             )
         }
+        #if os(iOS)
         .overlay(alignment: .bottomTrailing) {
             FloatingActionButton {
                 showQuickEntry = true
             }
         }
+        #else
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showQuickEntry = true
+                } label: {
+                    Label("Add", systemImage: "plus")
+                }
+                .keyboardShortcut("n", modifiers: .command)
+            }
+        }
+        #endif
         .alert("Sync Issue", isPresented: $showSyncFailedToast) {
             Button("OK", role: .cancel) {}
         } message: {

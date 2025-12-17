@@ -59,9 +59,11 @@ struct DispatchApp: App {
                     SyncTestHarness()
                         .environmentObject(SyncManager.shared)
                 }
+                #if os(iOS)
                 .onShake {
                     showTestHarness = true
                 }
+                #endif
                 #endif
         }
         .modelContainer(sharedModelContainer)

@@ -26,7 +26,9 @@ struct AddSubtaskSheet: View {
                 }
             }
             .navigationTitle("Add Subtask")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -43,7 +45,9 @@ struct AddSubtaskSheet: View {
                 }
             }
         }
+        #if os(iOS)
         .presentationDetents([.medium])
+        #endif
     }
 }
 

@@ -123,6 +123,15 @@ struct WorkItemRow: View {
             }
             .tint(DS.Colors.info)
         }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                HapticFeedback.medium()
+                onComplete()
+            } label: {
+                Label("Complete", systemImage: "checkmark")
+            }
+            .tint(DS.Colors.success)
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Double tap to view details. Swipe for more options.")

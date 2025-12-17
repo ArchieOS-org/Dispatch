@@ -146,7 +146,9 @@ struct QuickEntrySheet: View {
                 }
             }
             .navigationTitle("Quick Add")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -161,8 +163,10 @@ struct QuickEntrySheet: View {
                 }
             }
         }
+        #if os(iOS)
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
+        #endif
     }
 
     // MARK: - Helpers

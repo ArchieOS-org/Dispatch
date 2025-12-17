@@ -176,11 +176,24 @@ struct ListingListView: View {
                     onSave: { syncManager.requestSync() }
                 )
             }
+            #if os(iOS)
             .overlay(alignment: .bottomTrailing) {
                 FloatingActionButton {
                     showAddListing = true
                 }
             }
+            #else
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showAddListing = true
+                    } label: {
+                        Label("Add", systemImage: "plus")
+                    }
+                    .keyboardShortcut("n", modifiers: .command)
+                }
+            }
+            #endif
         }
     }
 
