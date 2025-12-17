@@ -21,6 +21,7 @@ extension TaskDTO {
         self.listing = model.listingId
         self.createdVia = model.createdVia.rawValue
         self.sourceSlackMessages = model.sourceSlackMessages
+        self.audiences = model.audiencesRaw
         self.claimedAt = model.claimedAt
         self.completedAt = model.completedAt
         self.deletedAt = model.deletedAt

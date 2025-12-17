@@ -37,6 +37,9 @@ struct WorkItemRow: View {
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
+            // Role indicator dot
+            RoleDot(audiences: item.audiences)
+
             // Status checkbox
             StatusCheckbox(isCompleted: item.isCompleted, onToggle: onComplete)
 

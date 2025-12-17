@@ -34,6 +34,9 @@ struct ListingDetailView: View {
     // Delete listing
     @State private var showDeleteListingAlert = false
 
+    // Role-aware view filter (cycles via long-press on ••• menu)
+    @State private var viewFilter: ViewFilter = .all
+
     // MARK: - Computed Properties
 
     /// Sentinel UUID for unauthenticated state - stable across all accesses
@@ -53,6 +56,16 @@ struct ListingDetailView: View {
 
     private var activeActivities: [Activity] {
         listing.activities.filter { $0.status != .deleted }
+    }
+
+    /// Tasks filtered by current view filter
+    private var filteredTasks: [TaskItem] {
+        activeTasks.filter { viewFilter.matches(audiences: $0.audiences) }
+    }
+
+    /// Activities filtered by current view filter
+    private var filteredActivities: [Activity] {
+        activeActivities.filter { viewFilter.matches(audiences: $0.audiences) }
     }
 
     private var statusColor: Color {
@@ -114,7 +127,12 @@ struct ListingDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                OverflowMenu(actions: listingActions)
+                OverflowMenu(
+                    actions: listingActions,
+                    viewFilter: viewFilter,
+                    onLongPress: { viewFilter = viewFilter.next },
+                    onFilterSelect: { viewFilter = $0 }
+                )
             }
         }
         // MARK: - Alerts
@@ -233,7 +251,7 @@ struct ListingDetailView: View {
             Text("Tasks")
                 .font(DS.Typography.headline)
                 .foregroundColor(DS.Colors.Text.primary)
-            Text("(\(activeTasks.count))")
+            Text("(\(filteredTasks.count))")
                 .font(DS.Typography.bodySecondary)
                 .foregroundColor(DS.Colors.Text.secondary)
             Spacer()
@@ -246,7 +264,7 @@ struct ListingDetailView: View {
             Text("Activities")
                 .font(DS.Typography.headline)
                 .foregroundColor(DS.Colors.Text.primary)
-            Text("(\(activeActivities.count))")
+            Text("(\(filteredActivities.count))")
                 .font(DS.Typography.bodySecondary)
                 .foregroundColor(DS.Colors.Text.secondary)
             Spacer()
@@ -258,7 +276,7 @@ struct ListingDetailView: View {
 
     private var tasksSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            if activeTasks.isEmpty {
+            if filteredTasks.isEmpty {
                 emptyStateView(
                     icon: DS.Icons.Entity.task,
                     title: "No Tasks",
@@ -267,7 +285,7 @@ struct ListingDetailView: View {
                 .padding(.horizontal, DS.Spacing.md)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(activeTasks) { task in
+                    ForEach(filteredTasks) { task in
                         NavigationLink(value: WorkItemRef.task(task)) {
                             WorkItemRow(
                                 item: .task(task),
@@ -283,7 +301,7 @@ struct ListingDetailView: View {
                         }
                         .buttonStyle(.plain)
 
-                        if task.id != activeTasks.last?.id {
+                        if task.id != filteredTasks.last?.id {
                             Divider()
                                 .padding(.leading, DS.Spacing.md)
                         }
@@ -297,7 +315,7 @@ struct ListingDetailView: View {
 
     private var activitiesSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            if activeActivities.isEmpty {
+            if filteredActivities.isEmpty {
                 emptyStateView(
                     icon: DS.Icons.Entity.activity,
                     title: "No Activities",
@@ -306,7 +324,7 @@ struct ListingDetailView: View {
                 .padding(.horizontal, DS.Spacing.md)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(activeActivities) { activity in
+                    ForEach(filteredActivities) { activity in
                         NavigationLink(value: WorkItemRef.activity(activity)) {
                             WorkItemRow(
                                 item: .activity(activity),
@@ -322,7 +340,7 @@ struct ListingDetailView: View {
                         }
                         .buttonStyle(.plain)
 
-                        if activity.id != activeActivities.last?.id {
+                        if activity.id != filteredActivities.last?.id {
                             Divider()
                                 .padding(.leading, DS.Spacing.md)
                         }

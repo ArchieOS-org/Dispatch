@@ -100,5 +100,22 @@ extension DS {
 
         /// Size of priority indicator dot
         static let priorityDotSize: CGFloat = 8
+
+        // MARK: - Role Indicators
+
+        /// Size of role dot indicator
+        static let roleDotSize: CGFloat = 6
+
+        /// Stroke width for view state ring around overflow menu
+        static let viewStateRingStroke: CGFloat = 1.5
+
+        /// Diameter of the view state ring
+        static let viewStateRingDiameter: CGFloat = 28
+
+        /// Opacity for role indicators
+        static let roleIndicatorOpacity: Double = 0.6
+
+        /// Duration for long-press gesture to cycle views
+        static let longPressDuration: Double = 0.4
     }
 }

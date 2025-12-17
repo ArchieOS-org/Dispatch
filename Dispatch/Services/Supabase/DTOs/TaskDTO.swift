@@ -19,6 +19,7 @@ struct TaskDTO: Codable, Sendable {
     let listing: UUID?  // Supabase column is "listing" not "listing_id"
     let createdVia: String
     let sourceSlackMessages: [String]?
+    let audiences: [String]?
     let claimedAt: Date?
     let completedAt: Date?
     let deletedAt: Date?
@@ -26,7 +27,7 @@ struct TaskDTO: Codable, Sendable {
     let updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id, title, description, priority, status, listing
+        case id, title, description, priority, status, listing, audiences
         case dueDate = "due_date"
         case declaredBy = "declared_by"
         case claimedBy = "claimed_by"
@@ -79,6 +80,11 @@ struct TaskDTO: Codable, Sendable {
             try container.encode(sourceSlackMessages, forKey: .sourceSlackMessages)
         } else {
             try container.encodeNil(forKey: .sourceSlackMessages)
+        }
+        if let audiences = audiences {
+            try container.encode(audiences, forKey: .audiences)
+        } else {
+            try container.encodeNil(forKey: .audiences)
         }
         if let claimedAt = claimedAt {
             try container.encode(claimedAt, forKey: .claimedAt)
@@ -134,6 +140,7 @@ struct TaskDTO: Codable, Sendable {
             listingId: listing,
             createdVia: resolvedCreatedVia,
             sourceSlackMessages: sourceSlackMessages,
+            audiencesRaw: audiences ?? ["admin", "marketing"],
             createdAt: createdAt,
             updatedAt: updatedAt
         )

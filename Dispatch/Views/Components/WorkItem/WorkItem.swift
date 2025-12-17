@@ -36,6 +36,9 @@ struct WorkItemSnapshot {
     // Sync state for per-entity error display
     let syncState: EntitySyncState
     let lastSyncError: String?
+
+    // Audience targeting
+    let audiences: Set<Role>
 }
 
 /// A unified wrapper for TaskItem and Activity that provides
@@ -118,6 +121,10 @@ enum WorkItem: Identifiable {
     var typeLabel: String { snapshot.typeLabel }
     var typeIcon: String { snapshot.typeIcon }
 
+    // MARK: - Audiences (from cached snapshot)
+
+    var audiences: Set<Role> { snapshot.audiences }
+
     // MARK: - Subtask Progress (from cached snapshot)
 
     var subtaskProgress: Double {
@@ -195,7 +202,8 @@ extension WorkItem {
             statusRawValue: task.status.rawValue,
             activityType: nil,
             syncState: task.syncState,
-            lastSyncError: task.lastSyncError
+            lastSyncError: task.lastSyncError,
+            audiences: task.audiences
         )
         return .task(task, snapshot: snapshot)
     }
@@ -245,7 +253,8 @@ extension WorkItem {
             statusRawValue: activity.status.rawValue,
             activityType: activity.type,
             syncState: activity.syncState,
-            lastSyncError: activity.lastSyncError
+            lastSyncError: activity.lastSyncError,
+            audiences: activity.audiences
         )
         return .activity(activity, snapshot: snapshot)
     }

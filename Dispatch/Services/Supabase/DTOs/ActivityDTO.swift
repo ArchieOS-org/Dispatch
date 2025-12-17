@@ -20,6 +20,7 @@ struct ActivityDTO: Codable, Sendable {
     let listing: UUID?
     let createdVia: String
     let sourceSlackMessages: [String]?
+    let audiences: [String]?
     let durationMinutes: Int?
     let claimedAt: Date?
     let completedAt: Date?
@@ -28,7 +29,7 @@ struct ActivityDTO: Codable, Sendable {
     let updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id, title, description, priority, status, listing
+        case id, title, description, priority, status, listing, audiences
         case activityType = "activity_type"
         case dueDate = "due_date"
         case declaredBy = "declared_by"
@@ -84,6 +85,11 @@ struct ActivityDTO: Codable, Sendable {
             try container.encode(sourceSlackMessages, forKey: .sourceSlackMessages)
         } else {
             try container.encodeNil(forKey: .sourceSlackMessages)
+        }
+        if let audiences = audiences {
+            try container.encode(audiences, forKey: .audiences)
+        } else {
+            try container.encodeNil(forKey: .audiences)
         }
         if let durationMinutes = durationMinutes {
             try container.encode(durationMinutes, forKey: .durationMinutes)
@@ -154,6 +160,7 @@ struct ActivityDTO: Codable, Sendable {
             createdVia: resolvedCreatedVia,
             sourceSlackMessages: sourceSlackMessages,
             duration: durationMinutes.map { TimeInterval($0 * 60) },
+            audiencesRaw: audiences ?? ["admin", "marketing"],
             createdAt: createdAt,
             updatedAt: updatedAt
         )
