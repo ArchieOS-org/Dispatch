@@ -20,7 +20,12 @@ private struct ListingGroup {
 /// - Grouped by owner
 /// - Pull-to-refresh sync
 /// - Navigation to listing detail
+///
+/// When `embedInNavigationStack` is false, the view omits its NavigationStack wrapper
+/// and expects the parent view to provide navigation context (e.g., iPhone menu, iPad split view).
 struct ListingListView: View {
+    /// Whether to wrap content in NavigationStack. Set to false when used in menu/split-view navigation.
+    var embedInNavigationStack: Bool = true
     @Query(sort: \Listing.address)
     private var allListingsRaw: [Listing]
 
@@ -93,108 +98,122 @@ struct ListingListView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if isEmpty {
-                    emptyStateView
-                } else {
-                    listView
-                }
-            }
-            .navigationTitle("Listings")
-            .searchable(text: $searchText, prompt: "Search by address")
-            .refreshable {
-                await syncManager.sync()
-            }
-            .navigationDestination(for: Listing.self) { listing in
-                ListingDetailView(listing: listing, userLookup: { userCache[$0] })
-            }
-            .navigationDestination(for: WorkItemRef.self) { ref in
-                // For drill-down from listing -> task/activity detail
-                WorkItemResolverView(
-                    ref: ref,
-                    currentUserId: currentUserId,
-                    userLookup: { userCache[$0] },
-                    onComplete: { item in toggleComplete(item) },
-                    onClaim: { item in claim(item) },
-                    onRelease: { item in unclaim(item) },
-                    onEditNote: nil,
-                    onDeleteNote: { note, item in
-                        noteToDelete = note
-                        itemForNoteDeletion = item
-                        showDeleteNoteAlert = true
-                    },
-                    onAddNote: { content, item in addNote(to: item, content: content) },
-                    onToggleSubtask: { subtask in toggleSubtask(subtask) },
-                    onDeleteSubtask: { subtask, item in
-                        subtaskToDelete = subtask
-                        itemForSubtaskDeletion = item
-                        showDeleteSubtaskAlert = true
-                    },
-                    onAddSubtask: { item in
-                        itemForSubtaskAdd = item
-                        showAddSubtaskSheet = true
+        if embedInNavigationStack {
+            NavigationStack {
+                content
+                    .navigationDestination(for: Listing.self) { listing in
+                        ListingDetailView(listing: listing, userLookup: { userCache[$0] })
                     }
-                )
-            }
-            // MARK: - Alerts and Sheets
-            .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
-                Button("Cancel", role: .cancel) {
-                    noteToDelete = nil
-                    itemForNoteDeletion = nil
-                }
-                Button("Delete", role: .destructive) {
-                    confirmDeleteNote()
-                }
-            } message: {
-                Text("This note will be permanently deleted.")
-            }
-            .alert("Delete Subtask?", isPresented: $showDeleteSubtaskAlert) {
-                Button("Cancel", role: .cancel) {
-                    subtaskToDelete = nil
-                    itemForSubtaskDeletion = nil
-                }
-                Button("Delete", role: .destructive) {
-                    confirmDeleteSubtask()
-                }
-            } message: {
-                Text("This subtask will be permanently deleted.")
-            }
-            .sheet(isPresented: $showAddSubtaskSheet) {
-                AddSubtaskSheet(title: $newSubtaskTitle) {
-                    if let item = itemForSubtaskAdd {
-                        addSubtask(to: item, title: newSubtaskTitle)
+                    .navigationDestination(for: WorkItemRef.self) { ref in
+                        workItemDestination(for: ref)
                     }
-                    newSubtaskTitle = ""
-                    itemForSubtaskAdd = nil
-                    showAddSubtaskSheet = false
-                }
             }
-            .sheet(isPresented: $showAddListing) {
-                AddListingSheet(
-                    currentUserId: currentUserId,
-                    onSave: { syncManager.requestSync() }
-                )
-            }
-            #if os(iOS)
-            .overlay(alignment: .bottomTrailing) {
-                FloatingActionButton {
-                    showAddListing = true
-                }
-            }
-            #else
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showAddListing = true
-                    } label: {
-                        Label("Add", systemImage: "plus")
-                    }
-                    .keyboardShortcut("n", modifiers: .command)
-                }
-            }
-            #endif
+        } else {
+            content
         }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        Group {
+            if isEmpty {
+                emptyStateView
+            } else {
+                listView
+            }
+        }
+        .navigationTitle("Listings")
+        .searchable(text: $searchText, prompt: "Search by address")
+        .refreshable {
+            await syncManager.sync()
+        }
+        // MARK: - Alerts and Sheets
+        .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
+            Button("Cancel", role: .cancel) {
+                noteToDelete = nil
+                itemForNoteDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                confirmDeleteNote()
+            }
+        } message: {
+            Text("This note will be permanently deleted.")
+        }
+        .alert("Delete Subtask?", isPresented: $showDeleteSubtaskAlert) {
+            Button("Cancel", role: .cancel) {
+                subtaskToDelete = nil
+                itemForSubtaskDeletion = nil
+            }
+            Button("Delete", role: .destructive) {
+                confirmDeleteSubtask()
+            }
+        } message: {
+            Text("This subtask will be permanently deleted.")
+        }
+        .sheet(isPresented: $showAddSubtaskSheet) {
+            AddSubtaskSheet(title: $newSubtaskTitle) {
+                if let item = itemForSubtaskAdd {
+                    addSubtask(to: item, title: newSubtaskTitle)
+                }
+                newSubtaskTitle = ""
+                itemForSubtaskAdd = nil
+                showAddSubtaskSheet = false
+            }
+        }
+        .sheet(isPresented: $showAddListing) {
+            AddListingSheet(
+                currentUserId: currentUserId,
+                onSave: { syncManager.requestSync() }
+            )
+        }
+        #if os(iOS)
+        .overlay(alignment: .bottomTrailing) {
+            FloatingActionButton {
+                showAddListing = true
+            }
+        }
+        #else
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showAddListing = true
+                } label: {
+                    Label("Add", systemImage: "plus")
+                }
+                .keyboardShortcut("n", modifiers: .command)
+            }
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private func workItemDestination(for ref: WorkItemRef) -> some View {
+        // For drill-down from listing -> task/activity detail
+        WorkItemResolverView(
+            ref: ref,
+            currentUserId: currentUserId,
+            userLookup: { userCache[$0] },
+            onComplete: { item in toggleComplete(item) },
+            onClaim: { item in claim(item) },
+            onRelease: { item in unclaim(item) },
+            onEditNote: nil,
+            onDeleteNote: { note, item in
+                noteToDelete = note
+                itemForNoteDeletion = item
+                showDeleteNoteAlert = true
+            },
+            onAddNote: { content, item in addNote(to: item, content: content) },
+            onToggleSubtask: { subtask in toggleSubtask(subtask) },
+            onDeleteSubtask: { subtask, item in
+                subtaskToDelete = subtask
+                itemForSubtaskDeletion = item
+                showDeleteSubtaskAlert = true
+            },
+            onAddSubtask: { item in
+                itemForSubtaskAdd = item
+                showAddSubtaskSheet = true
+            }
+        )
     }
 
     // MARK: - Work Item Actions

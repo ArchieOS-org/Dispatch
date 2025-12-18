@@ -9,12 +9,17 @@
 import SwiftUI
 
 /// A reusable container for TaskListView and ActivityListView that provides:
-/// - NavigationStack wrapper with title
+/// - Optional NavigationStack wrapper with title
 /// - Segmented filter bar (My/Others'/Unclaimed)
 /// - Date-based sectioned list (Overdue/Today/Tomorrow/Upcoming/No Due Date)
 /// - Pull-to-refresh functionality
 /// - Custom row rendering via @ViewBuilder
 /// - Navigation destination using WorkItemRef for crash-safe navigation
+///
+/// When `embedInNavigationStack` is false, the container omits its NavigationStack wrapper
+/// and expects the parent view to provide navigation context. This is required for:
+/// - iPhone menu navigation (MenuPageView → pushed list)
+/// - iPad/macOS split view detail pane
 struct WorkItemListContainer<Row: View, Destination: View>: View {
     let title: String
     let items: [WorkItem]
@@ -22,6 +27,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     let userLookup: (UUID) -> User?
     let onRefresh: () async -> Void
     let isActivityList: Bool
+    let embedInNavigationStack: Bool
     @ViewBuilder let rowBuilder: (WorkItem, ClaimState) -> Row
     @ViewBuilder let destinationBuilder: (WorkItemRef) -> Destination
 
@@ -34,6 +40,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         userLookup: @escaping (UUID) -> User?,
         onRefresh: @escaping () async -> Void,
         isActivityList: Bool = false,
+        embedInNavigationStack: Bool = true,
         @ViewBuilder rowBuilder: @escaping (WorkItem, ClaimState) -> Row,
         @ViewBuilder destination: @escaping (WorkItemRef) -> Destination
     ) {
@@ -43,6 +50,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         self.userLookup = userLookup
         self.onRefresh = onRefresh
         self.isActivityList = isActivityList
+        self.embedInNavigationStack = embedInNavigationStack
         self.rowBuilder = rowBuilder
         self.destinationBuilder = destination
     }
@@ -69,27 +77,37 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Filter bar
-                SegmentedFilterBar(selection: $selectedFilter) { filter in
-                    filter.displayName(forActivities: isActivityList)
-                }
+        if embedInNavigationStack {
+            NavigationStack {
+                content
+                    .navigationDestination(for: WorkItemRef.self) { ref in
+                        destinationBuilder(ref)
+                    }
+            }
+        } else {
+            content
+        }
+    }
 
-                // Content
-                if isEmpty {
-                    emptyStateView
-                } else {
-                    listView
-                }
+    /// The main content without NavigationStack wrapper
+    @ViewBuilder
+    private var content: some View {
+        VStack(spacing: 0) {
+            // Filter bar
+            SegmentedFilterBar(selection: $selectedFilter) { filter in
+                filter.displayName(forActivities: isActivityList)
             }
-            .navigationTitle(title)
-            .refreshable {
-                await onRefresh()
+
+            // Content
+            if isEmpty {
+                emptyStateView
+            } else {
+                listView
             }
-            .navigationDestination(for: WorkItemRef.self) { ref in
-                destinationBuilder(ref)
-            }
+        }
+        .navigationTitle(title)
+        .refreshable {
+            await onRefresh()
         }
     }
 

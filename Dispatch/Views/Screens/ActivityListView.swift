@@ -14,7 +14,12 @@ import SwiftData
 /// - Date-based sections (Overdue/Today/Tomorrow/Upcoming/No Due Date)
 /// - Pull-to-refresh sync
 /// - Navigation to activity detail
+///
+/// When `embedInNavigationStack` is false, the view omits its NavigationStack wrapper
+/// and expects the parent view to provide navigation context (e.g., iPhone menu, iPad split view).
 struct ActivityListView: View {
+    /// Whether to wrap content in NavigationStack. Set to false when used in menu/split-view navigation.
+    var embedInNavigationStack: Bool = true
     @Query(sort: \Activity.dueDate)
     private var allActivitiesRaw: [Activity]
 
@@ -88,6 +93,7 @@ struct ActivityListView: View {
                 await syncManager.sync()
             },
             isActivityList: true,
+            embedInNavigationStack: embedInNavigationStack,
             rowBuilder: { item, claimState in
                 NavigationLink(value: WorkItemRef.from(item)) {
                     WorkItemRow(
