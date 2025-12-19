@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 /// Filter mode for viewing work items based on target audience.
 /// Used by the global filter button to cycle through audience filters.
@@ -38,6 +39,18 @@ enum AudienceLens: String, CaseIterable {
         case .all: return "eye"
         case .admin: return "person.badge.shield.checkmark"
         case .marketing: return "megaphone"
+        }
+    }
+
+    /// Adaptive tint color for lens indicator (uses DS tokens)
+    var tintColor: Color {
+        switch self {
+        case .all:
+            return .secondary
+        case .admin:
+            return DS.Colors.RoleColors.admin
+        case .marketing:
+            return DS.Colors.RoleColors.marketing
         }
     }
 

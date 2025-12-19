@@ -129,21 +129,11 @@ struct ListingDetailView: View {
         .toolbar {
             #if os(iOS)
             ToolbarItem(placement: .topBarTrailing) {
-                OverflowMenu(
-                    actions: listingActions,
-                    audienceLens: lensState.audience,
-                    onLongPress: { lensState.cycleAudience() },
-                    onLensSelect: { lensState.audience = $0 }
-                )
+                OverflowMenu(actions: listingActions)
             }
             #else
             ToolbarItem(placement: .automatic) {
-                OverflowMenu(
-                    actions: listingActions,
-                    audienceLens: lensState.audience,
-                    onLongPress: { lensState.cycleAudience() },
-                    onLensSelect: { lensState.audience = $0 }
-                )
+                OverflowMenu(actions: listingActions)
             }
             #endif
         }

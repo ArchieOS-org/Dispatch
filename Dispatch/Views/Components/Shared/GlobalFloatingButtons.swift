@@ -48,43 +48,27 @@ struct GlobalFloatingButtons: View {
     // MARK: - Filter Button
 
     #if os(iOS)
+    @State private var bounceTrigger: Int = 0
+
     private var filterButton: some View {
         Menu {
-            // Audience section with checkmarks
-            Section("Audience") {
+            // Audience section - use Picker for automatic checkmarks
+            Picker("Audience", selection: $lensState.audience) {
                 ForEach(AudienceLens.allCases, id: \.self) { lens in
-                    Button {
-                        lensState.audience = lens
-                    } label: {
-                        HStack {
-                            Label(lens.label, systemImage: lens.icon)
-                            Spacer()
-                            if lensState.audience == lens {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
+                    Label(lens.label, systemImage: lens.icon)
+                        .tag(lens)
                 }
             }
 
-            // Content kind section with checkmarks
-            Section("Show") {
+            // Show section - use Picker for automatic checkmarks
+            Picker("Show", selection: $lensState.kind) {
                 ForEach(ContentKind.allCases, id: \.self) { kind in
-                    Button {
-                        lensState.kind = kind
-                    } label: {
-                        HStack {
-                            Text(kind.label)
-                            Spacer()
-                            if lensState.kind == kind {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
+                    Text(kind.label)
+                        .tag(kind)
                 }
             }
 
-            // Clear option (when filtered) - NOT destructive
+            // Clear Filters (conditional)
             if lensState.isFiltered {
                 Divider()
                 Button("Clear Filters") {
@@ -92,13 +76,15 @@ struct GlobalFloatingButtons: View {
                 }
             }
         } label: {
-            GlassButton(
-                icon: lensState.audience.icon,
-                action: {},
-                isFiltered: lensState.isFiltered
+            AudienceLensButton(
+                lens: lensState.audience,
+                isFiltered: lensState.isFiltered,
+                bounceTrigger: bounceTrigger
             )
         } primaryAction: {
+            // TAP = cycle lens + bounce
             lensState.cycleAudience()
+            bounceTrigger += 1
         }
         .sensoryFeedback(.selection, trigger: lensState.audience)
     }
