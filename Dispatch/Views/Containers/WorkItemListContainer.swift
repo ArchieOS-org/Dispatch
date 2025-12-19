@@ -25,7 +25,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     let items: [WorkItem]
     let currentUserId: UUID
     let userLookup: (UUID) -> User?
-    let onRefresh: () async -> Void
     let isActivityList: Bool
     let embedInNavigationStack: Bool
     @ViewBuilder let rowBuilder: (WorkItem, ClaimState) -> Row
@@ -38,7 +37,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         items: [WorkItem],
         currentUserId: UUID,
         userLookup: @escaping (UUID) -> User?,
-        onRefresh: @escaping () async -> Void,
         isActivityList: Bool = false,
         embedInNavigationStack: Bool = true,
         @ViewBuilder rowBuilder: @escaping (WorkItem, ClaimState) -> Row,
@@ -48,7 +46,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         self.items = items
         self.currentUserId = currentUserId
         self.userLookup = userLookup
-        self.onRefresh = onRefresh
         self.isActivityList = isActivityList
         self.embedInNavigationStack = embedInNavigationStack
         self.rowBuilder = rowBuilder
@@ -106,9 +103,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             }
         }
         .navigationTitle(title)
-        .refreshable {
-            await onRefresh()
-        }
     }
 
     // MARK: - Subviews
@@ -126,6 +120,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             }
         }
         .listStyle(.plain)
+        .pullToSearch()
     }
 
     private var emptyStateView: some View {
@@ -201,7 +196,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         items: sampleTasks,
         currentUserId: currentUserId,
         userLookup: { _ in sampleUser },
-        onRefresh: { try? await Task.sleep(nanoseconds: 1_000_000_000) },
         rowBuilder: { item, claimState in
             WorkItemRow(
                 item: item,

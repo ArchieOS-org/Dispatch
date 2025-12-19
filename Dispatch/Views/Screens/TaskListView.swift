@@ -90,9 +90,6 @@ struct TaskListView: View {
             items: workItems,
             currentUserId: currentUserId,
             userLookup: { userCache[$0] },
-            onRefresh: {
-                await syncManager.sync()
-            },
             isActivityList: false,
             embedInNavigationStack: embedInNavigationStack,
             rowBuilder: { item, claimState in

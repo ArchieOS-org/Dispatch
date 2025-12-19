@@ -36,6 +36,11 @@ struct ContentView: View {
     /// Centralized WorkItemActions environment object for shared navigation
     @StateObject private var workItemActions = WorkItemActions()
 
+    // MARK: - Search State (iPhone only)
+
+    @StateObject private var searchManager = SearchPresentationManager()
+    @State private var searchNavigationPath = NavigationPath()
+
     // MARK: - Computed Properties
 
     /// Pre-computed user lookup dictionary for O(1) access
@@ -94,13 +99,41 @@ struct ContentView: View {
 
     // MARK: - iPhone Menu Navigation
 
-    /// Things 3-style menu page navigation for iPhone
+    /// Things 3-style menu page navigation for iPhone with pull-down search
     private var menuNavigation: some View {
-        NavigationStack {
+        NavigationStack(path: $searchNavigationPath) {
             MenuPageView()
                 .dispatchDestinations()
         }
+        .overlay {
+            // Search overlay
+            if searchManager.isSearchPresented {
+                SearchOverlay(
+                    isPresented: $searchManager.isSearchPresented,
+                    searchText: $searchManager.searchText,
+                    onSelectResult: { result in
+                        selectSearchResult(result)
+                    }
+                )
+            }
+        }
+        .syncNowToolbar()
         .environmentObject(workItemActions)
+        .environmentObject(searchManager)
+    }
+
+    // MARK: - Search Navigation
+
+    /// Handles navigation after selecting a search result
+    private func selectSearchResult(_ result: SearchResult) {
+        switch result {
+        case .task(let task):
+            searchNavigationPath.append(WorkItemRef.task(task))
+        case .activity(let activity):
+            searchNavigationPath.append(WorkItemRef.activity(activity))
+        case .listing(let listing):
+            searchNavigationPath.append(listing)
+        }
     }
 
     // MARK: - iPad/macOS Sidebar Navigation
@@ -127,14 +160,17 @@ struct ContentView: View {
             .navigationTitle("Dispatch")
             #endif
         } detail: {
-            switch selectedTab {
-            case .tasks:
-                TaskListView()
-            case .activities:
-                ActivityListView()
-            case .listings:
-                ListingListView()
+            Group {
+                switch selectedTab {
+                case .tasks:
+                    TaskListView()
+                case .activities:
+                    ActivityListView()
+                case .listings:
+                    ListingListView()
+                }
             }
+            .syncNowToolbar()
         }
         .navigationSplitViewStyle(.balanced)
     }

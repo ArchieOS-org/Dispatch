@@ -52,6 +52,9 @@ extension DS {
         /// Large shadow (16pt) - Full-screen overlays
         static let large = Style(color: .black.opacity(0.2), radius: 16, x: 0, y: 8)
 
+        /// Search overlay shadow (20pt) - Floating search modal
+        static let searchOverlay = Style(color: .black.opacity(0.25), radius: 20, x: 0, y: 10)
+
         // MARK: - Notes Section Gradients (from spec)
 
         /// Shadow gradient overlay for notes stack to indicate overflow

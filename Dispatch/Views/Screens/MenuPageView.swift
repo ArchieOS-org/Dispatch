@@ -12,6 +12,8 @@ import SwiftData
 /// Menu page home screen for iPhone navigation.
 /// Displays large, full-width cards for each section (Tasks, Activities, Listings).
 /// Users tap a card to push-navigate into that section.
+///
+/// Supports pull-down-to-search via `PullToSearchModifier` (iOS 18+).
 struct MenuPageView: View {
     // MARK: - Queries
 
@@ -79,6 +81,7 @@ struct MenuPageView: View {
             }
             .padding(DS.Spacing.lg)
         }
+        .pullToSearch()
         .background(DS.Colors.Background.grouped)
         .navigationTitle("Dispatch")
         #if os(iOS)
@@ -161,59 +164,50 @@ private struct MenuCardButtonStyle: ButtonStyle {
 // MARK: - Previews
 
 #Preview("Menu Page View") {
-    MenuPageViewPreviewHelper.previewWithData
+    let container = try! ModelContainer(
+        for: TaskItem.self, Activity.self, Listing.self, User.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+
+    let context = container.mainContext
+
+    // Add some sample data
+    let user = User(name: "Test User", email: "test@dispatch.ca", userType: .admin)
+    context.insert(user)
+
+    for i in 1...5 {
+        let task = TaskItem(title: "Task \(i)", priority: .medium, declaredBy: user.id)
+        context.insert(task)
+    }
+
+    for i in 1...3 {
+        let activity = Activity(title: "Activity \(i)", type: .call, priority: .medium, declaredBy: user.id)
+        context.insert(activity)
+    }
+
+    for i in 1...2 {
+        let listing = Listing(address: "\(i) Main Street", city: "Toronto", province: "ON", postalCode: "M5V 1A1", ownedBy: user.id)
+        context.insert(listing)
+    }
+
+    return NavigationStack {
+        MenuPageView()
+    }
+    .modelContainer(container)
+    .environmentObject(SyncManager.shared)
+    .environmentObject(SearchPresentationManager())
 }
 
 #Preview("Menu Page View - Empty") {
-    MenuPageViewPreviewHelper.previewEmpty
-}
+    let container = try! ModelContainer(
+        for: TaskItem.self, Activity.self, Listing.self, User.self,
+        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
 
-/// Helper for MenuPageView previews to avoid result builder limitations
-private enum MenuPageViewPreviewHelper {
-    static var previewWithData: some View {
-        let container = try! ModelContainer(
-            for: TaskItem.self, Activity.self, Listing.self, User.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
-
-        let context = container.mainContext
-
-        // Add some sample data
-        let user = User(name: "Test User", email: "test@dispatch.ca", userType: .admin)
-        context.insert(user)
-
-        for i in 1...5 {
-            let task = TaskItem(title: "Task \(i)", priority: .medium, declaredBy: user.id)
-            context.insert(task)
-        }
-
-        for i in 1...3 {
-            let activity = Activity(title: "Activity \(i)", type: .call, priority: .medium, declaredBy: user.id)
-            context.insert(activity)
-        }
-
-        for i in 1...2 {
-            let listing = Listing(address: "\(i) Main Street", city: "Toronto", province: "ON", postalCode: "M5V 1A1", ownedBy: user.id)
-            context.insert(listing)
-        }
-
-        return NavigationStack {
-            MenuPageView()
-        }
-        .modelContainer(container)
-        .environmentObject(SyncManager.shared)
+    return NavigationStack {
+        MenuPageView()
     }
-
-    static var previewEmpty: some View {
-        let container = try! ModelContainer(
-            for: TaskItem.self, Activity.self, Listing.self, User.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
-
-        return NavigationStack {
-            MenuPageView()
-        }
-        .modelContainer(container)
-        .environmentObject(SyncManager.shared)
-    }
+    .modelContainer(container)
+    .environmentObject(SyncManager.shared)
+    .environmentObject(SearchPresentationManager())
 }

@@ -39,8 +39,6 @@ struct ListingListView: View {
     @EnvironmentObject private var syncManager: SyncManager
     @Environment(\.modelContext) private var modelContext
 
-    @State private var searchText = ""
-
     // MARK: - State for Note/Subtask Management (for drill-down)
 
     @State private var showDeleteNoteAlert = false
@@ -65,26 +63,16 @@ struct ListingListView: View {
         Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
     }
 
-    /// Listings filtered by search text
-    private var filteredListings: [Listing] {
-        if searchText.isEmpty {
-            return Array(allListings)
-        }
-        return allListings.filter {
-            $0.address.localizedCaseInsensitiveContains(searchText)
-        }
-    }
-
     /// Listings grouped by owner, sorted by owner name
     private var groupedByOwner: [ListingGroup] {
-        let grouped = Dictionary(grouping: filteredListings) { $0.ownedBy }
+        let grouped = Dictionary(grouping: allListings) { $0.ownedBy }
         return grouped.map { ListingGroup(owner: userCache[$0.key], listings: $0.value) }
             .sorted { ($0.owner?.name ?? "~") < ($1.owner?.name ?? "~") }
     }
 
-    /// Whether the list is empty (after filtering)
+    /// Whether the list is empty
     private var isEmpty: Bool {
-        filteredListings.isEmpty
+        allListings.isEmpty
     }
 
     /// Sentinel UUID for unauthenticated state - stable across all accesses
@@ -123,10 +111,6 @@ struct ListingListView: View {
             }
         }
         .navigationTitle("Listings")
-        .searchable(text: $searchText, prompt: "Search by address")
-        .refreshable {
-            await syncManager.sync()
-        }
         // MARK: - Alerts and Sheets
         .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
             Button("Cancel", role: .cancel) {
@@ -363,6 +347,7 @@ struct ListingListView: View {
             }
         }
         .listStyle(.plain)
+        .pullToSearch()
     }
 
     private var emptyStateView: some View {
@@ -375,13 +360,11 @@ struct ListingListView: View {
     }
 
     private var emptyTitle: String {
-        searchText.isEmpty ? "No Listings" : "No Results"
+        "No Listings"
     }
 
     private var emptyDescription: String {
-        searchText.isEmpty
-            ? "Listings will appear here"
-            : "No listings match \"\(searchText)\""
+        "Listings will appear here"
     }
 }
 

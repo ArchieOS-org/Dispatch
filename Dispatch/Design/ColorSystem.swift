@@ -138,6 +138,13 @@ extension DS {
             static let grouped = Color(nsColor: .windowBackgroundColor)
             #endif
 
+            /// Grouped secondary background (layered surface above grouped backgrounds)
+            #if canImport(UIKit)
+            static let groupedSecondary = Color(uiColor: .secondarySystemGroupedBackground)
+            #else
+            static let groupedSecondary = Color(nsColor: .controlBackgroundColor)
+            #endif
+
             /// Card background (systemGray6)
             #if canImport(UIKit)
             static let card = Color(uiColor: .systemGray6)
@@ -242,6 +249,11 @@ extension DS {
             /// Track ring color - subtle background for unfilled portion
             static let track = DS.Colors.Text.tertiary.opacity(0.3)
         }
+
+        // MARK: - Search Overlay
+
+        /// Semi-transparent scrim behind search overlay
+        static let searchScrim = Color.black.opacity(0.4)
 
         // MARK: - Role Colors
 

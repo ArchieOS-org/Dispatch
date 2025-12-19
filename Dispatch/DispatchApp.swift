@@ -67,6 +67,18 @@ struct DispatchApp: App {
                 #endif
         }
         .modelContainer(sharedModelContainer)
+        #if os(macOS)
+        .commands {
+            CommandGroup(after: .toolbar) {
+                Button("Sync Now") {
+                    Task {
+                        await SyncManager.shared.sync()
+                    }
+                }
+                .keyboardShortcut("r", modifiers: .command)
+            }
+        }
+        #endif
         .onChange(of: scenePhase) { newPhase in
             if newPhase == .active {
                 Task {
