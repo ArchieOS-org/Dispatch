@@ -123,6 +123,7 @@ struct ListingDetailView: View {
             .padding(.vertical, DS.Spacing.md)
         }
         .background(DS.Colors.Background.primary)
+        .pullToSearch()
         .navigationTitle("")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)

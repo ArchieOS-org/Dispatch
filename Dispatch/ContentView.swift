@@ -173,6 +173,7 @@ struct ContentView: View {
             .syncNowToolbar()
         }
         .navigationSplitViewStyle(.balanced)
+        .environmentObject(searchManager)
     }
 
     #if os(iOS)
