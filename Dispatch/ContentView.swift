@@ -26,6 +26,7 @@ struct ContentView: View {
     #endif
 
     @Query private var users: [User]
+    @Query private var allListings: [Listing]
 
     enum Tab: Hashable {
         case tasks, activities, listings
@@ -41,11 +42,23 @@ struct ContentView: View {
     @StateObject private var searchManager = SearchPresentationManager()
     @State private var searchNavigationPath = NavigationPath()
 
+    // MARK: - Global Filter & Overlay State (iPhone only)
+
+    @StateObject private var lensState = LensState()
+    @StateObject private var quickEntryState = QuickEntryState()
+    @StateObject private var overlayState = AppOverlayState()
+    @StateObject private var keyboardObserver = KeyboardObserver()
+
     // MARK: - Computed Properties
 
     /// Pre-computed user lookup dictionary for O(1) access
     private var userCache: [UUID: User] {
         Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
+    }
+
+    /// Active listings (not deleted) for quick entry
+    private var activeListings: [Listing] {
+        allListings.filter { $0.status != .deleted }
     }
 
     /// Sentinel UUID for unauthenticated state
@@ -101,25 +114,45 @@ struct ContentView: View {
 
     /// Things 3-style menu page navigation for iPhone with pull-down search
     private var menuNavigation: some View {
-        NavigationStack(path: $searchNavigationPath) {
-            MenuPageView()
-                .dispatchDestinations()
-        }
-        .overlay {
-            // Search overlay
-            if searchManager.isSearchPresented {
-                SearchOverlay(
-                    isPresented: $searchManager.isSearchPresented,
-                    searchText: $searchManager.searchText,
-                    onSelectResult: { result in
-                        selectSearchResult(result)
-                    }
-                )
+        ZStack {
+            NavigationStack(path: $searchNavigationPath) {
+                MenuPageView()
+                    .dispatchDestinations()
             }
+            .overlay {
+                // Search overlay
+                if searchManager.isSearchPresented {
+                    SearchOverlay(
+                        isPresented: $searchManager.isSearchPresented,
+                        searchText: $searchManager.searchText,
+                        onSelectResult: { result in
+                            selectSearchResult(result)
+                        }
+                    )
+                }
+            }
+            .syncNowToolbar()
+
+            // Persistent floating buttons
+            GlobalFloatingButtons()
         }
-        .syncNowToolbar()
         .environmentObject(workItemActions)
         .environmentObject(searchManager)
+        .environmentObject(lensState)
+        .environmentObject(quickEntryState)
+        .environmentObject(overlayState)
+        .onAppear {
+            // Attach keyboard observer (iPhone-only fallback)
+            keyboardObserver.attach(to: overlayState)
+        }
+        .sheet(isPresented: $quickEntryState.isPresenting) {
+            QuickEntrySheet(
+                defaultItemType: quickEntryState.defaultItemType,
+                currentUserId: currentUserId,
+                listings: activeListings,
+                onSave: { syncManager.requestSync() }
+            )
+        }
     }
 
     // MARK: - Search Navigation

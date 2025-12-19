@@ -38,11 +38,7 @@ struct MenuPageView: View {
         allListingsRaw.filter { $0.status != .deleted }
     }
 
-    // MARK: - State
-
-    #if os(iOS)
-    @State private var showQuickEntry = false
-    #endif
+    // MARK: - Environment
 
     @EnvironmentObject private var syncManager: SyncManager
 
@@ -55,13 +51,6 @@ struct MenuPageView: View {
         case .activities: return openActivities.count
         case .listings: return activeListings.count
         }
-    }
-
-    /// Sentinel UUID for unauthenticated state
-    private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
-
-    private var currentUserId: UUID {
-        syncManager.currentUserID ?? Self.unauthenticatedUserId
     }
 
     // MARK: - Body
@@ -84,21 +73,6 @@ struct MenuPageView: View {
         .pullToSearch()
         .background(DS.Colors.Background.grouped)
         .navigationTitle("Dispatch")
-        #if os(iOS)
-        .sheet(isPresented: $showQuickEntry) {
-            QuickEntrySheet(
-                defaultItemType: .task,
-                currentUserId: currentUserId,
-                listings: activeListings,
-                onSave: { syncManager.requestSync() }
-            )
-        }
-        .overlay(alignment: .bottomTrailing) {
-            FloatingActionButton {
-                showQuickEntry = true
-            }
-        }
-        #endif
     }
 }
 

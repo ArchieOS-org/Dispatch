@@ -20,6 +20,7 @@ struct ListingDetailView: View {
     let userLookup: (UUID) -> User?
 
     @EnvironmentObject private var syncManager: SyncManager
+    @EnvironmentObject private var lensState: LensState
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
@@ -33,9 +34,6 @@ struct ListingDetailView: View {
 
     // Delete listing
     @State private var showDeleteListingAlert = false
-
-    // Role-aware view filter (cycles via long-press on ••• menu)
-    @State private var viewFilter: ViewFilter = .all
 
     // MARK: - Computed Properties
 
@@ -58,14 +56,14 @@ struct ListingDetailView: View {
         listing.activities.filter { $0.status != .deleted }
     }
 
-    /// Tasks filtered by current view filter
+    /// Tasks filtered by current audience lens
     private var filteredTasks: [TaskItem] {
-        activeTasks.filter { viewFilter.matches(audiences: $0.audiences) }
+        activeTasks.filter { lensState.audience.matches(audiences: $0.audiences) }
     }
 
-    /// Activities filtered by current view filter
+    /// Activities filtered by current audience lens
     private var filteredActivities: [Activity] {
-        activeActivities.filter { viewFilter.matches(audiences: $0.audiences) }
+        activeActivities.filter { lensState.audience.matches(audiences: $0.audiences) }
     }
 
     private var statusColor: Color {
@@ -133,18 +131,18 @@ struct ListingDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 OverflowMenu(
                     actions: listingActions,
-                    viewFilter: viewFilter,
-                    onLongPress: { viewFilter = viewFilter.next },
-                    onFilterSelect: { viewFilter = $0 }
+                    audienceLens: lensState.audience,
+                    onLongPress: { lensState.cycleAudience() },
+                    onLensSelect: { lensState.audience = $0 }
                 )
             }
             #else
             ToolbarItem(placement: .automatic) {
                 OverflowMenu(
                     actions: listingActions,
-                    viewFilter: viewFilter,
-                    onLongPress: { viewFilter = viewFilter.next },
-                    onFilterSelect: { viewFilter = $0 }
+                    audienceLens: lensState.audience,
+                    onLongPress: { lensState.cycleAudience() },
+                    onLensSelect: { lensState.audience = $0 }
                 )
             }
             #endif
@@ -805,6 +803,8 @@ struct ListingDetailView: View {
     }
     .modelContainer(container)
     .environmentObject(syncManager)
+    .environmentObject(LensState())
+    .environmentObject(AppOverlayState())
 }
 
 #Preview("Listing Detail - Empty") {
@@ -847,6 +847,8 @@ struct ListingDetailView: View {
     }
     .modelContainer(container)
     .environmentObject(syncManager)
+    .environmentObject(LensState())
+    .environmentObject(AppOverlayState())
 }
 
 #Preview("Listing Detail - Lease") {
@@ -935,5 +937,7 @@ struct ListingDetailView: View {
     }
     .modelContainer(container)
     .environmentObject(syncManager)
+    .environmentObject(LensState())
+    .environmentObject(AppOverlayState())
 }
 

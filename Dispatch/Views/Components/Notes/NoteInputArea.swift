@@ -18,6 +18,10 @@ struct NoteInputArea: View {
 
     @FocusState private var isFocused: Bool
 
+    #if os(iOS)
+    @EnvironmentObject private var overlayState: AppOverlayState
+    #endif
+
     private var isValidInput: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -85,6 +89,15 @@ struct NoteInputArea: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Note input")
+        #if os(iOS)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                overlayState.hide(reason: .textInput)
+            } else {
+                overlayState.show(reason: .textInput)
+            }
+        }
+        #endif
     }
 }
 

@@ -54,14 +54,14 @@ struct OverflowMenu: View {
     var iconColor: Color = DS.Colors.accent
     var accessibilityLabelText: String = "More actions"
 
-    /// Optional view filter for displaying ring indicator
-    var viewFilter: ViewFilter?
+    /// Optional audience lens for displaying ring indicator
+    var audienceLens: AudienceLens?
 
-    /// Optional callback for long-press gesture to cycle view filter
+    /// Optional callback for long-press gesture to cycle audience lens
     var onLongPress: (() -> Void)?
 
-    /// Optional callback for direct filter selection from menu
-    var onFilterSelect: ((ViewFilter) -> Void)?
+    /// Optional callback for direct lens selection from menu
+    var onLensSelect: ((AudienceLens) -> Void)?
 
     // MARK: - Private State
 
@@ -69,10 +69,10 @@ struct OverflowMenu: View {
 
     // MARK: - Private Properties
 
-    /// Icon color based on current view filter (overrides iconColor when filter is active)
+    /// Icon color based on current audience lens (overrides iconColor when filter is active)
     private var effectiveIconColor: Color {
-        guard let filter = viewFilter else { return iconColor }
-        switch filter {
+        guard let lens = audienceLens else { return iconColor }
+        switch lens {
         case .all:
             return iconColor // Default color in All mode
         case .admin:
@@ -101,16 +101,16 @@ struct OverflowMenu: View {
                 showingActions = true
             }
         .confirmationDialog("Actions", isPresented: $showingActions, titleVisibility: .hidden) {
-                // Filter selection options (when viewFilter is provided)
-                if let currentFilter = viewFilter, let selectFilter = onFilterSelect {
+                // Lens selection options (when audienceLens is provided)
+                if let currentLens = audienceLens, let selectLens = onLensSelect {
                     Section {
-                        ForEach(ViewFilter.allCases, id: \.self) { filter in
+                        ForEach(AudienceLens.allCases, id: \.self) { lens in
                             Button {
-                                selectFilter(filter)
+                                selectLens(lens)
                             } label: {
                                 HStack {
-                                    Text(filter.label)
-                                    if filter == currentFilter {
+                                    Text(lens.label)
+                                    if lens == currentLens {
                                         Image(systemName: "checkmark")
                                     }
                                 }
@@ -184,7 +184,7 @@ struct OverflowMenu: View {
     .padding()
 }
 
-#Preview("Overflow Menu - With View Filter") {
+#Preview("Overflow Menu - With Audience Lens") {
     VStack(spacing: DS.Spacing.xl) {
         HStack {
             Text("All View (no ring)")
@@ -193,7 +193,7 @@ struct OverflowMenu: View {
                 actions: [
                     OverflowMenu.Action(id: "edit", title: "Edit", icon: DS.Icons.Action.edit) {}
                 ],
-                viewFilter: .all,
+                audienceLens: .all,
                 onLongPress: { print("Long press - cycling to Admin") }
             )
         }
@@ -208,7 +208,7 @@ struct OverflowMenu: View {
                 actions: [
                     OverflowMenu.Action(id: "edit", title: "Edit", icon: DS.Icons.Action.edit) {}
                 ],
-                viewFilter: .admin,
+                audienceLens: .admin,
                 onLongPress: { print("Long press - cycling to Marketing") }
             )
         }
@@ -223,7 +223,7 @@ struct OverflowMenu: View {
                 actions: [
                     OverflowMenu.Action(id: "edit", title: "Edit", icon: DS.Icons.Action.edit) {}
                 ],
-                viewFilter: .marketing,
+                audienceLens: .marketing,
                 onLongPress: { print("Long press - cycling to All") }
             )
         }

@@ -31,6 +31,7 @@ struct TaskListView: View {
 
     @Query private var users: [User]
 
+    #if os(macOS)
     @Query(sort: \Listing.address)
     private var allListings: [Listing]
 
@@ -38,6 +39,7 @@ struct TaskListView: View {
     private var activeListings: [Listing] {
         allListings.filter { $0.status != .deleted }
     }
+    #endif
 
     @EnvironmentObject private var syncManager: SyncManager
     @Environment(\.modelContext) private var modelContext
@@ -56,8 +58,10 @@ struct TaskListView: View {
     @State private var itemForSubtaskAdd: WorkItem?
     @State private var newSubtaskTitle = ""
 
-    // MARK: - State for Quick Entry
+    // MARK: - State for Quick Entry (macOS only - iOS uses GlobalFloatingButtons)
+    #if os(macOS)
     @State private var showQuickEntry = false
+    #endif
 
     // MARK: - State for Sync Failure Toast
     @State private var showSyncFailedToast = false
@@ -167,6 +171,7 @@ struct TaskListView: View {
                 showAddSubtaskSheet = false
             }
         }
+        #if os(macOS)
         .sheet(isPresented: $showQuickEntry) {
             QuickEntrySheet(
                 defaultItemType: .task,
@@ -175,13 +180,6 @@ struct TaskListView: View {
                 onSave: { syncManager.requestSync() }
             )
         }
-        #if os(iOS)
-        .overlay(alignment: .bottomTrailing) {
-            FloatingActionButton {
-                showQuickEntry = true
-            }
-        }
-        #else
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {

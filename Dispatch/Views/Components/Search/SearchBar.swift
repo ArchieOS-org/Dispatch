@@ -22,6 +22,10 @@ struct SearchBar: View {
 
     @FocusState private var isFocused: Bool
 
+    #if os(iOS)
+    @EnvironmentObject private var overlayState: AppOverlayState
+    #endif
+
     var body: some View {
         HStack(spacing: DS.Spacing.sm) {
             // Search field
@@ -35,7 +39,9 @@ struct SearchBar: View {
                     .focused($isFocused)
                     .submitLabel(.search)
                     .autocorrectionDisabled()
+                    #if os(iOS)
                     .textInputAutocapitalization(.never)
+                    #endif
 
                 if !text.isEmpty {
                     Button {
@@ -69,6 +75,15 @@ struct SearchBar: View {
                 isFocused = true
             }
         }
+        #if os(iOS)
+        .onChange(of: isFocused) { _, focused in
+            if focused {
+                overlayState.hide(reason: .textInput)
+            } else {
+                overlayState.show(reason: .textInput)
+            }
+        }
+        #endif
     }
 }
 

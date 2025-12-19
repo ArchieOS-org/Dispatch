@@ -53,8 +53,10 @@ struct ListingListView: View {
     @State private var itemForSubtaskAdd: WorkItem?
     @State private var newSubtaskTitle = ""
 
-    // MARK: - State for Add Listing
+    // MARK: - State for Add Listing (macOS only - iOS uses GlobalFloatingButtons for tasks/activities)
+    #if os(macOS)
     @State private var showAddListing = false
+    #endif
 
     // MARK: - Computed Properties
 
@@ -144,19 +146,13 @@ struct ListingListView: View {
                 showAddSubtaskSheet = false
             }
         }
+        #if os(macOS)
         .sheet(isPresented: $showAddListing) {
             AddListingSheet(
                 currentUserId: currentUserId,
                 onSave: { syncManager.requestSync() }
             )
         }
-        #if os(iOS)
-        .overlay(alignment: .bottomTrailing) {
-            FloatingActionButton {
-                showAddListing = true
-            }
-        }
-        #else
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
