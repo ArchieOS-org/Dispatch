@@ -23,7 +23,6 @@ final class Listing: NotableProtocol {
 
     // Foreign keys
     var ownedBy: UUID
-    var assignedStaff: UUID?
 
     // Metadata
     var createdVia: CreationSource
@@ -34,9 +33,19 @@ final class Listing: NotableProtocol {
     var pendingAt: Date?
     var closedAt: Date?
     var deletedAt: Date?
+    var dueDate: Date?
     var createdAt: Date
     var updatedAt: Date
     var syncedAt: Date?
+
+    // Sync state tracking - optional storage with computed wrapper for schema migration compatibility
+    var syncStateRaw: EntitySyncState?
+    var lastSyncError: String?
+
+    var syncState: EntitySyncState {
+        get { syncStateRaw ?? .synced }
+        set { syncStateRaw = newValue }
+    }
 
     // Relationships
     @Relationship(deleteRule: .cascade)
@@ -53,7 +62,6 @@ final class Listing: NotableProtocol {
 
     // Inverse relationships
     var owner: User?
-    var assignedStaffUser: User?
 
     init(
         id: UUID = UUID(),
@@ -67,9 +75,9 @@ final class Listing: NotableProtocol {
         listingType: ListingType = .sale,
         status: ListingStatus = .draft,
         ownedBy: UUID,
-        assignedStaff: UUID? = nil,
         createdVia: CreationSource = .dispatch,
         sourceSlackMessages: [String]? = nil,
+        dueDate: Date? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -84,19 +92,38 @@ final class Listing: NotableProtocol {
         self.listingType = listingType
         self.status = status
         self.ownedBy = ownedBy
-        self.assignedStaff = assignedStaff
         self.createdVia = createdVia
         self.sourceSlackMessages = sourceSlackMessages
+        self.dueDate = dueDate
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.syncStateRaw = .synced
     }
 }
 
 // MARK: - RealtimeSyncable Conformance
 extension Listing: RealtimeSyncable {
-    var isDirty: Bool {
-        guard let syncedAt = syncedAt else { return true }
-        return updatedAt > syncedAt
-    }
+    // syncState, lastSyncError, syncedAt are stored properties
+    // isDirty, isSyncFailed computed from syncState via protocol extension
     // conflictResolution uses default from protocol extension (.lastWriteWins)
+
+    /// Mark as pending when modified
+    func markPending() {
+        syncState = .pending
+        lastSyncError = nil
+        updatedAt = Date()
+    }
+
+    /// Mark as synced after successful sync
+    func markSynced() {
+        syncState = .synced
+        lastSyncError = nil
+        syncedAt = Date()
+    }
+
+    /// Mark as failed with error message
+    func markFailed(_ message: String) {
+        syncState = .failed
+        lastSyncError = message
+    }
 }

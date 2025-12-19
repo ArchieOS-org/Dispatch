@@ -14,7 +14,13 @@ import SwiftData
 /// - Date-based sections (Overdue/Today/Tomorrow/Upcoming/No Due Date)
 /// - Pull-to-refresh sync
 /// - Navigation to task detail
+///
+/// When `embedInNavigationStack` is false, the view omits its NavigationStack wrapper
+/// and expects the parent view to provide navigation context (e.g., iPhone menu, iPad split view).
 struct TaskListView: View {
+    /// Whether to wrap content in NavigationStack. Set to false when used in menu/split-view navigation.
+    var embedInNavigationStack: Bool = true
+
     @Query(sort: \TaskItem.dueDate)
     private var allTasksRaw: [TaskItem]
 
@@ -25,6 +31,7 @@ struct TaskListView: View {
 
     @Query private var users: [User]
 
+    #if os(macOS)
     @Query(sort: \Listing.address)
     private var allListings: [Listing]
 
@@ -32,6 +39,7 @@ struct TaskListView: View {
     private var activeListings: [Listing] {
         allListings.filter { $0.status != .deleted }
     }
+    #endif
 
     @EnvironmentObject private var syncManager: SyncManager
     @Environment(\.modelContext) private var modelContext
@@ -50,8 +58,13 @@ struct TaskListView: View {
     @State private var itemForSubtaskAdd: WorkItem?
     @State private var newSubtaskTitle = ""
 
-    // MARK: - State for Quick Entry
+    // MARK: - State for Quick Entry (macOS only - iOS uses GlobalFloatingButtons)
+    #if os(macOS)
     @State private var showQuickEntry = false
+    #endif
+
+    // MARK: - State for Sync Failure Toast
+    @State private var showSyncFailedToast = false
 
     // MARK: - Computed Properties
 
@@ -81,18 +94,18 @@ struct TaskListView: View {
             items: workItems,
             currentUserId: currentUserId,
             userLookup: { userCache[$0] },
-            onRefresh: {
-                await syncManager.sync()
-            },
             isActivityList: false,
-            rowBuilder: { item, claimedUser in
+            embedInNavigationStack: embedInNavigationStack,
+            rowBuilder: { item, claimState in
                 NavigationLink(value: WorkItemRef.from(item)) {
                     WorkItemRow(
                         item: item,
-                        claimedByUser: claimedUser,
+                        claimState: claimState,
                         onComplete: { toggleComplete(item) },
                         onEdit: {},
-                        onDelete: { delete(item) }
+                        onDelete: { delete(item) },
+                        onClaim: { claim(item) },
+                        onRelease: { unclaim(item) }
                     )
                 }
                 .buttonStyle(.plain)
@@ -158,6 +171,7 @@ struct TaskListView: View {
                 showAddSubtaskSheet = false
             }
         }
+        #if os(macOS)
         .sheet(isPresented: $showQuickEntry) {
             QuickEntrySheet(
                 defaultItemType: .task,
@@ -166,10 +180,21 @@ struct TaskListView: View {
                 onSave: { syncManager.requestSync() }
             )
         }
-        .overlay(alignment: .bottomTrailing) {
-            FloatingActionButton {
-                showQuickEntry = true
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showQuickEntry = true
+                } label: {
+                    Label("Add", systemImage: "plus")
+                }
+                .keyboardShortcut("n", modifiers: .command)
             }
+        }
+        #endif
+        .alert("Sync Issue", isPresented: $showSyncFailedToast) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("We couldn't sync your last change. We'll retry shortly.")
         }
     }
 
@@ -179,7 +204,7 @@ struct TaskListView: View {
         guard let task = item.taskItem else { return }
         task.status = task.status == .completed ? .open : .completed
         task.completedAt = task.status == .completed ? Date() : nil
-        task.updatedAt = Date()
+        task.markPending()
         syncManager.requestSync()
     }
 
@@ -187,7 +212,7 @@ struct TaskListView: View {
         guard let task = item.taskItem else { return }
         task.status = .deleted
         task.deletedAt = Date()
-        task.updatedAt = Date()
+        task.markPending()
         syncManager.requestSync()
     }
 
@@ -195,16 +220,60 @@ struct TaskListView: View {
         guard let task = item.taskItem else { return }
         task.claimedBy = currentUserId
         task.claimedAt = Date()
-        task.updatedAt = Date()
+        task.markPending()
+
+        // Create audit record (ClaimEvent starts as .pending in init)
+        let event = ClaimEvent(
+            parentType: .task,
+            parentId: task.id,
+            action: .claimed,
+            userId: currentUserId
+        )
+        task.claimHistory.append(event)
+
+        // Capture sync run ID for correlating with sync result
+        let runIdAtStart = syncManager.syncRunId
         syncManager.requestSync()
+
+        // Check for sync failure after delay
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            // Only show toast if we're on or past that run AND in error
+            if syncManager.syncRunId >= runIdAtStart,
+               case .error = syncManager.syncStatus {
+                showSyncFailedToast = true
+            }
+        }
     }
 
     private func unclaim(_ item: WorkItem) {
         guard let task = item.taskItem else { return }
         task.claimedBy = nil
         task.claimedAt = nil
-        task.updatedAt = Date()
+        task.markPending()
+
+        // Create audit record (ClaimEvent starts as .pending in init)
+        let event = ClaimEvent(
+            parentType: .task,
+            parentId: task.id,
+            action: .released,
+            userId: currentUserId
+        )
+        task.claimHistory.append(event)
+
+        // Capture sync run ID for correlating with sync result
+        let runIdAtStart = syncManager.syncRunId
         syncManager.requestSync()
+
+        // Check for sync failure after delay
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            // Only show toast if we're on or past that run AND in error
+            if syncManager.syncRunId >= runIdAtStart,
+               case .error = syncManager.syncStatus {
+                showSyncFailedToast = true
+            }
+        }
     }
 
     // MARK: - Note Actions
@@ -218,7 +287,7 @@ struct TaskListView: View {
             parentId: task.id
         )
         task.notes.append(note)
-        task.updatedAt = Date()
+        task.markPending()
         syncManager.requestSync()
     }
 
@@ -227,7 +296,7 @@ struct TaskListView: View {
         guard let task = item.taskItem else { return }
         task.notes.removeAll { $0.id == note.id }
         modelContext.delete(note)
-        task.updatedAt = Date()
+        task.markPending()
         noteToDelete = nil
         itemForNoteDeletion = nil
         syncManager.requestSync()
@@ -237,6 +306,7 @@ struct TaskListView: View {
 
     private func toggleSubtask(_ subtask: Subtask) {
         subtask.completed.toggle()
+        // Note: Subtasks sync with parent task - parent will be marked pending when saved
         syncManager.requestSync()
     }
 
@@ -245,7 +315,7 @@ struct TaskListView: View {
         guard let task = item.taskItem else { return }
         task.subtasks.removeAll { $0.id == subtask.id }
         modelContext.delete(subtask)
-        task.updatedAt = Date()
+        task.markPending()
         subtaskToDelete = nil
         itemForSubtaskDeletion = nil
         syncManager.requestSync()
@@ -259,7 +329,7 @@ struct TaskListView: View {
             parentId: task.id
         )
         task.subtasks.append(subtask)
-        task.updatedAt = Date()
+        task.markPending()
         syncManager.requestSync()
     }
 }
@@ -396,4 +466,5 @@ struct TaskListView: View {
     return TaskListView()
         .modelContainer(container)
         .environmentObject(syncManager)
+        .environmentObject(SearchPresentationManager())
 }

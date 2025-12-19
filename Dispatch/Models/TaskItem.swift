@@ -28,6 +28,20 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     var createdVia: CreationSource
     var sourceSlackMessages: [String]?
 
+    // Audience targeting - stored as [String] for SwiftData compatibility
+    // Default value at property level required for SwiftData schema migration
+    var audiencesRaw: [String] = ["admin", "marketing"]
+
+    /// Computed property exposing audiences as Set<Role>
+    var audiences: Set<Role> {
+        get {
+            Set(audiencesRaw.compactMap { Role(rawValue: $0) })
+        }
+        set {
+            audiencesRaw = newValue.map { $0.rawValue }
+        }
+    }
+
     // Timestamps
     var claimedAt: Date?
     var completedAt: Date?
@@ -35,6 +49,15 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     var createdAt: Date
     var updatedAt: Date
     var syncedAt: Date?
+
+    // Sync state tracking - optional storage with computed wrapper for schema migration compatibility
+    var syncStateRaw: EntitySyncState?
+    var lastSyncError: String?
+
+    var syncState: EntitySyncState {
+        get { syncStateRaw ?? .synced }
+        set { syncStateRaw = newValue }
+    }
 
     // Relationships
     @Relationship(deleteRule: .cascade)
@@ -65,6 +88,7 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
         listingId: UUID? = nil,
         createdVia: CreationSource = .dispatch,
         sourceSlackMessages: [String]? = nil,
+        audiencesRaw: [String] = ["admin", "marketing"],
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -79,16 +103,36 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
         self.listingId = listingId
         self.createdVia = createdVia
         self.sourceSlackMessages = sourceSlackMessages
+        self.audiencesRaw = audiencesRaw
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.syncStateRaw = .synced
     }
 }
 
 // MARK: - RealtimeSyncable Conformance
 extension TaskItem: RealtimeSyncable {
-    var isDirty: Bool {
-        guard let syncedAt = syncedAt else { return true }
-        return updatedAt > syncedAt
-    }
+    // syncState, lastSyncError, syncedAt are stored properties
+    // isDirty, isSyncFailed computed from syncState via protocol extension
     // conflictResolution uses default from protocol extension (.lastWriteWins)
+
+    /// Mark as pending when modified
+    func markPending() {
+        syncState = .pending
+        lastSyncError = nil
+        updatedAt = Date()
+    }
+
+    /// Mark as synced after successful sync
+    func markSynced() {
+        syncState = .synced
+        lastSyncError = nil
+        syncedAt = Date()
+    }
+
+    /// Mark as failed with error message
+    func markFailed(_ message: String) {
+        syncState = .failed
+        lastSyncError = message
+    }
 }

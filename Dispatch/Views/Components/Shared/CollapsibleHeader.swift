@@ -123,6 +123,7 @@ struct CollapsibleHeaderScrollView<Header: View, Content: View>: View {
             .onPreferenceChange(ScrollOffsetKey.self) { value in
                 scrollOffset = value
             }
+            .pullToSearch()
         }
     }
 }
@@ -149,4 +150,5 @@ struct CollapsibleHeaderScrollView<Header: View, Content: View>: View {
         }
         .padding()
     }
+    .environmentObject(SearchPresentationManager())
 }

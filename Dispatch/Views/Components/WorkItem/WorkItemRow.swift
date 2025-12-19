@@ -12,16 +12,22 @@ import SwiftUI
 /// - Status checkbox
 /// - Title with strikethrough when completed
 /// - Type label, due date badge, priority dot
-/// - Claimed user avatar
+/// - Compact ClaimButton for claim/release actions
 /// - Swipe actions for edit/delete
 struct WorkItemRow: View {
     let item: WorkItem
-    let claimedByUser: User?
+    let claimState: ClaimState
 
     // Closure-based actions (onTap removed - use NavigationLink wrapper instead)
     var onComplete: () -> Void = {}
     var onEdit: () -> Void = {}
     var onDelete: () -> Void = {}
+    var onClaim: () -> Void = {}
+    var onRelease: () -> Void = {}
+    var onRetrySync: () -> Void = {}
+
+    // State for retry animation
+    @State private var isRetrying = false
 
     private static let accessibilityDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -31,6 +37,9 @@ struct WorkItemRow: View {
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
+            // Role indicator dot
+            RoleDot(audiences: item.audiences)
+
             // Status checkbox
             StatusCheckbox(isCompleted: item.isCompleted, onToggle: onComplete)
 
@@ -43,10 +52,6 @@ struct WorkItemRow: View {
                         .strikethrough(item.isCompleted, color: DS.Colors.Text.tertiary)
                         .foregroundColor(item.isCompleted ? DS.Colors.Text.tertiary : DS.Colors.Text.primary)
                         .lineLimit(1)
-
-                    Spacer()
-
-                    PriorityDot(priority: item.priority)
                 }
 
                 // Metadata row
@@ -74,12 +79,34 @@ struct WorkItemRow: View {
                     }
 
                     Spacer()
-
-                    // Claimed user avatar
-                    if claimedByUser != nil {
-                        UserAvatar(user: claimedByUser, size: .small)
-                    }
                 }
+            }
+
+            Spacer()
+
+            // Show sync error indicator if failed, otherwise show claim button
+            if item.isSyncFailed {
+                SyncRetryButton(
+                    errorMessage: item.lastSyncError,
+                    isRetrying: isRetrying,
+                    onRetry: {
+                        isRetrying = true
+                        onRetrySync()
+                        // Reset after a delay (sync completion will trigger UI refresh)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            isRetrying = false
+                        }
+                    }
+                )
+                .padding(.trailing, DS.Spacing.sm)
+            } else {
+                ClaimButton(
+                    claimState: claimState,
+                    style: .compact,
+                    onClaim: onClaim,
+                    onRelease: onRelease
+                )
+                .padding(.trailing, DS.Spacing.md)
             }
         }
         .padding(.vertical, DS.Spacing.sm)
@@ -96,6 +123,15 @@ struct WorkItemRow: View {
             }
             .tint(DS.Colors.info)
         }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                HapticFeedback.medium()
+                onComplete()
+            } label: {
+                Label("Complete", systemImage: "checkmark")
+            }
+            .tint(DS.Colors.success)
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Double tap to view details. Swipe for more options.")
@@ -110,8 +146,19 @@ struct WorkItemRow: View {
         if let dueDate = item.dueDate {
             parts.append("Due \(Self.accessibilityDateFormatter.string(from: dueDate))")
         }
-        if let user = claimedByUser {
+        switch claimState {
+        case .unclaimed:
+            parts.append("Unclaimed")
+        case .claimedByMe:
+            parts.append("Claimed by you")
+        case .claimedByOther(let user):
             parts.append("Claimed by \(user.name)")
+        }
+        if item.isSyncFailed {
+            parts.append("Sync failed")
+            if let error = item.lastSyncError {
+                parts.append(error)
+            }
         }
         return parts.filter { !$0.isEmpty }.joined(separator: ", ")
     }
@@ -120,8 +167,11 @@ struct WorkItemRow: View {
 // MARK: - Preview
 
 #Preview("Work Item Row") {
+    let claimedUser = User(name: "John Doe", email: "john@example.com", userType: .admin)
+    let otherUser = User(name: "Jane Smith", email: "jane@example.com", userType: .admin)
+
     List {
-        // Task example
+        // Task example - claimed by other
         WorkItemRow(
             item: .task(TaskItem(
                 title: "Review quarterly report",
@@ -129,13 +179,15 @@ struct WorkItemRow: View {
                 priority: .high,
                 declaredBy: UUID()
             )),
-            claimedByUser: User(name: "John Doe", email: "john@example.com", userType: .admin),
+            claimState: .claimedByOther(user: otherUser),
             onComplete: {},
             onEdit: {},
-            onDelete: {}
+            onDelete: {},
+            onClaim: {},
+            onRelease: {}
         )
 
-        // Activity example
+        // Activity example - unclaimed
         WorkItemRow(
             item: .activity({
                 let a = Activity(
@@ -147,13 +199,31 @@ struct WorkItemRow: View {
                 )
                 return a
             }()),
-            claimedByUser: nil,
+            claimState: .unclaimed,
             onComplete: {},
             onEdit: {},
-            onDelete: {}
+            onDelete: {},
+            onClaim: {},
+            onRelease: {}
         )
 
-        // Completed task
+        // Task example - claimed by me
+        WorkItemRow(
+            item: .task(TaskItem(
+                title: "My claimed task",
+                taskDescription: "Working on this",
+                priority: .medium,
+                declaredBy: UUID()
+            )),
+            claimState: .claimedByMe(user: claimedUser),
+            onComplete: {},
+            onEdit: {},
+            onDelete: {},
+            onClaim: {},
+            onRelease: {}
+        )
+
+        // Completed task - unclaimed
         WorkItemRow(
             item: .task(TaskItem(
                 title: "Completed task example",
@@ -162,10 +232,12 @@ struct WorkItemRow: View {
                 status: .completed,
                 declaredBy: UUID()
             )),
-            claimedByUser: nil,
+            claimState: .unclaimed,
             onComplete: {},
             onEdit: {},
-            onDelete: {}
+            onDelete: {},
+            onClaim: {},
+            onRelease: {}
         )
     }
     .listStyle(.plain)

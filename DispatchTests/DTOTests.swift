@@ -360,7 +360,6 @@ struct ListingDTOTests {
             "listing_type": "sale",
             "status": "active",
             "owned_by": "550e8400-e29b-41d4-a716-446655440001",
-            "assigned_staff": null,
             "created_via": "realtor_app",
             "source_slack_messages": null,
             "activated_at": null,
@@ -399,7 +398,6 @@ struct ListingDTOTests {
             listingType: "lease",
             status: "active",
             ownedBy: ownedBy,
-            assignedStaff: nil,
             createdVia: "dispatch",
             sourceSlackMessages: nil,
             activatedAt: nil,
@@ -415,9 +413,49 @@ struct ListingDTOTests {
         #expect(model.id == id)
         #expect(model.address == "456 Oak Ave")
         #expect(model.city == "Vancouver")
-        #expect(model.type == .lease)
+        #expect(model.listingType == .lease)
         #expect(model.status == .active)
         #expect(model.ownedBy == ownedBy)
+    }
+
+    @Test("ListingDTO ignores unknown keys in JSON (e.g., deprecated assigned_staff)")
+    func testIgnoresUnknownKeys() throws {
+        // This JSON includes 'assigned_staff' which is no longer in the DTO schema
+        // The decoder should ignore it without throwing
+        let json = """
+        {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "address": "789 Legacy Lane",
+            "city": "Calgary",
+            "province": "AB",
+            "postal_code": "T2P 1A1",
+            "country": "Canada",
+            "price": "500000.00",
+            "mls_number": "A7654321",
+            "listing_type": "sale",
+            "status": "active",
+            "owned_by": "550e8400-e29b-41d4-a716-446655440001",
+            "assigned_staff": "550e8400-e29b-41d4-a716-446655440002",
+            "created_via": "dispatch",
+            "source_slack_messages": null,
+            "activated_at": null,
+            "pending_at": null,
+            "closed_at": null,
+            "deleted_at": null,
+            "created_at": "2025-01-01T00:00:00Z",
+            "updated_at": "2025-01-01T00:00:00Z"
+        }
+        """.data(using: .utf8)!
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        // Should not throw even though assigned_staff is present
+        let dto = try decoder.decode(ListingDTO.self, from: json)
+
+        #expect(dto.address == "789 Legacy Lane")
+        #expect(dto.city == "Calgary")
+        #expect(dto.status == "active")
     }
 }
 

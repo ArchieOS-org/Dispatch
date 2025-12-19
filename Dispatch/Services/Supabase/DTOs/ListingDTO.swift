@@ -19,13 +19,13 @@ struct ListingDTO: Codable, Sendable {
     let listingType: String
     let status: String
     let ownedBy: UUID
-    let assignedStaff: UUID?
     let createdVia: String
     let sourceSlackMessages: [String]?
     let activatedAt: Date?
     let pendingAt: Date?
     let closedAt: Date?
     let deletedAt: Date?
+    let dueDate: Date?
     let createdAt: Date
     let updatedAt: Date
 
@@ -35,13 +35,13 @@ struct ListingDTO: Codable, Sendable {
         case mlsNumber = "mls_number"
         case listingType = "listing_type"
         case ownedBy = "owned_by"
-        case assignedStaff = "assigned_staff"
         case createdVia = "created_via"
         case sourceSlackMessages = "source_slack_messages"
         case activatedAt = "activated_at"
         case pendingAt = "pending_at"
         case closedAt = "closed_at"
         case deletedAt = "deleted_at"
+        case dueDate = "due_date"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -83,9 +83,9 @@ struct ListingDTO: Codable, Sendable {
             listingType: resolvedListingType,
             status: resolvedStatus,
             ownedBy: ownedBy,
-            assignedStaff: assignedStaff,
             createdVia: resolvedCreatedVia,
             sourceSlackMessages: sourceSlackMessages,
+            dueDate: dueDate,
             createdAt: createdAt,
             updatedAt: updatedAt
         )

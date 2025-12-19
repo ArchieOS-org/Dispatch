@@ -9,20 +9,25 @@
 import SwiftUI
 
 /// A reusable container for TaskListView and ActivityListView that provides:
-/// - NavigationStack wrapper with title
+/// - Optional NavigationStack wrapper with title
 /// - Segmented filter bar (My/Others'/Unclaimed)
 /// - Date-based sectioned list (Overdue/Today/Tomorrow/Upcoming/No Due Date)
 /// - Pull-to-refresh functionality
 /// - Custom row rendering via @ViewBuilder
 /// - Navigation destination using WorkItemRef for crash-safe navigation
+///
+/// When `embedInNavigationStack` is false, the container omits its NavigationStack wrapper
+/// and expects the parent view to provide navigation context. This is required for:
+/// - iPhone menu navigation (MenuPageView → pushed list)
+/// - iPad/macOS split view detail pane
 struct WorkItemListContainer<Row: View, Destination: View>: View {
     let title: String
     let items: [WorkItem]
     let currentUserId: UUID
     let userLookup: (UUID) -> User?
-    let onRefresh: () async -> Void
     let isActivityList: Bool
-    @ViewBuilder let rowBuilder: (WorkItem, User?) -> Row
+    let embedInNavigationStack: Bool
+    @ViewBuilder let rowBuilder: (WorkItem, ClaimState) -> Row
     @ViewBuilder let destinationBuilder: (WorkItemRef) -> Destination
 
     @State private var selectedFilter: ClaimFilter = .mine
@@ -32,17 +37,17 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         items: [WorkItem],
         currentUserId: UUID,
         userLookup: @escaping (UUID) -> User?,
-        onRefresh: @escaping () async -> Void,
         isActivityList: Bool = false,
-        @ViewBuilder rowBuilder: @escaping (WorkItem, User?) -> Row,
+        embedInNavigationStack: Bool = true,
+        @ViewBuilder rowBuilder: @escaping (WorkItem, ClaimState) -> Row,
         @ViewBuilder destination: @escaping (WorkItemRef) -> Destination
     ) {
         self.title = title
         self.items = items
         self.currentUserId = currentUserId
         self.userLookup = userLookup
-        self.onRefresh = onRefresh
         self.isActivityList = isActivityList
+        self.embedInNavigationStack = embedInNavigationStack
         self.rowBuilder = rowBuilder
         self.destinationBuilder = destination
     }
@@ -69,28 +74,35 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Filter bar
-                SegmentedFilterBar(selection: $selectedFilter) { filter in
-                    filter.displayName(forActivities: isActivityList)
-                }
+        if embedInNavigationStack {
+            NavigationStack {
+                content
+                    .navigationDestination(for: WorkItemRef.self) { ref in
+                        destinationBuilder(ref)
+                    }
+            }
+        } else {
+            content
+        }
+    }
 
-                // Content
-                if isEmpty {
-                    emptyStateView
-                } else {
-                    listView
-                }
+    /// The main content without NavigationStack wrapper
+    @ViewBuilder
+    private var content: some View {
+        VStack(spacing: 0) {
+            // Filter bar
+            SegmentedFilterBar(selection: $selectedFilter) { filter in
+                filter.displayName(forActivities: isActivityList)
             }
-            .navigationTitle(title)
-            .refreshable {
-                await onRefresh()
-            }
-            .navigationDestination(for: WorkItemRef.self) { ref in
-                destinationBuilder(ref)
+
+            // Content
+            if isEmpty {
+                emptyStateView
+            } else {
+                listView
             }
         }
+        .navigationTitle(title)
     }
 
     // MARK: - Subviews
@@ -100,7 +112,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             ForEach(groupedItems, id: \.section) { section, sectionItems in
                 Section {
                     ForEach(sectionItems) { item in
-                        rowBuilder(item, item.claimedBy.flatMap { userLookup($0) })
+                        rowBuilder(item, item.claimState(currentUserId: currentUserId, userLookup: userLookup))
                     }
                 } header: {
                     DateSectionHeader(section: section)
@@ -108,6 +120,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             }
         }
         .listStyle(.plain)
+        .pullToSearch()
     }
 
     private var emptyStateView: some View {
@@ -183,18 +196,20 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         items: sampleTasks,
         currentUserId: currentUserId,
         userLookup: { _ in sampleUser },
-        onRefresh: { try? await Task.sleep(nanoseconds: 1_000_000_000) },
-        rowBuilder: { item, claimedUser in
+        rowBuilder: { item, claimState in
             WorkItemRow(
                 item: item,
-                claimedByUser: claimedUser,
+                claimState: claimState,
                 onComplete: {},
                 onEdit: {},
-                onDelete: {}
+                onDelete: {},
+                onClaim: {},
+                onRelease: {}
             )
         },
         destination: { _ in
             Text("Detail View")
         }
     )
+    .environmentObject(SearchPresentationManager())
 }

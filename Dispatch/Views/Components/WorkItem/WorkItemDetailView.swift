@@ -321,6 +321,8 @@ struct WorkItemDetailView: View {
             onAddNote: { _ in },
             onAddSubtask: {}
         )
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
     }
 }

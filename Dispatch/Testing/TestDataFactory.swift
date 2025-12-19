@@ -210,7 +210,6 @@ enum TestDataFactory {
             listingType: types[listingIndex],
             status: .active,
             ownedBy: deterministicUUID(type: "user", index: 1),
-            assignedStaff: deterministicUUID(type: "user", index: 2),
             createdVia: .dispatch,
             sourceSlackMessages: nil,
             createdAt: Date(),

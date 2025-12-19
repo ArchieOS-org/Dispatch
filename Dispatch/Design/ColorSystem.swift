@@ -8,6 +8,12 @@
 
 import SwiftUI
 
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+
 extension DS {
     /// Semantic color tokens with automatic dark mode support.
     /// Colors are grouped by purpose and integrate with existing domain enums.
@@ -66,17 +72,17 @@ extension DS {
 
         /// Colors for sync state indicators
         enum Sync {
-            static let synced = Color.green
+            static let ok = Color.green
             static let syncing = Color.blue
-            static let pending = Color.orange
+            static let idle = Color.gray
             static let error = Color.red
 
             /// Returns the appropriate color for a sync status
             static func color(for status: SyncStatus) -> Color {
                 switch status {
-                case .synced: return synced
+                case .idle: return idle
                 case .syncing: return syncing
-                case .pending: return pending
+                case .ok: return ok
                 case .error: return error
                 }
             }
@@ -105,22 +111,53 @@ extension DS {
         /// Semantic background colors that adapt to light/dark mode
         enum Background {
             /// Primary background (white/dark)
+            #if canImport(UIKit)
             static let primary = Color(uiColor: .systemBackground)
+            #else
+            static let primary = Color(nsColor: .windowBackgroundColor)
+            #endif
 
             /// Secondary background (subtle gray)
+            #if canImport(UIKit)
             static let secondary = Color(uiColor: .secondarySystemBackground)
+            #else
+            static let secondary = Color(nsColor: .controlBackgroundColor)
+            #endif
 
             /// Tertiary background (deeper gray)
+            #if canImport(UIKit)
             static let tertiary = Color(uiColor: .tertiarySystemBackground)
+            #else
+            static let tertiary = Color(nsColor: .underPageBackgroundColor)
+            #endif
 
             /// Grouped content background
+            #if canImport(UIKit)
             static let grouped = Color(uiColor: .systemGroupedBackground)
+            #else
+            static let grouped = Color(nsColor: .windowBackgroundColor)
+            #endif
+
+            /// Grouped secondary background (layered surface above grouped backgrounds)
+            #if canImport(UIKit)
+            static let groupedSecondary = Color(uiColor: .secondarySystemGroupedBackground)
+            #else
+            static let groupedSecondary = Color(nsColor: .controlBackgroundColor)
+            #endif
 
             /// Card background (systemGray6)
+            #if canImport(UIKit)
             static let card = Color(uiColor: .systemGray6)
+            #else
+            static let card = Color(nsColor: .controlBackgroundColor)
+            #endif
 
             /// Card background dark variant (systemGray5)
+            #if canImport(UIKit)
             static let cardDark = Color(uiColor: .systemGray5)
+            #else
+            static let cardDark = Color(nsColor: .separatorColor)
+            #endif
         }
 
         // MARK: - Text Colors (Adaptive)
@@ -134,16 +171,32 @@ extension DS {
             static let secondary = Color.secondary
 
             /// Tertiary text color (more dimmed)
+            #if canImport(UIKit)
             static let tertiary = Color(uiColor: .tertiaryLabel)
+            #else
+            static let tertiary = Color(nsColor: .tertiaryLabelColor)
+            #endif
 
             /// Quaternary text color (most dimmed)
+            #if canImport(UIKit)
             static let quaternary = Color(uiColor: .quaternaryLabel)
+            #else
+            static let quaternary = Color(nsColor: .quaternaryLabelColor)
+            #endif
 
             /// Disabled text color
+            #if canImport(UIKit)
             static let disabled = Color(uiColor: .quaternaryLabel)
+            #else
+            static let disabled = Color(nsColor: .quaternaryLabelColor)
+            #endif
 
             /// Placeholder text color
+            #if canImport(UIKit)
             static let placeholder = Color(uiColor: .placeholderText)
+            #else
+            static let placeholder = Color(nsColor: .placeholderTextColor)
+            #endif
         }
 
         // MARK: - UI Element Colors
@@ -169,7 +222,11 @@ extension DS {
         static let border = Color.gray.opacity(0.2)
 
         /// System separator color
+        #if canImport(UIKit)
         static let separator = Color(uiColor: .separator)
+        #else
+        static let separator = Color(nsColor: .separatorColor)
+        #endif
 
         /// Focused border color
         static let borderFocused = Color.accentColor
@@ -184,5 +241,38 @@ extension DS {
 
         /// Color for normal due dates
         static let dueNormal = Color.secondary
+
+        // MARK: - Progress Colors
+
+        /// Colors for progress indicators (e.g., ProgressCircle)
+        enum Progress {
+            /// Track ring color - subtle background for unfilled portion
+            static let track = DS.Colors.Text.tertiary.opacity(0.3)
+        }
+
+        // MARK: - Search Overlay
+
+        /// Semi-transparent scrim behind search overlay
+        static let searchScrim = Color.black.opacity(0.4)
+
+        // MARK: - Role Colors
+
+        /// Colors for role/audience indicators - uses system colors for dark mode compatibility
+        enum RoleColors {
+            /// Indigo for admin role - authoritative, analytical, cool-toned
+            static let admin = Color.indigo
+            /// Orange for marketing role - energetic, creative, warm-toned
+            static let marketing = Color.orange
+            /// Neutral gray for "all" view (unused if no ring for All)
+            static let all = Color.gray
+
+            /// Returns the appropriate color for a role
+            static func color(for role: Role) -> Color {
+                switch role {
+                case .admin: return admin
+                case .marketing: return marketing
+                }
+            }
+        }
     }
 }

@@ -14,7 +14,12 @@ import SwiftData
 /// - Date-based sections (Overdue/Today/Tomorrow/Upcoming/No Due Date)
 /// - Pull-to-refresh sync
 /// - Navigation to activity detail
+///
+/// When `embedInNavigationStack` is false, the view omits its NavigationStack wrapper
+/// and expects the parent view to provide navigation context (e.g., iPhone menu, iPad split view).
 struct ActivityListView: View {
+    /// Whether to wrap content in NavigationStack. Set to false when used in menu/split-view navigation.
+    var embedInNavigationStack: Bool = true
     @Query(sort: \Activity.dueDate)
     private var allActivitiesRaw: [Activity]
 
@@ -25,6 +30,7 @@ struct ActivityListView: View {
 
     @Query private var users: [User]
 
+    #if os(macOS)
     @Query(sort: \Listing.address)
     private var allListings: [Listing]
 
@@ -32,6 +38,7 @@ struct ActivityListView: View {
     private var activeListings: [Listing] {
         allListings.filter { $0.status != .deleted }
     }
+    #endif
 
     @EnvironmentObject private var syncManager: SyncManager
     @Environment(\.modelContext) private var modelContext
@@ -50,8 +57,13 @@ struct ActivityListView: View {
     @State private var itemForSubtaskAdd: WorkItem?
     @State private var newSubtaskTitle = ""
 
-    // MARK: - State for Quick Entry
+    // MARK: - State for Quick Entry (macOS only - iOS uses GlobalFloatingButtons)
+    #if os(macOS)
     @State private var showQuickEntry = false
+    #endif
+
+    // MARK: - State for Sync Failure Toast
+    @State private var showSyncFailedToast = false
 
     // MARK: - Computed Properties
 
@@ -81,18 +93,18 @@ struct ActivityListView: View {
             items: workItems,
             currentUserId: currentUserId,
             userLookup: { userCache[$0] },
-            onRefresh: {
-                await syncManager.sync()
-            },
             isActivityList: true,
-            rowBuilder: { item, claimedUser in
+            embedInNavigationStack: embedInNavigationStack,
+            rowBuilder: { item, claimState in
                 NavigationLink(value: WorkItemRef.from(item)) {
                     WorkItemRow(
                         item: item,
-                        claimedByUser: claimedUser,
+                        claimState: claimState,
                         onComplete: { toggleComplete(item) },
                         onEdit: {},
-                        onDelete: { delete(item) }
+                        onDelete: { delete(item) },
+                        onClaim: { claim(item) },
+                        onRelease: { unclaim(item) }
                     )
                 }
                 .buttonStyle(.plain)
@@ -158,6 +170,7 @@ struct ActivityListView: View {
                 showAddSubtaskSheet = false
             }
         }
+        #if os(macOS)
         .sheet(isPresented: $showQuickEntry) {
             QuickEntrySheet(
                 defaultItemType: .activity,
@@ -166,10 +179,21 @@ struct ActivityListView: View {
                 onSave: { syncManager.requestSync() }
             )
         }
-        .overlay(alignment: .bottomTrailing) {
-            FloatingActionButton {
-                showQuickEntry = true
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showQuickEntry = true
+                } label: {
+                    Label("Add", systemImage: "plus")
+                }
+                .keyboardShortcut("n", modifiers: .command)
             }
+        }
+        #endif
+        .alert("Sync Issue", isPresented: $showSyncFailedToast) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("We couldn't sync your last change. We'll retry shortly.")
         }
     }
 
@@ -179,7 +203,7 @@ struct ActivityListView: View {
         guard let activity = item.activityItem else { return }
         activity.status = activity.status == .completed ? .open : .completed
         activity.completedAt = activity.status == .completed ? Date() : nil
-        activity.updatedAt = Date()
+        activity.markPending()
         syncManager.requestSync()
     }
 
@@ -187,7 +211,7 @@ struct ActivityListView: View {
         guard let activity = item.activityItem else { return }
         activity.status = .deleted
         activity.deletedAt = Date()
-        activity.updatedAt = Date()
+        activity.markPending()
         syncManager.requestSync()
     }
 
@@ -195,16 +219,60 @@ struct ActivityListView: View {
         guard let activity = item.activityItem else { return }
         activity.claimedBy = currentUserId
         activity.claimedAt = Date()
-        activity.updatedAt = Date()
+        activity.markPending()
+
+        // Create audit record (ClaimEvent starts as .pending in init)
+        let event = ClaimEvent(
+            parentType: .activity,
+            parentId: activity.id,
+            action: .claimed,
+            userId: currentUserId
+        )
+        activity.claimHistory.append(event)
+
+        // Capture sync run ID for correlating with sync result
+        let runIdAtStart = syncManager.syncRunId
         syncManager.requestSync()
+
+        // Check for sync failure after delay
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            // Only show toast if we're on or past that run AND in error
+            if syncManager.syncRunId >= runIdAtStart,
+               case .error = syncManager.syncStatus {
+                showSyncFailedToast = true
+            }
+        }
     }
 
     private func unclaim(_ item: WorkItem) {
         guard let activity = item.activityItem else { return }
         activity.claimedBy = nil
         activity.claimedAt = nil
-        activity.updatedAt = Date()
+        activity.markPending()
+
+        // Create audit record (ClaimEvent starts as .pending in init)
+        let event = ClaimEvent(
+            parentType: .activity,
+            parentId: activity.id,
+            action: .released,
+            userId: currentUserId
+        )
+        activity.claimHistory.append(event)
+
+        // Capture sync run ID for correlating with sync result
+        let runIdAtStart = syncManager.syncRunId
         syncManager.requestSync()
+
+        // Check for sync failure after delay
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(3))
+            // Only show toast if we're on or past that run AND in error
+            if syncManager.syncRunId >= runIdAtStart,
+               case .error = syncManager.syncStatus {
+                showSyncFailedToast = true
+            }
+        }
     }
 
     // MARK: - Note Actions
@@ -218,7 +286,7 @@ struct ActivityListView: View {
             parentId: activity.id
         )
         activity.notes.append(note)
-        activity.updatedAt = Date()
+        activity.markPending()
         syncManager.requestSync()
     }
 
@@ -227,7 +295,7 @@ struct ActivityListView: View {
         guard let activity = item.activityItem else { return }
         activity.notes.removeAll { $0.id == note.id }
         modelContext.delete(note)
-        activity.updatedAt = Date()
+        activity.markPending()
         noteToDelete = nil
         itemForNoteDeletion = nil
         syncManager.requestSync()
@@ -237,6 +305,7 @@ struct ActivityListView: View {
 
     private func toggleSubtask(_ subtask: Subtask) {
         subtask.completed.toggle()
+        // Note: Subtasks sync with parent activity - parent will be marked pending when saved
         syncManager.requestSync()
     }
 
@@ -245,7 +314,7 @@ struct ActivityListView: View {
         guard let activity = item.activityItem else { return }
         activity.subtasks.removeAll { $0.id == subtask.id }
         modelContext.delete(subtask)
-        activity.updatedAt = Date()
+        activity.markPending()
         subtaskToDelete = nil
         itemForSubtaskDeletion = nil
         syncManager.requestSync()
@@ -259,7 +328,7 @@ struct ActivityListView: View {
             parentId: activity.id
         )
         activity.subtasks.append(subtask)
-        activity.updatedAt = Date()
+        activity.markPending()
         syncManager.requestSync()
     }
 }
@@ -270,4 +339,5 @@ struct ActivityListView: View {
     ActivityListView()
         .modelContainer(for: [Activity.self, User.self], inMemory: true)
         .environmentObject(SyncManager.shared)
+        .environmentObject(SearchPresentationManager())
 }

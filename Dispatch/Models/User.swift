@@ -21,6 +21,16 @@ final class User {
     var updatedAt: Date
     var syncedAt: Date?
 
+    // Sync state tracking - optional storage with computed wrapper for schema migration compatibility
+    // Note: Users sync DOWN only (RLS prevents non-self updates), so these are primarily for protocol conformance
+    var syncStateRaw: EntitySyncState?
+    var lastSyncError: String?
+
+    var syncState: EntitySyncState {
+        get { syncStateRaw ?? .synced }
+        set { syncStateRaw = newValue }
+    }
+
     // Relationships (for realtors)
     @Relationship(deleteRule: .nullify, inverse: \Listing.owner)
     var listings: [Listing] = []
@@ -31,9 +41,6 @@ final class User {
 
     @Relationship(deleteRule: .nullify, inverse: \Activity.claimedByUser)
     var claimedActivities: [Activity] = []
-
-    @Relationship(deleteRule: .nullify, inverse: \Listing.assignedStaffUser)
-    var assignedListings: [Listing] = []
 
     init(
         id: UUID = UUID(),
@@ -51,15 +58,34 @@ final class User {
         self.userType = userType
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.syncStateRaw = .synced
     }
 }
 
 // MARK: - RealtimeSyncable Conformance
 // NOTE: Users sync DOWN only (RLS prevents non-self updates)
 extension User: RealtimeSyncable {
-    var isDirty: Bool {
-        guard let syncedAt = syncedAt else { return true }
-        return updatedAt > syncedAt
-    }
+    // syncState, lastSyncError, syncedAt are stored properties
+    // isDirty, isSyncFailed computed from syncState via protocol extension
     // conflictResolution uses default from protocol extension (.lastWriteWins)
+
+    /// Mark as pending when modified (rarely used for User - sync is mostly down)
+    func markPending() {
+        syncState = .pending
+        lastSyncError = nil
+        updatedAt = Date()
+    }
+
+    /// Mark as synced after successful sync
+    func markSynced() {
+        syncState = .synced
+        lastSyncError = nil
+        syncedAt = Date()
+    }
+
+    /// Mark as failed with error message
+    func markFailed(_ message: String) {
+        syncState = .failed
+        lastSyncError = message
+    }
 }

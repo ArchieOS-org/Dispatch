@@ -59,15 +59,37 @@ struct DispatchApp: App {
                     SyncTestHarness()
                         .environmentObject(SyncManager.shared)
                 }
+                #if os(iOS)
                 .onShake {
                     showTestHarness = true
                 }
                 #endif
+                #endif
         }
         .modelContainer(sharedModelContainer)
-        .onChange(of: scenePhase) { _, newPhase in
+        #if os(macOS)
+        .commands {
+            CommandGroup(after: .toolbar) {
+                Button("Sync Now") {
+                    Task {
+                        await SyncManager.shared.sync()
+                    }
+                }
+                .keyboardShortcut("r", modifiers: .command)
+            }
+        }
+        #endif
+        .onChange(of: scenePhase) { newPhase in
             if newPhase == .active {
                 Task {
+                    // Check app compatibility before sync
+                    let compatStatus = await AppCompatManager.shared.checkCompatibility()
+                    if compatStatus.isBlocked {
+                        // TODO: Show force update alert
+                        debugLog.log("App version incompatible: \(AppCompatManager.shared.statusMessage)", category: .error)
+                        return
+                    }
+
                     await SyncManager.shared.sync()
                     await SyncManager.shared.startListening()
                 }

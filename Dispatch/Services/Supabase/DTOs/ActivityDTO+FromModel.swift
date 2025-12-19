@@ -22,6 +22,7 @@ extension ActivityDTO {
         self.listing = model.listingId
         self.createdVia = model.createdVia.rawValue
         self.sourceSlackMessages = model.sourceSlackMessages
+        self.audiences = model.audiencesRaw
         // Convert TimeInterval (seconds) back to minutes for Supabase
         self.durationMinutes = model.duration.map { Int($0 / 60) }
         self.claimedAt = model.claimedAt

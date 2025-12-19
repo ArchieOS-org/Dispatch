@@ -9,6 +9,7 @@
 import Foundation
 import SwiftData
 import Supabase
+import PostgREST
 import Combine
 
 @MainActor
@@ -30,15 +31,54 @@ final class SyncManager: ObservableObject {
         }
     }
     @Published private(set) var syncError: Error?
-    @Published private(set) var syncStatus: SyncStatus = .synced
+    @Published private(set) var syncStatus: SyncStatus = .idle
     @Published var currentUserID: UUID?  // Set when authenticated
+
+    /// User-facing error message when syncStatus is .error
+    @Published private(set) var lastSyncErrorMessage: String?
+
+    /// Sync run counter for correlating claim actions with sync results
+    @Published private(set) var syncRunId: Int = 0
 
     // MARK: - Private Properties
     private var modelContainer: ModelContainer?
     private var realtimeChannel: RealtimeChannelV2?
+    private var broadcastChannel: RealtimeChannelV2?
     private var isListening = false
-    private var syncDebounceTask: Task<Void, Never>?
-    private let debounceInterval: TimeInterval = 0.5  // 500ms
+    private var syncRequestedDuringSync = false
+    private var wasDisconnected = false  // Track disconnection for reconnect sync
+
+    /// Feature flag: Enable broadcast-based realtime (v2)
+    /// When true, subscribes to broadcast channel IN ADDITION to postgres_changes
+    /// Phase 1: Both run simultaneously for validation
+    /// Phase 2: Remove postgres_changes listeners
+    /// Phase 3: Remove inFlightTaskIds tracking (origin_user_id replaces it)
+    private let useBroadcastRealtime: Bool = true
+
+    /// Tasks currently being synced up - skip realtime echoes for these
+    /// NOTE: Will be removed in Phase 3 once origin_user_id filtering is validated
+    private var inFlightTaskIds: Set<UUID> = []
+
+    /// Activities currently being synced up - skip realtime echoes for these
+    /// NOTE: Will be removed in Phase 3 once origin_user_id filtering is validated
+    private var inFlightActivityIds: Set<UUID> = []
+
+    // MARK: - Local-First Sync Guard
+    /// Determines if a model should be treated as "local-authoritative" during SyncDown.
+    /// Local-authoritative items should NOT be overwritten by server state until SyncUp succeeds.
+    @inline(__always)
+    private func isLocalAuthoritative<T: RealtimeSyncable>(
+        _ model: T,
+        inFlight: Bool
+    ) -> Bool {
+        model.syncState == .pending || model.syncState == .failed || inFlight
+    }
+
+    #if DEBUG
+    /// Track recently processed IDs to detect duplicate processing (DEBUG only)
+    /// Used during Phase 1 to log when both postgres_changes and broadcast process same event
+    private var recentlyProcessedIds: Set<UUID> = []
+    #endif
 
     private init() {
         // Restore persisted lastSyncTime
@@ -61,20 +101,27 @@ final class SyncManager: ObservableObject {
         currentUserID != nil
     }
 
-    // MARK: - Main Sync (Debounced)
-    func requestSync() {
-        debugLog.log("requestSync() called - debouncing for \(debounceInterval)s", category: .sync)
-        syncDebounceTask?.cancel()
-        debugLog.log("  Previous debounce task cancelled (if any)", category: .sync)
-        syncDebounceTask = Task {
-            try? await Task.sleep(nanoseconds: UInt64(debounceInterval * 1_000_000_000))
-            guard !Task.isCancelled else {
-                debugLog.log("  Debounce task was cancelled before sync", category: .sync)
-                return
+    // MARK: - Error Message Helper
+    /// Convert sync errors to user-friendly messages
+    private func userFacingMessage(for error: Error) -> String {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost:
+                return "No internet connection. Check your network."
+            case .timedOut:
+                return "Connection timed out. We'll retry shortly."
+            default:
+                return "Network error. Check your connection."
             }
-            debugLog.log("  Debounce complete, triggering sync()", category: .sync)
-            await sync()
         }
+        // Add auth check if needed in future
+        return "Sync failed. We'll retry shortly."
+    }
+
+    // MARK: - Main Sync
+    func requestSync() {
+        debugLog.log("requestSync() called - triggering sync()", category: .sync)
+        Task { await self.sync() }
     }
 
     /// Resets lastSyncTime to nil, forcing the next sync to run full reconciliation.
@@ -95,8 +142,51 @@ final class SyncManager: ObservableObject {
         _ = savedLastSyncTime  // Silence unused variable warning
     }
 
+    /// Retry syncing a single failed entity. This triggers a full sync but ensures
+    /// the entity's state is reset to .pending first (done in markPending).
+    /// The normal sync flow will then pick it up.
+    func retrySync() async {
+        await sync()
+    }
+
+    /// Retry syncing a specific TaskItem
+    func retryTask(_ task: TaskItem) async {
+        debugLog.log("retryTask() called for \(task.id)", category: .sync)
+        task.syncState = .pending
+        task.lastSyncError = nil
+        await sync()
+    }
+
+    /// Retry syncing a specific Activity
+    func retryActivity(_ activity: Activity) async {
+        debugLog.log("retryActivity() called for \(activity.id)", category: .sync)
+        activity.syncState = .pending
+        activity.lastSyncError = nil
+        await sync()
+    }
+
+    /// Retry syncing a specific Listing
+    func retryListing(_ listing: Listing) async {
+        debugLog.log("retryListing() called for \(listing.id)", category: .sync)
+        listing.syncState = .pending
+        listing.lastSyncError = nil
+        await sync()
+    }
+
+    /// Retry syncing a specific ClaimEvent
+    func retryClaimEvent(_ claimEvent: ClaimEvent) async {
+        debugLog.log("retryClaimEvent() called for \(claimEvent.id)", category: .sync)
+        claimEvent.syncState = .pending
+        claimEvent.lastSyncError = nil
+        await sync()
+    }
+
     func sync() async {
-        debugLog.log("========== sync() STARTED ==========", category: .sync)
+        // Increment sync run ID for correlating claim actions with sync results
+        syncRunId &+= 1
+        let runId = syncRunId
+
+        debugLog.log("========== sync() STARTED (runId: \(runId)) ==========", category: .sync)
         debugLog.log("  isAuthenticated: \(isAuthenticated)", category: .sync)
         debugLog.log("  isSyncing: \(isSyncing)", category: .sync)
         debugLog.log("  currentUserID: \(currentUserID?.uuidString ?? "nil")", category: .sync)
@@ -104,51 +194,81 @@ final class SyncManager: ObservableObject {
 
         guard isAuthenticated else {
             debugLog.log("SKIPPING sync - not authenticated", category: .sync)
-            syncStatus = .pending
+            if syncRunId == runId {
+                syncStatus = .idle
+            }
             return
         }
-        guard !isSyncing, let container = modelContainer else {
-            debugLog.log("SKIPPING sync - \(isSyncing ? "already syncing" : "no modelContainer")", category: .sync)
+
+        guard let container = modelContainer else {
+            debugLog.log("SKIPPING sync - no modelContainer", category: .sync)
             return
         }
 
-        isSyncing = true
-        syncStatus = .syncing
-        syncError = nil
-        debugLog.startTiming("Full Sync")
-
-        do {
-            // CRITICAL FIX: Use mainContext instead of creating a new ModelContext
-            // This ensures we see entities created in other parts of the app (e.g., SyncTestHarness)
-            // Previously: let context = ModelContext(container) - this created an isolated context
-            // that couldn't see unsaved entities from the UI's @Environment(\.modelContext)
-            let context = container.mainContext
-            debugLog.log("Using container.mainContext (shared context)", category: .sync)
-
-            debugLog.startTiming("syncDown")
-            try await syncDown(context: context)
-            debugLog.endTiming("syncDown")
-
-            debugLog.startTiming("syncUp")
-            try await syncUp(context: context)
-            debugLog.endTiming("syncUp")
-
-            debugLog.log("Saving ModelContext...", category: .sync)
-            try context.save()
-            debugLog.log("ModelContext saved successfully", category: .sync)
-
-            lastSyncTime = Date()
-            syncStatus = .synced
-            debugLog.endTiming("Full Sync")
-            debugLog.log("========== sync() COMPLETED at \(lastSyncTime!) ==========", category: .sync)
-        } catch {
-            debugLog.endTiming("Full Sync")
-            debugLog.error("========== sync() FAILED ==========", error: error)
-            syncError = error
-            syncStatus = .error
+        // Coalescing loop pattern: queue sync requests instead of cancelling in-flight requests
+        // If already syncing, set flag and return - the active sync will run another pass when done
+        if isSyncing {
+            syncRequestedDuringSync = true
+            debugLog.log("QUEUED sync - will run after current sync completes", category: .sync)
+            return
         }
 
-        isSyncing = false
+        var runAgain: Bool
+
+        repeat {
+            isSyncing = true
+            syncRequestedDuringSync = false
+            syncStatus = .syncing
+            syncError = nil
+            debugLog.startTiming("Full Sync")
+
+            do {
+                // CRITICAL FIX: Use mainContext instead of creating a new ModelContext
+                // This ensures we see entities created in other parts of the app (e.g., SyncTestHarness)
+                // Previously: let context = ModelContext(container) - this created an isolated context
+                // that couldn't see unsaved entities from the UI's @Environment(\.modelContext)
+                let context = container.mainContext
+                debugLog.log("Using container.mainContext (shared context)", category: .sync)
+
+                debugLog.startTiming("syncDown")
+                try await syncDown(context: context)
+                debugLog.endTiming("syncDown")
+
+                debugLog.startTiming("syncUp")
+                try await syncUp(context: context)
+                debugLog.endTiming("syncUp")
+
+                debugLog.log("Saving ModelContext...", category: .sync)
+                try context.save()
+                debugLog.log("ModelContext saved successfully", category: .sync)
+
+                lastSyncTime = Date()
+                // Only update status if this is still the current sync run
+                if syncRunId == runId {
+                    syncStatus = .ok(Date())
+                    lastSyncErrorMessage = nil
+                }
+                debugLog.endTiming("Full Sync")
+                debugLog.log("========== sync() COMPLETED at \(lastSyncTime!) ==========", category: .sync)
+            } catch {
+                debugLog.endTiming("Full Sync")
+                debugLog.error("========== sync() FAILED ==========", error: error)
+                syncError = error
+                // Only update status if this is still the current sync run
+                if syncRunId == runId {
+                    syncStatus = .error
+                    lastSyncErrorMessage = userFacingMessage(for: error)
+                }
+            }
+
+            isSyncing = false
+            runAgain = syncRequestedDuringSync
+            syncRequestedDuringSync = false
+
+            if runAgain {
+                debugLog.log("Running queued sync...", category: .sync)
+            }
+        } while runAgain
     }
 
     // MARK: - Sync Down (Supabase → SwiftData)
@@ -444,6 +564,18 @@ final class SyncManager: ObservableObject {
         return true
     }
 
+    /// Delete a claim event by ID from local SwiftData
+    func deleteLocalClaimEvent(id: UUID, context: ModelContext) throws -> Bool {
+        let descriptor = FetchDescriptor<ClaimEvent>(predicate: #Predicate { $0.id == id })
+        guard let claimEvent = try context.fetch(descriptor).first else {
+            debugLog.log("deleteLocalClaimEvent: ClaimEvent \(id) not found locally", category: .sync)
+            return false
+        }
+        debugLog.log("deleteLocalClaimEvent: Deleting claim event \(id)", category: .sync)
+        context.delete(claimEvent)
+        return true
+    }
+
     // MARK: - Sync Down: Users (read-only)
     private func syncDownUsers(context: ModelContext, since: String) async throws {
         debugLog.log("syncDownUsers() - querying Supabase...", category: .sync)
@@ -474,11 +606,11 @@ final class SyncManager: ObservableObject {
             existing.email = dto.email
             existing.userType = UserType(rawValue: dto.userType) ?? .realtor
             existing.updatedAt = dto.updatedAt
-            existing.syncedAt = Date()
+            existing.markSynced()
         } else {
             debugLog.log("    INSERT new user: \(dto.id)", category: .sync)
             let newUser = dto.toModel()
-            newUser.syncedAt = Date()
+            newUser.markSynced()
             context.insert(newUser)
         }
     }
@@ -508,6 +640,13 @@ final class SyncManager: ObservableObject {
         )
 
         if let existing = try context.fetch(descriptor).first {
+            // 🔐 Local-first: skip ALL updates if local-authoritative
+            // Note: No inFlightListingIds needed for V1 as listings are rarely user-edited locally
+            if isLocalAuthoritative(existing, inFlight: false) {
+                debugLog.log("[SyncDown] Skip update for listing \(dto.id) — local-authoritative (state=\(existing.syncState))", category: .sync)
+                return
+            }
+
             debugLog.log("    UPDATE existing listing: \(dto.id)", category: .sync)
             existing.address = dto.address
             existing.city = dto.city ?? ""
@@ -518,17 +657,17 @@ final class SyncManager: ObservableObject {
             existing.mlsNumber = dto.mlsNumber
             existing.listingType = ListingType(rawValue: dto.listingType) ?? .sale
             existing.status = ListingStatus(rawValue: dto.status) ?? .draft
-            existing.assignedStaff = dto.assignedStaff
             existing.activatedAt = dto.activatedAt
             existing.pendingAt = dto.pendingAt
             existing.closedAt = dto.closedAt
             existing.deletedAt = dto.deletedAt
+            existing.dueDate = dto.dueDate
             existing.updatedAt = dto.updatedAt
-            existing.syncedAt = Date()
+            existing.markSynced()
         } else {
             debugLog.log("    INSERT new listing: \(dto.id)", category: .sync)
             let newListing = dto.toModel()
-            newListing.syncedAt = Date()
+            newListing.markSynced()
             context.insert(newListing)
         }
     }
@@ -557,10 +696,15 @@ final class SyncManager: ObservableObject {
             predicate: #Predicate { $0.id == targetId }
         )
 
-        let task: TaskItem
         if let existing = try context.fetch(descriptor).first {
+            // 🔐 Local-first: skip ALL updates if local-authoritative
+            if isLocalAuthoritative(existing, inFlight: inFlightTaskIds.contains(existing.id)) {
+                debugLog.log("[SyncDown] Skip update for task \(dto.id) — local-authoritative (state=\(existing.syncState))", category: .sync)
+                return
+            }
+
             debugLog.log("    UPDATE existing task: \(dto.id)", category: .sync)
-            // Update (last-write-wins: server wins on syncDown)
+            // Apply server state ONLY when not local-authoritative
             existing.title = dto.title
             existing.taskDescription = dto.description ?? ""
             existing.dueDate = dto.dueDate
@@ -571,19 +715,16 @@ final class SyncManager: ObservableObject {
             existing.completedAt = dto.completedAt
             existing.deletedAt = dto.deletedAt
             existing.updatedAt = dto.updatedAt
-            existing.listingId = dto.listing  // Ensure listingId is updated
-            existing.syncedAt = Date()
-            task = existing
+            existing.listingId = dto.listing
+            try establishTaskListingRelationship(task: existing, listingId: dto.listing, context: context)
+            existing.markSynced()
         } else {
             debugLog.log("    INSERT new task: \(dto.id)", category: .sync)
             let newTask = dto.toModel()
-            newTask.syncedAt = Date()
+            newTask.markSynced()
             context.insert(newTask)
-            task = newTask
+            try establishTaskListingRelationship(task: newTask, listingId: dto.listing, context: context)
         }
-
-        // Establish SwiftData relationship with parent Listing
-        try establishTaskListingRelationship(task: task, listingId: dto.listing, context: context)
     }
 
     /// Establishes bidirectional relationship between a task and its parent listing
@@ -642,8 +783,13 @@ final class SyncManager: ObservableObject {
             predicate: #Predicate { $0.id == targetId }
         )
 
-        let activity: Activity
         if let existing = try context.fetch(descriptor).first {
+            // 🔐 Local-first: skip ALL updates if local-authoritative
+            if isLocalAuthoritative(existing, inFlight: inFlightActivityIds.contains(existing.id)) {
+                debugLog.log("[SyncDown] Skip update for activity \(dto.id) — local-authoritative (state=\(existing.syncState))", category: .sync)
+                return
+            }
+
             debugLog.log("    UPDATE existing activity: \(dto.id)", category: .sync)
             existing.title = dto.title
             existing.activityDescription = dto.description ?? ""
@@ -657,19 +803,16 @@ final class SyncManager: ObservableObject {
             existing.completedAt = dto.completedAt
             existing.deletedAt = dto.deletedAt
             existing.updatedAt = dto.updatedAt
-            existing.listingId = dto.listing  // Ensure listingId is updated
-            existing.syncedAt = Date()
-            activity = existing
+            existing.listingId = dto.listing
+            try establishActivityListingRelationship(activity: existing, listingId: dto.listing, context: context)
+            existing.markSynced()
         } else {
             debugLog.log("    INSERT new activity: \(dto.id)", category: .sync)
             let newActivity = dto.toModel()
-            newActivity.syncedAt = Date()
+            newActivity.markSynced()
             context.insert(newActivity)
-            activity = newActivity
+            try establishActivityListingRelationship(activity: newActivity, listingId: dto.listing, context: context)
         }
-
-        // Establish SwiftData relationship with parent Listing
-        try establishActivityListingRelationship(activity: activity, listingId: dto.listing, context: context)
     }
 
     /// Establishes bidirectional relationship between an activity and its parent listing
@@ -754,11 +897,11 @@ final class SyncManager: ObservableObject {
             existing.performedAt = dto.performedAt
             existing.reason = dto.reason
             existing.updatedAt = dto.updatedAt
-            existing.syncedAt = Date()
+            existing.markSynced()
         } else {
             debugLog.log("    INSERT new claim event: \(dto.id)", category: .sync)
             let newClaimEvent = dto.toModel()
-            newClaimEvent.syncedAt = Date()
+            newClaimEvent.markSynced()
             context.insert(newClaimEvent)
         }
     }
@@ -783,31 +926,63 @@ final class SyncManager: ObservableObject {
         let allTasks = try context.fetch(descriptor)
         debugLog.log("syncUpTasks() - fetched \(allTasks.count) total tasks from SwiftData", category: .sync)
 
-        // NOTE: Fetching all then filtering is O(n) memory. For 1000+ tasks this could be slow.
-        // Phase 2 optimization: add persisted `needsSync: Bool` flag for predicate-based fetch.
-        let dirtyTasks = allTasks.filter { $0.isDirty }
-        debugLog.logSyncOperation(operation: "DIRTY", table: "tasks", count: dirtyTasks.count, details: "of \(allTasks.count) total")
+        // Filter for pending or failed (retry) tasks
+        let pendingTasks = allTasks.filter { $0.syncState == .pending || $0.syncState == .failed }
+        debugLog.logSyncOperation(operation: "PENDING", table: "tasks", count: pendingTasks.count, details: "of \(allTasks.count) total")
 
-        guard !dirtyTasks.isEmpty else {
-            debugLog.log("  No dirty tasks to sync", category: .sync)
+        // Debug: log claimedBy value for each pending task
+        for task in pendingTasks {
+            debugLog.log("  📋 Pending task \(task.id): claimedBy=\(task.claimedBy?.uuidString ?? "nil"), title=\(task.title)", category: .sync)
+        }
+
+        guard !pendingTasks.isEmpty else {
+            debugLog.log("  No pending tasks to sync", category: .sync)
             return
         }
 
-        // Batch upsert for efficiency (fewer network calls)
-        let dtos = dirtyTasks.map { TaskDTO(from: $0) }
-        debugLog.log("  Upserting \(dtos.count) tasks to Supabase...", category: .sync)
-        try await supabase
-            .from("tasks")
-            .upsert(dtos)
-            .execute()
-        debugLog.log("  Upsert successful", category: .sync)
+        // Mark as in-flight before upsert to prevent realtime echo from overwriting local state
+        inFlightTaskIds = Set(pendingTasks.map { $0.id })
+        defer { inFlightTaskIds.removeAll() }  // Always clear, even on error
 
-        // Mark all as synced
-        let now = Date()
-        for task in dirtyTasks {
-            task.syncedAt = now
+        // Try batch first for efficiency
+        do {
+            let dtos = pendingTasks.map { task -> TaskDTO in
+                let dto = TaskDTO(from: task)
+                debugLog.log("  📤 Preparing DTO for task \(task.id): claimedBy=\(dto.claimedBy?.uuidString ?? "nil"), syncState=\(task.syncState)", category: .sync)
+                return dto
+            }
+            debugLog.log("  Batch upserting \(dtos.count) tasks to Supabase...", category: .sync)
+            try await supabase
+                .from("tasks")
+                .upsert(dtos)
+                .execute()
+            debugLog.log("  Batch upsert successful", category: .sync)
+
+            // Success - mark all synced
+            for task in pendingTasks {
+                task.markSynced()
+            }
+            debugLog.log("  Marked \(pendingTasks.count) tasks as synced", category: .sync)
+        } catch {
+            // Batch failed - try individual items to isolate failures
+            debugLog.log("Batch task sync failed, trying individually: \(error.localizedDescription)", category: .error)
+
+            for task in pendingTasks {
+                do {
+                    let dto = TaskDTO(from: task)
+                    try await supabase
+                        .from("tasks")
+                        .upsert([dto])
+                        .execute()
+                    task.markSynced()
+                    debugLog.log("  ✓ Task \(task.id) synced individually", category: .sync)
+                } catch {
+                    let message = userFacingMessage(for: error)
+                    task.markFailed(message)
+                    debugLog.error("  ✗ Task \(task.id) sync failed: \(message)")
+                }
+            }
         }
-        debugLog.log("  Marked \(dirtyTasks.count) tasks as synced", category: .sync)
     }
 
     private func syncUpActivities(context: ModelContext) async throws {
@@ -815,27 +990,52 @@ final class SyncManager: ObservableObject {
         let allActivities = try context.fetch(descriptor)
         debugLog.log("syncUpActivities() - fetched \(allActivities.count) total activities from SwiftData", category: .sync)
 
-        let dirtyActivities = allActivities.filter { $0.isDirty }
-        debugLog.logSyncOperation(operation: "DIRTY", table: "activities", count: dirtyActivities.count, details: "of \(allActivities.count) total")
+        let pendingActivities = allActivities.filter { $0.syncState == .pending || $0.syncState == .failed }
+        debugLog.logSyncOperation(operation: "PENDING", table: "activities", count: pendingActivities.count, details: "of \(allActivities.count) total")
 
-        guard !dirtyActivities.isEmpty else {
-            debugLog.log("  No dirty activities to sync", category: .sync)
+        guard !pendingActivities.isEmpty else {
+            debugLog.log("  No pending activities to sync", category: .sync)
             return
         }
 
-        let dtos = dirtyActivities.map { ActivityDTO(from: $0) }
-        debugLog.log("  Upserting \(dtos.count) activities to Supabase...", category: .sync)
-        try await supabase
-            .from("activities")
-            .upsert(dtos)
-            .execute()
-        debugLog.log("  Upsert successful", category: .sync)
+        // Mark as in-flight before upsert to prevent realtime echo from overwriting local state
+        inFlightActivityIds = Set(pendingActivities.map { $0.id })
+        defer { inFlightActivityIds.removeAll() }
 
-        let now = Date()
-        for activity in dirtyActivities {
-            activity.syncedAt = now
+        // Try batch first for efficiency
+        do {
+            let dtos = pendingActivities.map { ActivityDTO(from: $0) }
+            debugLog.log("  Batch upserting \(dtos.count) activities to Supabase...", category: .sync)
+            try await supabase
+                .from("activities")
+                .upsert(dtos)
+                .execute()
+            debugLog.log("  Batch upsert successful", category: .sync)
+
+            for activity in pendingActivities {
+                activity.markSynced()
+            }
+            debugLog.log("  Marked \(pendingActivities.count) activities as synced", category: .sync)
+        } catch {
+            // Batch failed - try individual items to isolate failures
+            debugLog.log("Batch activity sync failed, trying individually: \(error.localizedDescription)", category: .error)
+
+            for activity in pendingActivities {
+                do {
+                    let dto = ActivityDTO(from: activity)
+                    try await supabase
+                        .from("activities")
+                        .upsert([dto])
+                        .execute()
+                    activity.markSynced()
+                    debugLog.log("  ✓ Activity \(activity.id) synced individually", category: .sync)
+                } catch {
+                    let message = userFacingMessage(for: error)
+                    activity.markFailed(message)
+                    debugLog.error("  ✗ Activity \(activity.id) sync failed: \(message)")
+                }
+            }
         }
-        debugLog.log("  Marked \(dirtyActivities.count) activities as synced", category: .sync)
     }
 
     private func syncUpListings(context: ModelContext) async throws {
@@ -843,27 +1043,48 @@ final class SyncManager: ObservableObject {
         let allListings = try context.fetch(descriptor)
         debugLog.log("syncUpListings() - fetched \(allListings.count) total listings from SwiftData", category: .sync)
 
-        let dirtyListings = allListings.filter { $0.isDirty }
-        debugLog.logSyncOperation(operation: "DIRTY", table: "listings", count: dirtyListings.count, details: "of \(allListings.count) total")
+        let pendingListings = allListings.filter { $0.syncState == .pending || $0.syncState == .failed }
+        debugLog.logSyncOperation(operation: "PENDING", table: "listings", count: pendingListings.count, details: "of \(allListings.count) total")
 
-        guard !dirtyListings.isEmpty else {
-            debugLog.log("  No dirty listings to sync", category: .sync)
+        guard !pendingListings.isEmpty else {
+            debugLog.log("  No pending listings to sync", category: .sync)
             return
         }
 
-        let dtos = dirtyListings.map { ListingDTO(from: $0) }
-        debugLog.log("  Upserting \(dtos.count) listings to Supabase...", category: .sync)
-        try await supabase
-            .from("listings")
-            .upsert(dtos)
-            .execute()
-        debugLog.log("  Upsert successful", category: .sync)
+        // Try batch first for efficiency
+        do {
+            let dtos = pendingListings.map { ListingDTO(from: $0) }
+            debugLog.log("  Batch upserting \(dtos.count) listings to Supabase...", category: .sync)
+            try await supabase
+                .from("listings")
+                .upsert(dtos)
+                .execute()
+            debugLog.log("  Batch upsert successful", category: .sync)
 
-        let now = Date()
-        for listing in dirtyListings {
-            listing.syncedAt = now
+            for listing in pendingListings {
+                listing.markSynced()
+            }
+            debugLog.log("  Marked \(pendingListings.count) listings as synced", category: .sync)
+        } catch {
+            // Batch failed - try individual items to isolate failures
+            debugLog.log("Batch listing sync failed, trying individually: \(error.localizedDescription)", category: .error)
+
+            for listing in pendingListings {
+                do {
+                    let dto = ListingDTO(from: listing)
+                    try await supabase
+                        .from("listings")
+                        .upsert([dto])
+                        .execute()
+                    listing.markSynced()
+                    debugLog.log("  ✓ Listing \(listing.id) synced individually", category: .sync)
+                } catch {
+                    let message = userFacingMessage(for: error)
+                    listing.markFailed(message)
+                    debugLog.error("  ✗ Listing \(listing.id) sync failed: \(message)")
+                }
+            }
         }
-        debugLog.log("  Marked \(dirtyListings.count) listings as synced", category: .sync)
     }
 
     private func syncUpClaimEvents(context: ModelContext) async throws {
@@ -871,30 +1092,51 @@ final class SyncManager: ObservableObject {
         let allClaimEvents = try context.fetch(descriptor)
         debugLog.log("syncUpClaimEvents() - fetched \(allClaimEvents.count) total claim events from SwiftData", category: .sync)
 
-        let dirtyClaimEvents = allClaimEvents.filter { $0.isDirty }
-        debugLog.logSyncOperation(operation: "DIRTY", table: "claim_events", count: dirtyClaimEvents.count, details: "of \(allClaimEvents.count) total")
+        let pendingClaimEvents = allClaimEvents.filter { $0.syncState == .pending || $0.syncState == .failed }
+        debugLog.logSyncOperation(operation: "PENDING", table: "claim_events", count: pendingClaimEvents.count, details: "of \(allClaimEvents.count) total")
 
-        guard !dirtyClaimEvents.isEmpty else {
-            debugLog.log("  No dirty claim events to sync", category: .sync)
+        guard !pendingClaimEvents.isEmpty else {
+            debugLog.log("  No pending claim events to sync", category: .sync)
             return
         }
 
-        let dtos = dirtyClaimEvents.map { ClaimEventDTO(from: $0) }
-        debugLog.log("  Upserting \(dtos.count) claim events to Supabase...", category: .sync)
-        try await supabase
-            .from("claim_events")
-            .upsert(dtos)
-            .execute()
-        debugLog.log("  Upsert successful", category: .sync)
+        // Try batch first for efficiency
+        do {
+            let dtos = pendingClaimEvents.map { ClaimEventDTO(from: $0) }
+            debugLog.log("  Batch upserting \(dtos.count) claim events to Supabase...", category: .sync)
+            try await supabase
+                .from("claim_events")
+                .upsert(dtos)
+                .execute()
+            debugLog.log("  Batch upsert successful", category: .sync)
 
-        let now = Date()
-        for claimEvent in dirtyClaimEvents {
-            claimEvent.syncedAt = now
+            for claimEvent in pendingClaimEvents {
+                claimEvent.markSynced()
+            }
+            debugLog.log("  Marked \(pendingClaimEvents.count) claim events as synced", category: .sync)
+        } catch {
+            // Batch failed - try individual items to isolate failures
+            debugLog.log("Batch claim event sync failed, trying individually: \(error.localizedDescription)", category: .error)
+
+            for claimEvent in pendingClaimEvents {
+                do {
+                    let dto = ClaimEventDTO(from: claimEvent)
+                    try await supabase
+                        .from("claim_events")
+                        .upsert([dto])
+                        .execute()
+                    claimEvent.markSynced()
+                    debugLog.log("  ✓ ClaimEvent \(claimEvent.id) synced individually", category: .sync)
+                } catch {
+                    let message = userFacingMessage(for: error)
+                    claimEvent.markFailed(message)
+                    debugLog.error("  ✗ ClaimEvent \(claimEvent.id) sync failed: \(message)")
+                }
+            }
         }
-        debugLog.log("  Marked \(dirtyClaimEvents.count) claim events as synced", category: .sync)
     }
 
-    // MARK: - Realtime (Debounced Full Sync)
+    // MARK: - Realtime (Delta Sync)
     private var realtimeListenerTasks: [Task<Void, Never>] = []
 
     func startListening() async {
@@ -925,21 +1167,29 @@ final class SyncManager: ObservableObject {
         debugLog.log("  URL: \(Secrets.supabaseURL)", category: .realtime)
         debugLog.log("  Anon Key (prefix): \(String(Secrets.supabaseAnonKey.prefix(30)))...", category: .realtime)
 
-        // Start socket status monitoring
+        // Start socket status monitoring with reconnect sync
         debugLog.log("", category: .websocket)
         debugLog.log("Setting up WebSocket status monitor...", category: .websocket)
-        let socketStatusTask = Task { @MainActor in
+        let socketStatusTask = Task { @MainActor [weak self] in
+            guard let self = self else { return }
             debugLog.log("📡 Socket status monitor task STARTED", category: .websocket)
             for await status in supabase.realtimeV2.statusChange {
                 switch status {
                 case .disconnected:
                     debugLog.log("🔴 SOCKET DISCONNECTED", category: .websocket)
                     debugLog.log("  ⚠️ This means realtime events WILL NOT be received!", category: .websocket)
+                    self.wasDisconnected = true
                 case .connecting:
                     debugLog.log("🟡 SOCKET CONNECTING...", category: .websocket)
                 case .connected:
                     debugLog.log("🟢 SOCKET CONNECTED", category: .websocket)
                     debugLog.log("  ✓ WebSocket connection established", category: .websocket)
+                    // Trigger full sync on reconnect to reconcile missed events
+                    if self.wasDisconnected {
+                        debugLog.log("  🔄 Reconnected after disconnect - triggering full sync to reconcile missed events", category: .websocket)
+                        self.wasDisconnected = false
+                        await self.sync()
+                    }
                 @unknown default:
                     debugLog.log("⚠️ SOCKET UNKNOWN STATUS: \(status)", category: .websocket)
                 }
@@ -963,22 +1213,33 @@ final class SyncManager: ObservableObject {
         }
 
         debugLog.log("", category: .channel)
-        debugLog.log("Creating AsyncSequence listeners...", category: .channel)
+        debugLog.log("Creating AsyncSequence listeners (delta sync)...", category: .channel)
 
-        // AnyAction listeners for INSERT/UPDATE events (trigger sync)
-        let tasksChanges = channel.postgresChange(AnyAction.self, schema: "public", table: "tasks")
-        debugLog.log("  ✓ tasks listener created", category: .channel)
-        let activitiesChanges = channel.postgresChange(AnyAction.self, schema: "public", table: "activities")
-        debugLog.log("  ✓ activities listener created", category: .channel)
-        let listingsChanges = channel.postgresChange(AnyAction.self, schema: "public", table: "listings")
-        debugLog.log("  ✓ listings listener created", category: .channel)
-        let usersChanges = channel.postgresChange(AnyAction.self, schema: "public", table: "users")
-        debugLog.log("  ✓ users listener created", category: .channel)
-        let claimEventsChanges = channel.postgresChange(AnyAction.self, schema: "public", table: "claim_events")
-        debugLog.log("  ✓ claim_events listener created", category: .channel)
+        // INSERT listeners for delta sync (decode payload directly, no full sync)
+        let tasksInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "tasks")
+        debugLog.log("  ✓ tasks INSERT listener created", category: .channel)
+        let activitiesInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "activities")
+        debugLog.log("  ✓ activities INSERT listener created", category: .channel)
+        let listingsInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "listings")
+        debugLog.log("  ✓ listings INSERT listener created", category: .channel)
+        let usersInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "users")
+        debugLog.log("  ✓ users INSERT listener created", category: .channel)
+        let claimEventsInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "claim_events")
+        debugLog.log("  ✓ claim_events INSERT listener created", category: .channel)
 
-        // DELETE-specific listeners for immediate local deletion
-        // Note: These handle hard deletes from Supabase immediately without waiting for sync
+        // UPDATE listeners for delta sync (decode payload directly, no full sync)
+        let tasksUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "tasks")
+        debugLog.log("  ✓ tasks UPDATE listener created", category: .channel)
+        let activitiesUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "activities")
+        debugLog.log("  ✓ activities UPDATE listener created", category: .channel)
+        let listingsUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "listings")
+        debugLog.log("  ✓ listings UPDATE listener created", category: .channel)
+        let usersUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "users")
+        debugLog.log("  ✓ users UPDATE listener created", category: .channel)
+        let claimEventsUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "claim_events")
+        debugLog.log("  ✓ claim_events UPDATE listener created", category: .channel)
+
+        // DELETE listeners for immediate local deletion
         let tasksDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "tasks")
         debugLog.log("  ✓ tasks DELETE listener created", category: .channel)
         let activitiesDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "activities")
@@ -987,6 +1248,8 @@ final class SyncManager: ObservableObject {
         debugLog.log("  ✓ listings DELETE listener created", category: .channel)
         let usersDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "users")
         debugLog.log("  ✓ users DELETE listener created", category: .channel)
+        let claimEventsDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "claim_events")
+        debugLog.log("  ✓ claim_events DELETE listener created", category: .channel)
 
         // Subscribe to channel
         debugLog.log("", category: .channel)
@@ -1033,88 +1296,244 @@ final class SyncManager: ObservableObject {
             debugLog.log("📺 Channel status monitor task ENDED", category: .channel)
         }
 
-        // Create listener tasks with verbose logging
+        // Create listener tasks with delta sync (no requestSync() calls)
         debugLog.log("", category: .event)
-        debugLog.log("Creating for-await listener tasks for each table...", category: .event)
+        debugLog.log("Creating for-await listener tasks for each table (delta sync)...", category: .event)
 
         realtimeListenerTasks = [
             socketStatusTask,
             channelStatusTask,
-            Task { @MainActor in
-                debugLog.logForAwaitLoop(entering: true, table: "tasks")
-                var eventCount = 0
-                for await change in tasksChanges {
-                    eventCount += 1
+            // MARK: - Tasks INSERT/UPDATE (Delta Sync)
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.logForAwaitLoop(entering: true, table: "tasks INSERT")
+                for await insertion in tasksInserts {
                     debugLog.log("", category: .event)
-                    debugLog.log("🎉🎉🎉 TASKS EVENT #\(eventCount) RECEIVED! 🎉🎉🎉", category: .event)
-                    debugLog.logEventReceived(table: "tasks", action: "\(type(of: change))", payload: nil)
-                    requestSync()
+                    debugLog.log("📥 TASKS INSERT EVENT RECEIVED", category: .event)
+                    do {
+                        let dto = try insertion.decodeRecord(as: TaskDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+                        debugLog.log("  ✓ Decoded task: \(dto.id) - \(dto.title)", category: .event)
+
+                        // Skip in-flight records (self-originated events)
+                        // We skip both INSERT and UPDATE to be safe across different upsert patterns.
+                        if self.inFlightTaskIds.contains(dto.id) {
+                            debugLog.log("  ⏭️ Skipping in-flight task (self-originated): \(dto.id)", category: .event)
+                            continue
+                        }
+
+                        let context = container.mainContext
+                        try self.upsertTask(dto: dto, context: context)
+                        try context.save()
+                        debugLog.log("  ✓ Task inserted locally", category: .event)
+                    } catch {
+                        debugLog.error("  Failed to decode/apply task insert", error: error)
+                    }
                 }
-                debugLog.logForAwaitLoop(entering: false, table: "tasks")
-                debugLog.log("⚠️ tasks for-await loop EXITED after \(eventCount) events", category: .event)
+                debugLog.logForAwaitLoop(entering: false, table: "tasks INSERT")
             },
-            Task { @MainActor in
-                debugLog.logForAwaitLoop(entering: true, table: "activities")
-                var eventCount = 0
-                for await change in activitiesChanges {
-                    eventCount += 1
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.logForAwaitLoop(entering: true, table: "tasks UPDATE")
+                for await update in tasksUpdates {
                     debugLog.log("", category: .event)
-                    debugLog.log("🎉🎉🎉 ACTIVITIES EVENT #\(eventCount) RECEIVED! 🎉🎉🎉", category: .event)
-                    debugLog.logEventReceived(table: "activities", action: "\(type(of: change))", payload: nil)
-                    requestSync()
+                    debugLog.log("📝 TASKS UPDATE EVENT RECEIVED", category: .event)
+                    do {
+                        let dto = try update.decodeRecord(as: TaskDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+                        debugLog.log("  ✓ Decoded task: \(dto.id) - \(dto.title)", category: .event)
+
+                        // Skip in-flight records to prevent echo overwriting local changes
+                        if self.inFlightTaskIds.contains(dto.id) {
+                            debugLog.log("  ⏭️ Skipping in-flight task (self-originated echo): \(dto.id)", category: .event)
+                            continue
+                        }
+
+                        let context = container.mainContext
+                        try self.upsertTask(dto: dto, context: context)
+                        try context.save()
+                        debugLog.log("  ✓ Task updated locally", category: .event)
+                    } catch {
+                        debugLog.error("  Failed to decode/apply task update", error: error)
+                    }
                 }
-                debugLog.logForAwaitLoop(entering: false, table: "activities")
-                debugLog.log("⚠️ activities for-await loop EXITED after \(eventCount) events", category: .event)
+                debugLog.logForAwaitLoop(entering: false, table: "tasks UPDATE")
             },
-            Task { @MainActor in
-                debugLog.logForAwaitLoop(entering: true, table: "listings")
-                var eventCount = 0
-                for await change in listingsChanges {
-                    eventCount += 1
+            // MARK: - Activities INSERT/UPDATE (Delta Sync)
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.logForAwaitLoop(entering: true, table: "activities INSERT")
+                for await insertion in activitiesInserts {
                     debugLog.log("", category: .event)
-                    debugLog.log("🎉🎉🎉 LISTINGS EVENT #\(eventCount) RECEIVED! 🎉🎉🎉", category: .event)
-                    debugLog.logEventReceived(table: "listings", action: "\(type(of: change))", payload: nil)
-                    requestSync()
+                    debugLog.log("📥 ACTIVITIES INSERT EVENT RECEIVED", category: .event)
+                    do {
+                        let dto = try insertion.decodeRecord(as: ActivityDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+                        debugLog.log("  ✓ Decoded activity: \(dto.id) - \(dto.title)", category: .event)
+
+                        // Skip in-flight records (self-originated events)
+                        if self.inFlightActivityIds.contains(dto.id) {
+                            debugLog.log("  ⏭️ Skipping in-flight activity (self-originated): \(dto.id)", category: .event)
+                            continue
+                        }
+
+                        let context = container.mainContext
+                        try self.upsertActivity(dto: dto, context: context)
+                        try context.save()
+                        debugLog.log("  ✓ Activity inserted locally", category: .event)
+                    } catch {
+                        debugLog.error("  Failed to decode/apply activity insert", error: error)
+                    }
                 }
-                debugLog.logForAwaitLoop(entering: false, table: "listings")
-                debugLog.log("⚠️ listings for-await loop EXITED after \(eventCount) events", category: .event)
+                debugLog.logForAwaitLoop(entering: false, table: "activities INSERT")
             },
-            Task { @MainActor in
-                debugLog.logForAwaitLoop(entering: true, table: "users")
-                var eventCount = 0
-                for await change in usersChanges {
-                    eventCount += 1
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.logForAwaitLoop(entering: true, table: "activities UPDATE")
+                for await update in activitiesUpdates {
                     debugLog.log("", category: .event)
-                    debugLog.log("🎉🎉🎉 USERS EVENT #\(eventCount) RECEIVED! 🎉🎉🎉", category: .event)
-                    debugLog.logEventReceived(table: "users", action: "\(type(of: change))", payload: nil)
-                    requestSync()
+                    debugLog.log("📝 ACTIVITIES UPDATE EVENT RECEIVED", category: .event)
+                    do {
+                        let dto = try update.decodeRecord(as: ActivityDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+                        debugLog.log("  ✓ Decoded activity: \(dto.id) - \(dto.title)", category: .event)
+
+                        // Skip in-flight records to prevent echo overwriting local changes
+                        if self.inFlightActivityIds.contains(dto.id) {
+                            debugLog.log("  ⏭️ Skipping in-flight activity (self-originated echo): \(dto.id)", category: .event)
+                            continue
+                        }
+
+                        let context = container.mainContext
+                        try self.upsertActivity(dto: dto, context: context)
+                        try context.save()
+                        debugLog.log("  ✓ Activity updated locally", category: .event)
+                    } catch {
+                        debugLog.error("  Failed to decode/apply activity update", error: error)
+                    }
                 }
-                debugLog.logForAwaitLoop(entering: false, table: "users")
-                debugLog.log("⚠️ users for-await loop EXITED after \(eventCount) events", category: .event)
+                debugLog.logForAwaitLoop(entering: false, table: "activities UPDATE")
             },
-            Task { @MainActor in
-                debugLog.logForAwaitLoop(entering: true, table: "claim_events")
-                var eventCount = 0
-                for await change in claimEventsChanges {
-                    eventCount += 1
+            // MARK: - Listings INSERT/UPDATE (Delta Sync)
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.logForAwaitLoop(entering: true, table: "listings INSERT")
+                for await insertion in listingsInserts {
                     debugLog.log("", category: .event)
-                    debugLog.log("🎉🎉🎉 CLAIM_EVENTS EVENT #\(eventCount) RECEIVED! 🎉🎉🎉", category: .event)
-                    debugLog.logEventReceived(table: "claim_events", action: "\(type(of: change))", payload: nil)
-                    requestSync()
+                    debugLog.log("📥 LISTINGS INSERT EVENT RECEIVED", category: .event)
+                    do {
+                        let dto = try insertion.decodeRecord(as: ListingDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+                        debugLog.log("  ✓ Decoded listing: \(dto.id) - \(dto.address)", category: .event)
+                        let context = container.mainContext
+                        try self.upsertListing(dto: dto, context: context)
+                        try context.save()
+                        debugLog.log("  ✓ Listing inserted locally", category: .event)
+                    } catch {
+                        debugLog.error("  Failed to decode/apply listing insert", error: error)
+                    }
                 }
-                debugLog.logForAwaitLoop(entering: false, table: "claim_events")
-                debugLog.log("⚠️ claim_events for-await loop EXITED after \(eventCount) events", category: .event)
+                debugLog.logForAwaitLoop(entering: false, table: "listings INSERT")
             },
-            // DELETE-specific handlers for immediate local deletion
-            // Note: These provide immediate deletion when realtime DELETE events are received.
-            // The orphan reconciliation in syncDown() serves as a fallback safety net.
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.logForAwaitLoop(entering: true, table: "listings UPDATE")
+                for await update in listingsUpdates {
+                    debugLog.log("", category: .event)
+                    debugLog.log("📝 LISTINGS UPDATE EVENT RECEIVED", category: .event)
+                    do {
+                        let dto = try update.decodeRecord(as: ListingDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+                        debugLog.log("  ✓ Decoded listing: \(dto.id) - \(dto.address)", category: .event)
+                        let context = container.mainContext
+                        try self.upsertListing(dto: dto, context: context)
+                        try context.save()
+                        debugLog.log("  ✓ Listing updated locally", category: .event)
+                    } catch {
+                        debugLog.error("  Failed to decode/apply listing update", error: error)
+                    }
+                }
+                debugLog.logForAwaitLoop(entering: false, table: "listings UPDATE")
+            },
+            // MARK: - Users INSERT/UPDATE (Delta Sync)
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.logForAwaitLoop(entering: true, table: "users INSERT")
+                for await insertion in usersInserts {
+                    debugLog.log("", category: .event)
+                    debugLog.log("📥 USERS INSERT EVENT RECEIVED", category: .event)
+                    do {
+                        let dto = try insertion.decodeRecord(as: UserDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+                        debugLog.log("  ✓ Decoded user: \(dto.id) - \(dto.name)", category: .event)
+                        let context = container.mainContext
+                        try self.upsertUser(dto: dto, context: context)
+                        try context.save()
+                        debugLog.log("  ✓ User inserted locally", category: .event)
+                    } catch {
+                        debugLog.error("  Failed to decode/apply user insert", error: error)
+                    }
+                }
+                debugLog.logForAwaitLoop(entering: false, table: "users INSERT")
+            },
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.logForAwaitLoop(entering: true, table: "users UPDATE")
+                for await update in usersUpdates {
+                    debugLog.log("", category: .event)
+                    debugLog.log("📝 USERS UPDATE EVENT RECEIVED", category: .event)
+                    do {
+                        let dto = try update.decodeRecord(as: UserDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+                        debugLog.log("  ✓ Decoded user: \(dto.id) - \(dto.name)", category: .event)
+                        let context = container.mainContext
+                        try self.upsertUser(dto: dto, context: context)
+                        try context.save()
+                        debugLog.log("  ✓ User updated locally", category: .event)
+                    } catch {
+                        debugLog.error("  Failed to decode/apply user update", error: error)
+                    }
+                }
+                debugLog.logForAwaitLoop(entering: false, table: "users UPDATE")
+            },
+            // MARK: - ClaimEvents INSERT/UPDATE (Delta Sync)
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.logForAwaitLoop(entering: true, table: "claim_events INSERT")
+                for await insertion in claimEventsInserts {
+                    debugLog.log("", category: .event)
+                    debugLog.log("📥 CLAIM_EVENTS INSERT EVENT RECEIVED", category: .event)
+                    do {
+                        let dto = try insertion.decodeRecord(as: ClaimEventDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+                        debugLog.log("  ✓ Decoded claim event: \(dto.id)", category: .event)
+                        let context = container.mainContext
+                        try self.upsertClaimEvent(dto: dto, context: context)
+                        try context.save()
+                        debugLog.log("  ✓ ClaimEvent inserted locally", category: .event)
+                    } catch {
+                        debugLog.error("  Failed to decode/apply claim event insert", error: error)
+                    }
+                }
+                debugLog.logForAwaitLoop(entering: false, table: "claim_events INSERT")
+            },
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.logForAwaitLoop(entering: true, table: "claim_events UPDATE")
+                for await update in claimEventsUpdates {
+                    debugLog.log("", category: .event)
+                    debugLog.log("📝 CLAIM_EVENTS UPDATE EVENT RECEIVED", category: .event)
+                    do {
+                        let dto = try update.decodeRecord(as: ClaimEventDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+                        debugLog.log("  ✓ Decoded claim event: \(dto.id)", category: .event)
+                        let context = container.mainContext
+                        try self.upsertClaimEvent(dto: dto, context: context)
+                        try context.save()
+                        debugLog.log("  ✓ ClaimEvent updated locally", category: .event)
+                    } catch {
+                        debugLog.error("  Failed to decode/apply claim event update", error: error)
+                    }
+                }
+                debugLog.logForAwaitLoop(entering: false, table: "claim_events UPDATE")
+            },
+            // MARK: - DELETE Handlers
             Task { @MainActor [weak self] in
                 guard let self = self, let container = self.modelContainer else { return }
                 debugLog.log("🗑️ Tasks DELETE listener STARTED", category: .event)
                 for await deleteEvent in tasksDeletes {
                     debugLog.log("", category: .event)
-                    debugLog.log("🗑️🗑️🗑️ TASKS DELETE EVENT RECEIVED! 🗑️🗑️🗑️", category: .event)
-                    // Extract deleted ID from oldRecord using JSON description and parse
+                    debugLog.log("🗑️ TASKS DELETE EVENT RECEIVED", category: .event)
                     if let deletedId = self.extractUUID(from: deleteEvent.oldRecord, key: "id") {
                         debugLog.log("  Deleted task ID: \(deletedId)", category: .event)
                         let context = container.mainContext
@@ -1136,7 +1555,7 @@ final class SyncManager: ObservableObject {
                 debugLog.log("🗑️ Activities DELETE listener STARTED", category: .event)
                 for await deleteEvent in activitiesDeletes {
                     debugLog.log("", category: .event)
-                    debugLog.log("🗑️🗑️🗑️ ACTIVITIES DELETE EVENT RECEIVED! 🗑️🗑️🗑️", category: .event)
+                    debugLog.log("🗑️ ACTIVITIES DELETE EVENT RECEIVED", category: .event)
                     if let deletedId = self.extractUUID(from: deleteEvent.oldRecord, key: "id") {
                         debugLog.log("  Deleted activity ID: \(deletedId)", category: .event)
                         let context = container.mainContext
@@ -1158,7 +1577,7 @@ final class SyncManager: ObservableObject {
                 debugLog.log("🗑️ Listings DELETE listener STARTED", category: .event)
                 for await deleteEvent in listingsDeletes {
                     debugLog.log("", category: .event)
-                    debugLog.log("🗑️🗑️🗑️ LISTINGS DELETE EVENT RECEIVED! 🗑️🗑️🗑️", category: .event)
+                    debugLog.log("🗑️ LISTINGS DELETE EVENT RECEIVED", category: .event)
                     if let deletedId = self.extractUUID(from: deleteEvent.oldRecord, key: "id") {
                         debugLog.log("  Deleted listing ID: \(deletedId)", category: .event)
                         let context = container.mainContext
@@ -1180,7 +1599,7 @@ final class SyncManager: ObservableObject {
                 debugLog.log("🗑️ Users DELETE listener STARTED", category: .event)
                 for await deleteEvent in usersDeletes {
                     debugLog.log("", category: .event)
-                    debugLog.log("🗑️🗑️🗑️ USERS DELETE EVENT RECEIVED! 🗑️🗑️🗑️", category: .event)
+                    debugLog.log("🗑️ USERS DELETE EVENT RECEIVED", category: .event)
                     if let deletedId = self.extractUUID(from: deleteEvent.oldRecord, key: "id") {
                         debugLog.log("  Deleted user ID: \(deletedId)", category: .event)
                         let context = container.mainContext
@@ -1196,6 +1615,28 @@ final class SyncManager: ObservableObject {
                     }
                 }
                 debugLog.log("🗑️ Users DELETE listener ENDED", category: .event)
+            },
+            Task { @MainActor [weak self] in
+                guard let self = self, let container = self.modelContainer else { return }
+                debugLog.log("🗑️ ClaimEvents DELETE listener STARTED", category: .event)
+                for await deleteEvent in claimEventsDeletes {
+                    debugLog.log("", category: .event)
+                    debugLog.log("🗑️ CLAIM_EVENTS DELETE EVENT RECEIVED", category: .event)
+                    if let deletedId = self.extractUUID(from: deleteEvent.oldRecord, key: "id") {
+                        debugLog.log("  Deleted claim event ID: \(deletedId)", category: .event)
+                        let context = container.mainContext
+                        do {
+                            _ = try self.deleteLocalClaimEvent(id: deletedId, context: context)
+                            try context.save()
+                            debugLog.log("  ✓ Local claim event deleted successfully", category: .event)
+                        } catch {
+                            debugLog.error("  Failed to delete local claim event", error: error)
+                        }
+                    } else {
+                        debugLog.log("  ⚠️ Could not extract claim event ID from DELETE event", category: .event)
+                    }
+                }
+                debugLog.log("🗑️ ClaimEvents DELETE listener ENDED", category: .event)
             }
         ]
 
@@ -1211,6 +1652,9 @@ final class SyncManager: ObservableObject {
         debugLog.log("Waiting for database changes...", category: .realtime)
         debugLog.log("  To test: UPDATE a row in Supabase dashboard", category: .realtime)
         debugLog.log("  Expected: '[EVENT] 🎉🎉🎉 EVENT RECEIVED!' message", category: .realtime)
+
+        // Start broadcast listener if enabled (runs in parallel with postgres_changes)
+        await startBroadcastListening()
     }
 
     func stopListening() async {
@@ -1226,12 +1670,320 @@ final class SyncManager: ObservableObject {
         debugLog.log("  All tasks cancelled and removed", category: .realtime)
 
         if let channel = realtimeChannel {
-            debugLog.log("  Unsubscribing from channel...", category: .realtime)
+            debugLog.log("  Unsubscribing from postgres_changes channel...", category: .realtime)
             await channel.unsubscribe()
-            debugLog.log("  Channel unsubscribed", category: .realtime)
+            debugLog.log("  postgres_changes channel unsubscribed", category: .realtime)
         }
         realtimeChannel = nil
+
+        // Cleanup broadcast channel
+        if let channel = broadcastChannel {
+            debugLog.log("  Unsubscribing from broadcast channel...", category: .realtime)
+            await channel.unsubscribe()
+            debugLog.log("  Broadcast channel unsubscribed", category: .realtime)
+        }
+        broadcastChannel = nil
+
         isListening = false
         debugLog.log("✓ Realtime stopped. isListening = false", category: .realtime)
+    }
+
+    // MARK: - Broadcast Realtime (v2 Pattern)
+
+    /// Starts listening to broadcast channel (v2 pattern).
+    /// Coexists with postgres_changes during Phase 1 migration.
+    private func startBroadcastListening() async {
+        guard useBroadcastRealtime else {
+            debugLog.log("Broadcast realtime disabled (useBroadcastRealtime = false)", category: .channel)
+            return
+        }
+        guard isAuthenticated, let container = modelContainer else {
+            debugLog.log("Skipping broadcast listener - not authenticated or no container", category: .channel)
+            return
+        }
+
+        debugLog.log("", category: .channel)
+        debugLog.log("╔════════════════════════════════════════════════════════════╗", category: .channel)
+        debugLog.log("║       BROADCAST REALTIME (v2) STARTING                     ║", category: .channel)
+        debugLog.log("╚════════════════════════════════════════════════════════════╝", category: .channel)
+
+        // CRITICAL: Set auth token for Realtime Authorization (RLS on realtime.messages)
+        // This must be called BEFORE subscribing to private channels
+        debugLog.log("Setting Realtime auth token...", category: .channel)
+        await supabase.realtimeV2.setAuth()
+        debugLog.log("✓ Realtime auth token set", category: .channel)
+
+        // Create broadcast channel
+        // NOTE: Testing WITHOUT isPrivate to debug subscription timeout
+        // realtime.broadcast_changes() may use public channels by default
+        debugLog.log("Creating channel 'dispatch:broadcast' (testing without isPrivate)...", category: .channel)
+        let channel = supabase.realtimeV2.channel("dispatch:broadcast") {
+            // $0.isPrivate = true  // DISABLED for testing - may be causing timeout
+            $0.broadcast.receiveOwnBroadcasts = true  // We filter by origin_user_id instead
+        }
+
+        // Subscribe to all broadcast events
+        let broadcastStream = channel.broadcastStream(event: "*")
+
+        debugLog.log("Calling channel.subscribeWithError() for broadcast...", category: .channel)
+        do {
+            // Add timeout to detect hanging subscriptions
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    try await channel.subscribeWithError()
+                }
+                group.addTask {
+                    try await Task.sleep(for: .seconds(10))
+                    throw NSError(domain: "Broadcast", code: -1, userInfo: [NSLocalizedDescriptionKey: "Subscription timed out after 10s"])
+                }
+                // Wait for first to complete (subscription or timeout)
+                try await group.next()
+                group.cancelAll()
+            }
+            debugLog.log("✅ Broadcast channel subscribed successfully", category: .channel)
+        } catch {
+            debugLog.error("❌ Broadcast subscription failed", error: error)
+            return
+        }
+
+        broadcastChannel = channel
+
+        // Create listener task for broadcast events
+        let listenerTask = Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            debugLog.log("📡 Broadcast listener task STARTED", category: .event)
+            for await event in broadcastStream {
+                await self.handleBroadcastEvent(event, container: container)
+            }
+            debugLog.log("📡 Broadcast listener task ENDED", category: .event)
+        }
+
+        realtimeListenerTasks.append(listenerTask)
+
+        debugLog.log("", category: .channel)
+        debugLog.log("Broadcast channel ready - listening for events on 'dispatch:broadcast'", category: .channel)
+    }
+
+    /// Handles broadcast events - routes to existing upsert/delete methods
+    /// The event parameter is the raw JSON message from broadcastStream
+    private func handleBroadcastEvent(_ event: JSONObject, container: ModelContainer) async {
+        do {
+            // Log raw payload for debugging
+            debugLog.log("", category: .event)
+            debugLog.log("📡 RAW BROADCAST EVENT RECEIVED", category: .event)
+
+            // JSONObject is [String: AnyJSON] - use JSONEncoder for AnyJSON (Codable)
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            if let jsonData = try? encoder.encode(event),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                debugLog.log("Raw payload:\n\(jsonString)", category: .event)
+            } else {
+                debugLog.log("Raw payload (keys): \(event.keys.joined(separator: ", "))", category: .event)
+            }
+
+            // Supabase Realtime wraps our payload in: { event, type, payload, meta }
+            // Our BroadcastChangePayload is inside the "payload" field
+            guard let innerPayload = event["payload"]?.objectValue else {
+                debugLog.log("Missing or invalid 'payload' field in broadcast event - keys: \(event.keys.joined(separator: ", "))", category: .event)
+                return
+            }
+
+            // Use PostgrestClient's decoder for consistency with other DTO decoding
+            guard let payloadData = try? encoder.encode(innerPayload),
+                  let payload = try? PostgrestClient.Configuration.jsonDecoder.decode(BroadcastChangePayload.self, from: payloadData) else {
+                debugLog.log("Failed to decode broadcast payload - inner keys: \(innerPayload.keys.joined(separator: ", "))", category: .event)
+                return
+            }
+
+            // Version check: log unknown versions for visibility when we bump the version
+            if payload.eventVersion != 1 {
+                debugLog.log("Unknown event version \(payload.eventVersion) for table \(payload.table)", category: .event)
+                // For now, still try to handle. Later, can gate behavior on version.
+            }
+
+            // Self-echo filtering: skip if originated from current user
+            // NOTE: nil originUserId means system-originated - do NOT skip those
+            if let originUserId = payload.originUserId,
+               let currentUser = currentUserID,
+               originUserId == currentUser {
+                debugLog.log("⏭️ Skipping self-originated broadcast: \(payload.table) \(payload.type)", category: .event)
+                return
+            }
+
+            debugLog.log("", category: .event)
+            debugLog.log("📡 BROADCAST EVENT: \(payload.table) \(payload.type)", category: .event)
+
+            let context = container.mainContext
+
+            // Route to appropriate handler based on table (type-safe enum switch)
+            switch payload.table {
+            case .tasks:
+                try await handleTaskBroadcast(payload: payload, context: context)
+            case .activities:
+                try await handleActivityBroadcast(payload: payload, context: context)
+            case .listings:
+                try await handleListingBroadcast(payload: payload, context: context)
+            case .users:
+                try await handleUserBroadcast(payload: payload, context: context)
+            case .claimEvents:
+                try await handleClaimEventBroadcast(payload: payload, context: context)
+            }
+
+            try context.save()
+
+        } catch {
+            debugLog.error("Failed to handle broadcast event", error: error)
+        }
+    }
+
+    // MARK: - Broadcast Handlers
+
+    /// Handles task broadcast - converts payload to TaskDTO and calls existing upsertTask
+    private func handleTaskBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+        if payload.type == .delete {
+            if let oldRecord = payload.cleanedOldRecord(),
+               let idString = oldRecord["id"] as? String,
+               let id = UUID(uuidString: idString) {
+                _ = try deleteLocalTask(id: id, context: context)
+                debugLog.log("  ✓ Broadcast: Deleted task \(id)", category: .event)
+            }
+        } else {
+            // INSERT or UPDATE - use centralized cleanedRecord() helper
+            guard let cleanRecord = payload.cleanedRecord() else { return }
+
+            let recordData = try JSONSerialization.data(withJSONObject: cleanRecord)
+            let dto = try PostgrestClient.Configuration.jsonDecoder.decode(TaskDTO.self, from: recordData)
+
+            // Use existing in-flight check as backup (will be removed in Phase 3)
+            if inFlightTaskIds.contains(dto.id) {
+                debugLog.log("  ⏭️ Broadcast: Skipping in-flight task \(dto.id)", category: .event)
+                return
+            }
+
+            #if DEBUG
+            // Phase 1 duplicate detection: log if processed recently via postgres_changes
+            if recentlyProcessedIds.contains(dto.id) {
+                debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for task \(dto.id)", category: .event)
+            }
+            recentlyProcessedIds.insert(dto.id)
+            #endif
+
+            try upsertTask(dto: dto, context: context)
+            debugLog.log("  ✓ Broadcast: Upserted task \(dto.id)", category: .event)
+        }
+    }
+
+    /// Handles activity broadcast - converts payload to ActivityDTO and calls existing upsertActivity
+    private func handleActivityBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+        if payload.type == .delete {
+            if let oldRecord = payload.cleanedOldRecord(),
+               let idString = oldRecord["id"] as? String,
+               let id = UUID(uuidString: idString) {
+                _ = try deleteLocalActivity(id: id, context: context)
+                debugLog.log("  ✓ Broadcast: Deleted activity \(id)", category: .event)
+            }
+        } else {
+            guard let cleanRecord = payload.cleanedRecord() else { return }
+
+            let recordData = try JSONSerialization.data(withJSONObject: cleanRecord)
+            let dto = try PostgrestClient.Configuration.jsonDecoder.decode(ActivityDTO.self, from: recordData)
+
+            if inFlightActivityIds.contains(dto.id) {
+                debugLog.log("  ⏭️ Broadcast: Skipping in-flight activity \(dto.id)", category: .event)
+                return
+            }
+
+            #if DEBUG
+            if recentlyProcessedIds.contains(dto.id) {
+                debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for activity \(dto.id)", category: .event)
+            }
+            recentlyProcessedIds.insert(dto.id)
+            #endif
+
+            try upsertActivity(dto: dto, context: context)
+            debugLog.log("  ✓ Broadcast: Upserted activity \(dto.id)", category: .event)
+        }
+    }
+
+    /// Handles listing broadcast - converts payload to ListingDTO and calls existing upsertListing
+    private func handleListingBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+        if payload.type == .delete {
+            if let oldRecord = payload.cleanedOldRecord(),
+               let idString = oldRecord["id"] as? String,
+               let id = UUID(uuidString: idString) {
+                _ = try deleteLocalListing(id: id, context: context)
+                debugLog.log("  ✓ Broadcast: Deleted listing \(id)", category: .event)
+            }
+        } else {
+            guard let cleanRecord = payload.cleanedRecord() else { return }
+
+            let recordData = try JSONSerialization.data(withJSONObject: cleanRecord)
+            let dto = try PostgrestClient.Configuration.jsonDecoder.decode(ListingDTO.self, from: recordData)
+
+            #if DEBUG
+            if recentlyProcessedIds.contains(dto.id) {
+                debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for listing \(dto.id)", category: .event)
+            }
+            recentlyProcessedIds.insert(dto.id)
+            #endif
+
+            try upsertListing(dto: dto, context: context)
+            debugLog.log("  ✓ Broadcast: Upserted listing \(dto.id)", category: .event)
+        }
+    }
+
+    /// Handles user broadcast - converts payload to UserDTO and calls existing upsertUser
+    private func handleUserBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+        if payload.type == .delete {
+            if let oldRecord = payload.cleanedOldRecord(),
+               let idString = oldRecord["id"] as? String,
+               let id = UUID(uuidString: idString) {
+                _ = try deleteLocalUser(id: id, context: context)
+                debugLog.log("  ✓ Broadcast: Deleted user \(id)", category: .event)
+            }
+        } else {
+            guard let cleanRecord = payload.cleanedRecord() else { return }
+
+            let recordData = try JSONSerialization.data(withJSONObject: cleanRecord)
+            let dto = try PostgrestClient.Configuration.jsonDecoder.decode(UserDTO.self, from: recordData)
+
+            #if DEBUG
+            if recentlyProcessedIds.contains(dto.id) {
+                debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for user \(dto.id)", category: .event)
+            }
+            recentlyProcessedIds.insert(dto.id)
+            #endif
+
+            try upsertUser(dto: dto, context: context)
+            debugLog.log("  ✓ Broadcast: Upserted user \(dto.id)", category: .event)
+        }
+    }
+
+    /// Handles claim event broadcast - converts payload to ClaimEventDTO and calls existing upsertClaimEvent
+    private func handleClaimEventBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+        if payload.type == .delete {
+            if let oldRecord = payload.cleanedOldRecord(),
+               let idString = oldRecord["id"] as? String,
+               let id = UUID(uuidString: idString) {
+                _ = try deleteLocalClaimEvent(id: id, context: context)
+                debugLog.log("  ✓ Broadcast: Deleted claim event \(id)", category: .event)
+            }
+        } else {
+            guard let cleanRecord = payload.cleanedRecord() else { return }
+
+            let recordData = try JSONSerialization.data(withJSONObject: cleanRecord)
+            let dto = try PostgrestClient.Configuration.jsonDecoder.decode(ClaimEventDTO.self, from: recordData)
+
+            #if DEBUG
+            if recentlyProcessedIds.contains(dto.id) {
+                debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for claim event \(dto.id)", category: .event)
+            }
+            recentlyProcessedIds.insert(dto.id)
+            #endif
+
+            try upsertClaimEvent(dto: dto, context: context)
+            debugLog.log("  ✓ Broadcast: Upserted claim event \(dto.id)", category: .event)
+        }
     }
 }

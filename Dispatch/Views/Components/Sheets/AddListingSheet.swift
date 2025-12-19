@@ -76,7 +76,9 @@ struct AddListingSheet: View {
                 }
             }
             .navigationTitle("New Listing")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -91,8 +93,10 @@ struct AddListingSheet: View {
                 }
             }
         }
+        #if os(iOS)
         .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
+        #endif
     }
 
     // MARK: - Helpers

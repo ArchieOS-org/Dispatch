@@ -20,12 +20,11 @@ struct ListingDetailView: View {
     let userLookup: (UUID) -> User?
 
     @EnvironmentObject private var syncManager: SyncManager
+    @EnvironmentObject private var lensState: LensState
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     // MARK: - State
-
-    @State private var selectedTab = 0
 
     // Note management
     @State private var noteText = ""
@@ -49,17 +48,22 @@ struct ListingDetailView: View {
         userLookup(listing.ownedBy)
     }
 
-    private var assignedStaff: User? {
-        guard let staffId = listing.assignedStaff else { return nil }
-        return userLookup(staffId)
-    }
-
     private var activeTasks: [TaskItem] {
         listing.tasks.filter { $0.status != .deleted }
     }
 
     private var activeActivities: [Activity] {
         listing.activities.filter { $0.status != .deleted }
+    }
+
+    /// Tasks filtered by current audience lens
+    private var filteredTasks: [TaskItem] {
+        activeTasks.filter { lensState.audience.matches(audiences: $0.audiences) }
+    }
+
+    /// Activities filtered by current audience lens
+    private var filteredActivities: [Activity] {
+        activeActivities.filter { lensState.audience.matches(audiences: $0.audiences) }
     }
 
     private var statusColor: Color {
@@ -72,6 +76,17 @@ struct ListingDetailView: View {
         }
     }
 
+    private var listingActions: [OverflowMenu.Action] {
+        [
+            OverflowMenu.Action(id: "edit", title: "Edit Listing", icon: DS.Icons.Action.edit) {
+                // Phase 4: Edit listing placeholder
+            },
+            OverflowMenu.Action(id: "delete", title: "Delete Listing", icon: DS.Icons.Action.delete, role: .destructive) {
+                showDeleteListingAlert = true
+            }
+        ]
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -79,34 +94,49 @@ struct ListingDetailView: View {
             VStack(alignment: .leading, spacing: DS.Spacing.lg) {
                 headerSection
 
-                // Tab Picker
-                Picker("Content", selection: $selectedTab) {
-                    Text("Tasks (\(activeTasks.count))").tag(0)
-                    Text("Activities (\(activeActivities.count))").tag(1)
-                    Text("Notes (\(listing.notes.count))").tag(2)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, DS.Spacing.md)
-
-                // Tab Content
-                switch selectedTab {
-                case 0:
-                    tasksTab
-                case 1:
-                    activitiesTab
-                case 2:
-                    notesTab
-                default:
-                    EmptyView()
+                VStack(alignment: .leading, spacing: 0) {
+                    notesHeader
+                    Divider()
+                        .padding(.top, DS.Spacing.sm)
+                        .padding(.horizontal, DS.Spacing.md)
+                    notesSection
                 }
 
-                bottomActions
+                VStack(alignment: .leading, spacing: 0) {
+                    tasksHeader
+                    Divider()
+                        .padding(.top, DS.Spacing.sm)
+                        .padding(.horizontal, DS.Spacing.md)
+                    tasksSection
+                }
+
+                VStack(alignment: .leading, spacing: 0) {
+                    activitiesHeader
+                    Divider()
+                        .padding(.top, DS.Spacing.sm)
+                        .padding(.horizontal, DS.Spacing.md)
+                    activitiesSection
+                }
             }
             .padding(.vertical, DS.Spacing.md)
         }
         .background(DS.Colors.Background.primary)
-        .navigationTitle("Listing")
+        .pullToSearch()
+        .navigationTitle("")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
+        .toolbar {
+            #if os(iOS)
+            ToolbarItem(placement: .topBarTrailing) {
+                OverflowMenu(actions: listingActions)
+            }
+            #else
+            ToolbarItem(placement: .automatic) {
+                OverflowMenu(actions: listingActions)
+            }
+            #endif
+        }
         // MARK: - Alerts
         .alert("Delete Listing?", isPresented: $showDeleteListingAlert) {
             Button("Cancel", role: .cancel) {}
@@ -132,10 +162,15 @@ struct ListingDetailView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            // Address
-            Text(listing.address)
-                .font(.title.bold())
-                .foregroundColor(DS.Colors.Text.primary)
+            // Address with progress indicator
+            HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.sm) {
+                ProgressCircle(progress: listing.progress, size: 20)
+                    .alignmentGuide(.firstTextBaseline) { d in d[.bottom] - 2 }
+
+                Text(listing.address)
+                    .font(.title.bold())
+                    .foregroundColor(DS.Colors.Text.primary)
+            }
 
             // Location
             if !listing.city.isEmpty {
@@ -143,162 +178,184 @@ struct ListingDetailView: View {
                     .font(DS.Typography.body)
                     .foregroundColor(DS.Colors.Text.secondary)
             }
+            if owner != nil {
+                Divider()
+                    .padding(.top, DS.Spacing.sm)
+            }
 
-            // Owner and Staff badges
-            HStack(spacing: DS.Spacing.md) {
-                if let owner = owner {
-                    HStack(spacing: DS.Spacing.xs) {
-                        UserAvatar(user: owner, size: .small)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text("Owner")
-                                .font(DS.Typography.caption)
-                                .foregroundColor(DS.Colors.Text.tertiary)
-                            Text(owner.name)
-                                .font(DS.Typography.bodySecondary)
-                                .foregroundColor(DS.Colors.Text.primary)
-                        }
-                    }
+            // Owner pill
+            if let owner = owner {
+                HStack(spacing: DS.Spacing.xs) {
+                    Text(owner.name)
+                        .font(DS.Typography.bodySecondary)
+                        .foregroundColor(DS.Colors.Text.primary)
+                        .padding(.horizontal, DS.Spacing.md)
+                        .padding(.vertical, DS.Spacing.xs)
+                        .background(DS.Colors.success.opacity(0.15))
+                        .clipShape(Capsule())
                 }
+                .padding(.top, DS.Spacing.xs)
+            }
+            Divider()
+                .padding(.top, DS.Spacing.sm)
 
-                if let staff = assignedStaff {
-                    HStack(spacing: DS.Spacing.xs) {
-                        UserAvatar(user: staff, size: .small)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text("Assigned")
-                                .font(DS.Typography.caption)
-                                .foregroundColor(DS.Colors.Text.tertiary)
-                            Text(staff.name)
-                                .font(DS.Typography.bodySecondary)
-                                .foregroundColor(DS.Colors.Text.primary)
-                        }
-                    }
+            // Listing type
+            Text(listing.listingType.rawValue.capitalized)
+                .font(DS.Typography.body)
+                .foregroundColor(DS.Colors.Text.primary)
+
+            // Due date row (simple, text-first)
+            if let due = listing.dueDate {
+                Divider()
+                    .padding(.top, DS.Spacing.sm)
+
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "flag")
+                        .foregroundColor(DS.Colors.Text.secondary)
+
+                    Text(formattedDueDate(due))
+                        .font(DS.Typography.body)
+                        .foregroundColor(DS.Colors.Text.primary)
+
+                    Text(relativeDueText(for: due))
+                        .font(DS.Typography.bodySecondary)
+                        .foregroundColor(relativeDueColor(for: due))
                 }
             }
 
-            // Status and Edit row
-            HStack {
-                // Status badge
-                Text(listing.status.rawValue.capitalized)
-                    .font(DS.Typography.caption)
-                    .foregroundColor(statusColor)
-                    .padding(.horizontal, DS.Spacing.sm)
-                    .padding(.vertical, DS.Spacing.xxs)
-                    .background(statusColor.opacity(0.15))
-                    .cornerRadius(DS.Spacing.radiusSmall)
+        }
+        .padding(.horizontal, DS.Spacing.md)
+        .padding(.top, DS.Spacing.md)
+    }
 
-                // Listing type badge
-                Text(listing.listingType.rawValue.capitalized)
-                    .font(DS.Typography.caption)
-                    .foregroundColor(DS.Colors.Text.secondary)
-                    .padding(.horizontal, DS.Spacing.sm)
-                    .padding(.vertical, DS.Spacing.xxs)
-                    .background(DS.Colors.Background.secondary)
-                    .cornerRadius(DS.Spacing.radiusSmall)
+    // MARK: - Section Headers
 
-                Spacer()
-
-                // Edit button (placeholder)
-                Button(action: { /* Phase 4: Edit listing */ }) {
-                    Image(systemName: DS.Icons.Action.edit)
-                        .foregroundColor(DS.Colors.accent)
-                }
-            }
-
-            // Price (if available)
-            if let price = listing.price {
-                Text("$\(NSDecimalNumber(decimal: price).intValue.formatted())")
-                    .font(DS.Typography.headline)
-                    .foregroundColor(DS.Colors.success)
+    private var notesHeader: some View {
+        HStack {
+            Text("Notes")
+                .font(DS.Typography.headline)
+                .foregroundColor(DS.Colors.Text.primary)
+            Text("(\(listing.notes.count))")
+                .font(DS.Typography.bodySecondary)
+                .foregroundColor(DS.Colors.Text.secondary)
+            Spacer()
+            Button(action: { showNoteInput.toggle() }) {
+                Image(systemName: showNoteInput ? DS.Icons.Action.cancel : DS.Icons.Action.add)
+                    .font(.system(size: 16))
+                    .foregroundColor(DS.Colors.accent)
             }
         }
-        .padding(DS.Spacing.md)
-        .background(DS.Colors.Background.card)
-        .cornerRadius(DS.Spacing.radiusCard)
         .padding(.horizontal, DS.Spacing.md)
     }
 
-    // MARK: - Tasks Tab
+    private var tasksHeader: some View {
+        HStack {
+            Text("Tasks")
+                .font(DS.Typography.headline)
+                .foregroundColor(DS.Colors.Text.primary)
+            Text("(\(filteredTasks.count))")
+                .font(DS.Typography.bodySecondary)
+                .foregroundColor(DS.Colors.Text.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, DS.Spacing.md)
+    }
 
-    private var tasksTab: some View {
+    private var activitiesHeader: some View {
+        HStack {
+            Text("Activities")
+                .font(DS.Typography.headline)
+                .foregroundColor(DS.Colors.Text.primary)
+            Text("(\(filteredActivities.count))")
+                .font(DS.Typography.bodySecondary)
+                .foregroundColor(DS.Colors.Text.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, DS.Spacing.md)
+    }
+
+    // MARK: - Tasks Section
+
+    private var tasksSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            if activeTasks.isEmpty {
+            if filteredTasks.isEmpty {
                 emptyStateView(
                     icon: DS.Icons.Entity.task,
                     title: "No Tasks",
                     message: "Tasks for this listing will appear here"
                 )
+                .padding(.horizontal, DS.Spacing.md)
             } else {
-                ForEach(activeTasks) { task in
-                    NavigationLink(value: WorkItemRef.task(task)) {
-                        WorkItemRow(
-                            item: .task(task),
-                            claimedByUser: task.claimedBy.flatMap { userLookup($0) }
-                        )
-                    }
-                    .buttonStyle(.plain)
-
-                    if task.id != activeTasks.last?.id {
-                        Divider()
+                VStack(spacing: 0) {
+                    ForEach(filteredTasks) { task in
+                        NavigationLink(value: WorkItemRef.task(task)) {
+                            WorkItemRow(
+                                item: .task(task),
+                                claimState: WorkItem.task(task).claimState(
+                                    currentUserId: currentUserId,
+                                    userLookup: userLookup
+                                ),
+                                onClaim: { claimTask(task) },
+                                onRelease: { unclaimTask(task) }
+                            )
                             .padding(.horizontal, DS.Spacing.md)
+                            .padding(.vertical, DS.Spacing.xs)
+                        }
+                        .buttonStyle(.plain)
+
+                        if task.id != filteredTasks.last?.id {
+                            Divider()
+                                .padding(.leading, DS.Spacing.md)
+                        }
                     }
                 }
             }
         }
-        .padding(DS.Spacing.md)
-        .background(DS.Colors.Background.card)
-        .cornerRadius(DS.Spacing.radiusCard)
-        .padding(.horizontal, DS.Spacing.md)
     }
 
-    // MARK: - Activities Tab
+    // MARK: - Activities Section
 
-    private var activitiesTab: some View {
+    private var activitiesSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            if activeActivities.isEmpty {
+            if filteredActivities.isEmpty {
                 emptyStateView(
                     icon: DS.Icons.Entity.activity,
                     title: "No Activities",
                     message: "Activities for this listing will appear here"
                 )
+                .padding(.horizontal, DS.Spacing.md)
             } else {
-                ForEach(activeActivities) { activity in
-                    NavigationLink(value: WorkItemRef.activity(activity)) {
-                        WorkItemRow(
-                            item: .activity(activity),
-                            claimedByUser: activity.claimedBy.flatMap { userLookup($0) }
-                        )
-                    }
-                    .buttonStyle(.plain)
-
-                    if activity.id != activeActivities.last?.id {
-                        Divider()
+                VStack(spacing: 0) {
+                    ForEach(filteredActivities) { activity in
+                        NavigationLink(value: WorkItemRef.activity(activity)) {
+                            WorkItemRow(
+                                item: .activity(activity),
+                                claimState: WorkItem.activity(activity).claimState(
+                                    currentUserId: currentUserId,
+                                    userLookup: userLookup
+                                ),
+                                onClaim: { claimActivity(activity) },
+                                onRelease: { unclaimActivity(activity) }
+                            )
                             .padding(.horizontal, DS.Spacing.md)
+                            .padding(.vertical, DS.Spacing.xs)
+                        }
+                        .buttonStyle(.plain)
+
+                        if activity.id != filteredActivities.last?.id {
+                            Divider()
+                                .padding(.leading, DS.Spacing.md)
+                        }
                     }
                 }
             }
         }
-        .padding(DS.Spacing.md)
-        .background(DS.Colors.Background.card)
-        .cornerRadius(DS.Spacing.radiusCard)
-        .padding(.horizontal, DS.Spacing.md)
     }
 
-    // MARK: - Notes Tab
+    // MARK: - Notes Section
 
-    private var notesTab: some View {
+    private var notesSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            HStack {
-                Text("Notes")
-                    .font(DS.Typography.headline)
-                    .foregroundColor(DS.Colors.Text.primary)
-                Spacer()
-                Button(action: { showNoteInput.toggle() }) {
-                    Image(systemName: showNoteInput ? DS.Icons.Action.cancel : DS.Icons.Action.add)
-                        .font(.system(size: 16))
-                        .foregroundColor(DS.Colors.accent)
-                }
-            }
-
             if showNoteInput {
                 NoteInputArea(
                     text: $noteText,
@@ -313,10 +370,12 @@ struct ListingDetailView: View {
                         showNoteInput = false
                     }
                 )
+                .padding(.horizontal, DS.Spacing.md)
             }
 
             if listing.notes.isEmpty && !showNoteInput {
                 NoteStack.emptyState
+                    .padding(.horizontal, DS.Spacing.md)
             } else if !listing.notes.isEmpty {
                 NoteStack(
                     notes: listing.notes,
@@ -327,39 +386,11 @@ struct ListingDetailView: View {
                         showDeleteNoteAlert = true
                     }
                 )
+                .padding(.horizontal, DS.Spacing.md)
             }
         }
-        .padding(DS.Spacing.md)
-        .background(DS.Colors.Background.card)
-        .cornerRadius(DS.Spacing.radiusCard)
-        .padding(.horizontal, DS.Spacing.md)
     }
 
-    // MARK: - Bottom Actions
-
-    private var bottomActions: some View {
-        HStack(spacing: DS.Spacing.md) {
-            Button(action: { /* Phase 4: Edit listing sheet */ }) {
-                HStack {
-                    Image(systemName: DS.Icons.Action.edit)
-                    Text("Edit Listing")
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-
-            Button(role: .destructive, action: { showDeleteListingAlert = true }) {
-                HStack {
-                    Image(systemName: DS.Icons.Action.delete)
-                    Text("Delete")
-                }
-            }
-            .buttonStyle(.bordered)
-            .tint(.red)
-        }
-        .padding(.horizontal, DS.Spacing.md)
-        .padding(.top, DS.Spacing.md)
-    }
 
     // MARK: - Actions
 
@@ -371,7 +402,7 @@ struct ListingDetailView: View {
             parentId: listing.id
         )
         listing.notes.append(note)
-        listing.updatedAt = Date()
+        listing.markPending()
         syncManager.requestSync()
     }
 
@@ -379,7 +410,7 @@ struct ListingDetailView: View {
         guard let note = noteToDelete else { return }
         listing.notes.removeAll { $0.id == note.id }
         modelContext.delete(note)
-        listing.updatedAt = Date()
+        listing.markPending()
         noteToDelete = nil
         syncManager.requestSync()
     }
@@ -387,9 +418,113 @@ struct ListingDetailView: View {
     private func deleteListing() {
         listing.status = .deleted
         listing.deletedAt = Date()
-        listing.updatedAt = Date()
+        listing.markPending()
         syncManager.requestSync()
         dismiss()
+    }
+
+    // MARK: - Task Claim Actions
+
+    private func claimTask(_ task: TaskItem) {
+        task.claimedBy = currentUserId
+        task.claimedAt = Date()
+        task.markPending()
+
+        // ClaimEvent starts as .pending in init
+        let event = ClaimEvent(
+            parentType: .task,
+            parentId: task.id,
+            action: .claimed,
+            userId: currentUserId
+        )
+        task.claimHistory.append(event)
+        syncManager.requestSync()
+    }
+
+    private func unclaimTask(_ task: TaskItem) {
+        task.claimedBy = nil
+        task.claimedAt = nil
+        task.markPending()
+
+        // ClaimEvent starts as .pending in init
+        let event = ClaimEvent(
+            parentType: .task,
+            parentId: task.id,
+            action: .released,
+            userId: currentUserId
+        )
+        task.claimHistory.append(event)
+        syncManager.requestSync()
+    }
+
+    // MARK: - Activity Claim Actions
+
+    private func claimActivity(_ activity: Activity) {
+        activity.claimedBy = currentUserId
+        activity.claimedAt = Date()
+        activity.markPending()
+
+        // ClaimEvent starts as .pending in init
+        let event = ClaimEvent(
+            parentType: .activity,
+            parentId: activity.id,
+            action: .claimed,
+            userId: currentUserId
+        )
+        activity.claimHistory.append(event)
+        syncManager.requestSync()
+    }
+
+    private func unclaimActivity(_ activity: Activity) {
+        activity.claimedBy = nil
+        activity.claimedAt = nil
+        activity.markPending()
+
+        // ClaimEvent starts as .pending in init
+        let event = ClaimEvent(
+            parentType: .activity,
+            parentId: activity.id,
+            action: .released,
+            userId: currentUserId
+        )
+        activity.claimHistory.append(event)
+        syncManager.requestSync()
+    }
+
+    // MARK: - Due Date Helpers
+
+    private static let dueDateFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.dateFormat = "EEE, MMM, d"
+        return df
+    }()
+
+    private func formattedDueDate(_ date: Date) -> String {
+        Self.dueDateFormatter.string(from: date)
+    }
+
+    private func relativeDueText(for date: Date) -> String {
+        let cal = Calendar.current
+        let startToday = cal.startOfDay(for: Date())
+        let startDue = cal.startOfDay(for: date)
+        let diff = cal.dateComponents([.day], from: startToday, to: startDue).day ?? 0
+
+        if diff == 0 { return "Today" }
+        if diff == 1 { return "1 day left" }
+        if diff > 1 { return "\(diff) days left" }
+
+        let overdue = abs(diff)
+        if overdue == 1 { return "Overdue: 1 day" }
+        return "Overdue: \(overdue) days"
+    }
+
+    private func relativeDueColor(for date: Date) -> Color {
+        let cal = Calendar.current
+        let startToday = cal.startOfDay(for: Date())
+        let startDue = cal.startOfDay(for: date)
+        let diff = cal.dateComponents([.day], from: startToday, to: startDue).day ?? 0
+        return diff < 0 ? .red : DS.Colors.Text.secondary
     }
 
     // MARK: - Helpers
@@ -460,7 +595,7 @@ struct ListingDetailView: View {
         listingType: .sale,
         status: .active,
         ownedBy: ownerUser.id,
-        assignedStaff: staffUser.id
+        dueDate: Calendar.current.date(byAdding: .day, value: 3, to: Date())
     )
     context.insert(listing)
 
@@ -658,6 +793,9 @@ struct ListingDetailView: View {
     }
     .modelContainer(container)
     .environmentObject(syncManager)
+    .environmentObject(LensState())
+    .environmentObject(AppOverlayState())
+    .environmentObject(SearchPresentationManager())
 }
 
 #Preview("Listing Detail - Empty") {
@@ -679,7 +817,7 @@ struct ListingDetailView: View {
 
     syncManager.currentUserID = ownerUser.id
 
-    // Empty listing with no tasks, activities, or notes
+    // Empty listing with no tasks, activities, or notes (overdue)
     let listing = Listing(
         address: "456 Oak Avenue",
         city: "Vancouver",
@@ -688,7 +826,8 @@ struct ListingDetailView: View {
         price: 2450000,
         listingType: .sale,
         status: .draft,
-        ownedBy: ownerUser.id
+        ownedBy: ownerUser.id,
+        dueDate: Calendar.current.date(byAdding: .day, value: -2, to: Date())
     )
     context.insert(listing)
 
@@ -699,6 +838,9 @@ struct ListingDetailView: View {
     }
     .modelContainer(container)
     .environmentObject(syncManager)
+    .environmentObject(LensState())
+    .environmentObject(AppOverlayState())
+    .environmentObject(SearchPresentationManager())
 }
 
 #Preview("Listing Detail - Lease") {
@@ -736,7 +878,7 @@ struct ListingDetailView: View {
         listingType: .lease,
         status: .pending,
         ownedBy: ownerUser.id,
-        assignedStaff: staffUser.id
+        dueDate: Calendar.current.date(byAdding: .day, value: 1, to: Date())
     )
     context.insert(listing)
 
@@ -787,4 +929,8 @@ struct ListingDetailView: View {
     }
     .modelContainer(container)
     .environmentObject(syncManager)
+    .environmentObject(LensState())
+    .environmentObject(AppOverlayState())
+    .environmentObject(SearchPresentationManager())
 }
+

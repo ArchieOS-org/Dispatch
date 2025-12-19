@@ -7,9 +7,11 @@
 
 import Foundation
 
-enum SyncStatus: String, Codable, CaseIterable {
-    case synced
-    case pending
-    case error
-    case syncing
+/// Global sync status for SyncManager.
+/// Error details live in SyncManager.lastSyncErrorMessage.
+enum SyncStatus: Equatable {
+    case idle              // nothing happening
+    case syncing           // active sync in progress
+    case ok(Date)          // last successful sync time
+    case error             // some error exists; details in lastSyncErrorMessage
 }
