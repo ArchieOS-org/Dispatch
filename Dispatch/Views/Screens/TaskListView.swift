@@ -466,4 +466,5 @@ struct TaskListView: View {
     return TaskListView()
         .modelContainer(container)
         .environmentObject(syncManager)
+        .environmentObject(SearchPresentationManager())
 }

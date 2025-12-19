@@ -93,6 +93,12 @@ struct ContentView: View {
         .onChange(of: userCache) { _, _ in
             updateWorkItemActions()
         }
+        // Inject environment objects at root so both navigation paths inherit them
+        .environmentObject(workItemActions)
+        .environmentObject(searchManager)
+        .environmentObject(lensState)
+        .environmentObject(quickEntryState)
+        .environmentObject(overlayState)
     }
 
     @ViewBuilder
@@ -136,11 +142,6 @@ struct ContentView: View {
             // Persistent floating buttons
             GlobalFloatingButtons()
         }
-        .environmentObject(workItemActions)
-        .environmentObject(searchManager)
-        .environmentObject(lensState)
-        .environmentObject(quickEntryState)
-        .environmentObject(overlayState)
         .onAppear {
             // Attach keyboard observer (iPhone-only fallback)
             keyboardObserver.attach(to: overlayState)
@@ -206,7 +207,6 @@ struct ContentView: View {
             .syncNowToolbar()
         }
         .navigationSplitViewStyle(.balanced)
-        .environmentObject(searchManager)
     }
 
     #if os(iOS)

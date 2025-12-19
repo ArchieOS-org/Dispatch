@@ -370,4 +370,5 @@ struct ListingListView: View {
     ListingListView()
         .modelContainer(for: [Listing.self, User.self], inMemory: true)
         .environmentObject(SyncManager.shared)
+        .environmentObject(SearchPresentationManager())
 }

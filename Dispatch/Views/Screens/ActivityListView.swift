@@ -339,4 +339,5 @@ struct ActivityListView: View {
     ActivityListView()
         .modelContainer(for: [Activity.self, User.self], inMemory: true)
         .environmentObject(SyncManager.shared)
+        .environmentObject(SearchPresentationManager())
 }

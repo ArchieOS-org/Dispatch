@@ -805,6 +805,7 @@ struct ListingDetailView: View {
     .environmentObject(syncManager)
     .environmentObject(LensState())
     .environmentObject(AppOverlayState())
+    .environmentObject(SearchPresentationManager())
 }
 
 #Preview("Listing Detail - Empty") {
@@ -849,6 +850,7 @@ struct ListingDetailView: View {
     .environmentObject(syncManager)
     .environmentObject(LensState())
     .environmentObject(AppOverlayState())
+    .environmentObject(SearchPresentationManager())
 }
 
 #Preview("Listing Detail - Lease") {
@@ -939,5 +941,6 @@ struct ListingDetailView: View {
     .environmentObject(syncManager)
     .environmentObject(LensState())
     .environmentObject(AppOverlayState())
+    .environmentObject(SearchPresentationManager())
 }
 
