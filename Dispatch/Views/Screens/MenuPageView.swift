@@ -41,6 +41,7 @@ struct MenuPageView: View {
     // MARK: - Environment
 
     @EnvironmentObject private var syncManager: SyncManager
+    @EnvironmentObject private var lensState: LensState
 
     // MARK: - Computed Properties
 
@@ -73,6 +74,9 @@ struct MenuPageView: View {
         .pullToSearch()
         .background(DS.Colors.Background.grouped)
         .navigationTitle("Dispatch")
+        .onAppear {
+            lensState.currentScreen = .menu
+        }
     }
 }
 
@@ -170,6 +174,7 @@ private struct MenuCardButtonStyle: ButtonStyle {
     .modelContainer(container)
     .environmentObject(SyncManager.shared)
     .environmentObject(SearchPresentationManager())
+    .environmentObject(LensState())
 }
 
 #Preview("Menu Page View - Empty") {
@@ -184,4 +189,5 @@ private struct MenuCardButtonStyle: ButtonStyle {
     .modelContainer(container)
     .environmentObject(SyncManager.shared)
     .environmentObject(SearchPresentationManager())
+    .environmentObject(LensState())
 }

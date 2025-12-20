@@ -42,6 +42,7 @@ struct TaskListView: View {
     #endif
 
     @EnvironmentObject private var syncManager: SyncManager
+    @EnvironmentObject private var lensState: LensState
     @Environment(\.modelContext) private var modelContext
 
     // MARK: - State for Note/Subtask Management
@@ -195,6 +196,9 @@ struct TaskListView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("We couldn't sync your last change. We'll retry shortly.")
+        }
+        .onAppear {
+            lensState.currentScreen = .tasks
         }
     }
 
@@ -467,4 +471,5 @@ struct TaskListView: View {
         .modelContainer(container)
         .environmentObject(syncManager)
         .environmentObject(SearchPresentationManager())
+        .environmentObject(LensState())
 }

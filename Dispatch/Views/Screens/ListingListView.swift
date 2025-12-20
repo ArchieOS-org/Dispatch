@@ -37,6 +37,7 @@ struct ListingListView: View {
     @Query private var users: [User]
 
     @EnvironmentObject private var syncManager: SyncManager
+    @EnvironmentObject private var lensState: LensState
     @Environment(\.modelContext) private var modelContext
 
     // MARK: - State for Note/Subtask Management (for drill-down)
@@ -88,18 +89,23 @@ struct ListingListView: View {
     // MARK: - Body
 
     var body: some View {
-        if embedInNavigationStack {
-            NavigationStack {
+        Group {
+            if embedInNavigationStack {
+                NavigationStack {
+                    content
+                        .navigationDestination(for: Listing.self) { listing in
+                            ListingDetailView(listing: listing, userLookup: { userCache[$0] })
+                        }
+                        .navigationDestination(for: WorkItemRef.self) { ref in
+                            workItemDestination(for: ref)
+                        }
+                }
+            } else {
                 content
-                    .navigationDestination(for: Listing.self) { listing in
-                        ListingDetailView(listing: listing, userLookup: { userCache[$0] })
-                    }
-                    .navigationDestination(for: WorkItemRef.self) { ref in
-                        workItemDestination(for: ref)
-                    }
             }
-        } else {
-            content
+        }
+        .onAppear {
+            lensState.currentScreen = .listings
         }
     }
 
@@ -371,4 +377,5 @@ struct ListingListView: View {
         .modelContainer(for: [Listing.self, User.self], inMemory: true)
         .environmentObject(SyncManager.shared)
         .environmentObject(SearchPresentationManager())
+        .environmentObject(LensState())
 }

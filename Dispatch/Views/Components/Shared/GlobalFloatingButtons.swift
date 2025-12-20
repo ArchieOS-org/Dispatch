@@ -23,8 +23,10 @@ struct GlobalFloatingButtons: View {
             // ALWAYS render - animate opacity/offset instead of conditional
             // Prevents transition bugs from subtree removal
             HStack {
-                // Filter Button (left) with Menu for long-press
-                filterButton
+                // Filter Button (left) - only show on TaskListView
+                if lensState.showFilterButton {
+                    filterButton
+                }
 
                 Spacer()
 

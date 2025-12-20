@@ -41,6 +41,7 @@ struct ActivityListView: View {
     #endif
 
     @EnvironmentObject private var syncManager: SyncManager
+    @EnvironmentObject private var lensState: LensState
     @Environment(\.modelContext) private var modelContext
 
     // MARK: - State for Note/Subtask Management
@@ -195,6 +196,9 @@ struct ActivityListView: View {
         } message: {
             Text("We couldn't sync your last change. We'll retry shortly.")
         }
+        .onAppear {
+            lensState.currentScreen = .activities
+        }
     }
 
     // MARK: - Actions
@@ -340,4 +344,5 @@ struct ActivityListView: View {
         .modelContainer(for: [Activity.self, User.self], inMemory: true)
         .environmentObject(SyncManager.shared)
         .environmentObject(SearchPresentationManager())
+        .environmentObject(LensState())
 }
