@@ -26,6 +26,9 @@ struct WorkItemDetailView: View {
     var onDeleteSubtask: ((Subtask) -> Void)?
     var onAddSubtask: (() -> Void)?
 
+    // Environment
+    @EnvironmentObject private var lensState: LensState
+
     // State
     @State private var scrollOffset: CGFloat = 0
     @State private var noteText = ""
@@ -58,6 +61,9 @@ struct WorkItemDetailView: View {
             .padding(DS.Spacing.md)
         }
         .background(DS.Colors.Background.primary)
+        .onAppear {
+            lensState.currentScreen = .detail
+        }
     }
 
     // MARK: - Header
@@ -325,4 +331,5 @@ struct WorkItemDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
     }
+    .environmentObject(LensState())
 }

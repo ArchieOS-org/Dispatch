@@ -12,11 +12,30 @@ import SwiftUI
 /// Manages both audience (All/Admin/Marketing) and content kind (All/Tasks/Activities) filters.
 @MainActor
 final class LensState: ObservableObject {
+    /// Current screen for determining filter button visibility
+    enum CurrentScreen {
+        case tasks
+        case activities
+        case listings
+        case listingDetail
+        case menu
+        case detail
+        case other
+    }
+
     /// Current audience filter
     @Published var audience: AudienceLens = .all
 
     /// Current content kind filter
     @Published var kind: ContentKind = .all
+
+    /// Current screen context for filter button visibility
+    @Published var currentScreen: CurrentScreen = .menu
+
+    /// Filter button shows on TaskListView, ActivityListView, and ListingDetailView
+    var showFilterButton: Bool {
+        currentScreen == .tasks || currentScreen == .activities || currentScreen == .listingDetail
+    }
 
     /// Returns true if any filter is active (not set to .all)
     var isFiltered: Bool {

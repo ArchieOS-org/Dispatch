@@ -123,6 +123,9 @@ struct ListingDetailView: View {
         .background(DS.Colors.Background.primary)
         .pullToSearch()
         .navigationTitle("")
+        .onAppear {
+            lensState.currentScreen = .listingDetail
+        }
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
