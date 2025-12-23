@@ -135,6 +135,8 @@ struct ContentView: View {
                             selectSearchResult(result)
                         }
                     )
+                    .environmentObject(searchManager)
+                    .environmentObject(overlayState)
                 }
             }
             .syncNowToolbar()

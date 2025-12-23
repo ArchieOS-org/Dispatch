@@ -24,6 +24,7 @@ struct SearchBar: View {
 
     #if os(iOS)
     @EnvironmentObject private var overlayState: AppOverlayState
+    @EnvironmentObject private var searchManager: SearchPresentationManager
     #endif
 
     var body: some View {
@@ -62,6 +63,7 @@ struct SearchBar: View {
 
             // Cancel button
             Button("Cancel") {
+                isFocused = false  // Immediately remove focus to dismiss keyboard
                 onCancel()
             }
             .foregroundColor(DS.Colors.accent)
@@ -83,6 +85,12 @@ struct SearchBar: View {
                 overlayState.show(reason: .textInput)
             }
         }
+        .onChange(of: searchManager.isSearchPresented) { _, isPresented in
+            // When search overlay is dismissed, immediately remove focus
+            if !isPresented {
+                isFocused = false
+            }
+        }
         #endif
     }
 }
@@ -92,9 +100,13 @@ struct SearchBar: View {
 #Preview("Search Bar - Empty") {
     SearchBar(text: .constant(""), onCancel: {})
         .background(DS.Colors.Background.primary)
+        .environmentObject(AppOverlayState())
+        .environmentObject(SearchPresentationManager())
 }
 
 #Preview("Search Bar - With Text") {
     SearchBar(text: .constant("quarterly report"), onCancel: {})
         .background(DS.Colors.Background.primary)
+        .environmentObject(AppOverlayState())
+        .environmentObject(SearchPresentationManager())
 }
