@@ -21,7 +21,7 @@ jobs:
     env:
       SCHEME: Dispatch
       PROJECT: Dispatch.xcodeproj
-      DESTINATION: platform=iOS Simulator,name=iPhone 16,OS=18.1
+      DESTINATION: platform=iOS Simulator,name=iPhone 16,OS=18.4
 
     steps:
       - name: Checkout

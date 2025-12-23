@@ -63,7 +63,7 @@ struct SearchBar: View {
 
             // Cancel button
             Button("Cancel") {
-                isFocused = false  // 🔑 立即取消焦点，让键盘立即消失
+                isFocused = false  // Immediately remove focus to dismiss keyboard
                 onCancel()
             }
             .foregroundColor(DS.Colors.accent)
@@ -86,7 +86,7 @@ struct SearchBar: View {
             }
         }
         .onChange(of: searchManager.isSearchPresented) { _, isPresented in
-            // 当搜索浮窗关闭时，立即取消焦点
+            // When search overlay is dismissed, immediately remove focus
             if !isPresented {
                 isFocused = false
             }
