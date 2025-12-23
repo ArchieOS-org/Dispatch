@@ -3,6 +3,20 @@
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=uhkrvxlclflgevocqtkh"
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@context7/mcp"]
+    },
+    "xcodebuildmcp": {
+      "command": "npx",
+      "args": ["-y", "xcodebuildmcp@latest"],
+      "env": {
+        "XCODEBUILDMCP_GROUP_PROJECT_DISCOVERY": "true",
+        "XCODEBUILDMCP_GROUP_IOS_SIMULATOR_WORKFLOW": "true",
+        "XCODEBUILDMCP_GROUP_MACOS_WORKFLOW": "true",
+        "XCODEBUILDMCP_GROUP_TESTING": "true"
+      }
     }
   }
 }
