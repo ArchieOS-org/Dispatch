@@ -24,6 +24,7 @@ struct SearchBar: View {
 
     #if os(iOS)
     @EnvironmentObject private var overlayState: AppOverlayState
+    @EnvironmentObject private var searchManager: SearchPresentationManager
     #endif
 
     var body: some View {
@@ -62,6 +63,7 @@ struct SearchBar: View {
 
             // Cancel button
             Button("Cancel") {
+                isFocused = false  // 🔑 立即取消焦点，让键盘立即消失
                 onCancel()
             }
             .foregroundColor(DS.Colors.accent)
@@ -83,6 +85,12 @@ struct SearchBar: View {
                 overlayState.show(reason: .textInput)
             }
         }
+        .onChange(of: searchManager.isSearchPresented) { _, isPresented in
+            // 当搜索浮窗关闭时，立即取消焦点
+            if !isPresented {
+                isFocused = false
+            }
+        }
         #endif
     }
 }
@@ -92,9 +100,13 @@ struct SearchBar: View {
 #Preview("Search Bar - Empty") {
     SearchBar(text: .constant(""), onCancel: {})
         .background(DS.Colors.Background.primary)
+        .environmentObject(AppOverlayState())
+        .environmentObject(SearchPresentationManager())
 }
 
 #Preview("Search Bar - With Text") {
     SearchBar(text: .constant("quarterly report"), onCancel: {})
         .background(DS.Colors.Background.primary)
+        .environmentObject(AppOverlayState())
+        .environmentObject(SearchPresentationManager())
 }
