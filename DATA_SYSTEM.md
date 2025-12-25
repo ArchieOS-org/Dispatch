@@ -67,6 +67,7 @@ Dispatch/
 │   ├── TaskItem.swift
 │   ├── Activity.swift
 │   ├── Listing.swift
+│   ├── Listing+Progress.swift
 │   ├── User.swift
 │   ├── Note.swift
 │   ├── Subtask.swift
@@ -81,18 +82,42 @@ Dispatch/
 │       ├── ListingType.swift
 │       ├── UserType.swift
 │       ├── ClaimState.swift
+│       ├── ClaimAction.swift
 │       ├── ParentType.swift
 │       ├── CreationSource.swift
 │       ├── SyncStatus.swift
-│       └── QuickEntryItemType.swift
+│       ├── EntitySyncState.swift
+│       ├── ConflictStrategy.swift
+│       ├── QuickEntryItemType.swift
+│       ├── Role.swift
+│       ├── AudienceLens.swift
+│       ├── ContentKind.swift
+│       ├── MenuSection.swift
+│       └── ViewFilter.swift
 ├── Protocols/
 │   ├── WorkItemProtocol.swift
 │   ├── ClaimableProtocol.swift
 │   ├── NotableProtocol.swift
 │   └── RealtimeSyncable.swift
 ├── Services/
-│   └── Sync/
-│       └── SyncManager.swift
+│   ├── Sync/
+│   │   └── SyncManager.swift
+│   └── Supabase/
+│       └── DTOs/
+│           ├── TaskDTO.swift
+│           ├── ActivityDTO.swift
+│           ├── ListingDTO.swift
+│           ├── UserDTO.swift
+│           ├── NoteDTO.swift
+│           ├── SubtaskDTO.swift
+│           ├── StatusChangeDTO.swift
+│           ├── ClaimEventDTO.swift
+│           └── BroadcastPayload.swift
+├── Views/
+│   └── Components/
+│       └── WorkItem/
+│           ├── WorkItem.swift
+│           └── WorkItemRef.swift
 └── Utilities/
     └── DateSection.swift
 ```
@@ -124,6 +149,10 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol, Real
     var createdVia: CreationSource
     var sourceSlackMessages: [String]?
 
+    // Audience targeting (stored as [String] for SwiftData compatibility)
+    var audiencesRaw: [String] = ["admin", "marketing"]
+    var audiences: Set<Role> { get set }  // Computed wrapper
+
     // Timestamps
     var claimedAt: Date?
     var completedAt: Date?
@@ -131,6 +160,11 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol, Real
     var createdAt: Date
     var updatedAt: Date
     var syncedAt: Date?
+
+    // Sync state tracking
+    var syncStateRaw: EntitySyncState?
+    var syncState: EntitySyncState { get set }  // Computed wrapper, defaults to .synced
+    var lastSyncError: String?
 
     // Relationships (cascade delete)
     @Relationship(deleteRule: .cascade) var notes: [Note]
@@ -141,6 +175,11 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol, Real
     // Inverse relationships
     var claimedByUser: User?
     var listing: Listing?
+
+    // RealtimeSyncable methods
+    func markPending()
+    func markSynced()
+    func markFailed(_ message: String)
 }
 ```
 
@@ -169,7 +208,12 @@ final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol, Real
     var sourceSlackMessages: [String]?
     var duration: TimeInterval?     // Activity-specific
 
+    // Audience targeting (same as TaskItem)
+    var audiencesRaw: [String] = ["admin", "marketing"]
+    var audiences: Set<Role> { get set }
+
     // Timestamps (same as TaskItem)
+    // Sync state (same as TaskItem)
     // Relationships (same as TaskItem)
 }
 ```
@@ -189,12 +233,11 @@ final class Listing: NotableProtocol, RealtimeSyncable {
     var country: String
     var price: Decimal?
     var mlsNumber: String?
-    var listingType: ListingType    // sale, rental
+    var listingType: ListingType    // sale, lease, preListing, rental, other
     var status: ListingStatus       // draft, active, pending, closed, deleted
 
     // Foreign keys
     var ownedBy: UUID
-    var assignedStaff: UUID?
 
     // Metadata
     var createdVia: CreationSource
@@ -205,9 +248,15 @@ final class Listing: NotableProtocol, RealtimeSyncable {
     var pendingAt: Date?
     var closedAt: Date?
     var deletedAt: Date?
+    var dueDate: Date?
     var createdAt: Date
     var updatedAt: Date
     var syncedAt: Date?
+
+    // Sync state tracking
+    var syncStateRaw: EntitySyncState?
+    var syncState: EntitySyncState { get set }
+    var lastSyncError: String?
 
     // Relationships
     @Relationship(deleteRule: .cascade) var tasks: [TaskItem]
@@ -217,7 +266,11 @@ final class Listing: NotableProtocol, RealtimeSyncable {
 
     // Inverse relationships
     var owner: User?
-    var assignedStaffUser: User?
+
+    // RealtimeSyncable methods
+    func markPending()
+    func markSynced()
+    func markFailed(_ message: String)
 }
 ```
 
@@ -232,12 +285,17 @@ final class User: RealtimeSyncable {
     var name: String
     var email: String
     var avatar: Data?
-    var userType: UserType          // admin, realtor
+    var userType: UserType          // realtor, admin, marketing, exec
 
     // Timestamps
     var createdAt: Date
     var updatedAt: Date
     var syncedAt: Date?
+
+    // Sync state tracking
+    var syncStateRaw: EntitySyncState?
+    var syncState: EntitySyncState { get set }
+    var lastSyncError: String?
 
     // Relationships
     @Relationship(deleteRule: .nullify, inverse: \Listing.owner)
@@ -249,8 +307,10 @@ final class User: RealtimeSyncable {
     @Relationship(deleteRule: .nullify, inverse: \Activity.claimedByUser)
     var claimedActivities: [Activity]
 
-    @Relationship(deleteRule: .nullify, inverse: \Listing.assignedStaffUser)
-    var assignedListings: [Listing]
+    // RealtimeSyncable methods
+    func markPending()
+    func markSynced()
+    func markFailed(_ message: String)
 }
 ```
 
@@ -296,6 +356,55 @@ final class Subtask {
 }
 ```
 
+### StatusChange
+
+Tracks status changes for audit history.
+
+```swift
+@Model
+final class StatusChange {
+    @Attribute(.unique) var id: UUID
+    var parentType: ParentType
+    var parentId: UUID
+    var oldStatus: String?
+    var newStatus: String
+    var changedBy: UUID
+    var changedAt: Date
+    var reason: String?
+    var syncedAt: Date?
+}
+```
+
+### ClaimEvent
+
+Tracks claim/release actions for audit history.
+
+```swift
+@Model
+final class ClaimEvent: RealtimeSyncable {
+    @Attribute(.unique) var id: UUID
+    var parentType: ParentType
+    var parentId: UUID
+    var action: ClaimAction         // claimed, released
+    var userId: UUID
+    var performedAt: Date
+    var reason: String?
+    var createdAt: Date
+    var updatedAt: Date
+    var syncedAt: Date?
+
+    // Sync state tracking
+    var syncStateRaw: EntitySyncState?
+    var syncState: EntitySyncState { get set }
+    var lastSyncError: String?
+
+    // RealtimeSyncable methods
+    func markPending()
+    func markSynced()
+    func markFailed(_ message: String)
+}
+```
+
 ---
 
 ## Model Relationships
@@ -303,7 +412,6 @@ final class Subtask {
 ```mermaid
 erDiagram
     User ||--o{ Listing : owns
-    User ||--o{ Listing : assigned_to
     User ||--o{ TaskItem : claims
     User ||--o{ Activity : claims
 
@@ -351,24 +459,45 @@ protocol WorkItemProtocol {
 }
 ```
 
+### ClaimableProtocol
+
+Interface for claimable work items.
+
+```swift
+protocol ClaimableProtocol {
+    var claimedBy: UUID? { get set }
+    var claimHistory: [ClaimEvent] { get }
+    var claimedAt: Date? { get set }
+    var canBeClaimed: Bool { get }  // Default: claimedBy == nil
+}
+```
+
+### NotableProtocol
+
+Interface for entities that can have notes.
+
+```swift
+protocol NotableProtocol {
+    var notes: [Note] { get }
+}
+```
+
 ### RealtimeSyncable
 
 Enables sync tracking for models.
 
 ```swift
 protocol RealtimeSyncable {
-    var isDirty: Bool { get }       // updatedAt > syncedAt
-    var conflictResolution: ConflictResolution { get }  // default: .lastWriteWins
+    var syncedAt: Date? { get set }
+    var syncState: EntitySyncState { get set }
+    var lastSyncError: String? { get set }
+    var conflictResolution: ConflictStrategy { get }  // Default: .lastWriteWins
 }
-```
 
-**Implementation:**
-```swift
-extension TaskItem: RealtimeSyncable {
-    var isDirty: Bool {
-        guard let syncedAt = syncedAt else { return true }
-        return updatedAt > syncedAt
-    }
+extension RealtimeSyncable {
+    var conflictResolution: ConflictStrategy { .lastWriteWins }
+    var isDirty: Bool { syncState == .pending }
+    var isSyncFailed: Bool { syncState == .failed }
 }
 ```
 
@@ -429,6 +558,8 @@ enum ListingStatus: String, Codable, CaseIterable {
     case pending
     case closed
     case deleted
+
+    var displayName: String { rawValue.capitalized }
 }
 ```
 
@@ -437,7 +568,10 @@ enum ListingStatus: String, Codable, CaseIterable {
 ```swift
 enum ListingType: String, Codable, CaseIterable {
     case sale
+    case lease
+    case preListing = "pre_listing"
     case rental
+    case other
 }
 ```
 
@@ -445,8 +579,24 @@ enum ListingType: String, Codable, CaseIterable {
 
 ```swift
 enum UserType: String, Codable, CaseIterable {
-    case admin
     case realtor
+    case admin
+    case marketing
+    case exec
+
+    /// Staff members can claim tasks/activities. Only admin and marketing are staff.
+    var isStaff: Bool { self == .admin || self == .marketing }
+}
+```
+
+### Role
+
+Audience targeting roles.
+
+```swift
+enum Role: String, Codable, CaseIterable, Hashable {
+    case admin
+    case marketing
 }
 ```
 
@@ -466,9 +616,18 @@ enum ClaimState {
 }
 ```
 
+### ClaimAction
+
+```swift
+enum ClaimAction: String, Codable, CaseIterable {
+    case claimed
+    case released
+}
+```
+
 ### ParentType
 
-Polymorphic parent reference for Note/Subtask.
+Polymorphic parent reference for Note/Subtask/StatusChange/ClaimEvent.
 
 ```swift
 enum ParentType: String, Codable, CaseIterable {
@@ -484,17 +643,44 @@ enum ParentType: String, Codable, CaseIterable {
 enum CreationSource: String, Codable, CaseIterable {
     case dispatch       // Created in app
     case slack          // Created via Slack integration
+    case realtorApp = "realtor_app"
+    case api
+    case `import`
+}
+```
+
+### EntitySyncState
+
+Per-entity sync state tracking.
+
+```swift
+enum EntitySyncState: String, Codable, Equatable {
+    case synced     // Entity is synchronized with server
+    case pending    // Entity has local changes pending sync
+    case failed     // Entity sync failed - check lastSyncError
 }
 ```
 
 ### SyncStatus
 
+Global sync status for SyncManager.
+
 ```swift
-enum SyncStatus: String, Codable, CaseIterable {
-    case synced
-    case syncing
-    case pending
-    case error
+enum SyncStatus: Equatable {
+    case idle              // Nothing happening
+    case syncing           // Active sync in progress
+    case ok(Date)          // Last successful sync time
+    case error             // Error exists; details in lastSyncErrorMessage
+}
+```
+
+### ConflictStrategy
+
+```swift
+enum ConflictStrategy: String, Codable, CaseIterable {
+    case lastWriteWins = "last_write_wins"
+    case serverWins = "server_wins"
+    case manual
 }
 ```
 
@@ -517,11 +703,84 @@ For grouping work items by due date.
 
 ```swift
 enum DateSection: String, CaseIterable, Identifiable {
-    case overdue
-    case today
-    case tomorrow
-    case upcoming
-    case noDueDate
+    case overdue = "Overdue"
+    case today = "Today"
+    case tomorrow = "Tomorrow"
+    case upcoming = "Upcoming"
+    case noDueDate = "No Due Date"
+
+    var id: String { rawValue }
+    var headerColor: Color
+
+    static func section(for date: Date?, referenceDate: Date = Date()) -> DateSection
+    static func group(_ items: [WorkItem], referenceDate: Date = Date()) -> [DateSection: [WorkItem]]
+    static func sortedSections(from items: [WorkItem], referenceDate: Date = Date()) -> [(section: DateSection, items: [WorkItem])]
+}
+```
+
+### AudienceLens
+
+Filter mode for viewing work items based on target audience.
+
+```swift
+enum AudienceLens: String, CaseIterable {
+    case all
+    case admin
+    case marketing
+
+    var next: AudienceLens      // Cycles: All → Admin → Marketing → All
+    var label: String
+    var icon: String
+    var tintColor: Color
+    func matches(audiences: Set<Role>) -> Bool
+}
+```
+
+### ContentKind
+
+Filter mode for viewing work items by content type.
+
+```swift
+enum ContentKind: String, CaseIterable {
+    case all
+    case tasks
+    case activities
+
+    var next: ContentKind       // Cycles: All → Tasks → Activities → All
+    var label: String
+}
+```
+
+### MenuSection
+
+Menu sections for iPhone navigation.
+
+```swift
+enum MenuSection: String, CaseIterable, Identifiable, Hashable {
+    case tasks
+    case activities
+    case listings
+
+    var id: String { rawValue }
+    var title: String
+    var icon: String
+    var accentColor: Color
+}
+```
+
+### ViewFilter
+
+View filter for role-aware filtering in listings.
+
+```swift
+enum ViewFilter: CaseIterable {
+    case all
+    case admin
+    case marketing
+
+    var next: ViewFilter
+    var label: String
+    func matches(audiences: Set<Role>) -> Bool
 }
 ```
 
@@ -531,24 +790,59 @@ enum DateSection: String, CaseIterable, Identifiable {
 
 Unified wrapper for TaskItem and Activity in UI components.
 
-```swift
-enum WorkItem: Identifiable, Hashable {
-    case task(TaskItem)
-    case activity(Activity)
+**Critical**: WorkItem caches ALL display properties at construction time via `WorkItemSnapshot`.
+This prevents crashes when SwiftUI renders views after a ModelContext reset has invalidated the underlying SwiftData models.
 
+```swift
+struct WorkItemSnapshot {
+    let id: UUID
+    let title: String
+    let itemDescription: String
+    let dueDate: Date?
+    let priority: Priority
+    let claimedBy: UUID?
+    let subtaskCount: Int
+    let completedSubtaskCount: Int
+    let noteCount: Int
+    let createdAt: Date
+    let updatedAt: Date
+    let declaredBy: UUID
+    let isCompleted: Bool
+    let isDeleted: Bool
+    let typeLabel: String
+    let typeIcon: String
+    let statusRawValue: String
+    let activityType: ActivityType?
+    let syncState: EntitySyncState
+    let lastSyncError: String?
+    let audiences: Set<Role>
+}
+
+enum WorkItem: Identifiable, Hashable, Equatable {
+    case task(TaskItem, snapshot: WorkItemSnapshot)
+    case activity(Activity, snapshot: WorkItemSnapshot)
+
+    // All property access uses cached snapshot values
     var id: UUID
     var title: String
     var dueDate: Date?
     var priority: Priority
     var claimedBy: UUID?
-    var notes: [Note]
-    var subtasks: [Subtask]
+    var audiences: Set<Role>
+    var subtaskProgress: Double
+    var isCompleted: Bool
+    var syncState: EntitySyncState
+    var isSyncFailed: Bool
 
-    var isTask: Bool
-    var isActivity: Bool
+    // Factory methods (capture snapshot at creation)
+    static func task(_ task: TaskItem) -> WorkItem
+    static func activity(_ activity: Activity) -> WorkItem
+
+    // Live model access (USE WITH CAUTION - only for mutations)
     var taskItem: TaskItem?
     var activityItem: Activity?
-    var isCompleted: Bool
+    var notes: [Note]       // Live access - may crash if model invalidated
+    var subtasks: [Subtask] // Live access - may crash if model invalidated
 }
 ```
 
@@ -557,11 +851,17 @@ enum WorkItem: Identifiable, Hashable {
 ID-only reference to avoid stale model references in NavigationPath.
 
 ```swift
-enum WorkItemRef: Hashable, Codable {
-    case task(UUID)
-    case activity(UUID)
+enum WorkItemRef: Hashable, Identifiable {
+    case task(id: UUID)
+    case activity(id: UUID)
 
-    static func from(_ item: WorkItem) -> WorkItemRef
+    var id: UUID
+    var isTask: Bool
+    var isActivity: Bool
+
+    static func task(_ task: TaskItem) -> WorkItemRef
+    static func activity(_ activity: Activity) -> WorkItemRef
+    static func from(_ workItem: WorkItem) -> WorkItemRef
 }
 ```
 
@@ -595,6 +895,8 @@ final class SyncManager: ObservableObject {
     @Published private(set) var lastSyncTime: Date?
     @Published private(set) var syncError: Error?
     @Published private(set) var syncStatus: SyncStatus
+    @Published private(set) var lastSyncErrorMessage: String?
+    @Published private(set) var syncRunId: Int
     @Published var currentUserID: UUID?
 }
 ```
@@ -606,8 +908,11 @@ final class SyncManager: ObservableObject {
 func configure(with container: ModelContainer, testUserID: UUID?)
 
 // Sync Operations
-func requestSync()              // Debounced (500ms)
+func requestSync()              // Triggers immediate sync
 func sync() async               // Immediate full sync
+func fullSync() async           // Force full reconciliation (ignores lastSyncTime)
+func retrySync() async          // Retry failed entities
+func resetLastSyncTime()        // Force next sync to run full reconciliation
 
 // Realtime
 func startListening() async     // Subscribe to Supabase realtime
@@ -624,7 +929,6 @@ sequenceDiagram
     participant Supabase
 
     UI->>SyncManager: requestSync()
-    Note over SyncManager: Debounce 500ms
     SyncManager->>SyncManager: sync()
 
     rect rgb(200, 230, 255)
@@ -644,13 +948,13 @@ sequenceDiagram
 
     rect rgb(255, 230, 200)
         Note over SyncManager,Supabase: Sync Up (Local → Server)
-        SyncManager->>SwiftData: fetch dirty listings
+        SyncManager->>SwiftData: fetch pending listings
         SyncManager->>Supabase: upsert listings
-        SyncManager->>SwiftData: fetch dirty tasks
+        SyncManager->>SwiftData: fetch pending tasks
         SyncManager->>Supabase: upsert tasks
-        SyncManager->>SwiftData: fetch dirty activities
+        SyncManager->>SwiftData: fetch pending activities
         SyncManager->>Supabase: upsert activities
-        SyncManager->>SwiftData: fetch dirty claim_events
+        SyncManager->>SwiftData: fetch pending claim_events
         SyncManager->>Supabase: upsert claim_events
     end
 
@@ -665,16 +969,27 @@ sequenceDiagram
 
 ### Dirty Detection
 
+Uses `EntitySyncState.pending` instead of timestamp comparison:
+
 ```swift
 var isDirty: Bool {
-    guard let syncedAt = syncedAt else { return true }
-    return updatedAt > syncedAt
+    syncState == .pending
+}
+```
+
+### Local-First Sync Guard
+
+Local-authoritative items are NOT overwritten by server state until SyncUp succeeds:
+
+```swift
+func isLocalAuthoritative<T: RealtimeSyncable>(_ model: T, inFlight: Bool) -> Bool {
+    model.syncState == .pending || model.syncState == .failed || inFlight
 }
 ```
 
 ### Conflict Resolution
 
-Last-write-wins: Server wins on syncDown, client wins on syncUp.
+Last-write-wins: Server wins on syncDown (unless local-authoritative), client wins on syncUp.
 
 ---
 
@@ -729,6 +1044,7 @@ let task = TaskItem(
 task.listing = listing
 listing?.tasks.append(task)
 modelContext.insert(task)
+task.markPending()  // Mark for sync
 syncManager.requestSync()
 
 // Activity
@@ -739,16 +1055,17 @@ let activity = Activity(
     declaredBy: currentUserId
 )
 modelContext.insert(activity)
+activity.markPending()
 syncManager.requestSync()
 ```
 
 ### Modifying Items
 
 ```swift
-// Always update timestamps
+// Use markPending() instead of manually updating timestamps
 task.status = .completed
 task.completedAt = Date()
-task.updatedAt = Date()  // Required for sync dirty detection
+task.markPending()  // Sets syncState = .pending, clears lastSyncError, updates updatedAt
 syncManager.requestSync()
 ```
 
@@ -759,7 +1076,7 @@ Soft delete via status:
 ```swift
 task.status = .deleted
 task.deletedAt = Date()
-task.updatedAt = Date()
+task.markPending()
 syncManager.requestSync()
 ```
 
