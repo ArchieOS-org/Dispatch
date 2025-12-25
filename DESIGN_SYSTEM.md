@@ -18,6 +18,8 @@ graph TD
     Colors --> Claim[Claim]
     Colors --> Background[Background]
     Colors --> Text[Text]
+    Colors --> RoleColors[RoleColors]
+    Colors --> Progress[Progress]
 
     Icons --> SyncIcons[Sync]
     Icons --> StatusIcons[StatusIcons]
@@ -37,9 +39,13 @@ Dispatch/Design/
 ├── DesignSystem.swift      # Main DS namespace declaration
 ├── ColorSystem.swift       # DS.Colors - semantic colors
 ├── Typography.swift        # DS.Typography - font styles
-├── Spacing.swift          # DS.Spacing - 4pt grid system
-├── Shadows.swift          # DS.Shadows - elevation styles
-└── IconSystem.swift       # DS.Icons - SF Symbol tokens
+├── Spacing.swift           # DS.Spacing - 4pt grid system
+├── Shadows.swift           # DS.Shadows - elevation styles
+├── IconSystem.swift        # DS.Icons - SF Symbol tokens
+├── Components/
+│   └── AudienceLensButton.swift  # Audience lens filter button
+└── Effects/
+    └── GlassEffect.swift   # Glass effect view modifiers
 ```
 
 ## Usage Pattern
@@ -52,6 +58,7 @@ DS.Colors.PriorityColors.color(for: .high)  // Orange
 DS.Colors.Status.color(for: .completed)     // Green
 DS.Colors.Background.primary                 // System background
 DS.Colors.Text.secondary                     // Dimmed text
+DS.Colors.RoleColors.color(for: .admin)     // Indigo
 
 // Typography
 DS.Typography.headline                       // Card titles
@@ -71,6 +78,9 @@ DS.Shadows.notesOverflowGradient            // Notes stack gradient
 DS.Icons.Action.add                         // "plus"
 DS.Icons.Entity.task                        // "checkmark.square"
 DS.Icons.StatusIcons.icon(for: .completed)  // "checkmark.circle.fill"
+
+// Effects
+.glassCircleBackground()                    // iOS 26+ glass effect
 ```
 
 ---
@@ -105,9 +115,9 @@ DS.Icons.StatusIcons.icon(for: .completed)  // "checkmark.circle.fill"
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `Sync.synced` | Green | Successfully synced |
+| `Sync.ok` | Green | Successfully synced |
 | `Sync.syncing` | Blue | Currently syncing |
-| `Sync.pending` | Orange | Pending sync |
+| `Sync.idle` | Gray | Idle state |
 | `Sync.error` | Red | Sync error |
 
 **Helper:** `DS.Colors.Sync.color(for: SyncStatus) -> Color`
@@ -122,6 +132,16 @@ DS.Icons.StatusIcons.icon(for: .completed)  // "checkmark.circle.fill"
 
 **Helper:** `DS.Colors.Claim.color(for: ClaimState) -> Color`
 
+### Role Colors
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `RoleColors.admin` | Indigo | Admin role indicator |
+| `RoleColors.marketing` | Orange | Marketing role indicator |
+| `RoleColors.all` | Gray | All roles (neutral) |
+
+**Helper:** `DS.Colors.RoleColors.color(for: Role) -> Color`
+
 ### Background Colors (Adaptive)
 
 | Token | UIKit Equivalent | Usage |
@@ -130,6 +150,7 @@ DS.Icons.StatusIcons.icon(for: .completed)  // "checkmark.circle.fill"
 | `Background.secondary` | secondarySystemBackground | Subtle sections |
 | `Background.tertiary` | tertiarySystemBackground | Deeper sections |
 | `Background.grouped` | systemGroupedBackground | Grouped content |
+| `Background.groupedSecondary` | secondarySystemGroupedBackground | Layered surfaces |
 | `Background.card` | systemGray6 | Card backgrounds |
 | `Background.cardDark` | systemGray5 | Darker cards |
 
@@ -143,6 +164,12 @@ DS.Icons.StatusIcons.icon(for: .completed)  // "checkmark.circle.fill"
 | `Text.quaternary` | Most dimmed |
 | `Text.disabled` | Disabled state |
 | `Text.placeholder` | Placeholder text |
+
+### Progress Colors
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `Progress.track` | Text.tertiary @ 30% | Progress ring background |
 
 ### UI Element Colors
 
@@ -159,6 +186,7 @@ DS.Icons.StatusIcons.icon(for: .completed)  // "checkmark.circle.fill"
 | `overdue` | Red | Overdue items |
 | `dueSoon` | Orange | Due within 24h |
 | `dueNormal` | Secondary | Normal due dates |
+| `searchScrim` | Black 40% | Search overlay background |
 
 ---
 
@@ -273,6 +301,28 @@ graph LR
 | `minTouchTarget` | 44pt | Apple HIG minimum |
 | `priorityDotSize` | 8pt | Priority indicator |
 
+### Role Indicators
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `roleDotSize` | 6pt | Role dot indicator |
+| `viewStateRingStroke` | 1.5pt | Ring stroke width |
+| `viewStateRingDiameter` | 28pt | Ring diameter |
+| `roleIndicatorOpacity` | 0.6 | Indicator opacity |
+| `longPressDuration` | 0.4s | Long-press gesture |
+
+### Search Overlay
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `searchPullThreshold` | 60pt | Pull to trigger search |
+| `searchPullZoneHeight` | 32pt | Top grab area |
+| `searchBarHeight` | 48pt | Search bar height |
+| `searchResultRowHeight` | 56pt | Result row height |
+| `searchModalRadius` | 20pt | Modal corner radius |
+| `searchModalPadding` | 16pt | Modal horizontal padding |
+| `searchModalMaxWidth` | 500pt | Max width (larger screens) |
+
 ---
 
 ## Shadows (DS.Shadows)
@@ -289,9 +339,10 @@ graph TB
         M[medium - 8pt]
         E[elevated - 12pt]
         L[large - 16pt]
+        SO[searchOverlay - 20pt]
     end
 
-    N --> SU --> SM --> C --> M --> E --> L
+    N --> SU --> SM --> C --> M --> E --> L --> SO
 ```
 
 | Style | Radius | Y Offset | Opacity | Usage |
@@ -303,6 +354,7 @@ graph TB
 | `medium` | 8pt | 4pt | 12% | Floating |
 | `elevated` | 12pt | 6pt | 15% | Modals |
 | `large` | 16pt | 8pt | 20% | Overlays |
+| `searchOverlay` | 20pt | 10pt | 25% | Search modal |
 
 ### Usage
 
@@ -319,15 +371,23 @@ DS.Shadows.bottomFadeGradient    // Bottom fade
 
 ## Icons (DS.Icons)
 
+### Top-Level Icons
+
+| Token | SF Symbol | Usage |
+|-------|-----------|-------|
+| `priorityDot` | circle.fill | Priority indicator dot |
+
 ### Sync Icons
 
 | Token | SF Symbol | Usage |
 |-------|-----------|-------|
-| `Sync.synced` | checkmark.icloud.fill | Success |
+| `Sync.ok` | checkmark.icloud.fill | Success |
 | `Sync.syncing` | arrow.triangle.2.circlepath.icloud | In progress |
-| `Sync.pending` | icloud.and.arrow.up | Queued |
+| `Sync.idle` | icloud | Idle state |
 | `Sync.error` | exclamationmark.icloud.fill | Error |
 | `Sync.offline` | icloud.slash | Offline |
+
+**Helper:** `DS.Icons.Sync.icon(for: SyncStatus) -> String`
 
 ### Status Icons
 
@@ -338,6 +398,10 @@ DS.Shadows.bottomFadeGradient    // Bottom fade
 | `StatusIcons.completed` | checkmark.circle.fill | Done |
 | `StatusIcons.deleted` | trash.circle | Deleted |
 
+**Helpers:**
+- `DS.Icons.StatusIcons.icon(for: TaskStatus) -> String`
+- `DS.Icons.StatusIcons.icon(for: ActivityStatus) -> String`
+
 ### Claim Icons
 
 | Token | SF Symbol | Usage |
@@ -347,17 +411,25 @@ DS.Shadows.bottomFadeGradient    // Bottom fade
 | `Claim.claimedByOther` | person.fill | Others |
 | `Claim.release` | person.badge.minus | Release |
 
+**Helper:** `DS.Icons.Claim.icon(for: ClaimState) -> String`
+
 ### Action Icons
 
 | Token | SF Symbol | Usage |
 |-------|-----------|-------|
 | `Action.edit` | pencil | Edit |
+| `Action.editCircle` | pencil.circle | Edit button |
 | `Action.delete` | trash | Delete |
+| `Action.deleteCircle` | trash.circle | Delete button |
 | `Action.add` | plus | Create |
 | `Action.addCircle` | plus.circle.fill | FAB |
 | `Action.save` | checkmark | Confirm |
+| `Action.saveCircle` | checkmark.circle.fill | Confirm button |
 | `Action.cancel` | xmark | Cancel |
+| `Action.cancelCircle` | xmark.circle | Cancel button |
+| `Action.share` | square.and.arrow.up | Share |
 | `Action.more` | ellipsis | Options |
+| `Action.moreCircle` | ellipsis.circle | Options button |
 | `Action.refresh` | arrow.clockwise | Reload |
 
 ### Navigation Icons
@@ -366,8 +438,12 @@ DS.Shadows.bottomFadeGradient    // Bottom fade
 |-------|-----------|-------|
 | `Navigation.back` | chevron.left | Back |
 | `Navigation.forward` | chevron.right | Forward |
+| `Navigation.up` | chevron.up | Up |
+| `Navigation.down` | chevron.down | Down |
 | `Navigation.close` | xmark | Dismiss |
+| `Navigation.menu` | line.3.horizontal | Menu |
 | `Navigation.settings` | gearshape | Settings |
+| `Navigation.settingsFill` | gearshape.fill | Settings filled |
 | `Navigation.search` | magnifyingglass | Search |
 | `Navigation.filter` | line.3.horizontal.decrease.circle | Filter |
 
@@ -376,18 +452,26 @@ DS.Shadows.bottomFadeGradient    // Bottom fade
 | Token | SF Symbol | Usage |
 |-------|-----------|-------|
 | `Entity.task` | checkmark.square | Task |
+| `Entity.taskFill` | checkmark.square.fill | Task filled |
 | `Entity.activity` | calendar | Activity |
+| `Entity.activityFill` | calendar.circle.fill | Activity filled |
 | `Entity.listing` | house | Listing |
+| `Entity.listingFill` | house.fill | Listing filled |
 | `Entity.note` | note.text | Note |
 | `Entity.subtask` | checklist | Subtask |
 | `Entity.user` | person.circle | User |
+| `Entity.userFill` | person.circle.fill | User filled |
+| `Entity.team` | person.2 | Team |
+| `Entity.teamFill` | person.2.fill | Team filled |
 
 ### Activity Type Icons
 
 | Token | SF Symbol | Usage |
 |-------|-----------|-------|
 | `ActivityType.call` | phone | Phone call |
+| `ActivityType.callFill` | phone.fill | Phone call filled |
 | `ActivityType.email` | envelope | Email |
+| `ActivityType.emailFill` | envelope.fill | Email filled |
 | `ActivityType.meeting` | person.2.circle | Meeting |
 | `ActivityType.showProperty` | house.and.flag | Showing |
 | `ActivityType.followUp` | arrow.uturn.backward.circle | Follow up |
@@ -398,20 +482,67 @@ DS.Shadows.bottomFadeGradient    // Bottom fade
 | Token | SF Symbol | Usage |
 |-------|-----------|-------|
 | `Alert.warning` | exclamationmark.triangle | Warning |
+| `Alert.warningFill` | exclamationmark.triangle.fill | Warning filled |
 | `Alert.error` | xmark.octagon | Error |
+| `Alert.errorFill` | xmark.octagon.fill | Error filled |
 | `Alert.info` | info.circle | Info |
+| `Alert.infoFill` | info.circle.fill | Info filled |
 | `Alert.success` | checkmark.circle | Success |
+| `Alert.successFill` | checkmark.circle.fill | Success filled |
 | `Alert.notification` | bell | Notification |
+| `Alert.notificationFill` | bell.fill | Notification filled |
+| `Alert.notificationBadge` | bell.badge | Notification with badge |
 
 ### Time Icons
 
 | Token | SF Symbol | Usage |
 |-------|-----------|-------|
 | `Time.clock` | clock | Time |
+| `Time.clockFill` | clock.fill | Time filled |
 | `Time.calendar` | calendar | Date |
 | `Time.scheduled` | calendar.badge.clock | Scheduled |
 | `Time.overdue` | clock.badge.exclamationmark | Overdue |
 | `Time.timer` | timer | Duration |
+
+---
+
+## Components
+
+### AudienceLensButton
+
+A glass-styled button for audience lens filtering. Uses palette rendering for tinted inner lines.
+
+```swift
+AudienceLensButton(
+    lens: .admin,           // Required: Current lens
+    isFiltered: true,       // Shows dot indicator
+    size: 56,               // Button diameter
+    bounceTrigger: 0        // Animate on change
+)
+```
+
+**Features:**
+- Glass effect background (iOS 26+) with material fallback
+- Palette-rendered SF Symbol (`line.3.horizontal.decrease.circle`)
+- Bounce animation on state change
+- Dot indicator when filtered
+
+---
+
+## Effects
+
+### Glass Effect
+
+View modifier for iOS 26+ glass effect with backwards-compatible fallback.
+
+```swift
+Circle()
+    .glassCircleBackground()
+```
+
+**Behavior:**
+- iOS 26+: Uses native `.glassEffect(.regular.interactive())`
+- Earlier: Ultra thin material with white stroke border and shadow
 
 ---
 
@@ -429,6 +560,9 @@ Circle().fill(DS.Colors.PriorityColors.color(for: item.priority))
 // Use helper functions for enums
 DS.Colors.Status.color(for: task.status)
 DS.Icons.StatusIcons.icon(for: activity.status)
+
+// Use role colors for audience indicators
+DS.Colors.RoleColors.color(for: .admin)
 ```
 
 ### DON'T

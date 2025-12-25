@@ -28,8 +28,8 @@ Dispatch is a Swift multi-platform app (iOS, iPadOS, macOS) with a Supabase back
 
 | Platform | Destination | Deployment Target |
 |----------|-------------|-------------------|
-| iOS | `platform=iOS Simulator,name=iPhone 16` | iOS 18.0+ |
-| iPadOS | `platform=iOS Simulator,name=iPad Pro 13-inch (M4)` | iOS 18.0+ |
+| iOS | `platform=iOS Simulator,name=iPhone 17` | iOS 18.0+ |
+| iPadOS | `platform=iOS Simulator,name=iPad Pro 13-inch (M5)` | iOS 18.0+ |
 | macOS | `platform=macOS` | macOS 15.0+ |
 
 ### Build Configurations
@@ -44,11 +44,11 @@ Dispatch is a Swift multi-platform app (iOS, iPadOS, macOS) with a Supabase back
 ```bash
 # iOS Simulator
 xcodebuild -project Dispatch.xcodeproj -scheme Dispatch \
-  -destination 'platform=iOS Simulator,name=iPhone 16' build
+  -destination 'platform=iOS Simulator,name=iPhone 17' build
 
 # iPad Simulator
 xcodebuild -project Dispatch.xcodeproj -scheme Dispatch \
-  -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)' build
+  -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' build
 
 # macOS
 xcodebuild -project Dispatch.xcodeproj -scheme Dispatch \
@@ -60,7 +60,7 @@ xcodebuild -project Dispatch.xcodeproj -scheme Dispatch \
 ```bash
 # Unit tests (iOS Simulator)
 xcodebuild test -project Dispatch.xcodeproj -scheme Dispatch \
-  -destination 'platform=iOS Simulator,name=iPhone 16'
+  -destination 'platform=iOS Simulator,name=iPhone 17'
 
 # Unit tests (macOS)
 xcodebuild test -project Dispatch.xcodeproj -scheme Dispatch \
