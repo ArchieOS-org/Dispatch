@@ -157,5 +157,19 @@ extension DS {
 
         /// Height of the visible drag handle indicator
         static let sidebarDragHandleHeight: CGFloat = 40
+
+        // MARK: - Bottom Toolbar (macOS)
+
+        /// Bottom toolbar height
+        static let bottomToolbarHeight: CGFloat = 44
+
+        /// Bottom toolbar icon button size
+        static let bottomToolbarButtonSize: CGFloat = 36
+
+        /// Bottom toolbar icon size
+        static let bottomToolbarIconSize: CGFloat = 18
+
+        /// Bottom toolbar horizontal padding
+        static let bottomToolbarPadding: CGFloat = 12
     }
 }

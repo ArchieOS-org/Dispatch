@@ -28,6 +28,7 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
         if state.shouldShowSidebar {
           sidebar()
             .frame(width: state.displayWidth)
+            .glassSidebarBackground()
             .clipped()
         }
 

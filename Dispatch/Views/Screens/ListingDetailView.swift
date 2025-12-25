@@ -129,17 +129,14 @@ struct ListingDetailView: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
+        #if os(iOS)
         .toolbar {
-            #if os(iOS)
             ToolbarItem(placement: .topBarTrailing) {
                 OverflowMenu(actions: listingActions)
             }
-            #else
-            ToolbarItem(placement: .automatic) {
-                OverflowMenu(actions: listingActions)
-            }
-            #endif
         }
+        #endif
+        // macOS uses bottom toolbar for delete action (handled via OverflowMenu for now)
         // MARK: - Alerts
         .alert("Delete Listing?", isPresented: $showDeleteListingAlert) {
             Button("Cancel", role: .cancel) {}

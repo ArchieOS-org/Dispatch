@@ -90,10 +90,12 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     @ViewBuilder
     private var content: some View {
         VStack(spacing: 0) {
-            // Filter bar
+            #if !os(macOS)
+            // Filter bar - iOS/iPad only (macOS uses Cmd+1/2/3 keyboard shortcuts)
             SegmentedFilterBar(selection: $selectedFilter) { filter in
                 filter.displayName(forActivities: isActivityList)
             }
+            #endif
 
             // Content
             if isEmpty {
@@ -102,7 +104,20 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                 listView
             }
         }
+        #if !os(macOS)
         .navigationTitle(title)
+        #endif
+        #if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: .filterMine)) { _ in
+            selectedFilter = .mine
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .filterOthers)) { _ in
+            selectedFilter = .others
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .filterUnclaimed)) { _ in
+            selectedFilter = .unclaimed
+        }
+        #endif
     }
 
     // MARK: - Subviews

@@ -54,10 +54,7 @@ struct ListingListView: View {
     @State private var itemForSubtaskAdd: WorkItem?
     @State private var newSubtaskTitle = ""
 
-    // MARK: - State for Add Listing (macOS only - iOS uses GlobalFloatingButtons for tasks/activities)
-    #if os(macOS)
-    @State private var showAddListing = false
-    #endif
+    // macOS add listing state removed - now handled in ContentView bottom toolbar
 
     // MARK: - Computed Properties
 
@@ -118,7 +115,9 @@ struct ListingListView: View {
                 listView
             }
         }
+        #if !os(macOS)
         .navigationTitle("Listings")
+        #endif
         // MARK: - Alerts and Sheets
         .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
             Button("Cancel", role: .cancel) {
@@ -152,24 +151,7 @@ struct ListingListView: View {
                 showAddSubtaskSheet = false
             }
         }
-        #if os(macOS)
-        .sheet(isPresented: $showAddListing) {
-            AddListingSheet(
-                currentUserId: currentUserId,
-                onSave: { syncManager.requestSync() }
-            )
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showAddListing = true
-                } label: {
-                    Label("Add", systemImage: "plus")
-                }
-                .keyboardShortcut("n", modifiers: .command)
-            }
-        }
-        #endif
+        // macOS toolbar removed - bottom toolbar in ContentView handles add listing
     }
 
     @ViewBuilder

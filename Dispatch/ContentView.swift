@@ -37,6 +37,14 @@ struct ContentView: View {
     /// Centralized WorkItemActions environment object for shared navigation
     @StateObject private var workItemActions = WorkItemActions()
 
+    // MARK: - macOS Bottom Toolbar State
+
+    #if os(macOS)
+    @State private var showMacOSQuickEntry = false
+    @State private var showMacOSAddListing = false
+    @State private var showMacOSSearch = false
+    #endif
+
     // MARK: - Search State (iPhone only)
 
     @StateObject private var searchManager = SearchPresentationManager()
@@ -173,6 +181,18 @@ struct ContentView: View {
     // MARK: - iPad/macOS Sidebar Navigation
 
     #if os(macOS)
+    /// Toolbar context based on current tab selection
+    private var toolbarContext: ToolbarContext {
+        switch selectedTab {
+        case .tasks:
+            return .taskList
+        case .activities:
+            return .activityList
+        case .listings:
+            return .listingList
+        }
+    }
+
     /// macOS: Things 3-style resizable sidebar with custom drag handle
     private var sidebarNavigation: some View {
         ResizableSidebar {
@@ -185,7 +205,9 @@ struct ContentView: View {
                     .tag(Tab.listings)
             }
             .listStyle(.sidebar)
+            #if !os(macOS)
             .navigationTitle("Dispatch")
+            #endif
         } content: {
             NavigationStack {
                 Group {
@@ -199,8 +221,51 @@ struct ContentView: View {
                     }
                 }
                 .dispatchDestinations()
-                .syncNowToolbar()
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                BottomToolbar(
+                    context: toolbarContext,
+                    onNew: {
+                        if selectedTab == .listings {
+                            showMacOSAddListing = true
+                        } else {
+                            showMacOSQuickEntry = true
+                        }
+                    },
+                    onSearch: { showMacOSSearch = true }
+                )
+            }
+        }
+        .sheet(isPresented: $showMacOSQuickEntry) {
+            QuickEntrySheet(
+                defaultItemType: selectedTab == .activities ? .activity : .task,
+                currentUserId: currentUserId,
+                listings: activeListings,
+                onSave: { syncManager.requestSync() }
+            )
+        }
+        .sheet(isPresented: $showMacOSAddListing) {
+            AddListingSheet(
+                currentUserId: currentUserId,
+                onSave: { syncManager.requestSync() }
+            )
+        }
+        .sheet(isPresented: $showMacOSSearch) {
+            SearchOverlay(
+                isPresented: $showMacOSSearch,
+                searchText: .constant(""),
+                onSelectResult: { _ in }
+            )
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .newItem)) { _ in
+            if selectedTab == .listings {
+                showMacOSAddListing = true
+            } else {
+                showMacOSQuickEntry = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
+            showMacOSSearch = true
         }
     }
     #else

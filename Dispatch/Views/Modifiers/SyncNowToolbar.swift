@@ -11,9 +11,9 @@ import SwiftUI
 /// A view modifier that adds a "Sync now" toolbar button.
 ///
 /// Replaces pull-to-refresh with an explicit sync action:
-/// - iOS: Toolbar button in trailing position
-/// - iPad: Toolbar button with ⌘R keyboard shortcut
-/// - macOS: ⌘R handled via Commands in DispatchApp.swift
+/// - iOS/iPad: Toolbar button in trailing position with ⌘R keyboard shortcut
+/// - macOS: No toolbar button (Cmd+R handled via Commands in DispatchApp.swift,
+///          top bar is empty for Things 3-style bottom toolbar)
 ///
 /// Usage:
 /// ```swift
@@ -26,20 +26,20 @@ struct SyncNowToolbarModifier: ViewModifier {
     @EnvironmentObject private var syncManager: SyncManager
 
     func body(content: Content) -> some View {
+        #if os(macOS)
+        // macOS: No toolbar button - Cmd+R is in menu bar, top bar should be empty
+        content
+        #else
         content.toolbar {
-            #if os(macOS)
-            ToolbarItem(placement: .primaryAction) {
-                syncButton
-            }
-            #else
             ToolbarItem(placement: .topBarTrailing) {
                 syncButton
                     .keyboardShortcut("r", modifiers: .command)
             }
-            #endif
         }
+        #endif
     }
 
+    #if os(iOS)
     private var syncButton: some View {
         Button {
             Task {
@@ -57,6 +57,7 @@ struct SyncNowToolbarModifier: ViewModifier {
         .accessibilityLabel("Sync now")
         .accessibilityHint("Synchronizes your data with the server")
     }
+    #endif
 }
 
 extension View {
