@@ -65,10 +65,11 @@ struct DispatchApp: App {
                 }
                 #endif
                 #endif
+                .configureMacWindow()
         }
         .modelContainer(sharedModelContainer)
         #if os(macOS)
-        .windowStyle(.hiddenTitleBar)
+        // Note: .windowStyle(.hiddenTitleBar) is replaced by .configureMacWindow()
         .commands {
             CommandGroup(after: .newItem) {
                 Button("New Item") {
