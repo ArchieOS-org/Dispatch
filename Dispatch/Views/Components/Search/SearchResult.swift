@@ -23,7 +23,7 @@ enum SearchResult: Identifiable, Hashable {
     case task(TaskItem)
     case activity(Activity)
     case listing(Listing)
-    case navigation(title: String, icon: String, tab: ContentView.Tab)
+    case navigation(title: String, icon: String, tab: ContentView.Tab, badgeCount: Int? = nil)
 
     // MARK: - Identifiable
 
@@ -32,7 +32,7 @@ enum SearchResult: Identifiable, Hashable {
         case .task(let task): return task.id
         case .activity(let activity): return activity.id
         case .listing(let listing): return listing.id
-        case .navigation(let title, _, _):
+        case .navigation(let title, _, _, _):
             // Stable UUID based on title for navigation items
             return UUID(uuidString: "DEADBEEF-0000-0000-0000-\(title.hashValue)") ?? UUID()
         }
@@ -46,7 +46,7 @@ enum SearchResult: Identifiable, Hashable {
         case .task(let task): return task.title
         case .activity(let activity): return activity.title
         case .listing(let listing): return listing.address
-        case .navigation(let title, _, _): return title
+        case .navigation(let title, _, _, _): return title
         }
     }
 
@@ -78,7 +78,7 @@ enum SearchResult: Identifiable, Hashable {
             case .other: return DS.Icons.ActivityType.other
             }
         case .listing: return DS.Icons.Entity.listing
-        case .navigation(_, let icon, _): return icon
+        case .navigation(_, let icon, _, _): return icon
         }
     }
 
@@ -133,6 +133,15 @@ enum SearchResult: Identifiable, Hashable {
         case .task: return 0
         case .activity: return 1
         case .listing: return 2
+        }
+    }
+    
+    // MARK: - Navigation Badges
+    
+    var badgeCount: Int? {
+        switch self {
+        case .navigation(_, _, _, let count): return count
+        default: return nil
         }
     }
 }

@@ -87,5 +87,8 @@ extension Notification.Name {
   static let filterMine = Notification.Name("filterMine")
   static let filterOthers = Notification.Name("filterOthers")
   static let filterUnclaimed = Notification.Name("filterUnclaimed")
+  
+  /// Posted when a search result is selected from the popover
+  static let navigateSearchResult = Notification.Name("navigateSearchResult")
 }
 #endif

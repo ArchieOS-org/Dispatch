@@ -89,13 +89,10 @@ private struct UnifiedDragHandle: View {
       }
       .onHover { hovering in
         isHovering = hovering
-      }
-      .onContinuousHover { phase in
-        switch phase {
-        case .active:
-          NSCursor.resizeLeftRight.push()
-        case .ended:
-          NSCursor.pop()
+        if hovering {
+            NSCursor.resizeLeftRight.push()
+        } else {
+            NSCursor.pop()
         }
       }
       .gesture(dragGesture)

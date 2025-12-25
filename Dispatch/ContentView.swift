@@ -42,8 +42,7 @@ struct ContentView: View {
     #if os(macOS)
     @State private var showMacOSQuickEntry = false
     @State private var showMacOSAddListing = false
-    @State private var showMacOSSearch = false
-    @State private var macSearchText = ""
+    // macSearchText state removed as it lives in popover now
     #endif
 
     // MARK: - Search State (iPhone only)
@@ -176,7 +175,7 @@ struct ContentView: View {
             searchNavigationPath.append(WorkItemRef.activity(activity))
         case .listing(let listing):
             searchNavigationPath.append(listing)
-        case .navigation(_, _, let tab):
+        case .navigation(_, _, let tab, _):
             #if os(macOS)
             selectedTab = tab
             #else
@@ -214,11 +213,8 @@ struct ContentView: View {
                     .tag(Tab.listings)
             }
             .listStyle(.sidebar)
-            #if !os(macOS)
-            .navigationTitle("Dispatch")
-            #endif
         } content: {
-            NavigationStack {
+            NavigationStack(path: $searchNavigationPath) {
                 Group {
                     switch selectedTab {
                     case .tasks:
@@ -241,7 +237,9 @@ struct ContentView: View {
                             showMacOSQuickEntry = true
                         }
                     },
-                    onSearch: { showMacOSSearch = true }
+                    onSearch: {
+                        NotificationCenter.default.post(name: .openSearch, object: nil)
+                    }
                 )
             }
         }
@@ -267,20 +265,13 @@ struct ContentView: View {
                 showMacOSQuickEntry = true
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
-            showMacOSSearch = true
-        }
-        .overlay {
-            if showMacOSSearch {
-                SearchOverlay(
-                    isPresented: $showMacOSSearch,
-                    searchText: $macSearchText,
-                    onSelectResult: { result in
-                        selectSearchResult(result)
-                    }
-                )
+
+        .onReceive(NotificationCenter.default.publisher(for: .navigateSearchResult)) { notification in
+            if let result = notification.userInfo?["result"] as? SearchResult {
+                selectSearchResult(result)
             }
         }
+        // Old .openSearch listener removed - handled by child views showing popover
     }
     #else
     /// iPad: Standard NavigationSplitView sidebar

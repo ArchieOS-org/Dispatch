@@ -145,6 +145,11 @@ struct ListingListView: View {
                 listView
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
+            #if os(macOS)
+            showQuickFind = true
+            #endif
+        }
         #if !os(macOS)
         .navigationTitle("Listings")
         #endif

@@ -40,7 +40,7 @@ struct SearchResultsList: View {
 
     /// Filtered and ranked results
     private var filteredResults: [SearchResult] {
-        allResults.filtered(by: debouncedQuery)
+        allResults.filtered(by: searchText)
     }
 
     /// Results grouped by section
@@ -56,25 +56,23 @@ struct SearchResultsList: View {
     // MARK: - Body
 
     var body: some View {
-        Group {
-            if debouncedQuery.isEmpty {
-                emptyPromptView
-            } else if isEmpty {
-                noResultsView
+        VStack(spacing: 0) {
+            if searchText.isEmpty {
+                 emptyPromptView
+            } else if filteredResults.isEmpty { // Use filteredResults directly, skip debounce for now
+                 noResultsView
             } else {
-                resultsList
+                 resultsList
             }
         }
-        .onChange(of: searchText) { _, newValue in
-            debounceSearch(newValue)
-        }
+        // Removed debounce logic to rule out Task creation loops
     }
 
     // MARK: - Subviews
 
     private var resultsList: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
                 ForEach(groupedResults, id: \.section) { section, results in
                     sectionHeader(section)
 

@@ -134,6 +134,11 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                 listView
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
+            #if os(macOS)
+            showQuickFind = true
+            #endif
+        }
         #if !os(macOS)
         .navigationTitle(title)
         #endif

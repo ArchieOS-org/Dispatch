@@ -1,75 +1,119 @@
 
 import SwiftUI
+import SwiftData
 
 /// The entire dropdown panel containing search + navigation list.
+/// Unifies "Quick Find" navigation and "Search" results.
 struct NavigationPopover: View {
     @Binding var searchText: String
     @Binding var isPresented: Bool
     let currentTab: ContentView.Tab
     let onNavigate: (ContentView.Tab) -> Void
     
-    // Hardcoded counts for MVP demo
+    // Search Data Queries
+    @Query(sort: \TaskItem.title) private var tasks: [TaskItem]
+    @Query(sort: \Activity.title) private var activities: [Activity]
+    @Query(sort: \Listing.address) private var listings: [Listing]
+    
+    // Hardcoded empty arrays removed (Queries active)
+    
+    // Hardcoded counts for MVP demo (Navigation List)
     let inboxCount = 4
     let todayCount = 8
 
-    @FocusState private var isFieldFocused: Bool
+    init(searchText: Binding<String>, isPresented: Binding<Bool>, currentTab: ContentView.Tab, onNavigate: @escaping (ContentView.Tab) -> Void) {
+        self._searchText = searchText
+        self._isPresented = isPresented
+        self.currentTab = currentTab
+        self.onNavigate = onNavigate
+    }
+
+    // Filtered data for search
+    private var activeTasks: [TaskItem] { tasks.filter { $0.status != .deleted } }
+    private var activeActivities: [Activity] { activities.filter { $0.status != .deleted } }
+    private var activeListings: [Listing] { listings.filter { $0.status != .deleted } }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search Field
-            QuickFindField(text: $searchText, isFocused: $isFieldFocused)
-                .padding(10)
+            // Unifed Search Bar (replaces QuickFindField)
+            SearchBar(
+                text: $searchText,
+                showCancelButton: false,
+                onCancel: {
+                    searchText = ""
+                }
+            )
+            .padding(.horizontal, DS.Spacing.searchModalPadding)
+            .padding(.top, DS.Spacing.lg)
+            .padding(.bottom, DS.Spacing.sm)
 
             Divider()
 
-            // Scrollable List
-            ScrollView {
-                VStack(spacing: 2) {
-                    // Smart Lists
-                    Group {
-                        NavigationListItem(
-                            title: "Inbox",
-                            icon: "tray",
-                            badgeCount: inboxCount,
-                            isSelected: currentTab == .tasks, // Simplified logic for demo
-                            action: { onNavigate(.tasks) }
-                        )
-                        
-                        NavigationListItem(
-                            title: "Today",
-                            icon: "star.fill",
-                            badgeCount: todayCount,
-                            isSelected: false,
-                            action: { onNavigate(.tasks) } // In real map, would map to specific filter
-                        )
-                    }
-
-                    Divider().padding(.vertical, 4)
-
-                    // Areas (e.g. Listings)
-                    NavigationListItem(
-                        title: "Listings",
-                        icon: "building.2",
-                        badgeCount: nil,
-                        isSelected: currentTab == .listings,
-                        action: { onNavigate(.listings) }
-                    )
-                    
-                    NavigationListItem(
-                        title: "Activities",
-                        icon: "list.bullet.clipboard",
-                        badgeCount: nil,
-                        isSelected: currentTab == .activities,
-                        action: { onNavigate(.activities) }
+            // Content Switching
+            Group {
+                if searchText.isEmpty {
+                    navigationList
+                } else {
+                    // Search Results (Unified Component)
+                    SearchResultsList(
+                        searchText: searchText,
+                        tasks: activeTasks,
+                        activities: activeActivities,
+                        listings: activeListings,
+                        onSelectResult: { result in
+                            handleSearchResultSelection(result)
+                        }
                     )
                 }
-                .padding(6)
             }
-            .frame(maxHeight: 400)
+            .frame(height: 350)
         }
-        .frame(width: 260)
-        .onAppear {
-            isFieldFocused = true
+        .frame(width: 320)
+        .background(DS.Colors.Background.groupedSecondary)
+    }
+    
+    // MARK: - Navigation List (Empty State)
+    
+    private var navigationList: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                // Navigation Items
+                let items: [SearchResult] = [
+                    .navigation(title: "Inbox", icon: "tray", tab: .tasks, badgeCount: inboxCount),
+                    .navigation(title: "Today", icon: "star.fill", tab: .tasks, badgeCount: todayCount),
+                    .navigation(title: "Listings", icon: "building.2", tab: .listings, badgeCount: nil),
+                    .navigation(title: "Activities", icon: "list.bullet.clipboard", tab: .activities, badgeCount: nil)
+                ]
+                
+                ForEach(items) { item in
+                    Button {
+                        handleSearchResultSelection(item)
+                    } label: {
+                        SearchResultRow(result: item)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    if item.id != items.last?.id {
+                        Divider()
+                            .padding(.leading, DS.Spacing.lg + DS.Spacing.avatarMedium + DS.Spacing.md)
+                    }
+                }
+            }
         }
+    }
+    
+    // MARK: - Actions
+    
+    private func handleSearchResultSelection(_ result: SearchResult) {
+        // Dismiss popover
+        isPresented = false
+        searchText = ""
+        
+        // Post notification for ContentView to handle navigation
+        NotificationCenter.default.post(
+            name: .navigateSearchResult,
+            object: nil,
+            userInfo: ["result": result]
+        )
     }
 }
