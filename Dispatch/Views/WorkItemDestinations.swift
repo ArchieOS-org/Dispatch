@@ -47,15 +47,18 @@ private struct DispatchDestinationsModifier: ViewModifier {
                     onDeleteSubtask: actions.onDeleteSubtask,
                     onAddSubtask: actions.onAddSubtask
                 )
+                .hideMacToolbar()
             }
             .navigationDestination(for: Listing.self) { listing in
                 ListingDetailView(listing: listing, userLookup: actions.userLookup)
+                    .hideMacToolbar()
             }
             .navigationDestination(for: MenuSection.self) { section in
                 menuDestination(for: section)
+                    .hideMacToolbar()
             }
     }
-
+    
     @ViewBuilder
     private func menuDestination(for section: MenuSection) -> some View {
         switch section {
@@ -66,5 +69,16 @@ private struct DispatchDestinationsModifier: ViewModifier {
         case .listings:
             ListingListView(embedInNavigationStack: false)
         }
+    }
+}
+
+extension View {
+    func hideMacToolbar() -> some View {
+        #if os(macOS)
+        self.toolbar(.hidden, for: .windowToolbar)
+            .navigationTitle("")
+        #else
+        self
+        #endif
     }
 }

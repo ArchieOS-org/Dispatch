@@ -23,6 +23,7 @@ enum SearchResult: Identifiable, Hashable {
     case task(TaskItem)
     case activity(Activity)
     case listing(Listing)
+    case navigation(title: String, icon: String, tab: ContentView.Tab)
 
     // MARK: - Identifiable
 
@@ -31,6 +32,9 @@ enum SearchResult: Identifiable, Hashable {
         case .task(let task): return task.id
         case .activity(let activity): return activity.id
         case .listing(let listing): return listing.id
+        case .navigation(let title, _, _):
+            // Stable UUID based on title for navigation items
+            return UUID(uuidString: "DEADBEEF-0000-0000-0000-\(title.hashValue)") ?? UUID()
         }
     }
 
@@ -42,6 +46,7 @@ enum SearchResult: Identifiable, Hashable {
         case .task(let task): return task.title
         case .activity(let activity): return activity.title
         case .listing(let listing): return listing.address
+        case .navigation(let title, _, _): return title
         }
     }
 
@@ -55,6 +60,7 @@ enum SearchResult: Identifiable, Hashable {
         case .listing(let listing):
             let status = listing.status.rawValue.capitalized
             return listing.city.isEmpty ? status : "\(listing.city) · \(status)"
+        case .navigation: return "Quick Jump"
         }
     }
 
@@ -72,6 +78,7 @@ enum SearchResult: Identifiable, Hashable {
             case .other: return DS.Icons.ActivityType.other
             }
         case .listing: return DS.Icons.Entity.listing
+        case .navigation(_, let icon, _): return icon
         }
     }
 
@@ -81,6 +88,7 @@ enum SearchResult: Identifiable, Hashable {
         case .task: return MenuSection.tasks.accentColor
         case .activity: return MenuSection.activities.accentColor
         case .listing: return MenuSection.listings.accentColor
+        case .navigation: return .blue // Standard navigation color
         }
     }
 
@@ -90,6 +98,7 @@ enum SearchResult: Identifiable, Hashable {
         case .task: return "Tasks"
         case .activity: return "Activities"
         case .listing: return "Listings"
+        case .navigation: return "Navigation"
         }
     }
 
@@ -101,6 +110,7 @@ enum SearchResult: Identifiable, Hashable {
         case .task(let task): return task.status == .completed
         case .activity(let activity): return activity.status == .completed
         case .listing: return false
+        case .navigation: return false
         }
     }
 
@@ -110,6 +120,7 @@ enum SearchResult: Identifiable, Hashable {
         case .task(let task): return task.status == .deleted
         case .activity(let activity): return activity.status == .deleted
         case .listing(let listing): return listing.status == .deleted
+        case .navigation: return false
         }
     }
 
@@ -118,6 +129,7 @@ enum SearchResult: Identifiable, Hashable {
     /// Sort priority for section ordering (Tasks first, then Activities, then Listings)
     var sectionOrder: Int {
         switch self {
+        case .navigation: return -1 // Navigation always first
         case .task: return 0
         case .activity: return 1
         case .listing: return 2

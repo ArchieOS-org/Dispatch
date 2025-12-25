@@ -31,6 +31,9 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     @ViewBuilder let destinationBuilder: (WorkItemRef) -> Destination
 
     @State private var selectedFilter: ClaimFilter = .mine
+    @State private var showQuickFind = false
+    @State private var quickFindText = ""
+    @State private var isTitleHovering = false
 
     init(
         title: String,
@@ -90,7 +93,34 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     @ViewBuilder
     private var content: some View {
         VStack(spacing: 0) {
-            #if !os(macOS)
+            #if os(macOS)
+            // Custom Header for macOS (triggers Quick Find)
+            HStack {
+                Spacer()
+                TitleDropdownButton(title: title, isHovering: $isTitleHovering) {
+                    showQuickFind = true
+                }
+                .popover(isPresented: $showQuickFind, arrowEdge: .bottom) {
+                    NavigationPopover(
+                        searchText: $quickFindText,
+                        isPresented: $showQuickFind,
+                        currentTab: .tasks, // Defaulting to tasks context here
+                        onNavigate: { tab in
+                            // Post notification or callback to switch tab
+                            // For MVP, we use notification as ContentView observes it
+                            switch tab {
+                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil) // Approximation
+                            case .activities: NotificationCenter.default.post(name: .filterMine, object: nil)
+                            case .listings: NotificationCenter.default.post(name: .filterMine, object: nil)
+                            }
+                            showQuickFind = false
+                        }
+                    )
+                }
+                Spacer()
+            }
+            .padding(.top, 38) // Increased to clear traffic lights
+            #else
             // Filter bar - iOS/iPad only (macOS uses Cmd+1/2/3 keyboard shortcuts)
             SegmentedFilterBar(selection: $selectedFilter) { filter in
                 filter.displayName(forActivities: isActivityList)

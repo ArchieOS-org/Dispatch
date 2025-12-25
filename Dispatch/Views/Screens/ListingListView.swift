@@ -54,7 +54,11 @@ struct ListingListView: View {
     @State private var itemForSubtaskAdd: WorkItem?
     @State private var newSubtaskTitle = ""
 
-    // macOS add listing state removed - now handled in ContentView bottom toolbar
+    // macOS quick entry state removed - now handled in ContentView bottom toolbar
+
+    @State private var showQuickFind = false
+    @State private var quickFindText = ""
+    @State private var isTitleHovering = false
 
     // MARK: - Computed Properties
 
@@ -108,7 +112,33 @@ struct ListingListView: View {
 
     @ViewBuilder
     private var content: some View {
-        Group {
+        VStack(spacing: 0) {
+            #if os(macOS)
+            HStack {
+                Spacer()
+                TitleDropdownButton(title: "Listings", isHovering: $isTitleHovering) {
+                    showQuickFind = true
+                }
+                .popover(isPresented: $showQuickFind, arrowEdge: .bottom) {
+                    NavigationPopover(
+                        searchText: $quickFindText,
+                        isPresented: $showQuickFind,
+                        currentTab: .listings,
+                        onNavigate: { tab in
+                            switch tab {
+                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
+                            case .activities: NotificationCenter.default.post(name: .filterMine, object: nil)
+                            case .listings: NotificationCenter.default.post(name: .filterMine, object: nil)
+                            }
+                            showQuickFind = false
+                        }
+                    )
+                }
+                Spacer()
+            }
+            .padding(.top, 38)
+            #endif
+
             if isEmpty {
                 emptyStateView
             } else {

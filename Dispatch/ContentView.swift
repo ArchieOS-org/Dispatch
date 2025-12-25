@@ -43,6 +43,7 @@ struct ContentView: View {
     @State private var showMacOSQuickEntry = false
     @State private var showMacOSAddListing = false
     @State private var showMacOSSearch = false
+    @State private var macSearchText = ""
     #endif
 
     // MARK: - Search State (iPhone only)
@@ -175,6 +176,14 @@ struct ContentView: View {
             searchNavigationPath.append(WorkItemRef.activity(activity))
         case .listing(let listing):
             searchNavigationPath.append(listing)
+        case .navigation(_, _, let tab):
+            #if os(macOS)
+            selectedTab = tab
+            #else
+            // On iPhone, we might want to switch tabs or pop to root
+            selectedTab = tab
+            // Optional: Pop to root if needed
+            #endif
         }
     }
 
@@ -250,13 +259,7 @@ struct ContentView: View {
                 onSave: { syncManager.requestSync() }
             )
         }
-        .sheet(isPresented: $showMacOSSearch) {
-            SearchOverlay(
-                isPresented: $showMacOSSearch,
-                searchText: .constant(""),
-                onSelectResult: { _ in }
-            )
-        }
+
         .onReceive(NotificationCenter.default.publisher(for: .newItem)) { _ in
             if selectedTab == .listings {
                 showMacOSAddListing = true
@@ -266,6 +269,17 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
             showMacOSSearch = true
+        }
+        .overlay {
+            if showMacOSSearch {
+                SearchOverlay(
+                    isPresented: $showMacOSSearch,
+                    searchText: $macSearchText,
+                    onSelectResult: { result in
+                        selectSearchResult(result)
+                    }
+                )
+            }
         }
     }
     #else

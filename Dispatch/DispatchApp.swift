@@ -115,7 +115,7 @@ struct DispatchApp: App {
             }
         }
         #endif
-        .onChange(of: scenePhase) { newPhase in
+        .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 Task {
                     // Check app compatibility before sync

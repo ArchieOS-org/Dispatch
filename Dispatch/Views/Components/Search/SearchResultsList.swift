@@ -107,17 +107,33 @@ struct SearchResultsList: View {
     }
 
     private var emptyPromptView: some View {
-        VStack(spacing: DS.Spacing.md) {
-            Image(systemName: "magnifyingglass")
-                .font(.largeTitle)
-                .foregroundColor(DS.Colors.Text.tertiary)
-
-            Text("Search across all your data")
-                .font(.body)
-                .foregroundColor(DS.Colors.Text.secondary)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                // Quick Jump Header
+                sectionHeader("Quick Jump")
+                
+                // Navigation Items
+                let navigationItems: [SearchResult] = [
+                    .navigation(title: "Tasks", icon: DS.Icons.Entity.task, tab: .tasks),
+                    .navigation(title: "Activities", icon: DS.Icons.Entity.activity, tab: .activities),
+                    .navigation(title: "Listings", icon: DS.Icons.Entity.listing, tab: .listings)
+                ]
+                
+                ForEach(navigationItems) { result in
+                    Button {
+                        onSelectResult(result)
+                    } label: {
+                        SearchResultRow(result: result)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    if result.id != navigationItems.last?.id {
+                        Divider()
+                            .padding(.leading, DS.Spacing.lg + DS.Spacing.avatarMedium + DS.Spacing.md)
+                    }
+                }
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(DS.Spacing.xxl)
     }
 
     private var noResultsView: some View {
