@@ -77,6 +77,12 @@ struct DispatchApp: App {
                 }
                 .keyboardShortcut("r", modifiers: .command)
             }
+            CommandGroup(after: .sidebar) {
+                Button("Toggle Sidebar") {
+                    NotificationCenter.default.post(name: .toggleSidebar, object: nil)
+                }
+                .keyboardShortcut("/", modifiers: .command)
+            }
         }
         #endif
         .onChange(of: scenePhase) { newPhase in

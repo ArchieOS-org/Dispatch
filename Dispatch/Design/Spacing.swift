@@ -140,5 +140,22 @@ extension DS {
 
         /// Search overlay modal max width (for larger screens)
         static let searchModalMaxWidth: CGFloat = 500
+
+        // MARK: - Sidebar (macOS)
+
+        /// Minimum sidebar width
+        static let sidebarMinWidth: CGFloat = 200
+
+        /// Maximum sidebar width
+        static let sidebarMaxWidth: CGFloat = 400
+
+        /// Default sidebar width
+        static let sidebarDefaultWidth: CGFloat = 240
+
+        /// Width of the invisible drag handle hit area
+        static let sidebarDragHandleWidth: CGFloat = 8
+
+        /// Height of the visible drag handle indicator
+        static let sidebarDragHandleHeight: CGFloat = 40
     }
 }

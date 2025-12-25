@@ -172,9 +172,10 @@ struct ContentView: View {
 
     // MARK: - iPad/macOS Sidebar Navigation
 
+    #if os(macOS)
+    /// macOS: Things 3-style resizable sidebar with custom drag handle
     private var sidebarNavigation: some View {
-        NavigationSplitView {
-            #if os(macOS)
+        ResizableSidebar {
             List(selection: $selectedTab) {
                 Label("Tasks", systemImage: DS.Icons.Entity.task)
                     .tag(Tab.tasks)
@@ -183,8 +184,29 @@ struct ContentView: View {
                 Label("Listings", systemImage: DS.Icons.Entity.listing)
                     .tag(Tab.listings)
             }
+            .listStyle(.sidebar)
             .navigationTitle("Dispatch")
-            #else
+        } content: {
+            NavigationStack {
+                Group {
+                    switch selectedTab {
+                    case .tasks:
+                        TaskListView()
+                    case .activities:
+                        ActivityListView()
+                    case .listings:
+                        ListingListView()
+                    }
+                }
+                .dispatchDestinations()
+                .syncNowToolbar()
+            }
+        }
+    }
+    #else
+    /// iPad: Standard NavigationSplitView sidebar
+    private var sidebarNavigation: some View {
+        NavigationSplitView {
             List {
                 sidebarButton(for: .tasks, label: "Tasks", icon: DS.Icons.Entity.task)
                 sidebarButton(for: .activities, label: "Activities", icon: DS.Icons.Entity.activity)
@@ -192,7 +214,6 @@ struct ContentView: View {
             }
             .listStyle(.sidebar)
             .navigationTitle("Dispatch")
-            #endif
         } detail: {
             Group {
                 switch selectedTab {
@@ -208,6 +229,7 @@ struct ContentView: View {
         }
         .navigationSplitViewStyle(.balanced)
     }
+    #endif
 
     #if os(iOS)
     @ViewBuilder
