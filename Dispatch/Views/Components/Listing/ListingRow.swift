@@ -16,57 +16,45 @@ struct ListingRow: View {
     let owner: User?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+        HStack(spacing: 6) {
+            // Progress Indicator (Left) - Similar position to checkbox
+            ProgressCircle(progress: listing.progress, size: 16)
+
             // Address
             Text(listing.address)
-                .font(DS.Typography.headline)
+                .font(DS.Typography.body)
                 .foregroundColor(DS.Colors.Text.primary)
                 .lineLimit(1)
 
-            // Metadata row
+            Spacer()
+
+            // Metadata (Counts) - Right aligned
             HStack(spacing: DS.Spacing.md) {
-                // Owner name
-                if let owner = owner {
-                    HStack(spacing: DS.Spacing.xxs) {
-                        Image(systemName: DS.Icons.Entity.user)
+                // Task count
+                if !listing.tasks.isEmpty {
+                    HStack(spacing: 2) {
+                        Image(systemName: DS.Icons.Entity.task)
                             .font(.system(size: 10))
-                        Text(owner.name)
+                        Text("\(listing.tasks.count)")
                             .font(DS.Typography.caption)
                     }
-                    .foregroundColor(DS.Colors.Text.secondary)
+                    .foregroundColor(DS.Colors.Text.tertiary)
                 }
-
-                Spacer()
-
-                // Task count badge
-                HStack(spacing: 2) {
-                    Image(systemName: DS.Icons.Entity.task)
-                        .font(.system(size: 10))
-                    Text("\(listing.tasks.count)")
-                        .font(DS.Typography.caption)
+                
+                // Activity count
+                if !listing.activities.isEmpty {
+                    HStack(spacing: 2) {
+                        Image(systemName: DS.Icons.Entity.activity)
+                            .font(.system(size: 10))
+                        Text("\(listing.activities.count)")
+                            .font(DS.Typography.caption)
+                    }
+                    .foregroundColor(DS.Colors.Text.tertiary)
                 }
-                .foregroundColor(DS.Colors.Text.tertiary)
-
-                // Activity count badge
-                HStack(spacing: 2) {
-                    Image(systemName: DS.Icons.Entity.activity)
-                        .font(.system(size: 10))
-                    Text("\(listing.activities.count)")
-                        .font(DS.Typography.caption)
-                }
-                .foregroundColor(DS.Colors.Text.tertiary)
-
-                // Status badge
-                Text(listing.status.displayName)
-                    .font(DS.Typography.caption)
-                    .foregroundColor(statusColor)
-                    .padding(.horizontal, DS.Spacing.xs)
-                    .padding(.vertical, 2)
-                    .background(statusColor.opacity(0.15))
-                    .cornerRadius(4)
             }
         }
-        .padding(.vertical, DS.Spacing.xs)
+        .padding(.vertical, DS.Spacing.sm)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }

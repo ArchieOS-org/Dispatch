@@ -342,6 +342,13 @@ struct ListingListView: View {
                         NavigationLink(value: listing) {
                             ListingRow(listing: listing, owner: group.owner)
                         }
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(
+                            top: 0,
+                            leading: 0,
+                            bottom: 0,
+                            trailing: DS.Spacing.md
+                        ))
                     }
                 }
             }
