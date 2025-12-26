@@ -112,55 +112,58 @@ struct ListingListView: View {
 
     @ViewBuilder
     private var content: some View {
-        #if os(macOS)
-        AnyView(
-            StandardPageLayout(title: "Listings") {
-                if isEmpty {
-                    emptyStateView
-                } else {
-                    listView
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { notification in
-                if let initialText = notification.userInfo?["initialText"] as? String {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        quickFindText = initialText
+        Group {
+            #if os(macOS)
+            AnyView(
+                StandardPageLayout(title: "Listings") {
+                    if isEmpty {
+                        emptyStateView
+                    } else {
+                        listView
                     }
                 }
-                showQuickFind = true
-            }
-            // macOS Modifiers applied to the concrete StandardPageLayout
-            .navigationTitle("")
-            .toolbarBackground(.hidden, for: .windowToolbar)
-            .sheet(isPresented: $showQuickFind) {
-                NavigationPopover(
-                    searchText: $quickFindText,
-                    isPresented: $showQuickFind,
-                    currentTab: .listings,
-                    onNavigate: { tab in
-                        switch tab {
-                        case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
-                        case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
-                        case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
+                .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { notification in
+                    if let initialText = notification.userInfo?["initialText"] as? String {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            quickFindText = initialText
                         }
-                        showQuickFind = false
                     }
-                )
-            }
-        )
-        #else
-        AnyView(
-            VStack(spacing: 0) {
-                if isEmpty {
-                    emptyStateView
-                } else {
-                    listView
+                    showQuickFind = true
                 }
-            }
-            .navigationTitle("Listings")
-        )
-        #endif
-    }
+                // macOS Modifiers applied to the concrete StandardPageLayout
+                .navigationTitle("")
+                .toolbarBackground(.hidden, for: .windowToolbar)
+                .sheet(isPresented: $showQuickFind) {
+                    NavigationPopover(
+                        searchText: $quickFindText,
+                        isPresented: $showQuickFind,
+                        currentTab: .listings,
+                        onNavigate: { tab in
+                            switch tab {
+                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
+                            case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
+                            case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
+                            }
+                            showQuickFind = false
+                        }
+                    )
+                }
+            )
+            #else
+            AnyView(
+                VStack(spacing: 0) {
+                    if isEmpty {
+                        emptyStateView
+                    } else {
+                        listView
+                    }
+                }
+                .navigationTitle("Listings")
+            )
+            #endif
+        }
+        // MARK: - Alerts and Sheets
+        .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
             Button("Cancel", role: .cancel) {
                 noteToDelete = nil
                 itemForNoteDeletion = nil
@@ -192,7 +195,6 @@ struct ListingListView: View {
                 showAddSubtaskSheet = false
             }
         }
-        // macOS toolbar removed - bottom toolbar in ContentView handles add listing
     }
 
     @ViewBuilder
