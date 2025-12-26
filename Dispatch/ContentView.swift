@@ -123,10 +123,17 @@ struct ContentView: View {
             return event
         }
 
-        // Ignore if a text field is currently focused
+        // Ignore if a text field is currently focused (handles both TextEditor and TextField)
         if let window = NSApp.keyWindow,
-           let responder = window.firstResponder as? NSTextView {
-            if responder.isEditable { return event }
+           let responder = window.firstResponder {
+            // Check for active field editor (NSTextView)
+            if let textView = responder as? NSTextView, textView.isEditable {
+                return event
+            }
+            // Check for direct NSTextField focus (often covers SwiftUI TextFields)
+            if responder is NSTextField {
+                return event
+            }
         }
 
         // Check for alphanumeric characters
