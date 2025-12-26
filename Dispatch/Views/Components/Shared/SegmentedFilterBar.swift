@@ -23,27 +23,7 @@ where Filter.AllCases: RandomAccessCollection {
         #if os(macOS)
         HStack(spacing: 2) {
             ForEach(Filter.allCases) { filter in
-                Button {
-                    withAnimation(.snappy(duration: 0.2)) {
-                        selection = filter
-                    }
-                } label: {
-                    Text(displayName(filter))
-                        .font(DS.Typography.subheadline)
-                        .fontWeight(selection == filter ? .semibold : .regular)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 4)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .background {
-                    if selection == filter {
-                        Capsule()
-                            .fill(Color.secondary.opacity(0.2))
-                            .matchedGeometryEffect(id: "selection", in: animationNamespace)
-                    }
-                }
-                .foregroundStyle(selection == filter ? .primary : .secondary)
+                segmentButton(for: filter)
             }
         }
         .padding(2)
@@ -59,6 +39,33 @@ where Filter.AllCases: RandomAccessCollection {
         .padding(.vertical, DS.Spacing.sm)
         #endif
     }
+
+    #if os(macOS)
+    @ViewBuilder
+    private func segmentButton(for filter: Filter) -> some View {
+        Button {
+            withAnimation(.snappy(duration: 0.2)) {
+                selection = filter
+            }
+        } label: {
+            Text(displayName(filter))
+                .font(DS.Typography.subheadline)
+                .fontWeight(selection == filter ? .semibold : .regular)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background {
+            if selection == filter {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.2))
+                    .matchedGeometryEffect(id: "selection", in: animationNamespace)
+            }
+        }
+        .foregroundStyle(selection == filter ? .primary : .secondary)
+    }
+    #endif
 }
 
 // MARK: - Convenience Initializer for RawRepresentable
