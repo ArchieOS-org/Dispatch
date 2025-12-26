@@ -58,15 +58,27 @@ struct WindowAccessor: NSViewRepresentable {
                 // Configure immediately
                 self.callback(window)
                 
-                // KVO: Aggressively monitor toolbar changes.
-                // SwiftUI will try to add an NSToolbar when views with .toolbar modifiers appear.
-                // We must immediately remove it to maintain the hidden title bar style.
-                self.toolbarObservation = window.observe(\.toolbar, options: [.new]) { [weak self] window, change in
-                    if window.toolbar != nil {
-                        // Re-apply configuration which removes the toolbar
-                        self?.callback(window)
+                // KVO: access the toolbar when it appears to configure transparency
+                self.toolbarObservation = window.observe(\.toolbar, options: [.initial, .new]) { [weak self] window, change in
+                    if let toolbar = window.toolbar {
+                        // Configure for transparency (Things 3 style)
+                        toolbar.showsBaselineSeparator = false
+                        window.titlebarAppearsTransparent = true
+                        window.titleVisibility = .hidden
+                        
+                        // Ensure content extends full size
+                        if !window.styleMask.contains(.fullSizeContentView) {
+                            window.styleMask.insert(.fullSizeContentView)
+                        }
+                        
+                        // Do NOT remove the toolbar (window.toolbar = nil).
+                        // We keep it for Full Screen support and standard item layout,
+                        // but make it invisible via titlebarAppearsTransparent.
                     }
                 }
+                
+                // Initial configuration
+                self.callback(window)
                 
                 // Observe window becoming key to re-assert preferences
                 // SwiftUI/AppKit likes to reset toolbars on focus changes
@@ -133,22 +145,22 @@ struct MacWindowConfigurationModifier: ViewModifier {
                 WindowAccessor { window in
                     guard let window = window else { return }
                     
-                    // Force removal of unified toolbar
-                    // We must set this to nil to get the Things 3 look
-                    if window.toolbar != nil {
-                        window.toolbar = nil
-                    }
-                    
-                    // Configure title bar
+                    // Configure title bar transparency
+                    // This allows the toolbar items (traffic lights, title button) to float
+                    // over the content without a gray background bar.
                     window.titleVisibility = .hidden
                     window.titlebarAppearsTransparent = true
                     
-                    // Ensure full size content view so content goes behind traffic lights
+                    if let toolbar = window.toolbar {
+                        toolbar.showsBaselineSeparator = false
+                    }
+                    
+                    // Ensure full size content view
                     if !window.styleMask.contains(.fullSizeContentView) {
                         window.styleMask.insert(.fullSizeContentView)
                     }
                     
-                    // Optional: Hide the title text permanently
+                    // Hide title text (redundant with titleVisibility but safer)
                     window.title = ""
                 }
             )

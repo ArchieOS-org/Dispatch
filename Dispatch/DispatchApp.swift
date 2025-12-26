@@ -65,7 +65,7 @@ struct DispatchApp: App {
                 }
                 #endif
                 #endif
-                // .configureMacWindow() // Native toolbar integration handles this now
+                .configureMacWindow() // Applies AppKit transparency tweaks to the native toolbar
         }
         .modelContainer(sharedModelContainer)
         #if os(macOS)
