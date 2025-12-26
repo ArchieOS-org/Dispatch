@@ -49,6 +49,9 @@ struct ListingRow: View {
                 .foregroundColor(DS.Colors.Text.primary)
                 .lineLimit(1)
 
+            // Listing Type Pill
+            ListingTypePill(type: listing.listingType)
+
             Spacer()
 
             // Metadata (Counts) - Right aligned
