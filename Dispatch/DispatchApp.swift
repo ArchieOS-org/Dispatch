@@ -65,7 +65,6 @@ struct DispatchApp: App {
                 }
                 #endif
                 #endif
-                #endif
                 // .configureMacWindow() // Removed in favor of native style + toolbar suppression
         }
         .modelContainer(sharedModelContainer)
