@@ -49,6 +49,7 @@ struct ContentView: View {
 
     @StateObject private var searchManager = SearchPresentationManager()
     @State private var searchNavigationPath = NavigationPath()
+    @State private var stackID = UUID() // Used to force-refresh navigation stack on root pop
 
     // MARK: - Global Filter & Overlay State (iPhone only)
 
@@ -254,10 +255,14 @@ struct ContentView: View {
         if selectedTab == tab {
             // "Pop to Root": Clear navigation stack if already on this tab
             searchNavigationPath = NavigationPath()
+            // Force re-identity of the stack to ensure UI update
+            stackID = UUID()
         } else {
             // Switch tabs and clear any existing navigation state
             selectedTab = tab
             searchNavigationPath = NavigationPath()
+            // Fresh stack identity for new tab
+            stackID = UUID()
         }
     }
     
@@ -321,6 +326,7 @@ struct ContentView: View {
                 }
                 .dispatchDestinations()
             }
+            .id(stackID) // Force rebuild when ID changes (pop to root)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 BottomToolbar(
                     context: toolbarContext,
