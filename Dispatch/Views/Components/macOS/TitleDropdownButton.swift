@@ -3,6 +3,7 @@ import SwiftUI
 
 /// A clickable title with chevron that triggers the navigation popover.
 /// Mimics the Things 3 "Slim Mode" title button.
+/// Note: Currently unused as of Dec 2025 (Search moved to global modal).
 struct TitleDropdownButton: View {
     let title: String
     @Binding var isHovering: Bool

@@ -139,29 +139,23 @@ struct ListingListView: View {
         .navigationTitle("Listings")
         #else
         .navigationTitle("")
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                TitleDropdownButton(title: "Listings", isHovering: $isTitleHovering) {
-                    showQuickFind = true
-                }
-                .popover(isPresented: $showQuickFind, arrowEdge: .bottom) {
-                    NavigationPopover(
-                        searchText: $quickFindText,
-                        isPresented: $showQuickFind,
-                        currentTab: .listings,
-                        onNavigate: { tab in
-                            switch tab {
-                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
-                            case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
-                            case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
-                            }
-                            showQuickFind = false
-                        }
-                    )
-                }
-            }
-        }
         .toolbarBackground(.hidden, for: .windowToolbar)
+        .sheet(isPresented: $showQuickFind) {
+            NavigationPopover(
+                searchText: $quickFindText,
+                isPresented: $showQuickFind,
+                currentTab: .listings,
+                onNavigate: { tab in
+                    switch tab {
+                    case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
+                    case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
+                    case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
+                    }
+                    showQuickFind = false
+                }
+            )
+        }
+        #endif
         #endif
         // MARK: - Alerts and Sheets
         .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {

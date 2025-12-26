@@ -126,29 +126,22 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         #else
         // macOS: Native Toolbar with Transparent Background
         .navigationTitle("") // Hide default title
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                TitleDropdownButton(title: title, isHovering: $isTitleHovering) {
-                    showQuickFind = true
-                }
-                .popover(isPresented: $showQuickFind, arrowEdge: .bottom) {
-                    NavigationPopover(
-                        searchText: $quickFindText,
-                        isPresented: $showQuickFind,
-                        currentTab: .tasks,
-                        onNavigate: { tab in
-                            switch tab {
-                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
-                            case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
-                            case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
-                            }
-                            showQuickFind = false
-                        }
-                    )
-                }
-            }
-        }
         .toolbarBackground(.hidden, for: .windowToolbar)
+        .sheet(isPresented: $showQuickFind) {
+            NavigationPopover(
+                searchText: $quickFindText,
+                isPresented: $showQuickFind,
+                currentTab: .tasks,
+                onNavigate: { tab in
+                    switch tab {
+                    case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
+                    case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
+                    case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
+                    }
+                    showQuickFind = false
+                }
+            )
+        }
         #endif
         #if os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: .filterMine)) { _ in
