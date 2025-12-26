@@ -96,10 +96,11 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             #if os(macOS)
             // Custom Header for macOS (triggers Quick Find)
             HStack {
-                Spacer()
+                // Remove Spacer() to align left
                 TitleDropdownButton(title: title, isHovering: $isTitleHovering) {
                     showQuickFind = true
                 }
+                .padding(.leading, 85) // Push past traffic lights
                 .popover(isPresented: $showQuickFind, arrowEdge: .bottom) {
                     NavigationPopover(
                         searchText: $quickFindText,
@@ -117,9 +118,9 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                         }
                     )
                 }
-                Spacer()
+                Spacer() // Push remaining content to right
             }
-            .padding(.top, 38) // Increased to clear traffic lights
+            .padding(.top, 10) // Vertically center with traffic lights (approx)
             #else
             // Filter bar - iOS/iPad only (macOS uses Cmd+1/2/3 keyboard shortcuts)
             SegmentedFilterBar(selection: $selectedFilter) { filter in

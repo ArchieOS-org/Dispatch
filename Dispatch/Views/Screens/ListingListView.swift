@@ -115,10 +115,11 @@ struct ListingListView: View {
         VStack(spacing: 0) {
             #if os(macOS)
             HStack {
-                Spacer()
+                // Remove Spacer() to align left
                 TitleDropdownButton(title: "Listings", isHovering: $isTitleHovering) {
                     showQuickFind = true
                 }
+                .padding(.leading, 85) // Push past traffic lights
                 .popover(isPresented: $showQuickFind, arrowEdge: .bottom) {
                     NavigationPopover(
                         searchText: $quickFindText,
@@ -134,9 +135,9 @@ struct ListingListView: View {
                         }
                     )
                 }
-                Spacer()
+                Spacer() // Push remaining content to right
             }
-            .padding(.top, 38)
+            .padding(.top, 10) // Vertically center with traffic lights
             #endif
 
             if isEmpty {
