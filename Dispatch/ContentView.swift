@@ -115,25 +115,40 @@ struct ContentView: View {
         .background(KeyMonitorView { event in
             handleGlobalKeyDown(event)
         })
-        .sheet(isPresented: $showQuickFind) {
-            NavigationPopover(
-                searchText: $quickFindText,
-                isPresented: $showQuickFind,
-                currentTab: selectedTab, // Now global!
-                onNavigate: { tab in
-                    // Navigation Logic (Unified)
-                    handleTabSelection(tab)
+        .overlay(alignment: .top) {
+            if showQuickFind {
+                ZStack(alignment: .top) {
+                    // Dimmer Background (Click to dismiss)
+                    Color.black.opacity(0.1) // Transparent enough to see content, tangible enough to click
+                        .edgesIgnoringSafeArea(.all)
+                        .onTapGesture {
+                            showQuickFind = false
+                        }
+                    
+                    // The Popover Itself
+                    NavigationPopover(
+                        searchText: $quickFindText,
+                        isPresented: $showQuickFind,
+                        currentTab: selectedTab,
+                        onNavigate: { tab in
+                            handleTabSelection(tab)
 
-                    // Post filters if needed (legacy support for containers listening)
-                    switch tab {
-                    case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
-                    case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
-                    case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
-                    }
-                    showQuickFind = false
+                            // Post filters logic
+                            switch tab {
+                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
+                            case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
+                            case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
+                            }
+                            showQuickFind = false
+                        }
+                    )
+                    .padding(.top, 100) // Position it nicely near the top
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
-            )
+                .zIndex(100) // Ensure it floats above everything
+            }
         }
+        // Removed old .sheet modifier
         .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { notification in
             if let initialText = notification.userInfo?["initialText"] as? String {
                 // Wait for popover animation + autofocus
