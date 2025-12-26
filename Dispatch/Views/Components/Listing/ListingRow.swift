@@ -15,10 +15,33 @@ struct ListingRow: View {
     let listing: Listing
     let owner: User?
 
+    // MARK: - Computed Properties
+
+    private var isOverdue: Bool {
+        guard let date = listing.dueDate else { return false }
+        return date < Calendar.current.startOfDay(for: Date())
+    }
+
+    private var overdueText: String {
+        guard let date = listing.dueDate else { return "" }
+        let startToday = Calendar.current.startOfDay(for: Date())
+        let startDue = Calendar.current.startOfDay(for: date)
+        let components = Calendar.current.dateComponents([.day], from: startDue, to: startToday)
+        let days = components.day ?? 0
+        
+        if days == 1 { return "Yesterday" }
+        return "\(days)d ago"
+    }
+
     var body: some View {
         HStack(spacing: 6) {
             // Progress Indicator (Left) - Similar position to checkbox
             ProgressCircle(progress: listing.progress, size: 16)
+
+            // Date Pill (Left - Normal)
+            if let date = listing.dueDate, !isOverdue {
+                DatePill(date: date)
+            }
 
             // Address
             Text(listing.address)
@@ -30,6 +53,16 @@ struct ListingRow: View {
 
             // Metadata (Counts) - Right aligned
             HStack(spacing: DS.Spacing.md) {
+                // Overdue Flag (Right)
+                if let _ = listing.dueDate, isOverdue {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flag.fill")
+                        Text(overdueText)
+                    }
+                    .font(DS.Typography.caption)
+                    .foregroundStyle(.red)
+                }
+
                 // Task count
                 if !listing.tasks.isEmpty {
                     HStack(spacing: 2) {
