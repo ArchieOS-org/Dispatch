@@ -68,7 +68,7 @@ struct NavigationPopover: View {
             }
             .frame(height: 350)
         }
-        }
+
         .frame(width: 320)
         .background(DS.Colors.Background.groupedSecondary)
         .clipShape(RoundedRectangle(cornerRadius: 12))
