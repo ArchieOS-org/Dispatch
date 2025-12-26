@@ -17,26 +17,16 @@ struct StatusCheckbox: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    var body: some View {
         Button(action: onToggle) {
-            ZStack {
-                if isCompleted {
-                    Circle()
-                        .fill(color)
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.white)
-                } else {
-                    Circle()
-                        .strokeBorder(color, lineWidth: 1.5)
-                }
-            }
-            .frame(width: 14, height: 14) // Match text visual height (cap-height)
-            .scaleEffect(isCompleted ? 1.0 : 0.95)
-            .animation(
-                reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.6),
-                value: isCompleted
-            )
+            Image(systemName: isCompleted ? "checkmark.square.fill" : "square")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(color)
+                .frame(width: 14, height: 14) // Match text visual height
+                .scaleEffect(isCompleted ? 1.0 : 0.95)
+                .animation(
+                    reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.6),
+                    value: isCompleted
+                )
         }
         .buttonStyle(.plain)
         .frame(width: DS.Spacing.minTouchTarget, height: DS.Spacing.minTouchTarget) // Touch target remains large
