@@ -339,7 +339,7 @@ struct ContentView: View {
     }
     #endif
 
-    #if os(iOS)
+    #if os(iOS) || os(visionOS)
     @ViewBuilder
     private func sidebarButton(for tab: Tab, label: String, icon: String) -> some View {
         Button {

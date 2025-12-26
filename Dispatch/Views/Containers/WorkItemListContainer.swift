@@ -109,9 +109,9 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                             // Post notification or callback to switch tab
                             // For MVP, we use notification as ContentView observes it
                             switch tab {
-                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil) // Approximation
-                            case .activities: NotificationCenter.default.post(name: .filterMine, object: nil)
-                            case .listings: NotificationCenter.default.post(name: .filterMine, object: nil)
+                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
+                            case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
+                            case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
                             }
                             showQuickFind = false
                         }

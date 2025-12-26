@@ -34,7 +34,10 @@ enum SearchResult: Identifiable, Hashable {
         case .listing(let listing): return listing.id
         case .navigation(let title, _, _, _):
             // Stable UUID based on title for navigation items
-            return UUID(uuidString: "DEADBEEF-0000-0000-0000-\(title.hashValue)") ?? UUID()
+            // We implementation a simple stable hash to hex string conversion to ensure persistence stability
+            let stableHash = title.utf8.reduce(5381) { ($0 << 5) &+ $0 &+ Int($1) }
+            let hexSuffix = String(format: "%012x", stableHash & 0xFFFFFFFFFFFF)
+            return UUID(uuidString: "DEADBEEF-0000-0000-0000-\(hexSuffix)") ?? UUID()
         }
     }
 

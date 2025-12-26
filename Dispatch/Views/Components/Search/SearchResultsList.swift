@@ -24,8 +24,7 @@ struct SearchResultsList: View {
     let listings: [Listing]
     var onSelectResult: (SearchResult) -> Void
 
-    @State private var debouncedQuery = ""
-    @State private var debounceTask: Task<Void, Never>?
+    // Debounce removed - using live search text directly
 
     // MARK: - Computed Properties
 
@@ -140,7 +139,7 @@ struct SearchResultsList: View {
                 .font(.largeTitle)
                 .foregroundColor(DS.Colors.Text.tertiary)
 
-            Text("No results for \"\(debouncedQuery)\"")
+            Text("No results for \"\(searchText)\"")
                 .font(.body)
                 .foregroundColor(DS.Colors.Text.secondary)
 
@@ -150,19 +149,6 @@ struct SearchResultsList: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(DS.Spacing.xxl)
-    }
-
-    // MARK: - Debounce
-
-    private func debounceSearch(_ query: String) {
-        debounceTask?.cancel()
-
-        debounceTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
-
-            guard !Task.isCancelled else { return }
-            debouncedQuery = query
-        }
     }
 }
 

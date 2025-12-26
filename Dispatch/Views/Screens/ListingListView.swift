@@ -127,8 +127,8 @@ struct ListingListView: View {
                         onNavigate: { tab in
                             switch tab {
                             case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
-                            case .activities: NotificationCenter.default.post(name: .filterMine, object: nil)
-                            case .listings: NotificationCenter.default.post(name: .filterMine, object: nil)
+                            case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
+                            case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
                             }
                             showQuickFind = false
                         }

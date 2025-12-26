@@ -24,7 +24,11 @@ final class SidebarState: ObservableObject {
   @Published var isDragging: Bool = false
 
   /// Live width during drag (can go below minWidth for collapse preview)
-  @Published var liveWidth: CGFloat = 240
+  @Published var liveWidth: CGFloat = DS.Spacing.sidebarDefaultWidth
+
+  init() {
+    liveWidth = CGFloat(storedWidth)
+  }
 
   /// Current sidebar width as CGFloat
   var width: CGFloat {
