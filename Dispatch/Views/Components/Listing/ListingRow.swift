@@ -53,16 +53,6 @@ struct ListingRow: View {
 
             // Metadata (Counts) - Right aligned
             HStack(spacing: DS.Spacing.md) {
-                // Overdue Flag (Right)
-                if let _ = listing.dueDate, isOverdue {
-                    HStack(spacing: 4) {
-                        Image(systemName: "flag.fill")
-                        Text(overdueText)
-                    }
-                    .font(DS.Typography.caption)
-                    .foregroundStyle(.red)
-                }
-
                 // Task count
                 if !listing.tasks.isEmpty {
                     HStack(spacing: 2) {
@@ -83,6 +73,16 @@ struct ListingRow: View {
                             .font(DS.Typography.caption)
                     }
                     .foregroundColor(DS.Colors.Text.tertiary)
+                }
+
+                // Overdue Flag (Right)
+                if let _ = listing.dueDate, isOverdue {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flag.fill")
+                        Text(overdueText)
+                    }
+                    .font(DS.Typography.caption)
+                    .foregroundStyle(.red)
                 }
             }
         }
