@@ -20,27 +20,17 @@ where Filter.AllCases: RandomAccessCollection {
     @Namespace private var animationNamespace
 
     var body: some View {
-        #if os(macOS)
         HStack(spacing: 2) {
             ForEach(Filter.allCases) { filter in
                 segmentButton(for: filter)
             }
         }
         .padding(2)
-        #else
-        Picker("Filter", selection: $selection) {
-            ForEach(Filter.allCases) { filter in
-                Text(displayName(filter))
-                    .tag(filter)
-            }
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal, DS.Spacing.md)
-        .padding(.vertical, DS.Spacing.sm)
-        #endif
+        // Optional container styling could go here if needed for iOS
+        // e.g. .background(Color(uiColor: .secondarySystemBackground)) .clipShape(Capsule())
+        // but Things 3 uses floating text on list headers.
     }
 
-    #if os(macOS)
     @ViewBuilder
     private func segmentButton(for filter: Filter) -> some View {
         Button {
@@ -52,7 +42,7 @@ where Filter.AllCases: RandomAccessCollection {
                 .font(DS.Typography.bodySecondary)
                 .fontWeight(selection == filter ? .semibold : .regular)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 4)
+                .padding(.vertical, 6) // Slightly increased vertical padding for touch targets
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -65,7 +55,6 @@ where Filter.AllCases: RandomAccessCollection {
         }
         .foregroundStyle(selection == filter ? .primary : .secondary)
     }
-    #endif
 }
 
 // MARK: - Convenience Initializer for RawRepresentable
