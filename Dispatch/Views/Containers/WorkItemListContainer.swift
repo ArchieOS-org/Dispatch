@@ -145,6 +145,13 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                 Section {
                     ForEach(sectionItems) { item in
                         rowBuilder(item, item.claimState(currentUserId: currentUserId, userLookup: userLookup))
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(
+                                top: 0,
+                                leading: DS.Spacing.md, // Use system spacing
+                                bottom: 0,
+                                trailing: DS.Spacing.md
+                            ))
                     }
                 } header: {
                     DateSectionHeader(section: section)
@@ -152,7 +159,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             }
         }
         .listStyle(.plain)
-        .listRowSeparator(.hidden) // Remove separators (Things 3 style)
         .pullToSearch()
     }
 

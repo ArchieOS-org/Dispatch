@@ -90,7 +90,7 @@ struct WorkItemRow: View {
                 }
             }
         }
-        .padding(.vertical, 8) // Reduced vertical padding for compact look
+        .padding(.vertical, DS.Spacing.md)
         .contentShape(Rectangle())
         // NOTE: Removed .onTapGesture - it was competing with NavigationLink's gesture.
         // Navigation is now handled by wrapping WorkItemRow in NavigationLink at the call site.
