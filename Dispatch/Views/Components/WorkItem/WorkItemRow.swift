@@ -29,6 +29,31 @@ struct WorkItemRow: View {
     // State for retry animation
     @State private var isRetrying = false
 
+    // New property
+    var hideDueDate: Bool = false
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // MARK: - Computed Properties
+
+    private var isOverdue: Bool {
+        guard let date = item.dueDate else { return false }
+        // An item is overdue if its due date is before the start of today
+        return date < Calendar.current.startOfDay(for: Date())
+    }
+
+    private var overdueText: String {
+        guard let date = item.dueDate else { return "" }
+        let startToday = Calendar.current.startOfDay(for: Date())
+        let startDue = Calendar.current.startOfDay(for: date)
+        let components = Calendar.current.dateComponents([.day], from: startDue, to: startToday)
+        let days = components.day ?? 0
+        
+        if days == 1 { return "Yesterday" }
+        return "\(days)d ago"
+    }
+
     private static let accessibilityDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -43,6 +68,11 @@ struct WorkItemRow: View {
                 color: roleColor,
                 onToggle: onComplete
             )
+
+            // Date Pill (Left - Normal)
+            if let date = item.dueDate, !hideDueDate, !isOverdue {
+                DatePill(date: date)
+            }
 
             // Title
             Text(item.title)
@@ -62,9 +92,14 @@ struct WorkItemRow: View {
 
             // Right side items
             HStack(spacing: DS.Spacing.sm) {
-                // Due Date
-                if let _ = item.dueDate {
-                    DueDateBadge(dueDate: item.dueDate)
+                // Overdue Flag (Right)
+                if let _ = item.dueDate, !hideDueDate, isOverdue {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flag.fill")
+                        Text(overdueText)
+                    }
+                    .font(DS.Typography.caption)
+                    .foregroundStyle(.red)
                 }
 
                 // Actions / Status

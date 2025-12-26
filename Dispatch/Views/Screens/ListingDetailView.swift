@@ -390,7 +390,8 @@ struct ListingDetailView: View {
                                     userLookup: userLookup
                                 ),
                                 onClaim: { claimTask(task) },
-                                onRelease: { unclaimTask(task) }
+                                onRelease: { unclaimTask(task) },
+                                hideDueDate: true
                             )
                             .padding(.horizontal, DS.Spacing.md)
                             .padding(.vertical, DS.Spacing.xs)
@@ -429,7 +430,8 @@ struct ListingDetailView: View {
                                     userLookup: userLookup
                                 ),
                                 onClaim: { claimActivity(activity) },
-                                onRelease: { unclaimActivity(activity) }
+                                onRelease: { unclaimActivity(activity) },
+                                hideDueDate: true
                             )
                             .padding(.horizontal, DS.Spacing.md)
                             .padding(.vertical, DS.Spacing.xs)
