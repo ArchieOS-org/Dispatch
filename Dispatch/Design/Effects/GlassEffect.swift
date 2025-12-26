@@ -12,7 +12,7 @@ extension View {
   /// Explicitly circular - use for round buttons only.
   @ViewBuilder
   func glassCircleBackground() -> some View {
-    if #available(iOS 16.0, *) {
+    if #available(iOS 26.0, *) {
       self.glassEffect(.regular.interactive())
     } else {
       self
