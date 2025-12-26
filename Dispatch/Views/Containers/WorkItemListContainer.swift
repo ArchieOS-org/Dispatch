@@ -93,37 +93,48 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     @ViewBuilder
     private var content: some View {
         #if os(macOS)
-        StandardPageLayout(title: title) {
-            if isEmpty {
-                emptyStateView
-            } else {
-                listView
-            }
-        }
-        #else
-        VStack(spacing: 0) {
-            // Filter bar - iOS/iPad only
-            SegmentedFilterBar(selection: $selectedFilter) { filter in
-                filter.displayName(forActivities: isActivityList)
-            }
-            if isEmpty {
-                emptyStateView
-            } else {
-                listView
-            }
-        }
-        #endif
-        #if os(macOS)
-        .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { notification in
-            if let initialText = notification.userInfo?["initialText"] as? String {
-                // Wait for the popover to animate and field to focus (autofocus mechanism)
-                // Then set the text. This prevents "Select All" from overwriting our char.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    quickFindText = initialText
+        AnyView(
+            StandardPageLayout(title: title) {
+                if isEmpty {
+                    emptyStateView
+                } else {
+                    listView
                 }
             }
-            showQuickFind = true
-        }
+            .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { notification in
+                if let initialText = notification.userInfo?["initialText"] as? String {
+                    // Wait for the popover to animate and field to focus (autofocus mechanism)
+                    // Then set the text. This prevents "Select All" from overwriting our char.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        quickFindText = initialText
+                    }
+                }
+                showQuickFind = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .filterMine)) { _ in
+                selectedFilter = .mine
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .filterOthers)) { _ in
+                selectedFilter = .others
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .filterUnclaimed)) { _ in
+                selectedFilter = .unclaimed
+            }
+        )
+        #else
+        AnyView(
+            VStack(spacing: 0) {
+                // Filter bar - iOS/iPad only
+                SegmentedFilterBar(selection: $selectedFilter) { filter in
+                    filter.displayName(forActivities: isActivityList)
+                }
+                if isEmpty {
+                    emptyStateView
+                } else {
+                    listView
+                }
+            }
+        )
         #endif
         #if !os(macOS)
         .navigationTitle(title)
@@ -145,17 +156,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                     showQuickFind = false
                 }
             )
-        }
-        #endif
-        #if os(macOS)
-        .onReceive(NotificationCenter.default.publisher(for: .filterMine)) { _ in
-            selectedFilter = .mine
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .filterOthers)) { _ in
-            selectedFilter = .others
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .filterUnclaimed)) { _ in
-            selectedFilter = .unclaimed
         }
         #endif
     }
