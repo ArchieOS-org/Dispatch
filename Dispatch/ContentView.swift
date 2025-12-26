@@ -384,10 +384,13 @@ struct ContentView: View {
             Button(action: action) {
                 Label(title, systemImage: icon)
                     .foregroundColor(isSelected ? .white : .primary) // Standard selection text color
+                    .padding(.leading, 12) // Restore standard sidebar padding
+                    .padding(.vertical, 6) // Restore standard vertical spacing
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .listRowInsets(EdgeInsets()) // Ensure button fills entire row (edge-to-edge click target)
             .listRowBackground(
                 isSelected ? Color.accentColor : Color.clear
             )
