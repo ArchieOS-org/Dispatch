@@ -92,33 +92,27 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     /// The main content without NavigationStack wrapper
     @ViewBuilder
     private var content: some View {
-        VStack(spacing: 0) {
-            #if os(macOS)
-            // Things 3 Style: Custom Large Title Header
-            HStack {
-                Text(title)
-                    .font(.system(size: DS.Spacing.Layout.largeTitleSize, weight: .bold))
-                    .foregroundColor(.primary)
-                Spacer()
-            }
-            .padding(.horizontal, DS.Spacing.Layout.pageMargin)
-            .padding(.top, DS.Spacing.Layout.topHeaderPadding)
-            .padding(.bottom, DS.Spacing.Layout.titleBottomSpacing)
-            #else
-            // Filter bar - iOS/iPad only (macOS uses Cmd+1/2/3 keyboard shortcuts)
-            SegmentedFilterBar(selection: $selectedFilter) { filter in
-                filter.displayName(forActivities: isActivityList)
-            }
-            #endif
-
-            // Content
+        #if os(macOS)
+        StandardPageLayout(title: title) {
             if isEmpty {
                 emptyStateView
             } else {
                 listView
-                    .padding(.horizontal, DS.Spacing.Layout.pageMargin) // Things 3 Spacer margins
             }
         }
+        #else
+        VStack(spacing: 0) {
+            // Filter bar - iOS/iPad only
+            SegmentedFilterBar(selection: $selectedFilter) { filter in
+                filter.displayName(forActivities: isActivityList)
+            }
+            if isEmpty {
+                emptyStateView
+            } else {
+                listView
+            }
+        }
+        #endif
         #if os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { notification in
             if let initialText = notification.userInfo?["initialText"] as? String {
