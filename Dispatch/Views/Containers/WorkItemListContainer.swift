@@ -94,33 +94,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     private var content: some View {
         VStack(spacing: 0) {
             #if os(macOS)
-            // Custom Header for macOS (triggers Quick Find)
-            HStack {
-                // Remove Spacer() to align left
-                TitleDropdownButton(title: title, isHovering: $isTitleHovering) {
-                    showQuickFind = true
-                }
-                .padding(.leading, 85) // Push past traffic lights
-                .popover(isPresented: $showQuickFind, arrowEdge: .bottom) {
-                    NavigationPopover(
-                        searchText: $quickFindText,
-                        isPresented: $showQuickFind,
-                        currentTab: .tasks, // Defaulting to tasks context here
-                        onNavigate: { tab in
-                            // Post notification or callback to switch tab
-                            // For MVP, we use notification as ContentView observes it
-                            switch tab {
-                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
-                            case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
-                            case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
-                            }
-                            showQuickFind = false
-                        }
-                    )
-                }
-                Spacer() // Push remaining content to right
-            }
-            .padding(.top, 10) // Vertically center with traffic lights (approx)
+            // Header is now handled via .toolbar modifiers below
             #else
             // Filter bar - iOS/iPad only (macOS uses Cmd+1/2/3 keyboard shortcuts)
             SegmentedFilterBar(selection: $selectedFilter) { filter in
@@ -149,6 +123,32 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         #endif
         #if !os(macOS)
         .navigationTitle(title)
+        #else
+        // macOS: Native Toolbar with Transparent Background
+        .navigationTitle("") // Hide default title
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                TitleDropdownButton(title: title, isHovering: $isTitleHovering) {
+                    showQuickFind = true
+                }
+                .popover(isPresented: $showQuickFind, arrowEdge: .bottom) {
+                    NavigationPopover(
+                        searchText: $quickFindText,
+                        isPresented: $showQuickFind,
+                        currentTab: .tasks,
+                        onNavigate: { tab in
+                            switch tab {
+                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
+                            case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
+                            case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
+                            }
+                            showQuickFind = false
+                        }
+                    )
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .windowToolbar)
         #endif
         #if os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: .filterMine)) { _ in

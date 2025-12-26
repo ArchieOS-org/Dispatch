@@ -114,30 +114,7 @@ struct ListingListView: View {
     private var content: some View {
         VStack(spacing: 0) {
             #if os(macOS)
-            HStack {
-                // Remove Spacer() to align left
-                TitleDropdownButton(title: "Listings", isHovering: $isTitleHovering) {
-                    showQuickFind = true
-                }
-                .padding(.leading, 85) // Push past traffic lights
-                .popover(isPresented: $showQuickFind, arrowEdge: .bottom) {
-                    NavigationPopover(
-                        searchText: $quickFindText,
-                        isPresented: $showQuickFind,
-                        currentTab: .listings,
-                        onNavigate: { tab in
-                            switch tab {
-                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
-                            case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
-                            case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
-                            }
-                            showQuickFind = false
-                        }
-                    )
-                }
-                Spacer() // Push remaining content to right
-            }
-            .padding(.top, 10) // Vertically center with traffic lights
+            // Header handled by .toolbar below
             #endif
 
             if isEmpty {
@@ -160,6 +137,31 @@ struct ListingListView: View {
         #endif
         #if !os(macOS)
         .navigationTitle("Listings")
+        #else
+        .navigationTitle("")
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                TitleDropdownButton(title: "Listings", isHovering: $isTitleHovering) {
+                    showQuickFind = true
+                }
+                .popover(isPresented: $showQuickFind, arrowEdge: .bottom) {
+                    NavigationPopover(
+                        searchText: $quickFindText,
+                        isPresented: $showQuickFind,
+                        currentTab: .listings,
+                        onNavigate: { tab in
+                            switch tab {
+                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
+                            case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
+                            case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
+                            }
+                            showQuickFind = false
+                        }
+                    )
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .windowToolbar)
         #endif
         // MARK: - Alerts and Sheets
         .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {

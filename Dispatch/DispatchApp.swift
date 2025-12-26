@@ -65,7 +65,7 @@ struct DispatchApp: App {
                 }
                 #endif
                 #endif
-                .configureMacWindow() // Restored to enforce toolbar suppression while keeping traffic lights
+                // .configureMacWindow() // Native toolbar integration handles this now
         }
         .modelContainer(sharedModelContainer)
         #if os(macOS)
