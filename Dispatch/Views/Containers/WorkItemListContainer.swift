@@ -103,8 +103,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { notification in
                 if let initialText = notification.userInfo?["initialText"] as? String {
-                    // Wait for the popover to animate and field to focus (autofocus mechanism)
-                    // Then set the text. This prevents "Select All" from overwriting our char.
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                         quickFindText = initialText
                     }
@@ -120,6 +118,24 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             .onReceive(NotificationCenter.default.publisher(for: .filterUnclaimed)) { _ in
                 selectedFilter = .unclaimed
             }
+            // macOS: Native Toolbar with Transparent Background
+            .navigationTitle("") // Hide default title
+            .toolbarBackground(.hidden, for: .windowToolbar)
+            .sheet(isPresented: $showQuickFind) {
+                NavigationPopover(
+                    searchText: $quickFindText,
+                    isPresented: $showQuickFind,
+                    currentTab: .tasks,
+                    onNavigate: { tab in
+                        switch tab {
+                        case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
+                        case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
+                        case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
+                        }
+                        showQuickFind = false
+                    }
+                )
+            }
         )
         #else
         AnyView(
@@ -134,29 +150,8 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                     listView
                 }
             }
+            .navigationTitle(title)
         )
-        #endif
-        #if !os(macOS)
-        .navigationTitle(title)
-        #else
-        // macOS: Native Toolbar with Transparent Background
-        .navigationTitle("") // Hide default title
-        .toolbarBackground(.hidden, for: .windowToolbar)
-        .sheet(isPresented: $showQuickFind) {
-            NavigationPopover(
-                searchText: $quickFindText,
-                isPresented: $showQuickFind,
-                currentTab: .tasks,
-                onNavigate: { tab in
-                    switch tab {
-                    case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
-                    case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
-                    case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
-                    }
-                    showQuickFind = false
-                }
-            )
-        }
         #endif
     }
 
