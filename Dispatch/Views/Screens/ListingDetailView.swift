@@ -207,23 +207,12 @@ struct ListingDetailView: View {
                 .font(DS.Typography.body)
                 .foregroundColor(DS.Colors.Text.primary)
 
-            // Due date row (simple, text-first)
-            if let due = listing.dueDate {
+            // Due date row
+            if listing.dueDate != nil {
                 Divider()
                     .padding(.top, DS.Spacing.sm)
 
-                HStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: "flag")
-                        .foregroundColor(DS.Colors.Text.secondary)
-
-                    Text(formattedDueDate(due))
-                        .font(DS.Typography.body)
-                        .foregroundColor(DS.Colors.Text.primary)
-
-                    Text(relativeDueText(for: due))
-                        .font(DS.Typography.bodySecondary)
-                        .foregroundColor(relativeDueColor(for: due))
-                }
+                DueDateBadge(dueDate: listing.dueDate)
             }
 
         }
@@ -492,42 +481,6 @@ struct ListingDetailView: View {
         )
         activity.claimHistory.append(event)
         syncManager.requestSync()
-    }
-
-    // MARK: - Due Date Helpers
-
-    private static let dueDateFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        df.dateFormat = "EEE, MMM, d"
-        return df
-    }()
-
-    private func formattedDueDate(_ date: Date) -> String {
-        Self.dueDateFormatter.string(from: date)
-    }
-
-    private func relativeDueText(for date: Date) -> String {
-        let cal = Calendar.current
-        let startToday = cal.startOfDay(for: Date())
-        let startDue = cal.startOfDay(for: date)
-        let diff = cal.dateComponents([.day], from: startToday, to: startDue).day ?? 0
-
-        if diff == 0 { return "Today" }
-        if diff == 1 { return "1 day left" }
-        if diff > 1 { return "\(diff) days left" }
-
-        let overdue = abs(diff)
-        if overdue == 1 { return "Overdue: 1 day" }
-        return "Overdue: \(overdue) days"
-    }
-
-    private func relativeDueColor(for date: Date) -> Color {
-        let cal = Calendar.current
-        let startToday = cal.startOfDay(for: Date())
-        let startDue = cal.startOfDay(for: date)
-        let diff = cal.dateComponents([.day], from: startToday, to: startDue).day ?? 0
-        return diff < 0 ? .red : DS.Colors.Text.secondary
     }
 
     // MARK: - Helpers

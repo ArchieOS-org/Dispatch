@@ -321,6 +321,12 @@ extension DS {
 
             /// Timer
             static let timer = "timer"
+
+            /// Deadline/due date flag
+            static let deadline = "flag"
+
+            /// Deadline/due date flag filled
+            static let deadlineFill = "flag.fill"
         }
     }
 }

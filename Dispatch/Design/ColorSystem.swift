@@ -237,6 +237,8 @@ extension DS {
         static let overdue = Color.red
 
         /// Color for due soon items (within 24 hours)
+        /// - Note: Deprecated - Things 3 style uses only 2 states (overdue/normal)
+        @available(*, deprecated, message: "Use overdue or dueNormal instead")
         static let dueSoon = Color.orange
 
         /// Color for normal due dates
