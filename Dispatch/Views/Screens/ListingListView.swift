@@ -159,6 +159,9 @@ struct ListingListView: View {
         #endif
         #if !os(macOS)
         .navigationTitle("Listings")
+        #if os(macOS)
+        .toolbar(.hidden, for: .windowToolbar)
+        #endif
         #endif
         // MARK: - Alerts and Sheets
         .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
