@@ -25,13 +25,19 @@ struct WindowAccessor: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // Re-assert configuration whenever SwiftUI updates this view
+        if let window = nsView.window {
+            context.coordinator.callback(window)
+        }
+    }
 
     class Coordinator: NSObject {
         var callback: (NSWindow?) -> Void
         
         // Hold weak reference to window to avoid cycles, though notification center handles this well mostly
         private weak var observedWindow: NSWindow?
+        private var toolbarObservation: NSKeyValueObservation?
         
         init(callback: @escaping (NSWindow?) -> Void) {
             self.callback = callback
@@ -51,6 +57,16 @@ struct WindowAccessor: NSViewRepresentable {
                 
                 // Configure immediately
                 self.callback(window)
+                
+                // KVO: Aggressively monitor toolbar changes.
+                // SwiftUI will try to add an NSToolbar when views with .toolbar modifiers appear.
+                // We must immediately remove it to maintain the hidden title bar style.
+                self.toolbarObservation = window.observe(\.toolbar, options: [.new]) { [weak self] window, change in
+                    if window.toolbar != nil {
+                        // Re-apply configuration which removes the toolbar
+                        self?.callback(window)
+                    }
+                }
                 
                 // Observe window becoming key to re-assert preferences
                 // SwiftUI/AppKit likes to reset toolbars on focus changes
@@ -105,6 +121,7 @@ struct WindowAccessor: NSViewRepresentable {
         
         deinit {
             NotificationCenter.default.removeObserver(self)
+            toolbarObservation?.invalidate()
         }
     }
 }
