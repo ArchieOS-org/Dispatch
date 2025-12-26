@@ -42,7 +42,10 @@ struct ContentView: View {
     #if os(macOS)
     @State private var showMacOSQuickEntry = false
     @State private var showMacOSAddListing = false
-    // macSearchText state removed as it lives in popover now
+    
+    // Global Quick Find (Popover) State
+    @State private var showQuickFind = false
+    @State private var quickFindText = ""
     #endif
 
     // MARK: - Search State (iPhone only)
@@ -50,32 +53,8 @@ struct ContentView: View {
     @StateObject private var searchManager = SearchPresentationManager()
     @State private var searchNavigationPath = NavigationPath()
     @State private var stackID = UUID() // Used to force-refresh navigation stack on root pop
-
-    // MARK: - Global Filter & Overlay State (iPhone only)
-
-    @StateObject private var lensState = LensState()
-    @StateObject private var quickEntryState = QuickEntryState()
-    @StateObject private var overlayState = AppOverlayState()
-    @StateObject private var keyboardObserver = KeyboardObserver()
-
-    // MARK: - Computed Properties
-
-    /// Pre-computed user lookup dictionary for O(1) access
-    private var userCache: [UUID: User] {
-        Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
-    }
-
-    /// Active listings (not deleted) for quick entry
-    private var activeListings: [Listing] {
-        allListings.filter { $0.status != .deleted }
-    }
-
-    /// Sentinel UUID for unauthenticated state
-    private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
-
-    private var currentUserId: UUID {
-        syncManager.currentUserID ?? Self.unauthenticatedUserId
-    }
+    
+    // ... (rest of environment objects)
 
     // MARK: - Body
 
@@ -112,6 +91,34 @@ struct ContentView: View {
         .background(KeyMonitorView { event in
             handleGlobalKeyDown(event)
         })
+        .sheet(isPresented: $showQuickFind) {
+            NavigationPopover(
+                searchText: $quickFindText,
+                isPresented: $showQuickFind,
+                currentTab: selectedTab, // Now global!
+                onNavigate: { tab in
+                    // Navigation Logic (Unified)
+                    handleTabSelection(tab)
+
+                    // Post filters if needed (legacy support for containers listening)
+                    switch tab {
+                    case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
+                    case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
+                    case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
+                    }
+                    showQuickFind = false
+                }
+            )
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { notification in
+            if let initialText = notification.userInfo?["initialText"] as? String {
+                // Wait for popover animation + autofocus
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    quickFindText = initialText
+                }
+            }
+            showQuickFind = true
+        }
         #endif
     }
 

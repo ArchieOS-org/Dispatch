@@ -31,9 +31,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     @ViewBuilder let destinationBuilder: (WorkItemRef) -> Destination
 
     @State private var selectedFilter: ClaimFilter = .mine
-    @State private var showQuickFind = false
-    @State private var quickFindText = ""
-    @State private var isTitleHovering = false
 
     init(
         title: String,
@@ -101,14 +98,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                     listView
                 }
             }
-            .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { notification in
-                if let initialText = notification.userInfo?["initialText"] as? String {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        quickFindText = initialText
-                    }
-                }
-                showQuickFind = true
-            }
             .onReceive(NotificationCenter.default.publisher(for: .filterMine)) { _ in
                 selectedFilter = .mine
             }
@@ -121,21 +110,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             // macOS: Native Toolbar with Transparent Background
             .navigationTitle("") // Hide default title
             .toolbarBackground(.hidden, for: .windowToolbar)
-            .sheet(isPresented: $showQuickFind) {
-                NavigationPopover(
-                    searchText: $quickFindText,
-                    isPresented: $showQuickFind,
-                    currentTab: .tasks,
-                    onNavigate: { tab in
-                        switch tab {
-                        case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
-                        case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
-                        case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
-                        }
-                        showQuickFind = false
-                    }
-                )
-            }
         )
         #else
         AnyView(
