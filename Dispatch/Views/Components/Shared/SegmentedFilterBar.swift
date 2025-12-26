@@ -24,6 +24,7 @@ where Filter.AllCases: RandomAccessCollection {
             ForEach(Filter.allCases) { filter in
                 segmentButton(for: filter)
             }
+            Spacer()
         }
         .padding(2)
         // Optional container styling could go here if needed for iOS

@@ -124,6 +124,8 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                 SegmentedFilterBar(selection: $selectedFilter) { filter in
                     filter.displayName(forActivities: isActivityList)
                 }
+                .padding(.bottom, DS.Spacing.md)
+
                 if isEmpty {
                     emptyStateView
                 } else {
