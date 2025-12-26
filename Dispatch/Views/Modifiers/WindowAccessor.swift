@@ -151,8 +151,9 @@ struct MacWindowConfigurationModifier: ViewModifier {
                     window.titleVisibility = .hidden
                     window.titlebarAppearsTransparent = true
                     
-                    if let toolbar = window.toolbar {
-                        toolbar.showsBaselineSeparator = false
+                    if let _ = window.toolbar {
+                        // toolbar.showsBaselineSeparator = false // Deprecated in macOS 15
+                        // We rely on titlebarAppearsTransparent and SwiftUI .hidden background.
                     }
                     
                     // Ensure full size content view

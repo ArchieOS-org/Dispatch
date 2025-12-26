@@ -114,13 +114,23 @@ struct ListingListView: View {
     private var content: some View {
         VStack(spacing: 0) {
             #if os(macOS)
-            // Header handled by .toolbar below
+            // Things 3 Style: Custom Large Title Header
+            HStack {
+                Text("Listings")
+                    .font(.system(size: DS.Spacing.Layout.largeTitleSize, weight: .bold))
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            .padding(.horizontal, DS.Spacing.Layout.pageMargin)
+            .padding(.top, DS.Spacing.Layout.topHeaderPadding)
+            .padding(.bottom, DS.Spacing.Layout.titleBottomSpacing)
             #endif
 
             if isEmpty {
                 emptyStateView
             } else {
                 listView
+                    .padding(.horizontal, DS.Spacing.Layout.pageMargin)
             }
         }
         #if os(macOS)

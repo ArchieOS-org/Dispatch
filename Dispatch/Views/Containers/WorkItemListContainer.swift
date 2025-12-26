@@ -94,7 +94,16 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     private var content: some View {
         VStack(spacing: 0) {
             #if os(macOS)
-            // Header is now handled via .toolbar modifiers below
+            // Things 3 Style: Custom Large Title Header
+            HStack {
+                Text(title)
+                    .font(.system(size: DS.Spacing.Layout.largeTitleSize, weight: .bold))
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            .padding(.horizontal, DS.Spacing.Layout.pageMargin)
+            .padding(.top, DS.Spacing.Layout.topHeaderPadding)
+            .padding(.bottom, DS.Spacing.Layout.titleBottomSpacing)
             #else
             // Filter bar - iOS/iPad only (macOS uses Cmd+1/2/3 keyboard shortcuts)
             SegmentedFilterBar(selection: $selectedFilter) { filter in
@@ -107,6 +116,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                 emptyStateView
             } else {
                 listView
+                    .padding(.horizontal, DS.Spacing.Layout.pageMargin) // Things 3 Spacer margins
             }
         }
         #if os(macOS)

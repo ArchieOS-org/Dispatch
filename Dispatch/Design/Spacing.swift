@@ -171,5 +171,22 @@ extension DS {
 
         /// Bottom toolbar horizontal padding
         static let bottomToolbarPadding: CGFloat = 12
+        
+        // MARK: - Things 3 Layout (macOS)
+        
+        enum Layout {
+            /// Content side margin (Things 3 style spacious layout)
+            static let pageMargin: CGFloat = 40
+            
+            /// Top padding for content to clear the floating traffic lights
+            /// and provide visual separation (Things 3 style)
+            static let topHeaderPadding: CGFloat = 50
+            
+            /// Font size for the implementation of the "Large Title"
+            static let largeTitleSize: CGFloat = 30
+            
+            /// Spacing below the large title before content begins
+            static let titleBottomSpacing: CGFloat = 20
+        }
     }
 }
