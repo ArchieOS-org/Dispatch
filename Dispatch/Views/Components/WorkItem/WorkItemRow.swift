@@ -61,7 +61,7 @@ struct WorkItemRow: View {
     }()
 
     var body: some View {
-        HStack(spacing: DS.Spacing.sm) {
+        HStack(spacing: 6) {
             // Colored Status Checkbox
             StatusCheckbox(
                 isCompleted: item.isCompleted,

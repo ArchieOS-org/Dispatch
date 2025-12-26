@@ -148,7 +148,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                             .listRowSeparator(.hidden)
                             .listRowInsets(EdgeInsets(
                                 top: 0,
-                                leading: DS.Spacing.md, // Use system spacing
+                                leading: 0, // Flush left alignment
                                 bottom: 0,
                                 trailing: DS.Spacing.md
                             ))

@@ -30,7 +30,6 @@ struct StatusCheckbox: View {
                 )
         }
         .buttonStyle(.plain)
-        .frame(width: DS.Spacing.minTouchTarget, height: DS.Spacing.minTouchTarget) // Touch target remains large
         .accessibilityLabel(isCompleted ? "Completed" : "Not completed")
         .accessibilityHint("Double tap to toggle completion status")
         .accessibilityAddTraits(.isButton)
