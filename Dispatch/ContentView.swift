@@ -326,10 +326,7 @@ struct ContentView: View {
                 }
                 .dispatchDestinations()
             }
-                .dispatchDestinations()
-            }
             // toolbar(.hidden) removed to restore traffic lights
-            .id(stackID) // Force rebuild when ID changes (pop to root)
             .id(stackID) // Force rebuild when ID changes (pop to root)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 BottomToolbar(

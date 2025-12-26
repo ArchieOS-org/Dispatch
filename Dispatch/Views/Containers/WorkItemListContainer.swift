@@ -148,9 +148,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         #endif
         #if !os(macOS)
         .navigationTitle(title)
-        #if os(macOS)
-        // .toolbar(.hidden) removed
-        #endif
         #endif
         #if os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: .filterMine)) { _ in
