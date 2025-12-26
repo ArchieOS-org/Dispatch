@@ -213,26 +213,56 @@ struct ContentView: View {
 
     /// Handles navigation after selecting a search result
     private func selectSearchResult(_ result: SearchResult) {
+        // Helper to switch tab and push destination
+        func navigate(to tab: Tab, destination: any Hashable) {
+            if selectedTab != tab {
+                selectedTab = tab
+                searchNavigationPath = NavigationPath() // Clear previous tab's stack
+            }
+            // If already on tab, we don't clear stack (unlike sidebar click), 
+            // BUT we probably want to show this result on top? 
+            // Or should searching ALWAYS clear stack?
+            // "Type Travel" usually implies jumping to the thing. 
+            // Let's clear stack to be safe and avoid confusing history.
+            searchNavigationPath = NavigationPath() 
+            searchNavigationPath.append(destination)
+        }
+
         switch result {
         case .task(let task):
-            searchNavigationPath.append(WorkItemRef.task(task))
+            navigate(to: .tasks, destination: WorkItemRef.task(task))
         case .activity(let activity):
-            searchNavigationPath.append(WorkItemRef.activity(activity))
+            navigate(to: .activities, destination: WorkItemRef.activity(activity))
         case .listing(let listing):
-            searchNavigationPath.append(listing)
+            navigate(to: .listings, destination: listing)
         case .navigation(_, _, let tab, _):
-            #if os(macOS)
-            selectedTab = tab
-            #else
-            // On iPhone, we might want to switch tabs or pop to root
-            selectedTab = tab
-            // Optional: Pop to root if needed
+            handleTabSelection(tab) // Use the standard handler
+            #if !os(macOS)
+             // iPhone specific logic if needed
             #endif
         }
     }
 
     // MARK: - iPad/macOS Sidebar Navigation
 
+    // MARK: - Navigation Logic
+    
+    /// centralized handler for sidebar/tab interactions
+    /// - Implements "Pop to Root" behavior when clicking the active tab
+    /// - Clears navigation stack when switching tabs to ensure a clean slate
+    private func handleTabSelection(_ tab: Tab) {
+        if selectedTab == tab {
+            // "Pop to Root": Clear navigation stack if already on this tab
+            searchNavigationPath = NavigationPath()
+        } else {
+            // Switch tabs and clear any existing navigation state
+            selectedTab = tab
+            searchNavigationPath = NavigationPath()
+        }
+    }
+    
+    // MARK: - iPad/macOS Sidebar Navigation
+    
     #if os(macOS)
     /// Toolbar context based on current tab selection
     private var toolbarContext: ToolbarContext {
@@ -245,17 +275,36 @@ struct ContentView: View {
             return .listingList
         }
     }
-
+    
     /// macOS: Things 3-style resizable sidebar with custom drag handle
     private var sidebarNavigation: some View {
         ResizableSidebar {
-            List(selection: $selectedTab) {
-                Label("Tasks", systemImage: DS.Icons.Entity.task)
-                    .tag(Tab.tasks)
-                Label("Activities", systemImage: DS.Icons.Entity.activity)
-                    .tag(Tab.activities)
-                Label("Listings", systemImage: DS.Icons.Entity.listing)
-                    .tag(Tab.listings)
+            List {
+                // We use manual button rows or TapGestures to ensure we capture the "click active" event
+                // Standard List(selection:) consumes clicks on selected items without reporting them.
+                
+                Group {
+                    SidebarRow(
+                        title: "Tasks",
+                        icon: DS.Icons.Entity.task,
+                        isSelected: selectedTab == .tasks,
+                        action: { handleTabSelection(.tasks) }
+                    )
+                    
+                    SidebarRow(
+                        title: "Activities",
+                        icon: DS.Icons.Entity.activity,
+                        isSelected: selectedTab == .activities,
+                        action: { handleTabSelection(.activities) }
+                    )
+                    
+                    SidebarRow(
+                        title: "Listings",
+                        icon: DS.Icons.Entity.listing,
+                        isSelected: selectedTab == .listings,
+                        action: { handleTabSelection(.listings) }
+                    )
+                }
             }
             .listStyle(.sidebar)
         } content: {
@@ -302,7 +351,7 @@ struct ContentView: View {
                 onSave: { syncManager.requestSync() }
             )
         }
-
+        
         .onReceive(NotificationCenter.default.publisher(for: .newItem)) { _ in
             if selectedTab == .listings {
                 showMacOSAddListing = true
@@ -310,13 +359,33 @@ struct ContentView: View {
                 showMacOSQuickEntry = true
             }
         }
-
+        
         .onReceive(NotificationCenter.default.publisher(for: .navigateSearchResult)) { notification in
             if let result = notification.userInfo?["result"] as? SearchResult {
                 selectSearchResult(result)
             }
         }
-        // Old .openSearch listener removed - handled by child views showing popover
+    }
+    
+    /// Helper view for macOS Sidebar Rows to emulate standard selection style while supporting custom click logic
+    private struct SidebarRow: View {
+        let title: String
+        let icon: String
+        let isSelected: Bool
+        let action: () -> Void
+        
+        var body: some View {
+            Button(action: action) {
+                Label(title, systemImage: icon)
+                    .foregroundColor(isSelected ? .white : .primary) // Standard selection text color
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .listRowBackground(
+                isSelected ? Color.accentColor : Color.clear
+            )
+        }
     }
     #else
     /// iPad: Standard NavigationSplitView sidebar
@@ -345,12 +414,12 @@ struct ContentView: View {
         .navigationSplitViewStyle(.balanced)
     }
     #endif
-
+    
     #if os(iOS) || os(visionOS)
     @ViewBuilder
     private func sidebarButton(for tab: Tab, label: String, icon: String) -> some View {
         Button {
-            selectedTab = tab
+            handleTabSelection(tab)
         } label: {
             Label(label, systemImage: icon)
                 .foregroundColor(selectedTab == tab ? .accentColor : .primary)
