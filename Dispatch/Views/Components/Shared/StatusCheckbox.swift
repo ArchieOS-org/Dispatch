@@ -12,23 +12,34 @@ import SwiftUI
 /// Shows open circle when incomplete, filled checkmark when complete.
 struct StatusCheckbox: View {
     let isCompleted: Bool
+    var color: Color = DS.Colors.Text.tertiary
     var onToggle: () -> Void = {}
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: onToggle) {
-            Image(systemName: isCompleted ? DS.Icons.StatusIcons.completed : DS.Icons.StatusIcons.open)
-                .font(.system(size: 22))
-                .foregroundColor(isCompleted ? DS.Colors.success : DS.Colors.Text.tertiary)
-                .scaleEffect(isCompleted ? 1.0 : 0.95)
-                .animation(
-                    reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.6),
-                    value: isCompleted
-                )
+            ZStack {
+                if isCompleted {
+                    Circle()
+                        .fill(color)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white)
+                } else {
+                    Circle()
+                        .strokeBorder(color, lineWidth: 1.5)
+                }
+            }
+            .frame(width: 18, height: 18) // Match text height
+            .scaleEffect(isCompleted ? 1.0 : 0.95)
+            .animation(
+                reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.6),
+                value: isCompleted
+            )
         }
         .buttonStyle(.plain)
-        .frame(width: DS.Spacing.minTouchTarget, height: DS.Spacing.minTouchTarget)
+        .frame(width: DS.Spacing.minTouchTarget, height: DS.Spacing.minTouchTarget) // Touch target remains large
         .accessibilityLabel(isCompleted ? "Completed" : "Not completed")
         .accessibilityHint("Double tap to toggle completion status")
         .accessibilityAddTraits(.isButton)
@@ -56,7 +67,7 @@ struct StatusCheckbox: View {
                 Divider()
 
                 HStack(spacing: DS.Spacing.md) {
-                    StatusCheckbox(isCompleted: isCompleted) {
+                    StatusCheckbox(isCompleted: isCompleted, color: .blue) {
                         isCompleted.toggle()
                     }
                     Text("Interactive: \(isCompleted ? "Done" : "Tap me")")

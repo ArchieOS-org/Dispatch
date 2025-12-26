@@ -36,80 +36,61 @@ struct WorkItemRow: View {
     }()
 
     var body: some View {
-        HStack(spacing: DS.Spacing.md) {
-            // Role indicator dot
-            RoleDot(audiences: item.audiences)
+        HStack(spacing: DS.Spacing.sm) {
+            // Colored Status Checkbox
+            StatusCheckbox(
+                isCompleted: item.isCompleted,
+                color: roleColor,
+                onToggle: onComplete
+            )
 
-            // Status checkbox
-            StatusCheckbox(isCompleted: item.isCompleted, onToggle: onComplete)
+            // Title
+            Text(item.title)
+                .font(DS.Typography.body)
+                .strikethrough(item.isCompleted, color: DS.Colors.Text.tertiary)
+                .foregroundColor(item.isCompleted ? DS.Colors.Text.tertiary : DS.Colors.Text.primary)
+                .lineLimit(1)
 
-            // Content
-            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                // Title row
-                HStack {
-                    Text(item.title)
-                        .font(DS.Typography.headline)
-                        .strikethrough(item.isCompleted, color: DS.Colors.Text.tertiary)
-                        .foregroundColor(item.isCompleted ? DS.Colors.Text.tertiary : DS.Colors.Text.primary)
-                        .lineLimit(1)
-                }
-
-                // Metadata row
-                HStack(spacing: DS.Spacing.sm) {
-                    // Type label with icon
-                    HStack(spacing: DS.Spacing.xxs) {
-                        Image(systemName: item.typeIcon)
-                            .font(.system(size: 10))
-                        Text(item.typeLabel)
-                            .font(DS.Typography.caption)
-                    }
-                    .foregroundColor(DS.Colors.Text.secondary)
-
-                    DueDateBadge(dueDate: item.dueDate)
-
-                    // Subtask progress (if any)
-                    if item.hasSubtasks {
-                        HStack(spacing: DS.Spacing.xxs) {
-                            Image(systemName: DS.Icons.Entity.subtask)
-                                .font(.system(size: 10))
-                            Text(item.subtaskProgressText)
-                                .font(DS.Typography.caption)
-                        }
-                        .foregroundColor(DS.Colors.Text.tertiary)
-                    }
-
-                    Spacer()
-                }
+            // User Tag (Inline with title)
+            if case .claimedByOther(let user) = claimState {
+                UserTag(user: user)
+            } else if case .claimedByMe(let user) = claimState {
+                UserTag(user: user)
             }
 
             Spacer()
 
-            // Show sync error indicator if failed, otherwise show claim button
-            if item.isSyncFailed {
-                SyncRetryButton(
-                    errorMessage: item.lastSyncError,
-                    isRetrying: isRetrying,
-                    onRetry: {
-                        isRetrying = true
-                        onRetrySync()
-                        // Reset after a delay (sync completion will trigger UI refresh)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            isRetrying = false
+            // Right side items
+            HStack(spacing: DS.Spacing.sm) {
+                // Due Date
+                if let _ = item.dueDate {
+                    DueDateBadge(dueDate: item.dueDate)
+                }
+
+                // Actions / Status
+                if item.isSyncFailed {
+                    SyncRetryButton(
+                        errorMessage: item.lastSyncError,
+                        isRetrying: isRetrying,
+                        onRetry: {
+                            isRetrying = true
+                            onRetrySync()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                isRetrying = false
+                            }
                         }
-                    }
-                )
-                .padding(.trailing, DS.Spacing.sm)
-            } else {
-                ClaimButton(
-                    claimState: claimState,
-                    style: .compact,
-                    onClaim: onClaim,
-                    onRelease: onRelease
-                )
-                .padding(.trailing, DS.Spacing.md)
+                    )
+                } else if case .unclaimed = claimState {
+                    ClaimButton(
+                        claimState: claimState,
+                        style: .compact,
+                        onClaim: onClaim,
+                        onRelease: onRelease
+                    )
+                }
             }
         }
-        .padding(.vertical, DS.Spacing.sm)
+        .padding(.vertical, 8) // Reduced vertical padding for compact look
         .contentShape(Rectangle())
         // NOTE: Removed .onTapGesture - it was competing with NavigationLink's gesture.
         // Navigation is now handled by wrapping WorkItemRow in NavigationLink at the call site.
@@ -135,6 +116,18 @@ struct WorkItemRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Double tap to view details. Swipe for more options.")
+    }
+
+    /// Color for the status checkbox based on role audience
+    private var roleColor: Color {
+        if item.audiences.contains(.admin) && item.audiences.contains(.marketing) {
+            return DS.Colors.Text.primary // Mixed/Both (could be purple or distinct)
+        } else if item.audiences.contains(.admin) {
+            return DS.Colors.RoleColors.admin
+        } else if item.audiences.contains(.marketing) {
+            return DS.Colors.RoleColors.marketing
+        }
+        return DS.Colors.Text.tertiary // Default/None
     }
 
     private var accessibilityLabel: String {

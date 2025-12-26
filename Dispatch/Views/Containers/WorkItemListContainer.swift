@@ -152,6 +152,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             }
         }
         .listStyle(.plain)
+        .listRowSeparator(.hidden) // Remove separators (Things 3 style)
         .pullToSearch()
     }
 
