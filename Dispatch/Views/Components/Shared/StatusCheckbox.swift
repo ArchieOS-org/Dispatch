@@ -24,14 +24,14 @@ struct StatusCheckbox: View {
                     Circle()
                         .fill(color)
                     Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.white)
                 } else {
                     Circle()
                         .strokeBorder(color, lineWidth: 1.5)
                 }
             }
-            .frame(width: 18, height: 18) // Match text height
+            .frame(width: 14, height: 14) // Match text visual height (cap-height)
             .scaleEffect(isCompleted ? 1.0 : 0.95)
             .animation(
                 reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.6),
