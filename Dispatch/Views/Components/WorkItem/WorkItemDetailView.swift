@@ -58,7 +58,12 @@ struct WorkItemDetailView: View {
                 // Notes Section
                 notesSection
             }
+            #if os(macOS)
+            .padding(.horizontal, DS.Spacing.Layout.pageMargin)
+            .padding(.vertical, DS.Spacing.md)
+            #else
             .padding(DS.Spacing.md)
+            #endif
         }
         .background(DS.Colors.Background.primary)
         .onAppear {
