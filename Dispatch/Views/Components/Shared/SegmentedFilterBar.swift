@@ -49,7 +49,7 @@ where Filter.AllCases: RandomAccessCollection {
             }
         } label: {
             Text(displayName(filter))
-                .font(DS.Typography.subheadline)
+                .font(DS.Typography.bodySecondary)
                 .fontWeight(selection == filter ? .semibold : .regular)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
