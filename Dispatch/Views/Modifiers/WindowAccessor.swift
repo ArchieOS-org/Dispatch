@@ -59,10 +59,12 @@ struct WindowAccessor: NSViewRepresentable {
                 self.callback(window)
                 
                 // KVO: access the toolbar when it appears to configure transparency
-                self.toolbarObservation = window.observe(\.toolbar, options: [.initial, .new]) { [weak self] window, change in
-                    if let toolbar = window.toolbar {
+                self.toolbarObservation = window.observe(\.toolbar, options: [.initial, .new]) { window, change in
+                    if let _ = window.toolbar {
                         // Configure for transparency (Things 3 style)
-                        toolbar.showsBaselineSeparator = false
+                        // Note: showsBaselineSeparator is deprecated in macOS 15.
+                        // We rely on titlebarAppearsTransparent and SwiftUI .hidden background.
+                        
                         window.titlebarAppearsTransparent = true
                         window.titleVisibility = .hidden
                         
