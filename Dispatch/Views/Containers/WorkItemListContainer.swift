@@ -92,6 +92,12 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         #if os(macOS)
         AnyView(
             StandardPageLayout(title: title) {
+                // Filter Bar (Mac)
+                MacOSSegmentedFilterBar(selection: $selectedFilter) { filter in
+                    filter.displayName(forActivities: isActivityList)
+                }
+                .padding(.bottom, DS.Spacing.md)
+
                 if isEmpty {
                     emptyStateView
                 } else {
