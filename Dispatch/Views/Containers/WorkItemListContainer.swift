@@ -149,7 +149,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         #if !os(macOS)
         .navigationTitle(title)
         #if os(macOS)
-        .toolbar(.hidden, for: .windowToolbar)
+        // .toolbar(.hidden) removed
         #endif
         #endif
         #if os(macOS)

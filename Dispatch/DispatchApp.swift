@@ -65,7 +65,7 @@ struct DispatchApp: App {
                 }
                 #endif
                 #endif
-                // .configureMacWindow() // Removed in favor of native style + toolbar suppression
+                .configureMacWindow() // Restored to enforce toolbar suppression while keeping traffic lights
         }
         .modelContainer(sharedModelContainer)
         #if os(macOS)

@@ -160,7 +160,7 @@ struct ListingListView: View {
         #if !os(macOS)
         .navigationTitle("Listings")
         #if os(macOS)
-        .toolbar(.hidden, for: .windowToolbar)
+        // .toolbar(.hidden) removed
         #endif
         #endif
         // MARK: - Alerts and Sheets
