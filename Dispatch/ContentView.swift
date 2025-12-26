@@ -54,7 +54,31 @@ struct ContentView: View {
     @State private var searchNavigationPath = NavigationPath()
     @State private var stackID = UUID() // Used to force-refresh navigation stack on root pop
     
-    // ... (rest of environment objects)
+    // MARK: - Global Filter & Overlay State (iPhone only)
+
+    @StateObject private var lensState = LensState()
+    @StateObject private var quickEntryState = QuickEntryState()
+    @StateObject private var overlayState = AppOverlayState()
+    @StateObject private var keyboardObserver = KeyboardObserver()
+
+    // MARK: - Computed Properties
+
+    /// Pre-computed user lookup dictionary for O(1) access
+    private var userCache: [UUID: User] {
+        Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
+    }
+
+    /// Active listings (not deleted) for quick entry
+    private var activeListings: [Listing] {
+        allListings.filter { $0.status != .deleted }
+    }
+
+    /// Sentinel UUID for unauthenticated state
+    private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+
+    private var currentUserId: UUID {
+        syncManager.currentUserID ?? Self.unauthenticatedUserId
+    }
 
     // MARK: - Body
 
