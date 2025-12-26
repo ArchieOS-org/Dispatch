@@ -89,62 +89,66 @@ struct ListingDetailView: View {
 
     // MARK: - Body
 
+    // MARK: - Body
+    
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-                headerSection
-
-                VStack(alignment: .leading, spacing: 0) {
-                    notesHeader
-                    Divider()
-                        .padding(.top, DS.Spacing.sm)
-                        .padding(.horizontal, DS.Spacing.md)
-                    notesSection
-                }
-
-                VStack(alignment: .leading, spacing: 0) {
-                    tasksHeader
-                    Divider()
-                        .padding(.top, DS.Spacing.sm)
-                        .padding(.horizontal, DS.Spacing.md)
-                    tasksSection
-                }
-
-                VStack(alignment: .leading, spacing: 0) {
-                    activitiesHeader
-                    Divider()
-                        .padding(.top, DS.Spacing.sm)
-                        .padding(.horizontal, DS.Spacing.md)
-                    activitiesSection
-                }
-            }
-            .padding(.vertical, DS.Spacing.md)
-        }
-        .background(DS.Colors.Background.primary)
-        .pullToSearch()
-        .navigationTitle("")
-        .onAppear {
-            lensState.currentScreen = .listingDetail
-        }
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
-        #if os(iOS)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                OverflowMenu(actions: listingActions)
-            }
-        }
-        #endif
         #if os(macOS)
-        // Ensure standard toolbar doesn't override our custom window header
-        .toolbar {
-            ToolbarItem(placement: .navigation) { EmptyView() }
-        }
-        // This is crucial: It tells SwiftUI NOT to put the back button in the window toolbar
-        .navigationBarBackButtonHidden(true)
+        macOSLayout
+        #else
+        iOSLayout
         #endif
-        // MARK: - Alerts
+    }
+
+    // MARK: - Platform Layouts
+
+    @ViewBuilder
+    private var macOSLayout: some View {
+        StandardPageLayout {
+            // Title Content
+            HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.sm) {
+                ProgressCircle(progress: listing.progress, size: 20)
+                    .alignmentGuide(.firstTextBaseline) { d in d[.bottom] - 2 }
+                
+                Text(listing.address)
+                    .font(.system(size: DS.Spacing.Layout.largeTitleSize, weight: .bold))
+                    .foregroundColor(DS.Colors.Text.primary)
+            }
+        } content: {
+            ScrollView {
+                VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+                    metadataSection
+                    
+                    VStack(alignment: .leading, spacing: 0) {
+                        notesHeader
+                        Divider()
+                            .padding(.top, DS.Spacing.sm)
+                            .padding(.horizontal, DS.Spacing.md)
+                        notesSection
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 0) {
+                        tasksHeader
+                        Divider()
+                            .padding(.top, DS.Spacing.sm)
+                            .padding(.horizontal, DS.Spacing.md)
+                        tasksSection
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 0) {
+                        activitiesHeader
+                        Divider()
+                            .padding(.top, DS.Spacing.sm)
+                            .padding(.horizontal, DS.Spacing.md)
+                        activitiesSection
+                    }
+                }
+                .padding(.vertical, DS.Spacing.md)
+            }
+            .background(DS.Colors.Background.primary)
+        } headerActions: {
+            OverflowMenu(actions: listingActions)
+        }
+        // Alerts
         .alert("Delete Listing?", isPresented: $showDeleteListingAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
@@ -165,8 +169,74 @@ struct ListingDetailView: View {
         }
     }
 
-    // MARK: - Header Section
+    @ViewBuilder
+    private var iOSLayout: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+                headerSection // Use original combined header for iOS
+                
+                VStack(alignment: .leading, spacing: 0) {
+                    notesHeader
+                    Divider()
+                        .padding(.top, DS.Spacing.sm)
+                        .padding(.horizontal, DS.Spacing.md)
+                    notesSection
+                }
+                
+                VStack(alignment: .leading, spacing: 0) {
+                    tasksHeader
+                    Divider()
+                        .padding(.top, DS.Spacing.sm)
+                        .padding(.horizontal, DS.Spacing.md)
+                    tasksSection
+                }
+                
+                VStack(alignment: .leading, spacing: 0) {
+                    activitiesHeader
+                    Divider()
+                        .padding(.top, DS.Spacing.sm)
+                        .padding(.horizontal, DS.Spacing.md)
+                    activitiesSection
+                }
+            }
+            .padding(.vertical, DS.Spacing.md)
+        }
+        .background(DS.Colors.Background.primary)
+        .pullToSearch()
+        .navigationTitle("")
+        .onAppear {
+            lensState.currentScreen = .listingDetail
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                OverflowMenu(actions: listingActions)
+            }
+        }
+        // Alerts
+        .alert("Delete Listing?", isPresented: $showDeleteListingAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) {
+                deleteListing()
+            }
+        } message: {
+            Text("This listing will be marked as deleted. Associated tasks and activities will remain.")
+        }
+        .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
+            Button("Cancel", role: .cancel) {
+                noteToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                confirmDeleteNote()
+            }
+        } message: {
+            Text("This note will be permanently deleted.")
+        }
+    }
 
+    // MARK: - Header Sections
+
+    // Original combined header (kept for iOS)
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             // Address with progress indicator
@@ -178,7 +248,23 @@ struct ListingDetailView: View {
                     .font(.title.bold())
                     .foregroundColor(DS.Colors.Text.primary)
             }
+            metadataContent
+        }
+        .padding(.horizontal, DS.Spacing.md)
+        .padding(.top, DS.Spacing.md)
+    }
 
+    // New split metadata section (for macOS)
+    private var metadataSection: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            metadataContent
+        }
+        // No top padding needed as it's the first item in the scroll view
+    }
+
+    // Shared internal content
+    private var metadataContent: some View {
+        Group {
             // Location
             if !listing.city.isEmpty {
                 Text("\(listing.city), \(listing.province) \(listing.postalCode)")
@@ -194,12 +280,12 @@ struct ListingDetailView: View {
             if let owner = owner {
                 HStack(spacing: DS.Spacing.xs) {
                     Text(owner.name)
-                        .font(DS.Typography.bodySecondary)
-                        .foregroundColor(DS.Colors.Text.primary)
-                        .padding(.horizontal, DS.Spacing.md)
-                        .padding(.vertical, DS.Spacing.xs)
-                        .background(DS.Colors.success.opacity(0.15))
-                        .clipShape(Capsule())
+                    .font(DS.Typography.bodySecondary)
+                    .foregroundColor(DS.Colors.Text.primary)
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.vertical, DS.Spacing.xs)
+                    .background(DS.Colors.success.opacity(0.15))
+                    .clipShape(Capsule())
                 }
                 .padding(.top, DS.Spacing.xs)
             }
@@ -229,10 +315,7 @@ struct ListingDetailView: View {
                         .foregroundColor(relativeDueColor(for: due))
                 }
             }
-
         }
-        .padding(.horizontal, DS.Spacing.md)
-        .padding(.top, DS.Spacing.md)
     }
 
     // MARK: - Section Headers
