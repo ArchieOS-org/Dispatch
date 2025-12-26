@@ -92,8 +92,8 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         #if os(macOS)
         AnyView(
             StandardPageLayout(title: title) {
-                // Filter Bar (Mac)
-                MacOSSegmentedFilterBar(selection: $selectedFilter) { filter in
+                // Filter Bar (Unified - specific style handled internally)
+                SegmentedFilterBar(selection: $selectedFilter) { filter in
                     filter.displayName(forActivities: isActivityList)
                 }
                 .padding(.bottom, DS.Spacing.md)
