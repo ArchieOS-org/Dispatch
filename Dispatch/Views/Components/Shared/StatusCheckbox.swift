@@ -17,6 +17,7 @@ struct StatusCheckbox: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    var body: some View {
         Button(action: onToggle) {
             Image(systemName: isCompleted ? "checkmark.square.fill" : "square")
                 .font(.system(size: 14, weight: .medium))
