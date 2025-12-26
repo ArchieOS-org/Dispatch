@@ -50,7 +50,7 @@ struct WorkItemRow: View {
         let components = Calendar.current.dateComponents([.day], from: startDue, to: startToday)
         let days = components.day ?? 0
         
-        if days == 1 { return "Yesterday" }
+        if days == 1 { return "Yda" }
         return "\(days)d ago"
     }
 

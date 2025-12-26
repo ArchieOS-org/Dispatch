@@ -26,7 +26,7 @@ struct DatePill: View {
         if calendar.isDateInToday(date) {
             return "Today"
         } else if calendar.isDateInTomorrow(date) {
-            return "Tomorrow"
+            return "Tom"
         } else {
             // Check if within next 7 days
             if let days = calendar.dateComponents([.day], from: Date(), to: date).day, days < 7, days > 0 {
