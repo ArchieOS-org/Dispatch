@@ -156,7 +156,6 @@ struct ListingListView: View {
             )
         }
         #endif
-        #endif
         // MARK: - Alerts and Sheets
         .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
             Button("Cancel", role: .cancel) {
