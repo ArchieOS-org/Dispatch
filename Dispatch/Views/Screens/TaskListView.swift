@@ -311,12 +311,13 @@ struct TaskListView: View {
 // MARK: - Preview
 
 #Preview("Task List View") {
-    @Previewable @State var syncManager = SyncManager.shared
-    
     let container = try! ModelContainer(
         for: TaskItem.self, User.self, Note.self, Subtask.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
+    
+    // Create isolated sync manager for preview
+    let syncManager = SyncManager()
     
     // Create preview data
     let context = container.mainContext
@@ -335,6 +336,9 @@ struct TaskListView: View {
         userType: .admin
     )
     context.insert(otherUser)
+    
+    // Configure sync manager with preview container
+    syncManager.configure(with: container, testUserID: currentUser.id)
     
     // Set current user
     syncManager.currentUserID = currentUser.id
