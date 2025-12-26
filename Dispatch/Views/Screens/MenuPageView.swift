@@ -59,6 +59,12 @@ struct MenuPageView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: DS.Spacing.lg) {
+                #if os(iOS)
+                if UIDevice.current.userInterfaceIdiom == .phone {
+                    PullToSearchSensor()
+                }
+                #endif
+
                 ForEach(MenuSection.allCases) { section in
                     NavigationLink(value: section) {
                         MenuSectionCard(

@@ -145,11 +145,18 @@ struct ListingListView: View {
                 listView
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
-            #if os(macOS)
+        #if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { notification in
+            if let initialText = notification.userInfo?["initialText"] as? String {
+                // Wait for the popover to animate and field to focus (autofocus mechanism)
+                // Then set the text. This prevents "Select All" from overwriting our char.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    quickFindText = initialText
+                }
+            }
             showQuickFind = true
-            #endif
         }
+        #endif
         #if !os(macOS)
         .navigationTitle("Listings")
         #endif

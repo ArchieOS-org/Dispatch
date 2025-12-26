@@ -107,7 +107,45 @@ struct ContentView: View {
         .environmentObject(lensState)
         .environmentObject(quickEntryState)
         .environmentObject(overlayState)
+        #if os(macOS)
+        .background(KeyMonitorView { event in
+            handleGlobalKeyDown(event)
+        })
+        #endif
     }
+
+    #if os(macOS)
+    /// Global key handler for Type Travel
+    private func handleGlobalKeyDown(_ event: NSEvent) -> NSEvent? {
+        // Ignore if any modifiers are pressed (Cmd, Ctrl, Opt), except Shift
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if !flags.isEmpty && flags != .shift {
+            return event
+        }
+
+        // Ignore if a text field is currently focused
+        if let window = NSApp.keyWindow,
+           let responder = window.firstResponder as? NSTextView {
+            if responder.isEditable { return event }
+        }
+
+        // Check for alphanumeric characters
+        if let chars = event.charactersIgnoringModifiers,
+           chars.count == 1,
+           let char = chars.first,
+           char.isLetter || char.isNumber {
+
+            // Trigger Quick Find with this character
+            NotificationCenter.default.post(
+                name: .openSearch,
+                object: nil,
+                userInfo: ["initialText": String(char)]
+            )
+            return nil
+        }
+        return event
+    }
+    #endif
 
     @ViewBuilder
     private var navigationContent: some View {

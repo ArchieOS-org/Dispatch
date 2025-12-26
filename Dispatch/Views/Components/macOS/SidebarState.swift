@@ -65,11 +65,13 @@ final class SidebarState: ObservableObject {
   }
 
   /// Hide sidebar (animation handled at view level)
+  /// Hide sidebar (animation handled at view level)
   func hide() {
     guard isVisible else { return }
     isVisible = false
   }
 }
+#endif
 
 // MARK: - Notifications for keyboard shortcuts
 
@@ -91,4 +93,3 @@ extension Notification.Name {
   /// Posted when a search result is selected from the popover
   static let navigateSearchResult = Notification.Name("navigateSearchResult")
 }
-#endif

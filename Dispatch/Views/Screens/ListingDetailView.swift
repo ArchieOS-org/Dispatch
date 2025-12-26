@@ -136,7 +136,14 @@ struct ListingDetailView: View {
             }
         }
         #endif
-        // macOS uses bottom toolbar for delete action (handled via OverflowMenu for now)
+        #if os(macOS)
+        // Ensure standard toolbar doesn't override our custom window header
+        .toolbar {
+            ToolbarItem(placement: .navigation) { EmptyView() }
+        }
+        // This is crucial: It tells SwiftUI NOT to put the back button in the window toolbar
+        .navigationBarBackButtonHidden(true)
+        #endif
         // MARK: - Alerts
         .alert("Delete Listing?", isPresented: $showDeleteListingAlert) {
             Button("Cancel", role: .cancel) {}

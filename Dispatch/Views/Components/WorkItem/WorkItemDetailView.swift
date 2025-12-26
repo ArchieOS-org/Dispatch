@@ -64,6 +64,13 @@ struct WorkItemDetailView: View {
         .onAppear {
             lensState.currentScreen = .detail
         }
+        #if os(macOS)
+        // Enforce global custom header
+        .toolbar {
+            ToolbarItem(placement: .navigation) { EmptyView() }
+        }
+        .navigationBarBackButtonHidden(true)
+        #endif
     }
 
     // MARK: - Header
@@ -329,6 +336,13 @@ struct WorkItemDetailView: View {
         )
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
+        #if os(macOS)
+        // Ensure standard toolbar doesn't override our custom window header
+        .toolbar {
+            ToolbarItem(placement: .navigation) { EmptyView() }
+        }
+        .navigationBarBackButtonHidden(true)
         #endif
     }
     .environmentObject(LensState())
