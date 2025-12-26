@@ -65,11 +65,12 @@ struct DispatchApp: App {
                 }
                 #endif
                 #endif
-                .configureMacWindow()
+                #endif
+                // .configureMacWindow() // Removed in favor of native style + toolbar suppression
         }
         .modelContainer(sharedModelContainer)
         #if os(macOS)
-        // Note: .windowStyle(.hiddenTitleBar) is replaced by .configureMacWindow()
+        .windowStyle(.hiddenTitleBar) // The native "Things 3" pattern
         .commands {
             CommandGroup(after: .newItem) {
                 Button("New Item") {
