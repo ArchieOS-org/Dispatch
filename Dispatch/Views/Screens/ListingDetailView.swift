@@ -101,6 +101,7 @@ struct ListingDetailView: View {
 
     // MARK: - Platform Layouts
 
+    #if os(macOS)
     @ViewBuilder
     private var macOSLayout: some View {
         StandardPageLayout {
@@ -168,7 +169,9 @@ struct ListingDetailView: View {
             Text("This note will be permanently deleted.")
         }
     }
+    #endif
 
+    #if os(iOS)
     @ViewBuilder
     private var iOSLayout: some View {
         ScrollView {
@@ -233,6 +236,7 @@ struct ListingDetailView: View {
             Text("This note will be permanently deleted.")
         }
     }
+    #endif
 
     // MARK: - Header Sections
 
