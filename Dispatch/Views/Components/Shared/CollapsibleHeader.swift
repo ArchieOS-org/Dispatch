@@ -87,7 +87,12 @@ struct CollapsibleHeader<Content: View>: View {
                 .opacity(secondaryOpacity)
         }
         .frame(height: headerHeight)
+        #if os(macOS)
+        .padding(.horizontal, DS.Spacing.Layout.pageMargin)
+        .padding(.top, DS.Spacing.Layout.topHeaderPadding - 20) // Adjust for collapsible nature
+        #else
         .padding(.horizontal, DS.Spacing.md)
+        #endif
         .background(DS.Colors.Background.primary)
     }
 }

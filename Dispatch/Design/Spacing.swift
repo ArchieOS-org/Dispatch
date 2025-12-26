@@ -140,5 +140,53 @@ extension DS {
 
         /// Search overlay modal max width (for larger screens)
         static let searchModalMaxWidth: CGFloat = 500
+
+        // MARK: - Sidebar (macOS)
+
+        /// Minimum sidebar width
+        static let sidebarMinWidth: CGFloat = 200
+
+        /// Maximum sidebar width
+        static let sidebarMaxWidth: CGFloat = 400
+
+        /// Default sidebar width
+        static let sidebarDefaultWidth: CGFloat = 240
+
+        /// Width of the invisible drag handle hit area
+        static let sidebarDragHandleWidth: CGFloat = 8
+
+        /// Height of the visible drag handle indicator
+        static let sidebarDragHandleHeight: CGFloat = 40
+
+        // MARK: - Bottom Toolbar (macOS)
+
+        /// Bottom toolbar height
+        static let bottomToolbarHeight: CGFloat = 44
+
+        /// Bottom toolbar icon button size
+        static let bottomToolbarButtonSize: CGFloat = 36
+
+        /// Bottom toolbar icon size
+        static let bottomToolbarIconSize: CGFloat = 18
+
+        /// Bottom toolbar horizontal padding
+        static let bottomToolbarPadding: CGFloat = 12
+        
+        // MARK: - Things 3 Layout (macOS)
+        
+        enum Layout {
+            /// Content side margin (Things 3 style spacious layout)
+            static let pageMargin: CGFloat = 40
+            
+            /// Top padding for content to clear the floating traffic lights
+            /// and provide visual separation (Things 3 style)
+            static let topHeaderPadding: CGFloat = 50
+            
+            /// Font size for the implementation of the "Large Title"
+            static let largeTitleSize: CGFloat = 30
+            
+            /// Spacing below the large title before content begins
+            static let titleBottomSpacing: CGFloat = 20
+        }
     }
 }

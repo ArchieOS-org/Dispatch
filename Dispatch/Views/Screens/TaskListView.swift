@@ -31,15 +31,7 @@ struct TaskListView: View {
 
     @Query private var users: [User]
 
-    #if os(macOS)
-    @Query(sort: \Listing.address)
-    private var allListings: [Listing]
-
-    /// Active listings for QuickEntrySheet picker
-    private var activeListings: [Listing] {
-        allListings.filter { $0.status != .deleted }
-    }
-    #endif
+    // macOS listings query removed - QuickEntrySheet now triggered from ContentView
 
     @EnvironmentObject private var syncManager: SyncManager
     @EnvironmentObject private var lensState: LensState
@@ -59,10 +51,7 @@ struct TaskListView: View {
     @State private var itemForSubtaskAdd: WorkItem?
     @State private var newSubtaskTitle = ""
 
-    // MARK: - State for Quick Entry (macOS only - iOS uses GlobalFloatingButtons)
-    #if os(macOS)
-    @State private var showQuickEntry = false
-    #endif
+    // macOS quick entry state removed - now handled in ContentView bottom toolbar
 
     // MARK: - State for Sync Failure Toast
     @State private var showSyncFailedToast = false
@@ -172,26 +161,7 @@ struct TaskListView: View {
                 showAddSubtaskSheet = false
             }
         }
-        #if os(macOS)
-        .sheet(isPresented: $showQuickEntry) {
-            QuickEntrySheet(
-                defaultItemType: .task,
-                currentUserId: currentUserId,
-                listings: activeListings,
-                onSave: { syncManager.requestSync() }
-            )
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showQuickEntry = true
-                } label: {
-                    Label("Add", systemImage: "plus")
-                }
-                .keyboardShortcut("n", modifiers: .command)
-            }
-        }
-        #endif
+        // macOS toolbar removed - bottom toolbar in ContentView handles quick entry
         .alert("Sync Issue", isPresented: $showSyncFailedToast) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -341,12 +311,13 @@ struct TaskListView: View {
 // MARK: - Preview
 
 #Preview("Task List View") {
-    @Previewable @State var syncManager = SyncManager.shared
-    
     let container = try! ModelContainer(
         for: TaskItem.self, User.self, Note.self, Subtask.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
+    
+    // Create isolated sync manager for preview
+    let syncManager = SyncManager()
     
     // Create preview data
     let context = container.mainContext
@@ -365,6 +336,9 @@ struct TaskListView: View {
         userType: .admin
     )
     context.insert(otherUser)
+    
+    // Configure sync manager with preview container
+    syncManager.configure(with: container, testUserID: currentUser.id)
     
     // Set current user
     syncManager.currentUserID = currentUser.id

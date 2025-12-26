@@ -30,15 +30,7 @@ struct ActivityListView: View {
 
     @Query private var users: [User]
 
-    #if os(macOS)
-    @Query(sort: \Listing.address)
-    private var allListings: [Listing]
-
-    /// Active listings for QuickEntrySheet picker
-    private var activeListings: [Listing] {
-        allListings.filter { $0.status != .deleted }
-    }
-    #endif
+    // macOS listings query removed - QuickEntrySheet now triggered from ContentView
 
     @EnvironmentObject private var syncManager: SyncManager
     @EnvironmentObject private var lensState: LensState
@@ -58,10 +50,7 @@ struct ActivityListView: View {
     @State private var itemForSubtaskAdd: WorkItem?
     @State private var newSubtaskTitle = ""
 
-    // MARK: - State for Quick Entry (macOS only - iOS uses GlobalFloatingButtons)
-    #if os(macOS)
-    @State private var showQuickEntry = false
-    #endif
+    // macOS quick entry state removed - now handled in ContentView bottom toolbar
 
     // MARK: - State for Sync Failure Toast
     @State private var showSyncFailedToast = false
@@ -171,26 +160,7 @@ struct ActivityListView: View {
                 showAddSubtaskSheet = false
             }
         }
-        #if os(macOS)
-        .sheet(isPresented: $showQuickEntry) {
-            QuickEntrySheet(
-                defaultItemType: .activity,
-                currentUserId: currentUserId,
-                listings: activeListings,
-                onSave: { syncManager.requestSync() }
-            )
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showQuickEntry = true
-                } label: {
-                    Label("Add", systemImage: "plus")
-                }
-                .keyboardShortcut("n", modifiers: .command)
-            }
-        }
-        #endif
+        // macOS toolbar removed - bottom toolbar in ContentView handles quick entry
         .alert("Sync Issue", isPresented: $showSyncFailedToast) {
             Button("OK", role: .cancel) {}
         } message: {

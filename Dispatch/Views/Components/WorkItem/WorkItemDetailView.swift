@@ -58,12 +58,24 @@ struct WorkItemDetailView: View {
                 // Notes Section
                 notesSection
             }
+            #if os(macOS)
+            .padding(.horizontal, DS.Spacing.Layout.pageMargin)
+            .padding(.vertical, DS.Spacing.md)
+            #else
             .padding(DS.Spacing.md)
+            #endif
         }
         .background(DS.Colors.Background.primary)
         .onAppear {
             lensState.currentScreen = .detail
         }
+        #if os(macOS)
+        // Enforce global custom header
+        .toolbar {
+            ToolbarItem(placement: .navigation) { EmptyView() }
+        }
+        .navigationBarBackButtonHidden(true)
+        #endif
     }
 
     // MARK: - Header
@@ -329,6 +341,13 @@ struct WorkItemDetailView: View {
         )
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
+        #if os(macOS)
+        // Ensure standard toolbar doesn't override our custom window header
+        .toolbar {
+            ToolbarItem(placement: .navigation) { EmptyView() }
+        }
+        .navigationBarBackButtonHidden(true)
         #endif
     }
     .environmentObject(LensState())

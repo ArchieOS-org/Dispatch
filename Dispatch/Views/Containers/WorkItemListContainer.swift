@@ -89,20 +89,52 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     /// The main content without NavigationStack wrapper
     @ViewBuilder
     private var content: some View {
-        VStack(spacing: 0) {
-            // Filter bar
-            SegmentedFilterBar(selection: $selectedFilter) { filter in
-                filter.displayName(forActivities: isActivityList)
-            }
+        #if os(macOS)
+        AnyView(
+            StandardPageLayout(title: title) {
+                // Filter Bar (Unified - specific style handled internally)
+                SegmentedFilterBar(selection: $selectedFilter) { filter in
+                    filter.displayName(forActivities: isActivityList)
+                }
+                .padding(.bottom, DS.Spacing.md)
 
-            // Content
-            if isEmpty {
-                emptyStateView
-            } else {
-                listView
+                if isEmpty {
+                    emptyStateView
+                } else {
+                    listView
+                }
             }
-        }
-        .navigationTitle(title)
+            .onReceive(NotificationCenter.default.publisher(for: .filterMine)) { _ in
+                selectedFilter = .mine
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .filterOthers)) { _ in
+                selectedFilter = .others
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .filterUnclaimed)) { _ in
+                selectedFilter = .unclaimed
+            }
+            // macOS: Native Toolbar with Transparent Background
+            .navigationTitle("") // Hide default title
+            .toolbarBackground(.hidden, for: .windowToolbar)
+        )
+        #else
+        AnyView(
+            VStack(spacing: 0) {
+                // Filter bar - iOS/iPad only
+                SegmentedFilterBar(selection: $selectedFilter) { filter in
+                    filter.displayName(forActivities: isActivityList)
+                }
+                .padding(.bottom, DS.Spacing.md)
+
+                if isEmpty {
+                    emptyStateView
+                } else {
+                    listView
+                }
+            }
+            .navigationTitle(title)
+        )
+        #endif
     }
 
     // MARK: - Subviews
@@ -113,6 +145,13 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                 Section {
                     ForEach(sectionItems) { item in
                         rowBuilder(item, item.claimState(currentUserId: currentUserId, userLookup: userLookup))
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(
+                                top: 0,
+                                leading: 0, // Flush left alignment
+                                bottom: 0,
+                                trailing: DS.Spacing.md
+                            ))
                     }
                 } header: {
                     DateSectionHeader(section: section)

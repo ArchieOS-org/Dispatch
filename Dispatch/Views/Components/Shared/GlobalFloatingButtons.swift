@@ -19,9 +19,10 @@ struct GlobalFloatingButtons: View {
 
     var body: some View {
         #if os(iOS)
-        GeometryReader { geo in
-            // ALWAYS render - animate opacity/offset instead of conditional
-            // Prevents transition bugs from subtree removal
+        // Render directly without GeometryReader to avoid layout loops
+        VStack {
+            Spacer()
+            
             HStack {
                 // Filter Button (left) - only show on TaskListView
                 if lensState.showFilterButton {
@@ -36,14 +37,13 @@ struct GlobalFloatingButtons: View {
                 }
             }
             .padding(.horizontal, DS.Spacing.lg)
-            .padding(.bottom, max(DS.Spacing.lg, geo.safeAreaInsets.bottom))
-            .frame(maxHeight: .infinity, alignment: .bottom)
-            // Animate visibility via opacity + offset (not conditional render)
-            .opacity(overlayState.isOverlayHidden ? 0 : 1)
-            .offset(y: overlayState.isOverlayHidden ? 12 : 0)
-            .allowsHitTesting(!overlayState.isOverlayHidden)
-            .animation(.easeInOut(duration: 0.2), value: overlayState.isOverlayHidden)
+            .padding(.bottom, DS.Spacing.lg) // Standard bottom padding
         }
+        // Animate visibility via opacity + offset (not conditional render)
+        .opacity(overlayState.isOverlayHidden ? 0 : 1)
+        .offset(y: overlayState.isOverlayHidden ? 12 : 0)
+        .allowsHitTesting(!overlayState.isOverlayHidden)
+        .animation(.easeInOut(duration: 0.2), value: overlayState.isOverlayHidden)
         #endif
     }
 

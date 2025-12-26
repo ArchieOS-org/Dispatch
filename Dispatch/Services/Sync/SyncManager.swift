@@ -80,7 +80,7 @@ final class SyncManager: ObservableObject {
     private var recentlyProcessedIds: Set<UUID> = []
     #endif
 
-    private init() {
+    init() {
         // Restore persisted lastSyncTime
         self.lastSyncTime = UserDefaults.standard.object(forKey: Self.lastSyncTimeKey) as? Date
         debugLog.log("SyncManager singleton initialized", category: .sync)

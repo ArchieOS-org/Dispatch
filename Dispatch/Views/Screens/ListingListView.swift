@@ -54,10 +54,7 @@ struct ListingListView: View {
     @State private var itemForSubtaskAdd: WorkItem?
     @State private var newSubtaskTitle = ""
 
-    // MARK: - State for Add Listing (macOS only - iOS uses GlobalFloatingButtons for tasks/activities)
-    #if os(macOS)
-    @State private var showAddListing = false
-    #endif
+    // macOS quick entry state removed - now handled in ContentView bottom toolbar
 
     // MARK: - Computed Properties
 
@@ -112,13 +109,32 @@ struct ListingListView: View {
     @ViewBuilder
     private var content: some View {
         Group {
-            if isEmpty {
-                emptyStateView
-            } else {
-                listView
-            }
+            #if os(macOS)
+            AnyView(
+                StandardPageLayout(title: "Listings") {
+                    if isEmpty {
+                        emptyStateView
+                    } else {
+                        listView
+                    }
+                }
+                // macOS Modifiers applied to the concrete StandardPageLayout
+                .navigationTitle("")
+                .toolbarBackground(.hidden, for: .windowToolbar)
+            )
+            #else
+            AnyView(
+                VStack(spacing: 0) {
+                    if isEmpty {
+                        emptyStateView
+                    } else {
+                        listView
+                    }
+                }
+                .navigationTitle("Listings")
+            )
+            #endif
         }
-        .navigationTitle("Listings")
         // MARK: - Alerts and Sheets
         .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
             Button("Cancel", role: .cancel) {
@@ -152,24 +168,6 @@ struct ListingListView: View {
                 showAddSubtaskSheet = false
             }
         }
-        #if os(macOS)
-        .sheet(isPresented: $showAddListing) {
-            AddListingSheet(
-                currentUserId: currentUserId,
-                onSave: { syncManager.requestSync() }
-            )
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showAddListing = true
-                } label: {
-                    Label("Add", systemImage: "plus")
-                }
-                .keyboardShortcut("n", modifiers: .command)
-            }
-        }
-        #endif
     }
 
     @ViewBuilder
@@ -344,6 +342,13 @@ struct ListingListView: View {
                         NavigationLink(value: listing) {
                             ListingRow(listing: listing, owner: group.owner)
                         }
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(
+                            top: 0,
+                            leading: 0,
+                            bottom: 0,
+                            trailing: DS.Spacing.md
+                        ))
                     }
                 }
             }

@@ -65,10 +65,40 @@ struct DispatchApp: App {
                 }
                 #endif
                 #endif
+                .configureMacWindow() // Applies AppKit transparency tweaks to the native toolbar
         }
         .modelContainer(sharedModelContainer)
         #if os(macOS)
+        .windowStyle(.hiddenTitleBar) // The native "Things 3" pattern
         .commands {
+            CommandGroup(after: .newItem) {
+                Button("New Item") {
+                    NotificationCenter.default.post(name: .newItem, object: nil)
+                }
+                .keyboardShortcut("n", modifiers: .command)
+
+                Button("Search") {
+                    NotificationCenter.default.post(name: .openSearch, object: nil)
+                }
+                .keyboardShortcut("f", modifiers: .command)
+
+                Divider()
+
+                Button("My Tasks") {
+                    NotificationCenter.default.post(name: .filterMine, object: nil)
+                }
+                .keyboardShortcut("1", modifiers: .command)
+
+                Button("Others' Tasks") {
+                    NotificationCenter.default.post(name: .filterOthers, object: nil)
+                }
+                .keyboardShortcut("2", modifiers: .command)
+
+                Button("Unclaimed") {
+                    NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
+                }
+                .keyboardShortcut("3", modifiers: .command)
+            }
             CommandGroup(after: .toolbar) {
                 Button("Sync Now") {
                     Task {
@@ -77,9 +107,15 @@ struct DispatchApp: App {
                 }
                 .keyboardShortcut("r", modifiers: .command)
             }
+            CommandGroup(after: .sidebar) {
+                Button("Toggle Sidebar") {
+                    NotificationCenter.default.post(name: .toggleSidebar, object: nil)
+                }
+                .keyboardShortcut("/", modifiers: .command)
+            }
         }
         #endif
-        .onChange(of: scenePhase) { newPhase in
+        .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 Task {
                     // Check app compatibility before sync

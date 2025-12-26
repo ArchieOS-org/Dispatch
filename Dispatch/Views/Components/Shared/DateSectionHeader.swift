@@ -18,7 +18,7 @@ struct DateSectionHeader: View {
             .font(DS.Typography.headline)
             .foregroundColor(section.headerColor)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, DS.Spacing.md)
+            .padding(.trailing, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
             .background(DS.Colors.Background.secondary)
             .listRowInsets(EdgeInsets())

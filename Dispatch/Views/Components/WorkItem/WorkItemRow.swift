@@ -29,6 +29,31 @@ struct WorkItemRow: View {
     // State for retry animation
     @State private var isRetrying = false
 
+    // New property
+    var hideDueDate: Bool = false
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // MARK: - Computed Properties
+
+    private var isOverdue: Bool {
+        guard let date = item.dueDate else { return false }
+        // An item is overdue if its due date is before the start of today
+        return date < Calendar.current.startOfDay(for: Date())
+    }
+
+    private var overdueText: String {
+        guard let date = item.dueDate else { return "" }
+        let startToday = Calendar.current.startOfDay(for: Date())
+        let startDue = Calendar.current.startOfDay(for: date)
+        let components = Calendar.current.dateComponents([.day], from: startDue, to: startToday)
+        let days = components.day ?? 0
+        
+        if days == 1 { return "Yda" }
+        return "\(days)d ago"
+    }
+
     private static let accessibilityDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -36,77 +61,68 @@ struct WorkItemRow: View {
     }()
 
     var body: some View {
-        HStack(spacing: DS.Spacing.md) {
-            // Role indicator dot
-            RoleDot(audiences: item.audiences)
+        HStack(spacing: 6) {
+            // Colored Status Checkbox
+            StatusCheckbox(
+                isCompleted: item.isCompleted,
+                color: roleColor,
+                onToggle: onComplete
+            )
 
-            // Status checkbox
-            StatusCheckbox(isCompleted: item.isCompleted, onToggle: onComplete)
+            // Date Pill (Left - Normal)
+            if let date = item.dueDate, !hideDueDate, !isOverdue {
+                DatePill(date: date)
+            }
 
-            // Content
-            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                // Title row
-                HStack {
-                    Text(item.title)
-                        .font(DS.Typography.headline)
-                        .strikethrough(item.isCompleted, color: DS.Colors.Text.tertiary)
-                        .foregroundColor(item.isCompleted ? DS.Colors.Text.tertiary : DS.Colors.Text.primary)
-                        .lineLimit(1)
-                }
+            // Title
+            Text(item.title)
+                .font(DS.Typography.body)
+                .strikethrough(item.isCompleted, color: DS.Colors.Text.tertiary)
+                .foregroundColor(item.isCompleted ? DS.Colors.Text.tertiary : DS.Colors.Text.primary)
+                .lineLimit(1)
 
-                // Metadata row
-                HStack(spacing: DS.Spacing.sm) {
-                    // Type label with icon
-                    HStack(spacing: DS.Spacing.xxs) {
-                        Image(systemName: item.typeIcon)
-                            .font(.system(size: 10))
-                        Text(item.typeLabel)
-                            .font(DS.Typography.caption)
-                    }
-                    .foregroundColor(DS.Colors.Text.secondary)
-
-                    DueDateBadge(dueDate: item.dueDate)
-
-                    // Subtask progress (if any)
-                    if item.hasSubtasks {
-                        HStack(spacing: DS.Spacing.xxs) {
-                            Image(systemName: DS.Icons.Entity.subtask)
-                                .font(.system(size: 10))
-                            Text(item.subtaskProgressText)
-                                .font(DS.Typography.caption)
-                        }
-                        .foregroundColor(DS.Colors.Text.tertiary)
-                    }
-
-                    Spacer()
-                }
+            // User Tag (Inline with title)
+            if case .claimedByOther(let user) = claimState {
+                UserTag(user: user)
+            } else if case .claimedByMe(let user) = claimState {
+                UserTag(user: user)
             }
 
             Spacer()
 
-            // Show sync error indicator if failed, otherwise show claim button
-            if item.isSyncFailed {
-                SyncRetryButton(
-                    errorMessage: item.lastSyncError,
-                    isRetrying: isRetrying,
-                    onRetry: {
-                        isRetrying = true
-                        onRetrySync()
-                        // Reset after a delay (sync completion will trigger UI refresh)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            isRetrying = false
-                        }
+            // Right side items
+            HStack(spacing: DS.Spacing.sm) {
+                // Overdue Flag (Right)
+                if let _ = item.dueDate, !hideDueDate, isOverdue {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flag.fill")
+                        Text(overdueText)
                     }
-                )
-                .padding(.trailing, DS.Spacing.sm)
-            } else {
-                ClaimButton(
-                    claimState: claimState,
-                    style: .compact,
-                    onClaim: onClaim,
-                    onRelease: onRelease
-                )
-                .padding(.trailing, DS.Spacing.md)
+                    .font(DS.Typography.caption)
+                    .foregroundStyle(.red)
+                }
+
+                // Actions / Status
+                if item.isSyncFailed {
+                    SyncRetryButton(
+                        errorMessage: item.lastSyncError,
+                        isRetrying: isRetrying,
+                        onRetry: {
+                            isRetrying = true
+                            onRetrySync()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                isRetrying = false
+                            }
+                        }
+                    )
+                } else if case .unclaimed = claimState {
+                    ClaimButton(
+                        claimState: claimState,
+                        style: .compact,
+                        onClaim: onClaim,
+                        onRelease: onRelease
+                    )
+                }
             }
         }
         .padding(.vertical, DS.Spacing.sm)
@@ -135,6 +151,18 @@ struct WorkItemRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Double tap to view details. Swipe for more options.")
+    }
+
+    /// Color for the status checkbox based on role audience
+    private var roleColor: Color {
+        if item.audiences.contains(.admin) && item.audiences.contains(.marketing) {
+            return DS.Colors.Text.primary // Mixed/Both (could be purple or distinct)
+        } else if item.audiences.contains(.admin) {
+            return DS.Colors.RoleColors.admin
+        } else if item.audiences.contains(.marketing) {
+            return DS.Colors.RoleColors.marketing
+        }
+        return DS.Colors.Text.tertiary // Default/None
     }
 
     private var accessibilityLabel: String {

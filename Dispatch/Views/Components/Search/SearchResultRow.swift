@@ -37,6 +37,18 @@ struct SearchResultRow: View {
             }
 
             Spacer(minLength: 0)
+            
+            // Badge (if exists)
+            if let badge = result.badgeCount, badge > 0 {
+                Text("\(badge)")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(DS.Colors.Text.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(DS.Colors.Background.tertiary)
+                    .cornerRadius(4)
+            }
 
             // Chevron
             Image(systemName: "chevron.right")
