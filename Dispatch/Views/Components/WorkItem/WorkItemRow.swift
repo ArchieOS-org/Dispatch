@@ -73,6 +73,7 @@ struct WorkItemRow: View {
             StatusCheckbox(
                 isCompleted: item.isCompleted,
                 color: roleColor,
+                isCircle: item.isTask,
                 onToggle: onComplete
             )
 

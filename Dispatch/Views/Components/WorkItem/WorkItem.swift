@@ -144,6 +144,11 @@ enum WorkItem: Identifiable {
         snapshot.subtaskCount > 0
     }
 
+    var isTask: Bool {
+        if case .task = self { return true }
+        return false
+    }
+
     // MARK: - Live Model Access (USE WITH CAUTION)
     // These accessors return the live model for mutation operations.
     // Only use these when you need to modify the model - never for reading display properties.

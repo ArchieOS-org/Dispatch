@@ -13,13 +13,14 @@ import SwiftUI
 struct StatusCheckbox: View {
     let isCompleted: Bool
     var color: Color = DS.Colors.Text.tertiary
+    var isCircle: Bool = false
     var onToggle: () -> Void = {}
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: onToggle) {
-            Image(systemName: isCompleted ? "checkmark.square.fill" : "square")
+            Image(systemName: iconName)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(color)
                 .frame(width: 14, height: 14) // Match text visual height
@@ -33,6 +34,14 @@ struct StatusCheckbox: View {
         .accessibilityLabel(isCompleted ? "Completed" : "Not completed")
         .accessibilityHint("Double tap to toggle completion status")
         .accessibilityAddTraits(.isButton)
+    }
+
+    private var iconName: String {
+        if isCircle {
+            return isCompleted ? "checkmark.circle.fill" : "circle"
+        } else {
+            return isCompleted ? "checkmark.square.fill" : "square"
+        }
     }
 }
 
