@@ -389,6 +389,7 @@ struct ContentView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 BottomToolbar(
                     context: toolbarContext,
+                    audience: $lensState.audience,
                     onNew: {
                         if selectedTab == .listings {
                             showMacOSAddListing = true

@@ -31,6 +31,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     @ViewBuilder let destinationBuilder: (WorkItemRef) -> Destination
 
     @State private var selectedFilter: ClaimFilter = .mine
+    @EnvironmentObject private var lensState: LensState
 
     init(
         title: String,
@@ -54,10 +55,13 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
 
     // MARK: - Computed Properties
 
-    /// Items filtered by the selected claim filter
+    /// Items filtered by the selected claim filter AND audience lens
     private var filteredItems: [WorkItem] {
         items.filter { item in
-            selectedFilter.matches(claimedBy: item.claimedBy, currentUserId: currentUserId)
+            // Must match BOTH the claim filter (My/Others/Unclaimed)
+            // AND the global audience filter (All/Admin/Marketing)
+            selectedFilter.matches(claimedBy: item.claimedBy, currentUserId: currentUserId) &&
+            lensState.audience.matches(audiences: item.audiences)
         }
     }
 

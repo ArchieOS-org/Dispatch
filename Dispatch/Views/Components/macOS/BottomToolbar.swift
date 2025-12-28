@@ -38,6 +38,7 @@ struct BottomToolbar: View {
   let context: ToolbarContext
 
   // List context actions
+  var audience: Binding<AudienceLens>? = nil
   var onNew: (() -> Void)?
   var onSearch: (() -> Void)?
 
@@ -75,6 +76,35 @@ struct BottomToolbar: View {
   private var listToolbar: some View {
     // Left group
     HStack(spacing: 0) {
+      if let audienceBinding = audience {
+        ToolbarIconButton(
+            icon: audienceBinding.wrappedValue.icon,
+            action: {
+                withAnimation(.snappy(duration: 0.2)) {
+                    audienceBinding.wrappedValue = audienceBinding.wrappedValue.next
+                }
+            },
+            accessibilityLabel: "Filter: \(audienceBinding.wrappedValue.label)"
+        )
+        .contextMenu {
+            ForEach(AudienceLens.allCases, id: \.self) { lens in
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) {
+                        audienceBinding.wrappedValue = lens
+                    }
+                } label: {
+                    if lens == audienceBinding.wrappedValue {
+                        Label(lens.label, systemImage: "checkmark")
+                    } else {
+                        Text(lens.label)
+                    }
+                }
+            }
+        }
+        .padding(.trailing, DS.Spacing.md)
+        .transition(.opacity)
+      }
+
       if let onNew {
         ToolbarIconButton(
           icon: "plus",
