@@ -38,7 +38,10 @@ struct WorkItemSnapshot {
     let lastSyncError: String?
 
     // Audience targeting
-    let audiences: Set<Role>
+    let audiences: Set<Role> // was Role
+
+    // Relationships
+    let listingId: UUID?
 }
 
 /// A unified wrapper for TaskItem and Activity that provides
@@ -82,6 +85,7 @@ enum WorkItem: Identifiable {
     var createdAt: Date { snapshot.createdAt }
     var updatedAt: Date { snapshot.updatedAt }
     var declaredBy: UUID { snapshot.declaredBy }
+    var listingId: UUID? { snapshot.listingId }
 
     // MARK: - Status Handling (from cached snapshot)
 
@@ -175,6 +179,15 @@ enum WorkItem: Identifiable {
         case .activity(let activity, _): return activity.subtasks
         }
     }
+
+    /// Access live listing relationship from the model.
+    /// **Warning**: May crash if model is invalidated.
+    var listing: Listing? {
+        switch self {
+        case .task(let task, _): return task.listing
+        case .activity(let activity, _): return activity.listing
+        }
+    }
 }
 
 // MARK: - Factory Methods
@@ -203,7 +216,9 @@ extension WorkItem {
             activityType: nil,
             syncState: task.syncState,
             lastSyncError: task.lastSyncError,
-            audiences: task.audiences
+            audiences: task.audiences,
+            listingId: task.listingId
+        )
         )
         return .task(task, snapshot: snapshot)
     }
@@ -254,7 +269,9 @@ extension WorkItem {
             activityType: activity.type,
             syncState: activity.syncState,
             lastSyncError: activity.lastSyncError,
-            audiences: activity.audiences
+            audiences: activity.audiences,
+            listingId: activity.listingId
+        )
         )
         return .activity(activity, snapshot: snapshot)
     }

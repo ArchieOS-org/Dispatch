@@ -8,6 +8,13 @@
 import SwiftUI
 import SwiftData
 
+// Grouping structure moved to file scope (or public) to be accessible by child views
+struct WorkspaceGroup: Identifiable {
+    let id: UUID // Listing ID (or UUID() for general)
+    let listing: Listing?
+    var items: [WorkItem]
+}
+
 struct MyWorkspaceView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var tasks: [TaskItem]
@@ -20,19 +27,12 @@ struct MyWorkspaceView: View {
     // Using the standard `DataManager.shared.currentUser` pattern if it exists, or assuming a specific User ID context.
     // Better: Fetch all and filter in memory since we don't have dynamic @Query predicates for "currentUser" easily without passing it in.
     
-    // Grouping structure
-    struct WorkspaceGroup: Identifiable {
-        let id: UUID // Listing ID (or UUID() for general)
-        let listing: Listing?
-        var items: [WorkItem]
-    }
-    
     @Binding var navigationPath: NavigationPath // If used in NavigationStack
     
     var body: some View {
         NavigationStack { // Internal stack or rely on parent? Usually views are pushed.
             ZStack {
-                DS.Colors.background.ignoresSafeArea()
+                DS.Colors.Background.primary.ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: DS.Spacing.section) {
@@ -82,18 +82,8 @@ struct MyWorkspaceView: View {
         for item in allItems {
             if let listingId = item.listingId {
                 if groups[listingId] == nil {
-                    // We need the listing object. 
-                    // Since specific item has it? `item.listing` property?
-                    // TaskItem definition has `var listing: Listing?`.
-                    // We can try to grab it from the item.
-                    let listing: Listing? = {
-                        switch item {
-                        case .task(let t): return t.listing
-                        case .activity(let a): return a.listing
-                        }
-                    }()
-                    
-                    if let listing = listing {
+                    // Use the new accessor to safely get the listing
+                    if let listing = item.listing {
                          groups[listingId] = WorkspaceGroup(id: listingId, listing: listing, items: [])
                     } else {
                         // Fallback if relation missing
