@@ -23,23 +23,20 @@ struct DatePill: View {
     
     private var dateString: String {
         let calendar = Calendar.current
-        if calendar.isDateInToday(date) {
-            return "Today"
-        } else if calendar.isDateInTomorrow(date) {
-            return "Tom"
-        } else {
-            // Check if within next 7 days
-            if let days = calendar.dateComponents([.day], from: Date(), to: date).day, days < 7, days > 0 {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "E" // "Tue", "Wed"
-                return formatter.string(from: date)
-            } else {
-                // "Jan 9" format
-                let formatter = DateFormatter()
-                formatter.dateFormat = "MMM d"
-                return formatter.string(from: date)
-            }
+        let startToday = calendar.startOfDay(for: Date())
+        let startDate = calendar.startOfDay(for: date)
+        
+        // If within 6 days, show Day of Week (e.g., "Mon")
+        if let days = calendar.dateComponents([.day], from: startToday, to: startDate).day, days >= 0, days < 7 {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEE"
+            return formatter.string(from: date)
         }
+        
+        // Otherwise show Date (e.g., "Jan 12")
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
     }
 }
 

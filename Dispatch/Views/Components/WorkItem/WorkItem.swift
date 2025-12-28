@@ -11,7 +11,7 @@ import SwiftUI
 /// Cached snapshot of work item properties for safe rendering.
 /// All values are captured at construction time, so they remain valid
 /// even if the underlying SwiftData model is invalidated by ModelContext.reset().
-struct WorkItemSnapshot {
+struct WorkItemSnapshot: Equatable, Hashable {
     let id: UUID
     let title: String
     let itemDescription: String
@@ -279,8 +279,8 @@ extension WorkItem {
 
 extension WorkItem: Equatable {
     static func == (lhs: WorkItem, rhs: WorkItem) -> Bool {
-        // Uses cached ID - safe even if underlying model is invalidated
-        lhs.id == rhs.id
+        // Compare full snapshots to ensure UI updates when properties change
+        lhs.snapshot == rhs.snapshot
     }
 }
 
@@ -288,8 +288,8 @@ extension WorkItem: Equatable {
 
 extension WorkItem: Hashable {
     func hash(into hasher: inout Hasher) {
-        // Uses cached ID - safe even if underlying model is invalidated
-        hasher.combine(id)
+        // Hash full snapshot to ensure UI updates when properties change
+        hasher.combine(snapshot)
     }
 }
 

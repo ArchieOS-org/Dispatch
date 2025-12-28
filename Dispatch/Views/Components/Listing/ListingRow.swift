@@ -26,11 +26,17 @@ struct ListingRow: View {
         guard let date = listing.dueDate else { return "" }
         let startToday = Calendar.current.startOfDay(for: Date())
         let startDue = Calendar.current.startOfDay(for: date)
-        let components = Calendar.current.dateComponents([.day], from: startDue, to: startToday)
-        let days = components.day ?? 0
+        let days = Calendar.current.dateComponents([.day], from: startDue, to: startToday).day ?? 0
         
-        if days == 1 { return "Yda" }
-        return "\(days)d ago"
+        if days < 7 {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEE"
+            return formatter.string(from: date)
+        }
+        
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
     }
 
     var body: some View {

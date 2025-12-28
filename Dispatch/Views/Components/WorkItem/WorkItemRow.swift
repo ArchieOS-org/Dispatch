@@ -31,6 +31,7 @@ struct WorkItemRow: View {
 
     // New property
     var hideDueDate: Bool = false
+    var hideUserTag: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -47,11 +48,17 @@ struct WorkItemRow: View {
         guard let date = item.dueDate else { return "" }
         let startToday = Calendar.current.startOfDay(for: Date())
         let startDue = Calendar.current.startOfDay(for: date)
-        let components = Calendar.current.dateComponents([.day], from: startDue, to: startToday)
-        let days = components.day ?? 0
+        let days = Calendar.current.dateComponents([.day], from: startDue, to: startToday).day ?? 0
         
-        if days == 1 { return "Yda" }
-        return "\(days)d ago"
+        if days < 7 {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEE"
+            return formatter.string(from: date)
+        }
+        
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
     }
 
     private static let accessibilityDateFormatter: DateFormatter = {
@@ -82,10 +89,12 @@ struct WorkItemRow: View {
                 .lineLimit(1)
 
             // User Tag (Inline with title)
-            if case .claimedByOther(let user) = claimState {
-                UserTag(user: user)
-            } else if case .claimedByMe(let user) = claimState {
-                UserTag(user: user)
+            if !hideUserTag {
+                if case .claimedByOther(let user) = claimState {
+                    UserTag(user: user)
+                } else if case .claimedByMe(let user) = claimState {
+                    UserTag(user: user)
+                }
             }
 
             Spacer()

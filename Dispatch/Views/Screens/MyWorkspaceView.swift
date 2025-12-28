@@ -30,32 +30,30 @@ struct MyWorkspaceView: View {
     @Binding var navigationPath: NavigationPath // If used in NavigationStack
     
     var body: some View {
-        NavigationStack { // Internal stack or rely on parent? Usually views are pushed.
-            ZStack {
-                DS.Colors.Background.primary.ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(spacing: DS.Spacing.sectionSpacing) {
-                        // Title (Large, Things 3 style)
-                        HStack {
-                            Text("My Workspace")
-                                .font(.system(size: 32, weight: .bold))
-                                .foregroundStyle(DS.Colors.Text.primary)
-                            Spacer()
-                        }
-                        .padding(.horizontal, DS.Spacing.Layout.pageMargin)
-                        .padding(.top, DS.Spacing.Layout.topHeaderPadding)
-                        
-                        // Content
-                        LazyVStack(spacing: 24) {
-                            ForEach(groupedItems) { group in
-                                ListingWorkspaceSection(group: group)
-                            }
-                        }
-                        .padding(.horizontal, DS.Spacing.Layout.pageMargin)
+        ZStack {
+            DS.Colors.Background.primary.ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: DS.Spacing.sectionSpacing) {
+                    // Title (Large, Things 3 style)
+                    HStack {
+                        Text("My Workspace")
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundStyle(DS.Colors.Text.primary)
+                        Spacer()
                     }
-                    .padding(.bottom, 100)
+                    .padding(.horizontal, DS.Spacing.Layout.pageMargin)
+                    .padding(.top, DS.Spacing.Layout.topHeaderPadding)
+                    
+                    // Content
+                    LazyVStack(spacing: 24) {
+                        ForEach(groupedItems) { group in
+                            ListingWorkspaceSection(group: group)
+                        }
+                    }
+                    .padding(.horizontal, DS.Spacing.Layout.pageMargin)
                 }
+                .padding(.bottom, 100)
             }
         }
     }
@@ -114,6 +112,7 @@ struct MyWorkspaceView: View {
 struct ListingWorkspaceSection: View {
     let group: WorkspaceGroup
     @State private var isExpanded: Bool = true
+    @EnvironmentObject private var actions: WorkItemActions
     
     var body: some View {
         VStack(spacing: 0) {
@@ -137,10 +136,6 @@ struct ListingWorkspaceSection: View {
                         
                         Spacer()
                         
-                        // Progress Pill? Or simple text?
-                        // User mentioned "progress pill" in plan.
-                        // Let's use a small custom view or existing component.
-                        // ListingRow has ProgressCircle.
                         ProgressCircle(progress: listing.progress, size: 18)
                     } else {
                         Text("General / Unassigned")
@@ -158,19 +153,21 @@ struct ListingWorkspaceSection: View {
             if isExpanded {
                 VStack(spacing: 0) {
                     ForEach(group.items) { item in
-                        // Divider logic handled by list or custom?
-                        // User wants "no separators", strict Things 3 style.
-                        WorkItemRow(
-                            item: item,
-                            claimState: .claimedByMe(user: User.mockCurrentUser), // Assuming it's mine since it's "My Workspace"
-                            onComplete: { /* toggle status */ }, // Needs wiring
-                            onEdit: {},
-                            onDelete: {},
-                            onClaim: {},
-                            onRelease: {},
-                            onRetrySync: {}
-                        )
-                        .padding(.leading, 24) // Indent items slightly? Or flush? Things 3 indents items under headers.
+                        NavigationLink(value: WorkItemRef.from(item)) {
+                            WorkItemRow(
+                                item: item,
+                                claimState: .claimedByMe(user: User.mockCurrentUser), // Contextually implied "Me"
+                                onComplete: { actions.onComplete(item) },
+                                onEdit: {}, // TODO: Edit actions if needed
+                                onDelete: {}, // TODO: Delete actions if needed
+                                onClaim: { actions.onClaim(item) },
+                                onRelease: { actions.onRelease(item) },
+                                onRetrySync: {},
+                                hideUserTag: true
+                            )
+                            .padding(.leading, 24)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
