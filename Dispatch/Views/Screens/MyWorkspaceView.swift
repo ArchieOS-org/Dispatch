@@ -35,7 +35,7 @@ struct MyWorkspaceView: View {
                 DS.Colors.Background.primary.ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(spacing: DS.Spacing.section) {
+                    VStack(spacing: DS.Spacing.sectionSpacing) {
                         // Title (Large, Things 3 style)
                         HStack {
                             Text("My Workspace")
@@ -43,8 +43,8 @@ struct MyWorkspaceView: View {
                                 .foregroundStyle(DS.Colors.Text.primary)
                             Spacer()
                         }
-                        .padding(.horizontal, DS.Layout.pageMargin)
-                        .padding(.top, DS.Layout.topHeaderPadding)
+                        .padding(.horizontal, DS.Spacing.Layout.pageMargin)
+                        .padding(.top, DS.Spacing.Layout.topHeaderPadding)
                         
                         // Content
                         LazyVStack(spacing: 24) {
@@ -52,7 +52,7 @@ struct MyWorkspaceView: View {
                                 ListingWorkspaceSection(group: group)
                             }
                         }
-                        .padding(.horizontal, DS.Layout.pageMargin)
+                        .padding(.horizontal, DS.Spacing.Layout.pageMargin)
                     }
                     .padding(.bottom, 100)
                 }

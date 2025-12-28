@@ -219,7 +219,6 @@ extension WorkItem {
             audiences: task.audiences,
             listingId: task.listingId
         )
-        )
         return .task(task, snapshot: snapshot)
     }
 
@@ -271,7 +270,6 @@ extension WorkItem {
             lastSyncError: activity.lastSyncError,
             audiences: activity.audiences,
             listingId: activity.listingId
-        )
         )
         return .activity(activity, snapshot: snapshot)
     }
