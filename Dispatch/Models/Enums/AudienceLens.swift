@@ -36,9 +36,9 @@ enum AudienceLens: String, CaseIterable {
     /// SF Symbol icon for the filter button
     var icon: String {
         switch self {
-        case .all: return "line.3.horizontal.decrease.circle"
-        case .admin: return "person.badge.shield.checkmark"
-        case .marketing: return "megaphone"
+        case .all: return DS.Icons.Navigation.filter
+        case .admin: return DS.Icons.Role.admin
+        case .marketing: return DS.Icons.Role.marketing
         }
     }
 
