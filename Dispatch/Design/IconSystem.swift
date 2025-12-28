@@ -300,6 +300,23 @@ extension DS {
             static let notificationBadge = "bell.badge"
         }
 
+        // MARK: - Role Icons
+
+        /// Icons for user roles/audiences
+        enum Role {
+            /// Admin role
+            static let admin = "shield"
+
+            /// Admin role filled
+            static let adminFill = "shield.fill"
+
+            /// Marketing role
+            static let marketing = "megaphone"
+
+            /// Marketing role filled
+            static let marketingFill = "megaphone.fill"
+        }
+
         // MARK: - Time & Date Icons
 
         /// Icons for time and date related elements

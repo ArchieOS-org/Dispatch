@@ -72,7 +72,7 @@ struct WorkItemRow: View {
             // Colored Status Checkbox
             StatusCheckbox(
                 isCompleted: item.isCompleted,
-                color: roleColor,
+                color: DS.Colors.Text.tertiary,
                 isCircle: item.isTask,
                 onToggle: onComplete
             )
@@ -80,6 +80,18 @@ struct WorkItemRow: View {
             // Date Pill (Left - Normal)
             if let date = item.dueDate, !hideDueDate, !isOverdue {
                 DatePill(date: date)
+            }
+
+            // Role Icon (Inline - Left of title)
+            if item.audiences.contains(.admin) {
+                Image(systemName: DS.Icons.Role.admin)
+                    .font(DS.Typography.body)
+                    .foregroundStyle(DS.Colors.RoleColors.admin)
+            }
+            if item.audiences.contains(.marketing) {
+                Image(systemName: DS.Icons.Role.marketing)
+                    .font(DS.Typography.body)
+                    .foregroundStyle(DS.Colors.RoleColors.marketing)
             }
 
             // Title
@@ -161,18 +173,6 @@ struct WorkItemRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint("Double tap to view details. Swipe for more options.")
-    }
-
-    /// Color for the status checkbox based on role audience
-    private var roleColor: Color {
-        if item.audiences.contains(.admin) && item.audiences.contains(.marketing) {
-            return DS.Colors.Text.primary // Mixed/Both (could be purple or distinct)
-        } else if item.audiences.contains(.admin) {
-            return DS.Colors.RoleColors.admin
-        } else if item.audiences.contains(.marketing) {
-            return DS.Colors.RoleColors.marketing
-        }
-        return DS.Colors.Text.tertiary // Default/None
     }
 
     private var accessibilityLabel: String {
