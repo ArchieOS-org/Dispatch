@@ -55,11 +55,18 @@ struct RealtorProfileView: View {
 
     @EnvironmentObject private var lensState: LensState
     @EnvironmentObject private var actions: WorkItemActions
+    @State private var showEditSheet = false
 
     // MARK: - Body
 
     var body: some View {
-        StandardPageLayout(title: "", offset: $lensState.scrollOffset) {
+        StandardPageLayout(title: "", headerActions: {
+            Button("Edit") {
+                showEditSheet = true
+            }
+            .font(DS.Typography.bodySecondary)
+            .buttonStyle(.plain)
+        }) {
             LazyVStack(spacing: DS.Spacing.section) {
                 // Profile Header
                 profileHeader
@@ -107,6 +114,9 @@ struct RealtorProfileView: View {
             .padding(.bottom, DS.Spacing.xxl) // Bottom padding for scrolling
         }
         .navigationBarTitleDisplayMode(.inline) // Hide default large title when scrolling
+        .sheet(isPresented: $showEditSheet) {
+            EditRealtorSheet(user: user)
+        }
     }
 
     // MARK: - Subviews
@@ -118,8 +128,8 @@ struct RealtorProfileView: View {
                 .fill(DS.Colors.Background.secondary)
                 .frame(width: 80, height: 80)
                 .overlay {
-                    if let avatarData = user.avatar, let uiImage = UIImage(data: avatarData) {
-                        Image(uiImage: uiImage)
+                    if let avatarData = user.avatar, let pImage = PlatformImage.from(data: avatarData) {
+                        Image(platformImage: pImage)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                             .clipShape(Circle())

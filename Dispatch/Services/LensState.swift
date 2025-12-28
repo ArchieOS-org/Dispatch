@@ -19,6 +19,7 @@ final class LensState: ObservableObject {
         case listings
         case listingDetail
         case menu
+        case realtors
         case detail
         case other
     }

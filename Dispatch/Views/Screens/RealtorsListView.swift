@@ -22,7 +22,7 @@ struct RealtorsListView: View {
     /// Fetch all users who are realtors
     @Query(
         filter: #Predicate<User> { user in
-            user.userType == .realtor
+            user.userType == UserType.realtor 
         },
         sort: \User.name
     ) private var realtors: [User]
@@ -31,24 +31,39 @@ struct RealtorsListView: View {
 
     @EnvironmentObject private var lensState: LensState
 
+    // MARK: - State
+
+    @State private var showAddSheet = false
+
     // MARK: - Body
 
     var body: some View {
         if embedInNavigationStack {
             content
+                .sheet(isPresented: $showAddSheet) {
+                    EditRealtorSheet()
+                }
         } else {
             NavigationStack {
                 content
+            }
+            .sheet(isPresented: $showAddSheet) {
+                EditRealtorSheet()
             }
         }
     }
 
     private var content: some View {
-        StandardPageLayout(
-            title: "Realtors",
-            subtitle: "\(realtors.count) active",
-            offset: $lensState.scrollOffset
-        ) {
+        StandardPageLayout(title: "Realtors", headerActions: {
+            Button {
+                showAddSheet = true
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(DS.Colors.Text.primary)
+            }
+            .buttonStyle(.plain)
+        }) {
             LazyVStack(spacing: 0) {
                 ForEach(realtors) { user in
                     NavigationLink(value: user) {
@@ -60,7 +75,7 @@ struct RealtorsListView: View {
             .padding(.horizontal, DS.Spacing.Layout.pageMargin)
         }
         .onAppear {
-            lensState.currentScreen = .listingList // Reuse listing list context for now or add new enum
+            lensState.currentScreen = .realtors
         }
     }
 }
@@ -78,14 +93,14 @@ private struct RealtorRow: View {
                 .fill(DS.Colors.Background.secondary)
                 .frame(width: 40, height: 40)
                 .overlay {
-                    if let avatarData = user.avatar, let uiImage = UIImage(data: avatarData) {
-                        Image(uiImage: uiImage)
+                    if let avatarData = user.avatar, let pImage = PlatformImage.from(data: avatarData) {
+                        Image(platformImage: pImage)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                             .clipShape(Circle())
                     } else {
                         Text(user.initials)
-                            .font(DS.Typography.subheadline)
+                            .font(DS.Typography.bodySecondary)
                             .foregroundStyle(DS.Colors.Text.secondary)
                     }
                 }
