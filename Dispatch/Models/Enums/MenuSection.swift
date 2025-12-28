@@ -12,6 +12,7 @@ enum MenuSection: String, CaseIterable, Identifiable, Hashable {
     case tasks
     case activities
     case listings
+    case realtors
 
     var id: String { rawValue }
 
@@ -21,6 +22,7 @@ enum MenuSection: String, CaseIterable, Identifiable, Hashable {
         case .tasks: return "Tasks"
         case .activities: return "Activities"
         case .listings: return "Listings"
+        case .realtors: return "Realtors"
         }
     }
 
@@ -30,6 +32,7 @@ enum MenuSection: String, CaseIterable, Identifiable, Hashable {
         case .tasks: return DS.Icons.Entity.task
         case .activities: return DS.Icons.Entity.activity
         case .listings: return DS.Icons.Entity.listing
+        case .realtors: return DS.Icons.Entity.realtor
         }
     }
 
@@ -39,6 +42,7 @@ enum MenuSection: String, CaseIterable, Identifiable, Hashable {
         case .tasks: return DS.Colors.info         // Blue
         case .activities: return DS.Colors.warning  // Orange
         case .listings: return DS.Colors.success    // Green
+        case .realtors: return .indigo              // Indigo
         }
     }
 }

@@ -231,6 +231,9 @@ extension DS {
 
             /// Team filled
             static let teamFill = "person.2.fill"
+
+            /// Realtor entity
+            static let realtor = "person.text.rectangle"
         }
 
         // MARK: - Activity Type Icons

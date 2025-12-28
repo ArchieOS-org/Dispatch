@@ -57,6 +57,10 @@ private struct DispatchDestinationsModifier: ViewModifier {
                 menuDestination(for: section)
                     .hideMacToolbar()
             }
+            .navigationDestination(for: User.self) { user in
+                RealtorProfileView(user: user)
+                    .hideMacToolbar()
+            }
     }
     
     @ViewBuilder
@@ -68,6 +72,8 @@ private struct DispatchDestinationsModifier: ViewModifier {
             ActivityListView(embedInNavigationStack: false)
         case .listings:
             ListingListView(embedInNavigationStack: false)
+        case .realtors:
+            RealtorsListView(embedInNavigationStack: false)
         }
     }
 }
