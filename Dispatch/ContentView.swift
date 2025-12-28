@@ -29,7 +29,7 @@ struct ContentView: View {
     @Query private var allListings: [Listing]
 
     enum Tab: Hashable {
-        case tasks, activities, listings
+        case myWorkspace, tasks, activities, listings
     }
 
     @State private var selectedTab: Tab = .tasks
@@ -324,6 +324,8 @@ struct ContentView: View {
             return .activityList
         case .listings:
             return .listingList
+        case .myWorkspace:
+            return .taskList // Re-use task actions for now
         }
     }
     
@@ -335,6 +337,13 @@ struct ContentView: View {
                 // Standard List(selection:) consumes clicks on selected items without reporting them.
                 
                 Group {
+                    SidebarRow(
+                        title: "My Workspace",
+                        icon: "briefcase",
+                        isSelected: selectedTab == .myWorkspace,
+                        action: { handleTabSelection(.myWorkspace) }
+                    )
+                    
                     SidebarRow(
                         title: "Tasks",
                         icon: DS.Icons.Entity.task,
@@ -368,6 +377,8 @@ struct ContentView: View {
                         ActivityListView()
                     case .listings:
                         ListingListView()
+                    case .myWorkspace:
+                        MyWorkspaceView(navigationPath: $searchNavigationPath)
                     }
                 }
                 .dispatchDestinations()
@@ -448,6 +459,7 @@ struct ContentView: View {
     private var sidebarNavigation: some View {
         NavigationSplitView {
             List {
+                sidebarButton(for: .myWorkspace, label: "My Workspace", icon: "briefcase")
                 sidebarButton(for: .tasks, label: "Tasks", icon: DS.Icons.Entity.task)
                 sidebarButton(for: .activities, label: "Activities", icon: DS.Icons.Entity.activity)
                 sidebarButton(for: .listings, label: "Listings", icon: DS.Icons.Entity.listing)
@@ -463,6 +475,8 @@ struct ContentView: View {
                     ActivityListView()
                 case .listings:
                     ListingListView()
+                case .myWorkspace:
+                    MyWorkspaceView(navigationPath: $searchNavigationPath)
                 }
             }
             .syncNowToolbar()
