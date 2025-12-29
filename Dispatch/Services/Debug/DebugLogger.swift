@@ -46,6 +46,7 @@ final class DebugLogger: ObservableObject {
         case websocket = "WEBSOCKET"
         case event = "EVENT"
         case error = "ERROR"
+        case auth = "AUTH"
 
         var emoji: String {
             switch self {
@@ -55,6 +56,7 @@ final class DebugLogger: ObservableObject {
             case .websocket: return "🔌"
             case .event: return "⚡️"
             case .error: return "❌"
+            case .auth: return "🔑"
             }
         }
     }
@@ -96,6 +98,7 @@ final class DebugLogger: ObservableObject {
         case .websocket: websocketLog.debug("\(message)")
         case .event: realtimeLog.info("\(message)")
         case .error: realtimeLog.error("\(message)")
+        case .auth: syncLog.debug("\(message)")
         }
     }
 
@@ -235,7 +238,7 @@ final class DebugLogger: ObservableObject {
     private init() {}
 
     enum Category: String, CaseIterable {
-        case realtime, channel, sync, websocket, event, error
+        case realtime, channel, sync, websocket, event, error, auth
         var emoji: String { "" }
     }
 

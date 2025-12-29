@@ -60,14 +60,8 @@ struct RealtorProfileView: View {
     // MARK: - Body
 
     var body: some View {
-        StandardPageLayout(title: "", headerActions: {
-            Button("Edit") {
-                showEditSheet = true
-            }
-            .font(DS.Typography.bodySecondary)
-            .buttonStyle(.plain)
-        }) {
-            LazyVStack(spacing: DS.Spacing.section) {
+        StandardPageLayout(title: "") {
+            LazyVStack(spacing: DS.Spacing.sectionSpacing) {
                 // Profile Header
                 profileHeader
 
@@ -112,8 +106,16 @@ struct RealtorProfileView: View {
                 }
             }
             .padding(.bottom, DS.Spacing.xxl) // Bottom padding for scrolling
+        } headerActions: {
+            Button("Edit") {
+                showEditSheet = true
+            }
+            .font(DS.Typography.bodySecondary)
+            .buttonStyle(.plain)
         }
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline) // Hide default large title when scrolling
+        #endif
         .sheet(isPresented: $showEditSheet) {
             EditRealtorSheet(user: user)
         }
@@ -123,10 +125,10 @@ struct RealtorProfileView: View {
 
     private var profileHeader: some View {
         VStack(spacing: DS.Spacing.lg) {
-            // Large Avatar
+            // Avatar
             Circle()
                 .fill(DS.Colors.Background.secondary)
-                .frame(width: 80, height: 80)
+                .frame(width: 100, height: 100)
                 .overlay {
                     if let avatarData = user.avatar, let pImage = PlatformImage.from(data: avatarData) {
                         Image(platformImage: pImage)
@@ -135,39 +137,44 @@ struct RealtorProfileView: View {
                             .clipShape(Circle())
                     } else {
                         Text(user.initials)
-                            .font(.system(size: 32, weight: .medium, design: .rounded))
+                            .font(.system(size: 40, weight: .medium))
                             .foregroundStyle(DS.Colors.Text.secondary)
                     }
                 }
 
-            // Name & Role
-            VStack(spacing: 4) {
+            VStack(spacing: DS.Spacing.xs) {
                 Text(user.name)
-                    .font(DS.Typography.title2)
+                    .font(DS.Typography.title)
                     .foregroundStyle(DS.Colors.Text.primary)
-                
+
                 Text(user.userType.rawValue.capitalized)
                     .font(DS.Typography.bodySecondary)
-                    .foregroundStyle(DS.Colors.Text.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
-                    .background(DS.Colors.Background.secondary)
+                    .foregroundStyle(DS.Colors.Text.tertiary)
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, DS.Spacing.xxs)
+                    .background(DS.Colors.Background.tertiary)
                     .clipShape(Capsule())
             }
 
-            // Contact Actions (Placeholders per user request)
+            // Quick Actions (Placeholders per user feedback)
             HStack(spacing: DS.Spacing.lg) {
-                contactButton(icon: "envelope.fill", label: "Email")
-                contactButton(icon: "phone.fill", label: "Call")
-                contactButton(icon: "message.fill", label: "Slack")
+                actionButton(icon: "envelope.fill", label: "Email") {
+                    // Placeholder
+                }
+                actionButton(icon: "phone.fill", label: "Call") {
+                    // Placeholder
+                }
+                actionButton(icon: "message.fill", label: "Slack") {
+                    // Placeholder
+                }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, DS.Spacing.lg)
+        .padding(.top, DS.Spacing.xl)
     }
 
-    private func contactButton(icon: String, label: String) -> some View {
-        Button {} label: {
+    private func actionButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             VStack(spacing: 8) {
                 Circle()
                     .fill(DS.Colors.Background.tertiary)
@@ -187,7 +194,7 @@ struct RealtorProfileView: View {
 
     private func sectionHeader(_ text: String) -> some View {
         Text(text)
-            .font(DS.Typography.sectionHeader)
+            .font(DS.Typography.headline)
             .foregroundStyle(DS.Colors.Text.secondary)
             .textCase(.uppercase)
             .padding(.top, DS.Spacing.md)

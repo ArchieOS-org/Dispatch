@@ -12,10 +12,11 @@ import SwiftUI
 /// Screen context for bottom toolbar action configuration.
 /// The toolbar changes based on the current screen, not selection.
 enum ToolbarContext {
-  /// List views: TaskListView, ActivityListView, ListingListView
+  /// List views: TaskListView, ActivityListView, ListingListView, RealtorsListView
   case taskList
   case activityList
   case listingList
+  case realtorList
 
   /// Detail views: WorkItemDetailView, ListingDetailView
   case workItemDetail
@@ -24,7 +25,7 @@ enum ToolbarContext {
   /// Whether this context represents a list view
   var isList: Bool {
     switch self {
-    case .taskList, .activityList, .listingList:
+    case .taskList, .activityList, .listingList, .realtorList:
       return true
     case .workItemDetail, .listingDetail:
       return false

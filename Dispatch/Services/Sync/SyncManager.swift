@@ -32,7 +32,17 @@ final class SyncManager: ObservableObject {
     }
     @Published private(set) var syncError: Error?
     @Published private(set) var syncStatus: SyncStatus = .idle
-    @Published var currentUserID: UUID?  // Set when authenticated
+    @Published var currentUserID: UUID? {  // Set when authenticated
+        didSet {
+            // Attempt to load user from local DB immediately when ID changes
+            if let id = currentUserID {
+                fetchCurrentUser(id: id)
+            } else {
+                currentUser = nil
+            }
+        }
+    }
+    @Published var currentUser: User? // The actual profile object, for UI state
 
     /// User-facing error message when syncStatus is .error
     @Published private(set) var lastSyncErrorMessage: String?
@@ -88,17 +98,40 @@ final class SyncManager: ObservableObject {
     }
 
     // MARK: - Configuration
-    func configure(with container: ModelContainer, testUserID: UUID? = nil) {
+    func configure(with container: ModelContainer) {
         debugLog.log("configure() called", category: .sync)
-        debugLog.log("  testUserID: \(testUserID?.uuidString ?? "nil")", category: .sync)
         self.modelContainer = container
-        self.currentUserID = testUserID  // Stub for MVP
         debugLog.log("  modelContainer set: \(container)", category: .sync)
+    }
+
+    /// Updates the current authenticated user and triggers sync logic
+    func updateCurrentUser(_ userId: UUID?) {
+        debugLog.log("updateCurrentUser() called: \(userId?.uuidString ?? "nil")", category: .sync)
+        self.currentUserID = userId
     }
 
     // MARK: - Auth Check
     private var isAuthenticated: Bool {
         currentUserID != nil
+    }
+
+    // MARK: - Local User Fetching
+    private func fetchCurrentUser(id: UUID) {
+        guard let container = modelContainer else { return }
+        let context = container.mainContext
+        let descriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == id })
+        
+        do {
+            if let user = try context.fetch(descriptor).first {
+                self.currentUser = user
+                debugLog.log("fetchCurrentUser: User found locally: \(user.name)", category: .sync)
+            } else {
+                self.currentUser = nil
+                debugLog.log("fetchCurrentUser: User NOT found locally (yet)", category: .sync)
+            }
+        } catch {
+            debugLog.error("Failed to fetch current user", error: error)
+        }
     }
 
     // MARK: - Error Message Helper
@@ -579,7 +612,7 @@ final class SyncManager: ObservableObject {
     // MARK: - Sync Down: Users (read-only)
     private func syncDownUsers(context: ModelContext, since: String) async throws {
         debugLog.log("syncDownUsers() - querying Supabase...", category: .sync)
-        let dtos: [UserDTO] = try await supabase
+        var dtos: [UserDTO] = try await supabase
             .from("users")
             .select()
             .gt("updated_at", value: since)
@@ -587,6 +620,29 @@ final class SyncManager: ObservableObject {
             .value
 
         debugLog.logSyncOperation(operation: "FETCH", table: "users", count: dtos.count)
+
+        // 🚨 CRITICAL FIX: If we are authenticated but have no local currentUser,
+        // we MUST fetch our own profile regardless of 'since' time.
+        // This handles re-login scenarios where the user record is older than lastSyncTime.
+        if self.currentUser == nil, let currentID = self.currentUserID {
+            let isCurrentInBatch = dtos.contains { $0.id == currentID }
+            if !isCurrentInBatch {
+                debugLog.log("⚠️ Current user profile missing from delta sync - force fetching...", category: .sync)
+                do {
+                    let currentUserDTO: UserDTO = try await supabase
+                        .from("users")
+                        .select()
+                        .eq("id", value: currentID)
+                        .single()
+                        .execute()
+                        .value
+                    debugLog.log("  ✅ Force fetched current user profile: \(currentUserDTO.name)", category: .sync)
+                    dtos.append(currentUserDTO)
+                } catch {
+                    debugLog.error("  ❌ Failed to force fetch current user profile", error: error)
+                }
+            }
+        }
 
         for (index, dto) in dtos.enumerated() {
             debugLog.log("  Upserting user \(index + 1)/\(dtos.count): \(dto.id) - \(dto.name)", category: .sync)
@@ -612,6 +668,11 @@ final class SyncManager: ObservableObject {
             let newUser = dto.toModel()
             newUser.markSynced()
             context.insert(newUser)
+        }
+        
+        // Update currentUser if this is the one
+        if dto.id == currentUserID {
+            fetchCurrentUser(id: dto.id)
         }
     }
 

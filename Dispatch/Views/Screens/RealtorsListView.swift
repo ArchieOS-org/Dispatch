@@ -19,14 +19,12 @@ struct RealtorsListView: View {
 
     // MARK: - Queries
 
-    /// Fetch all users who are realtors
-    @Query(
-        filter: #Predicate<User> { user in
-            user.userType == UserType.realtor 
-        },
-        sort: \User.name
-    ) private var realtors: [User]
+    @Query(sort: \User.name) private var allUsers: [User]
 
+    private var realtors: [User] {
+        allUsers.filter { $0.userType == .realtor }
+    }
+    
     // MARK: - Environment
 
     @EnvironmentObject private var lensState: LensState
@@ -34,6 +32,12 @@ struct RealtorsListView: View {
     // MARK: - State
 
     @State private var showAddSheet = false
+    
+    // MARK: - Init
+    
+    init(embedInNavigationStack: Bool = true) {
+        self.embedInNavigationStack = embedInNavigationStack
+    }
 
     // MARK: - Body
 
@@ -54,16 +58,7 @@ struct RealtorsListView: View {
     }
 
     private var content: some View {
-        StandardPageLayout(title: "Realtors", headerActions: {
-            Button {
-                showAddSheet = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(DS.Colors.Text.primary)
-            }
-            .buttonStyle(.plain)
-        }) {
+        StandardPageLayout(title: "Realtors") {
             LazyVStack(spacing: 0) {
                 ForEach(realtors) { user in
                     NavigationLink(value: user) {
@@ -73,6 +68,15 @@ struct RealtorsListView: View {
                 }
             }
             .padding(.horizontal, DS.Spacing.Layout.pageMargin)
+        } headerActions: {
+            Button {
+                showAddSheet = true
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(DS.Colors.Text.primary)
+            }
+            .buttonStyle(.plain)
         }
         .onAppear {
             lensState.currentScreen = .realtors

@@ -16,6 +16,9 @@ struct DispatchApp: App {
     @State private var showTestHarness = false
     #endif
 
+    @StateObject private var authManager = AuthManager.shared
+    @StateObject private var syncManager = SyncManager.shared
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             User.self,
@@ -42,30 +45,42 @@ struct DispatchApp: App {
         }
     }()
 
-    // Stub test user for MVP (replace with real auth later)
-    // This UUID should match a user in your Supabase users table
-    private let testUserID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
-
+    // Stub removed - SyncManager now observes AuthManager
+    
     init() {
-        SyncManager.shared.configure(with: sharedModelContainer, testUserID: testUserID)
+        SyncManager.shared.configure(with: sharedModelContainer)
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(SyncManager.shared)
-                #if DEBUG
-                .sheet(isPresented: $showTestHarness) {
-                    SyncTestHarness()
-                        .environmentObject(SyncManager.shared)
+            Group {
+                if authManager.isAuthenticated {
+                    if syncManager.currentUser != nil {
+                        ContentView()
+                            .environmentObject(authManager)
+                            .environmentObject(syncManager)
+                            #if DEBUG
+                            .sheet(isPresented: $showTestHarness) {
+                                SyncTestHarness()
+                                    .environmentObject(SyncManager.shared)
+                            }
+                            #if os(iOS)
+                            .onShake {
+                                showTestHarness = true
+                            }
+                            #endif
+                            #endif
+                            .configureMacWindow()
+                    } else {
+                        OnboardingLoadingView()
+                    }
+                } else {
+                    LoginView()
                 }
-                #if os(iOS)
-                .onShake {
-                    showTestHarness = true
-                }
-                #endif
-                #endif
-                .configureMacWindow() // Applies AppKit transparency tweaks to the native toolbar
+            }
+            .onOpenURL { url in
+                authManager.handleRedirect(url)
+            }
         }
         .modelContainer(sharedModelContainer)
         #if os(macOS)
@@ -76,11 +91,13 @@ struct DispatchApp: App {
                     NotificationCenter.default.post(name: .newItem, object: nil)
                 }
                 .keyboardShortcut("n", modifiers: .command)
+                .disabled(!authManager.isAuthenticated)
 
                 Button("Search") {
                     NotificationCenter.default.post(name: .openSearch, object: nil)
                 }
                 .keyboardShortcut("f", modifiers: .command)
+                .disabled(!authManager.isAuthenticated)
 
                 Divider()
 
@@ -88,16 +105,19 @@ struct DispatchApp: App {
                     NotificationCenter.default.post(name: .filterMine, object: nil)
                 }
                 .keyboardShortcut("1", modifiers: .command)
+                .disabled(!authManager.isAuthenticated)
 
                 Button("Others' Tasks") {
                     NotificationCenter.default.post(name: .filterOthers, object: nil)
                 }
                 .keyboardShortcut("2", modifiers: .command)
+                .disabled(!authManager.isAuthenticated)
 
                 Button("Unclaimed") {
                     NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
                 }
                 .keyboardShortcut("3", modifiers: .command)
+                .disabled(!authManager.isAuthenticated)
             }
             CommandGroup(after: .toolbar) {
                 Button("Sync Now") {
@@ -106,17 +126,19 @@ struct DispatchApp: App {
                     }
                 }
                 .keyboardShortcut("r", modifiers: .command)
+                .disabled(!authManager.isAuthenticated)
             }
             CommandGroup(after: .sidebar) {
                 Button("Toggle Sidebar") {
                     NotificationCenter.default.post(name: .toggleSidebar, object: nil)
                 }
                 .keyboardShortcut("/", modifiers: .command)
+                .disabled(!authManager.isAuthenticated)
             }
         }
         #endif
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
+            if newPhase == .active && authManager.isAuthenticated {
                 Task {
                     // Check app compatibility before sync
                     let compatStatus = await AppCompatManager.shared.checkCompatibility()
@@ -132,6 +154,23 @@ struct DispatchApp: App {
             } else if newPhase == .background {
                 Task {
                     await SyncManager.shared.stopListening()
+                }
+            }
+        }
+        // Listen for auth state changes to trigger sync
+        .onChange(of: authManager.isAuthenticated) { _, isAuthenticated in
+            if isAuthenticated {
+                Task {
+                    // Update SyncManager with current user
+                    // Note: AuthManager runs on MainActor, so we access currentUserID directly
+                    SyncManager.shared.updateCurrentUser(authManager.currentUserID)
+                    await SyncManager.shared.sync()
+                    await SyncManager.shared.startListening()
+                }
+            } else {
+                Task {
+                    await SyncManager.shared.stopListening()
+                    SyncManager.shared.updateCurrentUser(nil)
                 }
             }
         }

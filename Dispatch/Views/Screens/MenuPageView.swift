@@ -20,6 +20,7 @@ struct MenuPageView: View {
     @Query private var allTasksRaw: [TaskItem]
     @Query private var allActivitiesRaw: [Activity]
     @Query private var allListingsRaw: [Listing]
+    @Query private var allRealtors: [User]
 
     // MARK: - Filtered Computed Properties (SwiftData predicates can't compare enums directly)
 
@@ -37,6 +38,11 @@ struct MenuPageView: View {
     private var activeListings: [Listing] {
         allListingsRaw.filter { $0.status != .deleted }
     }
+    
+    /// Active realtors
+    private var activeRealtors: [User] {
+        allRealtors.filter { $0.userType == .realtor }
+    }
 
     // MARK: - Environment
 
@@ -51,6 +57,7 @@ struct MenuPageView: View {
         case .tasks: return openTasks.count
         case .activities: return openActivities.count
         case .listings: return activeListings.count
+        case .realtors: return activeRealtors.count
         }
     }
 

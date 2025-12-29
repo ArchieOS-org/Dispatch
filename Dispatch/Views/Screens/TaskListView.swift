@@ -311,15 +311,23 @@ struct TaskListView: View {
 // MARK: - Preview
 
 #Preview("Task List View") {
+    let (container, syncManager) = setupPreview()
+    
+    TaskListView()
+        .modelContainer(container)
+        .environmentObject(syncManager)
+        .environmentObject(SearchPresentationManager())
+        .environmentObject(LensState())
+}
+
+@MainActor
+private func setupPreview() -> (ModelContainer, SyncManager) {
     let container = try! ModelContainer(
         for: TaskItem.self, User.self, Note.self, Subtask.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     
-    // Create isolated sync manager for preview
     let syncManager = SyncManager()
-    
-    // Create preview data
     let context = container.mainContext
     
     // Create users
@@ -337,10 +345,8 @@ struct TaskListView: View {
     )
     context.insert(otherUser)
     
-    // Configure sync manager with preview container
-    syncManager.configure(with: container, testUserID: currentUser.id)
-    
-    // Set current user
+    // Configure sync manager
+    syncManager.configure(with: container)
     syncManager.currentUserID = currentUser.id
     
     // Create overdue task
@@ -354,43 +360,16 @@ struct TaskListView: View {
     )
     context.insert(overdueTask)
     
-    // Create today task (claimed by current user)
+    // Create today task
     let todayTask = TaskItem(
-        title: "Schedule home inspection",
-        taskDescription: "Book with certified inspector - 3 hour window needed",
-        dueDate: Calendar.current.startOfDay(for: Date()),
+        title: "Client meeting prep",
+        taskDescription: "Prepare documents for 2pm meeting",
+        dueDate: Date(),
         priority: .medium,
-        status: .open,
-        declaredBy: currentUser.id,
-        claimedBy: currentUser.id
+        status: .inProgress,
+        declaredBy: currentUser.id
     )
-    todayTask.claimedAt = Date()
     context.insert(todayTask)
-    
-    // Add a note to today's task
-    let note1 = Note(
-        content: "Inspector prefers morning appointments",
-        createdBy: currentUser.id,
-        parentType: .task,
-        parentId: todayTask.id
-    )
-    todayTask.notes.append(note1)
-    
-    // Add subtasks to today's task
-    let subtask1 = Subtask(
-        title: "Call inspector for availability",
-        parentType: .task,
-        parentId: todayTask.id
-    )
-    subtask1.completed = true
-    todayTask.subtasks.append(subtask1)
-    
-    let subtask2 = Subtask(
-        title: "Confirm with client",
-        parentType: .task,
-        parentId: todayTask.id
-    )
-    todayTask.subtasks.append(subtask2)
     
     // Create tomorrow task (claimed by other user)
     let tomorrowTask = TaskItem(
@@ -441,9 +420,5 @@ struct TaskListView: View {
     )
     context.insert(noDueDateTask)
     
-    return TaskListView()
-        .modelContainer(container)
-        .environmentObject(syncManager)
-        .environmentObject(SearchPresentationManager())
-        .environmentObject(LensState())
+    return (container, syncManager)
 }

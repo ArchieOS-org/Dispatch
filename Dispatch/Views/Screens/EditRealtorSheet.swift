@@ -107,8 +107,8 @@ struct EditRealtorSheet: View {
             let newUser = User(
                 name: name,
                 email: email,
-                userType: .realtor,
-                avatar: avatarData
+                avatar: avatarData,
+                userType: .realtor
             )
             modelContext.insert(newUser)
         }

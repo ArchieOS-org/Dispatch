@@ -11,6 +11,7 @@ import SwiftData
 @Model
 final class User {
     @Attribute(.unique) var id: UUID
+    var authId: UUID? // Links to Supabase Auth (Shadow Profile support)
     var name: String
     var email: String
     var avatar: Data?
@@ -44,6 +45,7 @@ final class User {
 
     init(
         id: UUID = UUID(),
+        authId: UUID? = nil,
         name: String,
         email: String,
         avatar: Data? = nil,
@@ -52,6 +54,7 @@ final class User {
         updatedAt: Date = Date()
     ) {
         self.id = id
+        self.authId = authId
         self.name = name
         self.email = email
         self.avatar = avatar

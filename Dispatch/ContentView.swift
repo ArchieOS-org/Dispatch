@@ -29,7 +29,7 @@ struct ContentView: View {
     @Query private var allListings: [Listing]
 
     enum Tab: Hashable {
-        case myWorkspace, tasks, activities, listings
+        case myWorkspace, tasks, activities, listings, realtors
     }
 
     @State private var selectedTab: Tab = .tasks
@@ -42,6 +42,7 @@ struct ContentView: View {
     #if os(macOS)
     @State private var showMacOSQuickEntry = false
     @State private var showMacOSAddListing = false
+    @State private var showMacOSAddRealtor = false
     
     // Global Quick Find (Popover) State
     @State private var showQuickFind = false
@@ -138,6 +139,7 @@ struct ContentView: View {
                             case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
                             case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
                             case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
+                            case .realtors: break
                             case .myWorkspace: break
                             }
                             showQuickFind = false
@@ -325,6 +327,8 @@ struct ContentView: View {
             return .activityList
         case .listings:
             return .listingList
+        case .realtors:
+            return .realtorList
         case .myWorkspace:
             return .taskList // Re-use task actions for now
         }
@@ -365,6 +369,13 @@ struct ContentView: View {
                         isSelected: selectedTab == .listings,
                         action: { handleTabSelection(.listings) }
                     )
+
+                    SidebarRow(
+                        title: "Realtors",
+                        icon: DS.Icons.Entity.realtor,
+                        isSelected: selectedTab == .realtors,
+                        action: { handleTabSelection(.realtors) }
+                    )
                 }
             }
             .listStyle(.sidebar)
@@ -378,6 +389,8 @@ struct ContentView: View {
                         ActivityListView()
                     case .listings:
                         ListingListView()
+                    case .realtors:
+                        RealtorsListView()
                     case .myWorkspace:
                         MyWorkspaceView(navigationPath: $searchNavigationPath)
                     }
@@ -393,10 +406,13 @@ struct ContentView: View {
                     onNew: {
                         if selectedTab == .listings {
                             showMacOSAddListing = true
+                        } else if selectedTab == .realtors {
+                            showMacOSAddRealtor = true
                         } else {
                             showMacOSQuickEntry = true
                         }
                     },
+
                     onSearch: {
                         NotificationCenter.default.post(name: .openSearch, object: nil)
                     }
@@ -417,10 +433,15 @@ struct ContentView: View {
                 onSave: { syncManager.requestSync() }
             )
         }
+        .sheet(isPresented: $showMacOSAddRealtor) {
+            EditRealtorSheet()
+        }
         
         .onReceive(NotificationCenter.default.publisher(for: .newItem)) { _ in
             if selectedTab == .listings {
                 showMacOSAddListing = true
+            } else if selectedTab == .realtors {
+                showMacOSAddRealtor = true
             } else {
                 showMacOSQuickEntry = true
             }
@@ -464,7 +485,9 @@ struct ContentView: View {
                 sidebarButton(for: .myWorkspace, label: "My Workspace", icon: "briefcase")
                 sidebarButton(for: .tasks, label: "Tasks", icon: DS.Icons.Entity.task)
                 sidebarButton(for: .activities, label: "Activities", icon: DS.Icons.Entity.activity)
+                sidebarButton(for: .activities, label: "Activities", icon: DS.Icons.Entity.activity)
                 sidebarButton(for: .listings, label: "Listings", icon: DS.Icons.Entity.listing)
+                sidebarButton(for: .realtors, label: "Realtors", icon: DS.Icons.Entity.realtor)
             }
             .listStyle(.sidebar)
             .navigationTitle("Dispatch")
@@ -477,6 +500,8 @@ struct ContentView: View {
                     ActivityListView()
                 case .listings:
                     ListingListView()
+                case .realtors:
+                    RealtorsListView()
                 case .myWorkspace:
                     MyWorkspaceView(navigationPath: $searchNavigationPath)
                 }

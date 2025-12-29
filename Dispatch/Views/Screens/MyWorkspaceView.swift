@@ -16,16 +16,10 @@ struct WorkspaceGroup: Identifiable {
 }
 
 struct MyWorkspaceView: View {
+    @EnvironmentObject private var syncManager: SyncManager
     @Environment(\.modelContext) private var modelContext
     @Query private var tasks: [TaskItem]
     @Query private var activities: [Activity]
-    
-    // We need the current user to filter.
-    // Assuming we have a way to get the current user ID. 
-    // Usually this would be passed in or available via environment.
-    // For now, I will use a computed property that filters by local user if available, or just all for demo if needed.
-    // Using the standard `DataManager.shared.currentUser` pattern if it exists, or assuming a specific User ID context.
-    // Better: Fetch all and filter in memory since we don't have dynamic @Query predicates for "currentUser" easily without passing it in.
     
     @Binding var navigationPath: NavigationPath // If used in NavigationStack
     
@@ -60,20 +54,17 @@ struct MyWorkspaceView: View {
     
     // MARK: - Data Logic
     
-    // TODO: Connect to actual Current User.
-    // For now, I will assume we filter for *any* claimed item for demonstration, or add a TODO.
-    // Actually, checking `WorkItemListContainer`, it typically filters.
-    // I will filter items where `claimedBy != nil`.
-    
     private var groupedItems: [WorkspaceGroup] {
         var groups: [UUID: WorkspaceGroup] = [:]
         var generalItems: [WorkItem] = []
         
-        // Process Tasks
-        // NOTE: In a real app we'd filter by `claimedBy == currentUser.id`.
-        // Inspecting Schema: TaskItem has `claimedBy: UUID?`.
-        let relevantTasks = tasks.filter { $0.claimedBy != nil }
-        let relevantActivities = activities.filter { $0.claimedBy != nil }
+        guard let currentUserID = syncManager.currentUserID else {
+            return []
+        }
+        
+        // Filter by Current User
+        let relevantTasks = tasks.filter { $0.claimedBy == currentUserID }
+        let relevantActivities = activities.filter { $0.claimedBy == currentUserID }
         
         let allItems: [WorkItem] = relevantTasks.map { .task($0) } + relevantActivities.map { .activity($0) }
         
