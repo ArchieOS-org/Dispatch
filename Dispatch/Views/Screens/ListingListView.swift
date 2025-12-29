@@ -80,6 +80,12 @@ struct ListingListView: View {
             if embedInNavigationStack {
                 NavigationStack {
                     mainScreen
+                        .navigationDestination(for: Listing.self) { listing in
+                            ListingDetailView(listing: listing, userLookup: { userCache[$0] })
+                        }
+                        .navigationDestination(for: WorkItemRef.self) { ref in
+                            workItemDestination(for: ref)
+                        }
                 }
             } else {
                 mainScreen
@@ -147,12 +153,6 @@ struct ListingListView: View {
              ToolbarItem(placement: .automatic) {
                  EmptyView()
              }
-        }
-        .navigationDestination(for: Listing.self) { listing in
-            ListingDetailView(listing: listing, userLookup: { userCache[$0] })
-        }
-        .navigationDestination(for: WorkItemRef.self) { ref in
-            workItemDestination(for: ref)
         }
     }
 

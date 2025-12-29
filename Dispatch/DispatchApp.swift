@@ -55,32 +55,39 @@ struct DispatchApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if appState.authManager.isAuthenticated {
-                    if SyncManager.shared.currentUser != nil {
-                        AppShellView()
-                            // Inject Brain
-                            .environmentObject(appState)
-                            // Legacy injections for views relying on them directly:
-                            .environmentObject(appState.authManager)
-                            .environmentObject(SyncManager.shared)
-                            
-                            #if DEBUG
-                            .sheet(isPresented: $showTestHarness) {
-                                SyncTestHarness()
-                                    .environmentObject(SyncManager.shared)
-                            }
-                            #if os(iOS)
-                            .onShake {
-                                showTestHarness = true
-                            }
-                            #endif
-                            #endif
+                ZStack {
+                    if appState.authManager.isAuthenticated {
+                        if SyncManager.shared.currentUser != nil {
+                            AppShellView()
+                                // Inject Brain
+                                .environmentObject(appState)
+                                // Legacy injections for views relying on them directly:
+                                .environmentObject(appState.authManager)
+                                .environmentObject(SyncManager.shared)
+                                
+                                #if DEBUG
+                                .sheet(isPresented: $showTestHarness) {
+                                    SyncTestHarness()
+                                        .environmentObject(SyncManager.shared)
+                                }
+                                #if os(iOS)
+                                .onShake {
+                                    showTestHarness = true
+                                }
+                                #endif
+                                #endif
+                                .transition(.opacity)
+                        } else {
+                            OnboardingLoadingView()
+                                .transition(.opacity)
+                        }
                     } else {
-                        OnboardingLoadingView()
+                        LoginView()
+                            .transition(.opacity)
                     }
-                } else {
-                    LoginView()
                 }
+                .animation(.easeInOut, value: appState.authManager.isAuthenticated)
+                .animation(.easeInOut, value: SyncManager.shared.currentUser)
             }
             .onOpenURL { url in
                 appState.authManager.handleRedirect(url)
