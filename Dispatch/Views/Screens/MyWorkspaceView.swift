@@ -23,29 +23,52 @@ struct MyWorkspaceView: View {
     
     @Binding var navigationPath: NavigationPath // If used in NavigationStack
     
+    // MARK: - Filter Logic
+    enum WorkspaceFilter: String, CaseIterable, Identifiable {
+        case all = "All"
+        case tasks = "Tasks"
+        case activities = "Activities"
+        
+        var id: String { rawValue }
+    }
+    
+    @State private var selectedFilter: WorkspaceFilter = .all
+
     var body: some View {
         ZStack {
             DS.Colors.Background.primary.ignoresSafeArea()
             
             ScrollView {
                 VStack(spacing: DS.Spacing.sectionSpacing) {
-                    // Title (Large, Things 3 style)
-                    HStack {
+                    // Header Area
+                    VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                        // Title (Large, Things 3 style)
                         Text("My Workspace")
                             .font(.system(size: 32, weight: .bold))
                             .foregroundStyle(DS.Colors.Text.primary)
-                        Spacer()
+                        
+                        // Filter Bar
+                        SegmentedFilterBar(selection: $selectedFilter)
                     }
                     .padding(.horizontal, DS.Spacing.Layout.pageMargin)
                     .padding(.top, DS.Spacing.Layout.topHeaderPadding)
                     
                     // Content
-                    LazyVStack(spacing: 24) {
-                        ForEach(groupedItems) { group in
-                            ListingWorkspaceSection(group: group)
+                    if groupedItems.isEmpty {
+                        ContentUnavailableView {
+                            Label(emptyTitle, systemImage: emptyIcon)
+                        } description: {
+                            Text(emptyDescription)
                         }
+                        .padding(.top, 40)
+                    } else {
+                        LazyVStack(spacing: 24) {
+                            ForEach(groupedItems) { group in
+                                ListingWorkspaceSection(group: group)
+                            }
+                        }
+                        .padding(.horizontal, DS.Spacing.Layout.pageMargin)
                     }
-                    .padding(.horizontal, DS.Spacing.Layout.pageMargin)
                 }
                 .padding(.bottom, 100)
             }
@@ -53,6 +76,31 @@ struct MyWorkspaceView: View {
     }
     
     // MARK: - Data Logic
+    
+    // Helper for Empty State
+    private var emptyTitle: String {
+        switch selectedFilter {
+        case .all: return "No Items"
+        case .tasks: return "No Tasks"
+        case .activities: return "No Activities"
+        }
+    }
+    
+    private var emptyIcon: String {
+        switch selectedFilter {
+        case .all: return "tray"
+        case .tasks: return DS.Icons.Entity.task
+        case .activities: return DS.Icons.Entity.activity
+        }
+    }
+    
+    private var emptyDescription: String {
+        switch selectedFilter {
+        case .all: return "You have no claimed tasks or activities."
+        case .tasks: return "You have no claimed tasks."
+        case .activities: return "You have no claimed activities."
+        }
+    }
     
     private var groupedItems: [WorkspaceGroup] {
         var groups: [UUID: WorkspaceGroup] = [:]
@@ -62,9 +110,14 @@ struct MyWorkspaceView: View {
             return []
         }
         
-        // Filter by Current User
-        let relevantTasks = tasks.filter { $0.claimedBy == currentUserID }
-        let relevantActivities = activities.filter { $0.claimedBy == currentUserID }
+        // Filter by Current User AND Selected Filter AND Not Deleted
+        let relevantTasks = (selectedFilter == .all || selectedFilter == .tasks) 
+            ? tasks.filter { $0.claimedBy == currentUserID && $0.status != .deleted } 
+            : []
+            
+        let relevantActivities = (selectedFilter == .all || selectedFilter == .activities) 
+            ? activities.filter { $0.claimedBy == currentUserID && $0.status != .deleted } 
+            : []
         
         let allItems: [WorkItem] = relevantTasks.map { .task($0) } + relevantActivities.map { .activity($0) }
         
@@ -87,13 +140,20 @@ struct MyWorkspaceView: View {
         }
         
         // Sort groups by progress maybe? Or alphabetical?
-        let sortedGroups = groups.values.sorted { ($0.listing?.address ?? "") < ($1.listing?.address ?? "") }
+        var sortedGroups = groups.values.sorted { ($0.listing?.address ?? "") < ($1.listing?.address ?? "") }
+        
+        // Sort items within groups by due date
+        for i in 0..<sortedGroups.count {
+            sortedGroups[i].items.sort { ($0.dueDate ?? Date.distantFuture) < ($1.dueDate ?? Date.distantFuture) }
+        }
         
         var result = sortedGroups
         
         // Add General section if needed
         if !generalItems.isEmpty {
-            result.append(WorkspaceGroup(id: UUID(), listing: nil, items: generalItems))
+            // Sort general items by due date too
+            let sortedGeneral = generalItems.sorted { ($0.dueDate ?? Date.distantFuture) < ($1.dueDate ?? Date.distantFuture) }
+            result.append(WorkspaceGroup(id: UUID(), listing: nil, items: sortedGeneral))
         }
         
         return result
