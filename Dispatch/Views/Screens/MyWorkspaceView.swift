@@ -15,6 +15,7 @@ struct WorkspaceGroup: Identifiable {
     var items: [WorkItem]
 }
 
+struct MyWorkspaceView: View {
     @EnvironmentObject private var syncManager: SyncManager
     @EnvironmentObject private var lensState: LensState
     @Environment(\.modelContext) private var modelContext
