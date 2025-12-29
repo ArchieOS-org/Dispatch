@@ -68,7 +68,9 @@ final class AuthManager: ObservableObject {
                 provider: .google,
                 redirectTo: URL(string: "com.googleusercontent.apps.428022180682-9fm6p0e0l3o8j1bnmf78b5uon8lkhntt://google-auth")
             )
-            // Note: The session is set via the URL callback (handleRedirect), not here immediately.
+            // CRITICAL FIX: On iOS, ASWebAuthenticationSession handles the callback internally, 
+            // so onOpenURL may not fire. We must explicitly refresh the session here.
+            await restoreSession()
         } catch {
             self.error = error
             debugLog.error("Google Sign-in failed", error: error)
