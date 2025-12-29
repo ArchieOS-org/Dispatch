@@ -180,7 +180,7 @@ extension DS {
             
             /// Top padding for content to clear the floating traffic lights
             /// and provide visual separation (Things 3 style)
-            static let topHeaderPadding: CGFloat = 50
+            static let topHeaderPadding: CGFloat = 20
             
             /// Font size for the implementation of the "Large Title"
             static let largeTitleSize: CGFloat = 30

@@ -36,23 +36,13 @@ struct MyWorkspaceView: View {
     @State private var selectedFilter: WorkspaceFilter = .all
 
     var body: some View {
-        ZStack {
-            DS.Colors.Background.primary.ignoresSafeArea()
-            
+        StandardPageLayout(title: "My Workspace") {
             ScrollView {
                 VStack(spacing: DS.Spacing.sectionSpacing) {
-                    // Header Area
-                    VStack(alignment: .leading, spacing: DS.Spacing.md) {
-                        // Title (Large, Things 3 style)
-                        Text("My Workspace")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundStyle(DS.Colors.Text.primary)
-                        
-                        // Filter Bar
-                        SegmentedFilterBar(selection: $selectedFilter)
-                    }
-                    .padding(.horizontal, DS.Spacing.Layout.pageMargin)
-                    .padding(.top, DS.Spacing.Layout.topHeaderPadding)
+                    // Filter Bar
+                    SegmentedFilterBar(selection: $selectedFilter)
+                        .padding(.top, DS.Spacing.md)
+                        .padding(.bottom, DS.Spacing.sm)
                     
                     // Content
                     if groupedItems.isEmpty {
@@ -68,7 +58,6 @@ struct MyWorkspaceView: View {
                                 ListingWorkspaceSection(group: group)
                             }
                         }
-                        .padding(.horizontal, DS.Spacing.Layout.pageMargin)
                         // Force refresh when filter changes to prevent stale groups
                         .id(selectedFilter)
                     }

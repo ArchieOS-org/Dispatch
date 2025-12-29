@@ -60,41 +60,37 @@ struct RealtorProfileView: View {
     // MARK: - Body
 
     var body: some View {
-        StandardPageLayout(title: "") {
+        StandardPageLayout(title: user.name) {
+        ScrollView {
             LazyVStack(spacing: DS.Spacing.sectionSpacing) {
-                // Profile Header
+                // Profile Header (Avatar & Type only)
                 profileHeader
-
+    
                 // Active Listings Section
                 if !userListings.isEmpty {
                     VStack(alignment: .leading, spacing: DS.Spacing.md) {
                         sectionHeader("Active Listings (\(userListings.count))")
                         ForEach(userListings) { listing in
-                            // Reuse ListingRow if available, but for now we'll inline a simple row 
-                            // or verify if we can access ListingRow. ListingRow is internal to ListingListView usually.
-                            // To keep it simple and safe, we'll use a standard navigation link wrapper.
                             NavigationLink(value: listing) {
                                 ListingRowView(listing: listing)
                             }
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, DS.Spacing.Layout.pageMargin)
                 }
-
+    
                 // Recent Activity Section
                 if !recentActivity.isEmpty {
                     VStack(alignment: .leading, spacing: DS.Spacing.md) {
                         sectionHeader("Recent Activity")
                         ForEach(recentActivity) { item in
-                            // WorkItemRow needs to be wrapped in NavigationLink for navigation
                             NavigationLink(value: WorkItemRef.from(item)) {
                                 WorkItemRow(
                                     item: item,
                                     claimState: item.claimState(currentUserId: actions.currentUserId, userLookup: actions.userLookup),
                                     onComplete: { actions.onComplete(item) },
-                                    onEdit: {}, // Edit not needed here
-                                    onDelete: {}, // Delete not needed here
+                                    onEdit: {},
+                                    onDelete: {},
                                     onClaim: { actions.onClaim(item) },
                                     onRelease: { actions.onRelease(item) }
                                 )
@@ -102,10 +98,10 @@ struct RealtorProfileView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, DS.Spacing.Layout.pageMargin)
                 }
             }
-            .padding(.bottom, DS.Spacing.xxl) // Bottom padding for scrolling
+            .padding(.bottom, DS.Spacing.xxl)
+        }
         } headerActions: {
             Button("Edit") {
                 showEditSheet = true
@@ -113,9 +109,6 @@ struct RealtorProfileView: View {
             .font(DS.Typography.bodySecondary)
             .buttonStyle(.plain)
         }
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline) // Hide default large title when scrolling
-        #endif
         .sheet(isPresented: $showEditSheet) {
             EditRealtorSheet(user: user)
         }
@@ -128,7 +121,7 @@ struct RealtorProfileView: View {
             // Avatar
             Circle()
                 .fill(DS.Colors.Background.secondary)
-                .frame(width: 100, height: 100)
+                .frame(width: 80, height: 80) // Slightly smaller avatar to balance
                 .overlay {
                     if let avatarData = user.avatar, let pImage = PlatformImage.from(data: avatarData) {
                         Image(platformImage: pImage)
@@ -137,16 +130,14 @@ struct RealtorProfileView: View {
                             .clipShape(Circle())
                     } else {
                         Text(user.initials)
-                            .font(.system(size: 40, weight: .medium))
+                            .font(.system(size: 32, weight: .medium))
                             .foregroundStyle(DS.Colors.Text.secondary)
                     }
                 }
 
             VStack(spacing: DS.Spacing.xs) {
-                Text(user.name)
-                    .font(DS.Typography.title)
-                    .foregroundStyle(DS.Colors.Text.primary)
-
+                // Name moved to Title
+                
                 Text(user.userType.rawValue.capitalized)
                     .font(DS.Typography.bodySecondary)
                     .foregroundStyle(DS.Colors.Text.tertiary)
@@ -156,21 +147,15 @@ struct RealtorProfileView: View {
                     .clipShape(Capsule())
             }
 
-            // Quick Actions (Placeholders per user feedback)
+            // Quick Actions
             HStack(spacing: DS.Spacing.lg) {
-                actionButton(icon: "envelope.fill", label: "Email") {
-                    // Placeholder
-                }
-                actionButton(icon: "phone.fill", label: "Call") {
-                    // Placeholder
-                }
-                actionButton(icon: "message.fill", label: "Slack") {
-                    // Placeholder
-                }
+                actionButton(icon: "envelope.fill", label: "Email") {}
+                actionButton(icon: "phone.fill", label: "Call") {}
+                actionButton(icon: "message.fill", label: "Slack") {}
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, DS.Spacing.xl)
+        // Removed top padding; StandardPageLayout handles spacing
     }
 
     private func actionButton(icon: String, label: String, action: @escaping () -> Void) -> some View {

@@ -364,9 +364,9 @@ struct ContentView: View {
                 Group {
                     switch selectedTab {
                     case .listings:
-                        ListingListView()
+                        ListingListView(embedInNavigationStack: false)
                     case .realtors:
-                        RealtorsListView()
+                        RealtorsListView(embedInNavigationStack: true) // Logic: true = "I am embedded" (don't create stack)
                     case .myWorkspace:
                         MyWorkspaceView(navigationPath: $searchNavigationPath)
                     }

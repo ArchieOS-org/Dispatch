@@ -14,12 +14,16 @@ struct StandardPageLayout<TitleContent: View, Content: View, Actions: View>: Vie
     @ViewBuilder let content: () -> Content
     @ViewBuilder let headerActions: () -> Actions
     
+    let useContentPadding: Bool
+    
     init(
         @ViewBuilder title: @escaping () -> TitleContent,
+        useContentPadding: Bool = true,
         @ViewBuilder content: @escaping () -> Content,
         @ViewBuilder headerActions: @escaping () -> Actions = { EmptyView() }
     ) {
         self.title = title
+        self.useContentPadding = useContentPadding
         self.content = content
         self.headerActions = headerActions
     }
@@ -27,6 +31,7 @@ struct StandardPageLayout<TitleContent: View, Content: View, Actions: View>: Vie
     // Convenience init for String title
     init(
         title: String,
+        useContentPadding: Bool = true,
         @ViewBuilder content: @escaping () -> Content,
         @ViewBuilder headerActions: @escaping () -> Actions = { EmptyView() }
     ) where TitleContent == Text {
@@ -35,36 +40,40 @@ struct StandardPageLayout<TitleContent: View, Content: View, Actions: View>: Vie
                 .font(.system(size: DS.Spacing.Layout.largeTitleSize, weight: .bold))
                 .foregroundColor(.primary)
         }
+        self.useContentPadding = useContentPadding
         self.content = content
         self.headerActions = headerActions
     }
     
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack {
             #if os(macOS)
-            // Things 3 Style: Custom Large Title Header
-            HStack {
-                title() // Render custom title view
-                Spacer()
-                headerActions()
-            }
-            .padding(.horizontal, DS.Spacing.Layout.pageMargin)
-            .padding(.top, DS.Spacing.Layout.topHeaderPadding)
-            .padding(.bottom, DS.Spacing.Layout.titleBottomSpacing)
-            #elseif os(iOS)
-            // iOS might retain native navigation bar, or use this if we want strict consistency
-            // For now, mirroring macOS logic but respecting safe area
-            // Ideally, iOS uses native .navigationTitle, but if this is shared...
-            // Let's defer iOS specifics and focus on macOS excellence first.
-            EmptyView()
+            DS.Colors.Background.primary
+                .ignoresSafeArea(.all, edges: .all)
             #endif
-
-            content()
-                .padding(.horizontal, DS.Spacing.Layout.pageMargin) // Apply standard content margins
+            
+            VStack(spacing: 0) {
+                #if os(macOS)
+                // Things 3 Style: Custom Large Title Header
+                HStack {
+                    title() // Render custom title view
+                    Spacer()
+                    headerActions()
+                }
+                .padding(.horizontal, DS.Spacing.Layout.pageMargin)
+                .padding(.top, DS.Spacing.Layout.topHeaderPadding)
+                .padding(.bottom, DS.Spacing.Layout.titleBottomSpacing)
+                #elseif os(iOS)
+                EmptyView()
+                #endif
+                
+                content()
+                    .padding(.horizontal, useContentPadding ? DS.Spacing.Layout.pageMargin : 0)
+            }
         }
         #if os(macOS)
-        .toolbarBackground(.hidden, for: .windowToolbar)
         .navigationTitle("")
+        .toolbarBackground(.hidden, for: .windowToolbar)
         #endif
     }
 }

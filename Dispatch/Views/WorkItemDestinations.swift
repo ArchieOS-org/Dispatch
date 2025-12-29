@@ -47,19 +47,15 @@ private struct DispatchDestinationsModifier: ViewModifier {
                     onDeleteSubtask: actions.onDeleteSubtask,
                     onAddSubtask: actions.onAddSubtask
                 )
-                .hideMacToolbar()
             }
             .navigationDestination(for: Listing.self) { listing in
                 ListingDetailView(listing: listing, userLookup: actions.userLookup)
-                    .hideMacToolbar()
             }
             .navigationDestination(for: MenuSection.self) { section in
                 menuDestination(for: section)
-                    .hideMacToolbar()
             }
             .navigationDestination(for: User.self) { user in
                 RealtorProfileView(user: user)
-                    .hideMacToolbar()
             }
     }
     

@@ -59,7 +59,7 @@ struct OnboardingLoadingView: View {
                 
                 Button("Cancel & Sign Out") {
                     Task {
-                        try? await AuthManager.shared.signOut()
+                        await AuthManager.shared.signOut()
                     }
                 }
                 .buttonStyle(.plain)

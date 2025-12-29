@@ -58,7 +58,7 @@ struct RealtorsListView: View {
     }
 
     private var content: some View {
-        StandardPageLayout(title: "Realtors") {
+        StandardPageLayout(title: "Realtors", useContentPadding: true) {
             LazyVStack(spacing: 0) {
                 ForEach(activeRealtorList) { user in
                     NavigationLink(value: user) {
@@ -67,7 +67,8 @@ struct RealtorsListView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, DS.Spacing.Layout.pageMargin)
+            // Force the list to pin to the top instead of being vertically centered by a parent frame.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         } headerActions: {
             Button {
                 showAddSheet = true

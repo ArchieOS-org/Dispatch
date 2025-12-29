@@ -311,13 +311,7 @@ struct TaskListView: View {
 // MARK: - Preview
 
 #Preview("Task List View") {
-    let (container, syncManager) = setupPreview()
-    
-    TaskListView()
-        .modelContainer(container)
-        .environmentObject(syncManager)
-        .environmentObject(SearchPresentationManager())
-        .environmentObject(LensState())
+    Text("Deprecated")
 }
 
 @MainActor

@@ -110,18 +110,13 @@ struct ListingListView: View {
     private var content: some View {
         Group {
             #if os(macOS)
-            AnyView(
-                StandardPageLayout(title: "Listings") {
-                    if isEmpty {
-                        emptyStateView
-                    } else {
-                        listView
-                    }
+            StandardPageLayout(title: "Listings", useContentPadding: false) {
+                if isEmpty {
+                    emptyStateView
+                } else {
+                    listView
                 }
-                // macOS Modifiers applied to the concrete StandardPageLayout
-                .navigationTitle("")
-                .toolbarBackground(.hidden, for: .windowToolbar)
-            )
+            }
             #else
             AnyView(
                 VStack(spacing: 0) {
