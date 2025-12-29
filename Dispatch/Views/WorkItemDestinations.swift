@@ -66,10 +66,8 @@ private struct DispatchDestinationsModifier: ViewModifier {
     @ViewBuilder
     private func menuDestination(for section: MenuSection) -> some View {
         switch section {
-        case .tasks:
-            TaskListView(embedInNavigationStack: false)
-        case .activities:
-            ActivityListView(embedInNavigationStack: false)
+        case .myWorkspace:
+            MyWorkspaceView(navigationPath: .constant(.init()))
         case .listings:
             ListingListView(embedInNavigationStack: false)
         case .realtors:

@@ -21,7 +21,7 @@ struct RealtorsListView: View {
 
     @Query(sort: \User.name) private var allUsers: [User]
 
-    private var realtors: [User] {
+    private var activeRealtorList: [User] {
         allUsers.filter { $0.userType == .realtor }
     }
     
@@ -60,7 +60,7 @@ struct RealtorsListView: View {
     private var content: some View {
         StandardPageLayout(title: "Realtors") {
             LazyVStack(spacing: 0) {
-                ForEach(realtors) { user in
+                ForEach(activeRealtorList) { user in
                     NavigationLink(value: user) {
                         RealtorRow(user: user)
                     }

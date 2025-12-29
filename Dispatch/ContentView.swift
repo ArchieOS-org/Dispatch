@@ -29,10 +29,10 @@ struct ContentView: View {
     @Query private var allListings: [Listing]
 
     enum Tab: Hashable {
-        case myWorkspace, tasks, activities, listings, realtors
+        case myWorkspace, listings, realtors
     }
 
-    @State private var selectedTab: Tab = .tasks
+    @State private var selectedTab: Tab = .myWorkspace
 
     /// Centralized WorkItemActions environment object for shared navigation
     @StateObject private var workItemActions = WorkItemActions()
@@ -136,8 +136,6 @@ struct ContentView: View {
 
                             // Post filters logic
                             switch tab {
-                            case .tasks: NotificationCenter.default.post(name: .filterMine, object: nil)
-                            case .activities: NotificationCenter.default.post(name: .filterOthers, object: nil)
                             case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
                             case .realtors: break
                             case .myWorkspace: break
@@ -280,9 +278,9 @@ struct ContentView: View {
 
         switch result {
         case .task(let task):
-            navigate(to: .tasks, destination: WorkItemRef.task(task))
+            navigate(to: .myWorkspace, destination: WorkItemRef.task(task))
         case .activity(let activity):
-            navigate(to: .activities, destination: WorkItemRef.activity(activity))
+            navigate(to: .myWorkspace, destination: WorkItemRef.activity(activity))
         case .listing(let listing):
             navigate(to: .listings, destination: listing)
         case .navigation(_, _, let tab, _):
@@ -321,10 +319,6 @@ struct ContentView: View {
     /// Toolbar context based on current tab selection
     private var toolbarContext: ToolbarContext {
         switch selectedTab {
-        case .tasks:
-            return .taskList
-        case .activities:
-            return .activityList
         case .listings:
             return .listingList
         case .realtors:
@@ -350,20 +344,6 @@ struct ContentView: View {
                     )
                     
                     SidebarRow(
-                        title: "Tasks",
-                        icon: DS.Icons.Entity.task,
-                        isSelected: selectedTab == .tasks,
-                        action: { handleTabSelection(.tasks) }
-                    )
-                    
-                    SidebarRow(
-                        title: "Activities",
-                        icon: DS.Icons.Entity.activity,
-                        isSelected: selectedTab == .activities,
-                        action: { handleTabSelection(.activities) }
-                    )
-                    
-                    SidebarRow(
                         title: "Listings",
                         icon: DS.Icons.Entity.listing,
                         isSelected: selectedTab == .listings,
@@ -383,10 +363,6 @@ struct ContentView: View {
             NavigationStack(path: $searchNavigationPath) {
                 Group {
                     switch selectedTab {
-                    case .tasks:
-                        TaskListView()
-                    case .activities:
-                        ActivityListView()
                     case .listings:
                         ListingListView()
                     case .realtors:
@@ -421,7 +397,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showMacOSQuickEntry) {
             QuickEntrySheet(
-                defaultItemType: selectedTab == .activities ? .activity : .task,
+                defaultItemType: .task,
                 currentUserId: currentUserId,
                 listings: activeListings,
                 onSave: { syncManager.requestSync() }
@@ -483,9 +459,6 @@ struct ContentView: View {
         NavigationSplitView {
             List {
                 sidebarButton(for: .myWorkspace, label: "My Workspace", icon: "briefcase")
-                sidebarButton(for: .tasks, label: "Tasks", icon: DS.Icons.Entity.task)
-                sidebarButton(for: .activities, label: "Activities", icon: DS.Icons.Entity.activity)
-                sidebarButton(for: .activities, label: "Activities", icon: DS.Icons.Entity.activity)
                 sidebarButton(for: .listings, label: "Listings", icon: DS.Icons.Entity.listing)
                 sidebarButton(for: .realtors, label: "Realtors", icon: DS.Icons.Entity.realtor)
             }
@@ -494,10 +467,6 @@ struct ContentView: View {
         } detail: {
             Group {
                 switch selectedTab {
-                case .tasks:
-                    TaskListView()
-                case .activities:
-                    ActivityListView()
                 case .listings:
                     ListingListView()
                 case .realtors:

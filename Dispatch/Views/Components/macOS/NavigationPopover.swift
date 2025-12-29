@@ -86,10 +86,10 @@ struct NavigationPopover: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Navigation Items
                 let items: [SearchResult] = [
-                    .navigation(title: "Inbox", icon: "tray", tab: .tasks, badgeCount: inboxCount),
-                    .navigation(title: "Today", icon: "star.fill", tab: .tasks, badgeCount: todayCount),
+                    .navigation(title: "Inbox", icon: "tray", tab: .myWorkspace, badgeCount: inboxCount),
+                    .navigation(title: "Today", icon: "star.fill", tab: .myWorkspace, badgeCount: todayCount),
                     .navigation(title: "Listings", icon: "building.2", tab: .listings, badgeCount: nil),
-                    .navigation(title: "Activities", icon: "list.bullet.clipboard", tab: .activities, badgeCount: nil)
+                    .navigation(title: "Realtors", icon: DS.Icons.Entity.realtor, tab: .realtors, badgeCount: nil)
                 ]
                 
                 ForEach(items) { item in

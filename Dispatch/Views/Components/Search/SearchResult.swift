@@ -88,9 +88,9 @@ enum SearchResult: Identifiable, Hashable {
     /// Accent color for the result type
     var accentColor: Color {
         switch self {
-        case .task: return MenuSection.tasks.accentColor
-        case .activity: return MenuSection.activities.accentColor
-        case .listing: return MenuSection.listings.accentColor
+        case .task: return DS.Colors.Section.tasks
+        case .activity: return DS.Colors.Section.activities
+        case .listing: return DS.Colors.Section.listings
         case .navigation: return .blue // Standard navigation color
         }
     }

@@ -17,6 +17,9 @@ import SwiftData
 ///
 /// When `embedInNavigationStack` is false, the view omits its NavigationStack wrapper
 /// and expects the parent view to provide navigation context (e.g., iPhone menu, iPad split view).
+///
+/// DEPRECATED: Replaced by MyWorkspaceView filtering.
+@available(*, deprecated, message: "Use MyWorkspaceView instead")
 struct TaskListView: View {
     /// Whether to wrap content in NavigationStack. Set to false when used in menu/split-view navigation.
     var embedInNavigationStack: Bool = true
@@ -166,9 +169,6 @@ struct TaskListView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("We couldn't sync your last change. We'll retry shortly.")
-        }
-        .onAppear {
-            lensState.currentScreen = .tasks
         }
     }
 

@@ -54,8 +54,7 @@ struct MenuPageView: View {
     /// Get count for each section
     private func count(for section: MenuSection) -> Int {
         switch section {
-        case .tasks: return openTasks.count
-        case .activities: return openActivities.count
+        case .myWorkspace: return openTasks.count + openActivities.count
         case .listings: return activeListings.count
         case .realtors: return activeRealtors.count
         }

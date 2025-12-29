@@ -9,8 +9,7 @@ import SwiftUI
 
 /// Menu sections for the iPhone Things 3-style navigation
 enum MenuSection: String, CaseIterable, Identifiable, Hashable {
-    case tasks
-    case activities
+    case myWorkspace
     case listings
     case realtors
 
@@ -19,8 +18,7 @@ enum MenuSection: String, CaseIterable, Identifiable, Hashable {
     /// Display title for the section
     var title: String {
         switch self {
-        case .tasks: return "Tasks"
-        case .activities: return "Activities"
+        case .myWorkspace: return "My Workspace"
         case .listings: return "Listings"
         case .realtors: return "Realtors"
         }
@@ -29,8 +27,7 @@ enum MenuSection: String, CaseIterable, Identifiable, Hashable {
     /// SF Symbol icon name from design system
     var icon: String {
         switch self {
-        case .tasks: return DS.Icons.Entity.task
-        case .activities: return DS.Icons.Entity.activity
+        case .myWorkspace: return "briefcase"
         case .listings: return DS.Icons.Entity.listing
         case .realtors: return DS.Icons.Entity.realtor
         }
@@ -39,10 +36,9 @@ enum MenuSection: String, CaseIterable, Identifiable, Hashable {
     /// Accent color for the section
     var accentColor: Color {
         switch self {
-        case .tasks: return DS.Colors.info         // Blue
-        case .activities: return DS.Colors.warning  // Orange
-        case .listings: return DS.Colors.success    // Green
-        case .realtors: return .indigo              // Indigo
+        case .myWorkspace: return DS.Colors.Section.myWorkspace
+        case .listings: return DS.Colors.Section.listings
+        case .realtors: return DS.Colors.Section.realtors
         }
     }
 }

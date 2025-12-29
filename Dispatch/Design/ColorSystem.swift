@@ -274,5 +274,16 @@ extension DS {
                 }
             }
         }
+
+        // MARK: - Section Colors
+
+        /// Colors for main navigation sections
+        enum Section {
+            static let myWorkspace = Color.blue
+            static let listings = Color.green
+            static let realtors = Color.indigo
+            static let tasks = Color.blue
+            static let activities = Color.orange
+        }
     }
 }
