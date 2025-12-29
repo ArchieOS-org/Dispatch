@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Supabase
+import Network
 
 /// Owner of the application synchronization lifecycle.
 /// Manages the `SyncManager` start/stop states based on scene phase and authentication.
@@ -20,9 +21,36 @@ class SyncCoordinator {
     private var isListening = false
     private var syncTask: Task<Void, Never>?
     
+    // Network Monitoring
+    private let networkMonitor = NWPathMonitor()
+    private let networkQueue = DispatchQueue(label: "com.dispatch.network")
+    private var lastNetworkStatus: NWPath.Status = .unsatisfied
+    
     init(syncManager: SyncManager, authManager: AuthManager) {
         self.syncManager = syncManager
         self.authManager = authManager
+        
+        startNetworkMonitoring()
+    }
+    
+    private func startNetworkMonitoring() {
+        networkMonitor.pathUpdateHandler = { [weak self] path in
+            Task { @MainActor [weak self] in
+                self?.handleNetworkChange(status: path.status)
+            }
+        }
+        networkMonitor.start(queue: networkQueue)
+    }
+    
+    private func handleNetworkChange(status: NWPath.Status) {
+        if status == .satisfied && lastNetworkStatus != .satisfied {
+            // Network restored
+            if authManager.isAuthenticated {
+                print("[SyncCoordinator] Network restored - requesting sync")
+                syncManager.requestSync()
+            }
+        }
+        lastNetworkStatus = status
     }
     
     // MARK: - Handlers

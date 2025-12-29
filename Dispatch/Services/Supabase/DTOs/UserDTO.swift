@@ -44,3 +44,15 @@ struct UserDTO: Codable, Sendable {
         )
     }
 }
+
+extension UserDTO {
+    init(from user: User, avatarUrl: String? = nil) {
+        self.id = user.id
+        self.name = user.name
+        self.email = user.email
+        self.avatarUrl = avatarUrl // Use injected URL from Storage upload
+        self.userType = user.userType.rawValue
+        self.createdAt = user.createdAt
+        self.updatedAt = user.updatedAt
+    }
+}

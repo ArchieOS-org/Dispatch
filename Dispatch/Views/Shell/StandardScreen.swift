@@ -94,10 +94,26 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     
     @ViewBuilder
     private var innerContent: some View {
-        content()
-            .frame(maxWidth: layout == .fullBleed ? .infinity : DS.Spacing.Layout.maxContentWidth)
-            .padding(.horizontal, horizontalPadding)
-            .frame(maxWidth: .infinity, alignment: .top) // Align Top
+        VStack(alignment: .leading, spacing: 0) {
+            #if os(macOS)
+            // Left-Aligned "Things 3" Header
+            Text(title)
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .foregroundColor(DS.Colors.Text.primary)
+                .padding(.horizontal, horizontalPadding)
+                .padding(.top, DS.Spacing.md)
+                .padding(.bottom, DS.Spacing.sm)
+            #endif
+            
+            content()
+                .frame(maxWidth: layout == .fullBleed ? .infinity : DS.Spacing.Layout.maxContentWidth)
+                .padding(.horizontal, horizontalPadding)
+        }
+        .frame(maxWidth: .infinity, alignment: .top) // Align Top
+        #if os(macOS)
+        .navigationTitle("") // Hide system title on Mac in favor of our custom header
+        #endif
     }
     
     private var horizontalPadding: CGFloat {

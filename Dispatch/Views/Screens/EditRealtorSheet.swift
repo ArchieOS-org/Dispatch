@@ -13,6 +13,7 @@ import PhotosUI
 struct EditRealtorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var syncManager: SyncManager
     
     let userToEdit: User?
     
@@ -103,6 +104,9 @@ struct EditRealtorSheet: View {
             user.email = email
             user.avatar = avatarData
             user.userType = .realtor 
+            
+            // Mark dirty to trigger sync
+            user.markPending()
         } else {
             let newUser = User(
                 name: name,
@@ -111,7 +115,13 @@ struct EditRealtorSheet: View {
                 userType: .realtor
             )
             modelContext.insert(newUser)
+            
+            // Mark dirty to trigger sync
+            newUser.markPending()
         }
+        
+        // Trigger immediate sync attempt (offline first)
+        syncManager.requestSync()
         
         dismiss()
     }

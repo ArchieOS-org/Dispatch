@@ -140,15 +140,22 @@ final class SyncManager: ObservableObject {
         if let urlError = error as? URLError {
             switch urlError.code {
             case .notConnectedToInternet, .networkConnectionLost:
-                return "No internet connection. Check your network."
+                return "No internet connection."
             case .timedOut:
-                return "Connection timed out. We'll retry shortly."
+                return "Connection timed out."
             default:
-                return "Network error. Check your connection."
+                return "Network error."
             }
         }
-        // Add auth check if needed in future
-        return "Sync failed. We'll retry shortly."
+        
+        // Detect Postgres/RLS errors
+        // Note: PostgrestError handling ideally involves checking the error code (e.g. 42501 or PGRST102)
+        let errorString = String(describing: error)
+        if errorString.contains("42501") || errorString.localizedCaseInsensitiveContains("permission denied") {
+             return "Permission denied. You can only edit your own profile."
+        }
+        
+        return "Sync failed: \(error.localizedDescription)"
     }
 
     // MARK: - Main Sync
@@ -646,15 +653,27 @@ final class SyncManager: ObservableObject {
 
         for (index, dto) in dtos.enumerated() {
             debugLog.log("  Upserting user \(index + 1)/\(dtos.count): \(dto.id) - \(dto.name)", category: .sync)
-            try upsertUser(dto: dto, context: context)
+            try await upsertUser(dto: dto, context: context)
         }
     }
 
-    private func upsertUser(dto: UserDTO, context: ModelContext) throws {
+    private func upsertUser(dto: UserDTO, context: ModelContext) async throws {
         let targetId = dto.id
         let descriptor = FetchDescriptor<User>(
             predicate: #Predicate { $0.id == targetId }
         )
+
+        // Download avatar if URL is present
+        var avatarData: Data? = nil
+        if let avatarUrlString = dto.avatarUrl, let url = URL(string: avatarUrlString) {
+            do {
+                debugLog.log("    Downloading avatar for \(dto.name)...", category: .sync)
+                let (data, _) = try await URLSession.shared.data(from: url)
+                avatarData = data
+            } catch {
+                debugLog.log("    ⚠️ Failed to download avatar: \(error.localizedDescription)", category: .error)
+            }
+        }
 
         if let existing = try context.fetch(descriptor).first {
             debugLog.log("    UPDATE existing user: \(dto.id)", category: .sync)
@@ -662,10 +681,21 @@ final class SyncManager: ObservableObject {
             existing.email = dto.email
             existing.userType = UserType(rawValue: dto.userType) ?? .realtor
             existing.updatedAt = dto.updatedAt
+            
+            // Only update avatar if we downloaded a new one, or if we want to clear it (optional, usually we keep local if remote fail)
+            // Strict sync: if remote has URL, we use it. If remote has NO URL (nil), we should probably clear local?
+            // For now, let's update if we got data.
+            if let data = avatarData {
+                existing.avatar = data
+            }
+            
             existing.markSynced()
         } else {
             debugLog.log("    INSERT new user: \(dto.id)", category: .sync)
             let newUser = dto.toModel()
+            if let data = avatarData {
+                newUser.avatar = data
+            }
             newUser.markSynced()
             context.insert(newUser)
         }
@@ -970,16 +1000,110 @@ final class SyncManager: ObservableObject {
     // MARK: - Sync Up (SwiftData → Supabase)
     private func syncUp(context: ModelContext) async throws {
         debugLog.log("syncUp() - pushing dirty entities to Supabase", category: .sync)
-        debugLog.log("Sync order: Listings → Tasks → Activities → ClaimEvents (FK dependencies)", category: .sync)
+        
+        // 0. Reconcile legacy "phantom" users (local-only but marked synced)
+        // This is a lightweight local migration measure.
+        try? reconcileLegacyLocalUsers(context: context)
+        
+        debugLog.log("Sync order: Users → Listings → Tasks → Activities → ClaimEvents (FK dependencies)", category: .sync)
 
-        // Sync in FK dependency order: Listings first, then Tasks/Activities (which reference Listings)
+        // Sync in FK dependency order: Users first (owners), then Listings, then Tasks/Activities
+        try await syncUpUsers(context: context)
         try await syncUpListings(context: context)
         try await syncUpTasks(context: context)
         try await syncUpActivities(context: context)
         try await syncUpClaimEvents(context: context)
-        // NOTE: No syncUpUsers() - Users are READ-ONLY (RLS policy prevents non-self updates)
-        // Profile edits will be handled in a separate authenticated flow
         debugLog.log("syncUp() complete", category: .sync)
+    }
+
+    /// One-time local migration to catch "phantom" users that are marked .synced but were never uploaded (syncedAt == nil).
+    private func reconcileLegacyLocalUsers(context: ModelContext) throws {
+        // Fetch ALL users and filter in memory to avoid SwiftData #Predicate enum issues
+        // This is safe because the user count is low (dozens, not millions).
+        let descriptor = FetchDescriptor<User>()
+        let allUsers = try context.fetch(descriptor)
+        
+        let phantomUsers = allUsers.filter { user in
+            // Check raw value to be safe with optional enum storage
+            user.syncStateRaw == .synced && user.syncedAt == nil
+        }
+        
+        guard !phantomUsers.isEmpty else { return }
+        
+        debugLog.log("Found \(phantomUsers.count) phantom legacy users. Marking as pending for upload.", category: .sync)
+        
+        for user in phantomUsers {
+            user.markPending() // Sets syncState = .pending, ensuring syncUpUsers picks them up
+        }
+    }
+
+    private func syncUpUsers(context: ModelContext) async throws {
+        let descriptor = FetchDescriptor<User>()
+        let allUsers = try context.fetch(descriptor)
+        debugLog.log("syncUpUsers() - fetched \(allUsers.count) total users from SwiftData", category: .sync)
+
+        // Filter for pending or failed users
+        let pendingUsers = allUsers.filter { $0.syncState == .pending || $0.syncState == .failed }
+        debugLog.logSyncOperation(operation: "PENDING", table: "users", count: pendingUsers.count, details: "of \(allUsers.count) total")
+
+        guard !pendingUsers.isEmpty else {
+            debugLog.log("  No pending users to sync", category: .sync)
+            return
+        }
+
+        // Process individually to handle avatar uploads reliably
+        for user in pendingUsers {
+            do {
+                // 1. Upload Avatar if present
+                var publicAvatarUrl: String? = nil
+                if let avatarData = user.avatar {
+                    debugLog.log("  Uploading avatar for user \(user.id)...", category: .sync)
+                    publicAvatarUrl = try await uploadAvatar(userId: user.id, data: avatarData)
+                }
+
+                // 2. Upsert User Profile
+                let dto = UserDTO(from: user, avatarUrl: publicAvatarUrl)
+                try await supabase
+                    .from("users")
+                    .upsert([dto])
+                    .execute()
+                
+                user.markSynced()
+                debugLog.log("  ✓ User \(user.id) synced (with avatar: \(publicAvatarUrl != nil))", category: .sync)
+            } catch {
+                let message = userFacingMessage(for: error)
+                user.markFailed(message)
+                debugLog.log("  ✗ Failed to sync user \(user.id): \(error.localizedDescription)", category: .error)
+            }
+        }
+    }
+
+    /// Uploads avatar data to Supabase Storage and returns the public URL
+    private func uploadAvatar(userId: UUID, data: Data) async throws -> String {
+        let fileName = "\(userId).jpg"
+        let bucket = "avatars"
+        
+        // Use standard upload(_:data:options:) signature (path is unnamed)
+        _ = try await supabase.storage
+            .from(bucket)
+            .upload(
+                fileName,
+                data: data,
+                options: FileOptions(
+                    cacheControl: "3600",
+                    contentType: "image/jpeg",
+                    upsert: true
+                )
+            )
+        
+        // Correct method is absoluteString of the URL returned by getPublicURL (capital URL)
+        // Note: In some versions it might be .publicUrl(path:). Checking common v2 patterns.
+        // If getPublicUrl causes error 'no member', it's likely getPublicURL(path:).
+        let publicUrl = try supabase.storage
+            .from(bucket)
+            .getPublicURL(path: fileName)
+            
+        return publicUrl.absoluteString
     }
 
     private func syncUpTasks(context: ModelContext) async throws {
@@ -1521,7 +1645,7 @@ final class SyncManager: ObservableObject {
                         let dto = try insertion.decodeRecord(as: UserDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
                         debugLog.log("  ✓ Decoded user: \(dto.id) - \(dto.name)", category: .event)
                         let context = container.mainContext
-                        try self.upsertUser(dto: dto, context: context)
+                        try await self.upsertUser(dto: dto, context: context)
                         try context.save()
                         debugLog.log("  ✓ User inserted locally", category: .event)
                     } catch {
@@ -1540,7 +1664,7 @@ final class SyncManager: ObservableObject {
                         let dto = try update.decodeRecord(as: UserDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
                         debugLog.log("  ✓ Decoded user: \(dto.id) - \(dto.name)", category: .event)
                         let context = container.mainContext
-                        try self.upsertUser(dto: dto, context: context)
+                        try await self.upsertUser(dto: dto, context: context)
                         try context.save()
                         debugLog.log("  ✓ User updated locally", category: .event)
                     } catch {
@@ -2016,7 +2140,7 @@ final class SyncManager: ObservableObject {
             recentlyProcessedIds.insert(dto.id)
             #endif
 
-            try upsertUser(dto: dto, context: context)
+            try await upsertUser(dto: dto, context: context)
             debugLog.log("  ✓ Broadcast: Upserted user \(dto.id)", category: .event)
         }
     }

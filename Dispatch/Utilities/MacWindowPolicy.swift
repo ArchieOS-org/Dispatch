@@ -36,28 +36,22 @@ struct MacWindowPolicy: NSViewRepresentable {
         // We do NOT remove the toolbar. We do NOT force title visibility constantly.
         
         // 1. Unified/Transparent Titlebar
-        // This allows content to flow under the window chrome (Traffic Lights).
+        // This allows the window chrome to blend nicely, but we do NOT force content underneath
+        // by removing .fullSizeContentView. This lets standard layout handle the top inset.
         window.titlebarAppearsTransparent = true
         
-        // 2. Hide Native Title Text (if we want the "clean" look)
-        // We can let the toolbar item provide the title, or use standard .navigationTitle.
-        // If we set this to .hidden, standard .navigationTitle won't show in the *center*
-        // but it will show in the window tab/sidebar depending on style.
-        // For "Things 3" minimal look where the title is often a custom label or
-        // inline toolbar item, hiding the default center title is correct.
+        // 2. Hide Native Title Text
+        // We render a custom "Things 3" style left-aligned header in the content view on macOS.
+        // So we hide the default center-aligned window title.
         window.titleVisibility = .hidden
         
-        // 3. Full Size Content
-        // Crucial for the "under titlebar" effect.
-        if !window.styleMask.contains(.fullSizeContentView) {
-            window.styleMask.insert(.fullSizeContentView)
+        // 3. Respect Native Layout (Fix Overlap)
+        // We explicitly REMOVE .fullSizeContentView.
+        // This stops content from flowing under the toolbar, letting the OS handle the safe area.
+        // This fixes the "pushed to top" / overlap issues.
+        if window.styleMask.contains(.fullSizeContentView) {
+            window.styleMask.remove(.fullSizeContentView)
         }
-        
-        // 4. Stable Toolbar
-        // We explicitly ensure the toolbar is visible to prevent corner radius glitches.
-        // Ideally AppShell has already attached a toolbar via SwiftUI modifiers.
-        // This is just a safeguard.
-        // Note: We do NOT set window.toolbar = nil.
     }
 }
 

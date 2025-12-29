@@ -32,6 +32,22 @@ private var rlsTestsEnabled: Bool {
     ProcessInfo.processInfo.environment["DISPATCH_RLS_TESTS"] == "1"
 }
 
+// MARK: - User RLS Tests
+
+struct UserRLSTests {
+
+    @Test("Sync Manager handles User creation RLS failure", .enabled(if: rlsTestsEnabled))
+    func testUserSyncWithRLS() async throws {
+        // Setup: Try to create a User as a non-admin (e.g. User B creating a new user)
+        // Action: Call syncUpUsers
+        // Expected: Supabase should return 403/42501
+        //           SyncManager should catch error
+        //           User entity syncState should become .failed
+        //           User entity error message should be "Permission denied..."
+        #expect(true, "Placeholder - implement with authenticated Supabase client and SyncManager")
+    }
+}
+
 // MARK: - Task RLS Tests
 
 struct TaskRLSTests {

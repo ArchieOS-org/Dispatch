@@ -75,7 +75,6 @@ struct MenuPageView: View {
                 .padding(DS.Spacing.lg)
             }
             .pullToSearch()
-            .background(DS.Colors.Background.grouped)
         }
         .onAppear {
             lensState.currentScreen = .menu
