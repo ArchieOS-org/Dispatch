@@ -3,6 +3,7 @@
 //  Dispatch
 //
 //  Created by Dispatch AI on 2025-12-28.
+//  Refactored for Layout Unification (StandardScreen)
 //
 
 import SwiftUI
@@ -29,54 +30,55 @@ struct EditRealtorSheet: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    HStack {
-                        Spacer()
-                        VStack {
-                            ZStack {
-                                Circle()
-                                    .fill(DS.Colors.Background.secondary)
-                                    .frame(width: 100, height: 100)
-                                
-                                if let avatarData, let pImage = PlatformImage.from(data: avatarData) {
-                                    Image(platformImage: pImage)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
+            StandardScreen(
+                title: userToEdit == nil ? "New Realtor" : "Edit Realtor",
+                layout: .column,
+                scroll: .disabled
+            ) {
+                Form {
+                    Section {
+                        HStack {
+                            Spacer()
+                            VStack {
+                                ZStack {
+                                    Circle()
+                                        .fill(DS.Colors.Background.secondary)
                                         .frame(width: 100, height: 100)
-                                        .clipShape(Circle())
-                                } else {
-                                    Image(systemName: "person.crop.circle.badge.plus")
-                                        .font(.system(size: 40))
-                                        .foregroundStyle(DS.Colors.Text.secondary)
+                                    
+                                    if let avatarData, let pImage = PlatformImage.from(data: avatarData) {
+                                        Image(platformImage: pImage)
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fill)
+                                            .frame(width: 100, height: 100)
+                                            .clipShape(Circle())
+                                    } else {
+                                        Image(systemName: "person.crop.circle.badge.plus")
+                                            .font(.system(size: 40))
+                                            .foregroundStyle(DS.Colors.Text.secondary)
+                                    }
+                                }
+                                
+                                PhotosPicker(selection: $avatarItem, matching: .images) {
+                                    Text(avatarData == nil ? "Add Photo" : "Change Photo")
+                                        .font(DS.Typography.bodySecondary)
                                 }
                             }
-                            
-                            PhotosPicker(selection: $avatarItem, matching: .images) {
-                                Text(avatarData == nil ? "Add Photo" : "Change Photo")
-                                    .font(DS.Typography.bodySecondary)
-                            }
+                            Spacer()
                         }
-                        Spacer()
+                        .listRowBackground(Color.clear)
                     }
-                    .listRowBackground(Color.clear)
+                    
+                    Section("Contact Info") {
+                        TextField("Name", text: $name)
+                        TextField("Email", text: $email)
+                            .textContentType(.emailAddress)
+                            #if os(iOS)
+                            .keyboardType(.emailAddress)
+                            #endif
+                    }
                 }
-                
-                Section("Contact Info") {
-                    TextField("Name", text: $name)
-                    TextField("Email", text: $email)
-                        .textContentType(.emailAddress)
-                        #if os(iOS)
-                        .keyboardType(.emailAddress)
-                        #endif
-                }
-            }
-            .formStyle(.grouped)
-            .navigationTitle(userToEdit == nil ? "New Realtor" : "Edit Realtor")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
+                .formStyle(.grouped)
+            } toolbarContent: {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
@@ -100,8 +102,6 @@ struct EditRealtorSheet: View {
             user.name = name
             user.email = email
             user.avatar = avatarData
-            // Ensure type is realtor if editing existing user who might have been something else? 
-            // Or just trust the entry point. For now, we enforce it.
             user.userType = .realtor 
         } else {
             let newUser = User(
@@ -112,9 +112,6 @@ struct EditRealtorSheet: View {
             )
             modelContext.insert(newUser)
         }
-        
-        // TODO: Handle Supabase Upload Logic if we decide to store URL remotely
-        // For now, storing Data locally in SwiftData which syncs via CloudKit/Supabase automatically if configured.
         
         dismiss()
     }

@@ -3,6 +3,7 @@
 //  Dispatch
 //
 //  Created by Noah Deskin on 2025-12-28.
+//  Refactored for Layout Unification (StandardScreen)
 //
 
 import SwiftUI
@@ -36,34 +37,32 @@ struct MyWorkspaceView: View {
     @State private var selectedFilter: WorkspaceFilter = .all
 
     var body: some View {
-        StandardPageLayout(title: "My Workspace") {
-            ScrollView {
-                VStack(spacing: DS.Spacing.sectionSpacing) {
-                    // Filter Bar
-                    SegmentedFilterBar(selection: $selectedFilter)
-                        .padding(.top, DS.Spacing.md)
-                        .padding(.bottom, DS.Spacing.sm)
-                    
-                    // Content
-                    if groupedItems.isEmpty {
-                        ContentUnavailableView {
-                            Label(emptyTitle, systemImage: emptyIcon)
-                        } description: {
-                            Text(emptyDescription)
-                        }
-                        .padding(.top, 40)
-                    } else {
-                        LazyVStack(spacing: 24) {
-                            ForEach(groupedItems) { group in
-                                ListingWorkspaceSection(group: group)
-                            }
-                        }
-                        // Force refresh when filter changes to prevent stale groups
-                        .id(selectedFilter)
+        StandardScreen(title: "My Workspace", layout: .column, scroll: .automatic) {
+            VStack(spacing: DS.Spacing.sectionSpacing) {
+                // Filter Bar
+                SegmentedFilterBar(selection: $selectedFilter)
+                    .padding(.top, DS.Spacing.md)
+                    .padding(.bottom, DS.Spacing.sm)
+                
+                // Content
+                if groupedItems.isEmpty {
+                    ContentUnavailableView {
+                        Label(emptyTitle, systemImage: emptyIcon)
+                    } description: {
+                        Text(emptyDescription)
                     }
+                    .padding(.top, 40)
+                } else {
+                    LazyVStack(spacing: 24) {
+                        ForEach(groupedItems) { group in
+                            ListingWorkspaceSection(group: group)
+                        }
+                    }
+                    // Force refresh when filter changes to prevent stale groups
+                    .id(selectedFilter)
                 }
-                .padding(.bottom, 100)
             }
+            .padding(.bottom, DS.Spacing.xxl)
         }
     }
     

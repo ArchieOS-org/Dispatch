@@ -2,14 +2,13 @@
 //  WorkItemDetailView.swift
 //  Dispatch
 //
-//  WorkItem Component - Full detail view with collapsing header
-//  Created by Claude on 2025-12-06.
+//  WorkItem Component - Full detail view
+//  Refactored for Layout Unification (StandardScreen)
 //
 
 import SwiftUI
 
 /// Full detail view for a work item (task or activity).
-/// Features collapsing header, metadata section, subtasks list, and notes section.
 struct WorkItemDetailView: View {
     let item: WorkItem
     let claimState: ClaimState
@@ -30,7 +29,6 @@ struct WorkItemDetailView: View {
     @EnvironmentObject private var lensState: LensState
 
     // State
-    @State private var scrollOffset: CGFloat = 0
     @State private var noteText = ""
     @State private var showNoteInput = false
 
@@ -42,55 +40,40 @@ struct WorkItemDetailView: View {
     }()
 
     var body: some View {
-        CollapsibleHeaderScrollView { offset in
-            headerView(scrollOffset: offset)
-        } content: {
-            VStack(alignment: .leading, spacing: DS.Spacing.xl) {
-                // Description Section
-                descriptionSection
-
-                // Metadata Section
-                metadataSection
-
-                // Subtasks Section
-                subtasksSection
-
-                // Notes Section
-                notesSection
-            }
-            #if os(macOS)
-            .padding(.horizontal, DS.Spacing.Layout.pageMargin)
-            .padding(.vertical, DS.Spacing.md)
-            #else
-            .padding(DS.Spacing.md)
-            #endif
+        StandardScreen(title: item.title, layout: .column, scroll: .automatic) {
+            content
         }
-        .background(DS.Colors.Background.primary)
         .onAppear {
             lensState.currentScreen = .detail
         }
-        #if os(macOS)
-        // Enforce global custom header
-        .toolbar {
-            ToolbarItem(placement: .navigation) { EmptyView() }
-        }
-        .navigationBarBackButtonHidden(true)
-        #endif
     }
-
-    // MARK: - Header
-
-    @ViewBuilder
-    private func headerView(scrollOffset: CGFloat) -> some View {
-        CollapsibleHeader(
-            title: item.title,
-            scrollOffset: scrollOffset
-        ) {
+    
+    // MARK: - Content
+    
+    private var content: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.xl) {
+            // Header / Priority / Due Date
+            // Moved from CollapsibleHeader to content top
             HStack(spacing: DS.Spacing.sm) {
                 PriorityDot(priority: item.priority)
                 DueDateBadge(dueDate: item.dueDate)
+                Spacer()
             }
+            .padding(.bottom, DS.Spacing.sm)
+
+            // Description Section
+            descriptionSection
+
+            // Metadata Section
+            metadataSection
+
+            // Subtasks Section
+            subtasksSection
+
+            // Notes Section
+            notesSection
         }
+        .padding(.vertical, DS.Spacing.md)
     }
 
     // MARK: - Description Section
@@ -111,7 +94,7 @@ struct WorkItemDetailView: View {
             }
         }
         .padding(DS.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
         .background(DS.Colors.Background.card)
         .cornerRadius(DS.Spacing.radiusCard)
     }
@@ -170,7 +153,7 @@ struct WorkItemDetailView: View {
                         Text("Created by")
                             .font(DS.Typography.bodySecondary)
                             .foregroundColor(DS.Colors.Text.secondary)
-                        Spacer()
+                            Spacer()
                         HStack(spacing: DS.Spacing.xs) {
                             UserAvatar(user: creator, size: .small)
                             Text(creator.name)
@@ -321,7 +304,7 @@ struct WorkItemDetailView: View {
 #Preview("Work Item Detail View") {
     let sampleTask = TaskItem(
         title: "Review quarterly report",
-        taskDescription: "Go through the Q4 numbers and prepare a summary for the board meeting. Make sure to highlight key achievements and areas for improvement.",
+        taskDescription: "Go through the Q4 numbers and prepare a summary for the board meeting.",
         priority: .high,
         declaredBy: UUID()
     )
@@ -339,16 +322,6 @@ struct WorkItemDetailView: View {
             onAddNote: { _ in },
             onAddSubtask: {}
         )
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-        #endif
-        #if os(macOS)
-        // Ensure standard toolbar doesn't override our custom window header
-        .toolbar {
-            ToolbarItem(placement: .navigation) { EmptyView() }
-        }
-        .navigationBarBackButtonHidden(true)
-        #endif
     }
     .environmentObject(LensState())
 }

@@ -12,12 +12,15 @@ import SwiftData
 struct DispatchApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
+    // The Brain
+    @StateObject private var appState = AppState()
+    
+    // Legacy: Keep test harness state locally or move to AppState later?
+    // Moving to local for now to keep AppState clean of debug UI logic if possible, 
+    // or we can put it in AppState.overlayState. Let's keep it here for minimal regression.
     #if DEBUG
     @State private var showTestHarness = false
     #endif
-
-    @StateObject private var authManager = AuthManager.shared
-    @StateObject private var syncManager = SyncManager.shared
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
@@ -44,8 +47,6 @@ struct DispatchApp: App {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
-
-    // Stub removed - SyncManager now observes AuthManager
     
     init() {
         SyncManager.shared.configure(with: sharedModelContainer)
@@ -54,11 +55,15 @@ struct DispatchApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if authManager.isAuthenticated {
-                    if syncManager.currentUser != nil {
-                        ContentView()
-                            .environmentObject(authManager)
-                            .environmentObject(syncManager)
+                if appState.authManager.isAuthenticated {
+                    if SyncManager.shared.currentUser != nil {
+                        AppShellView()
+                            // Inject Brain
+                            .environmentObject(appState)
+                            // Legacy injections for views relying on them directly:
+                            .environmentObject(appState.authManager)
+                            .environmentObject(SyncManager.shared)
+                            
                             #if DEBUG
                             .sheet(isPresented: $showTestHarness) {
                                 SyncTestHarness()
@@ -70,7 +75,6 @@ struct DispatchApp: App {
                             }
                             #endif
                             #endif
-                            .configureMacWindow()
                     } else {
                         OnboardingLoadingView()
                     }
@@ -79,100 +83,25 @@ struct DispatchApp: App {
                 }
             }
             .onOpenURL { url in
-                authManager.handleRedirect(url)
+                appState.authManager.handleRedirect(url)
             }
         }
         .modelContainer(sharedModelContainer)
         #if os(macOS)
-        .windowStyle(.hiddenTitleBar) // The native "Things 3" pattern
         .commands {
-            CommandGroup(after: .newItem) {
-                Button("New Item") {
-                    NotificationCenter.default.post(name: .newItem, object: nil)
-                }
-                .keyboardShortcut("n", modifiers: .command)
-                .disabled(!authManager.isAuthenticated)
-
-                Button("Search") {
-                    NotificationCenter.default.post(name: .openSearch, object: nil)
-                }
-                .keyboardShortcut("f", modifiers: .command)
-                .disabled(!authManager.isAuthenticated)
-
-                Divider()
-
-                Button("My Tasks") {
-                    NotificationCenter.default.post(name: .filterMine, object: nil)
-                }
-                .keyboardShortcut("1", modifiers: .command)
-                .disabled(!authManager.isAuthenticated)
-
-                Button("Others' Tasks") {
-                    NotificationCenter.default.post(name: .filterOthers, object: nil)
-                }
-                .keyboardShortcut("2", modifiers: .command)
-                .disabled(!authManager.isAuthenticated)
-
-                Button("Unclaimed") {
-                    NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
-                }
-                .keyboardShortcut("3", modifiers: .command)
-                .disabled(!authManager.isAuthenticated)
-            }
-            CommandGroup(after: .toolbar) {
-                Button("Sync Now") {
-                    Task {
-                        await SyncManager.shared.sync()
-                    }
-                }
-                .keyboardShortcut("r", modifiers: .command)
-                .disabled(!authManager.isAuthenticated)
-            }
-            CommandGroup(after: .sidebar) {
-                Button("Toggle Sidebar") {
-                    NotificationCenter.default.post(name: .toggleSidebar, object: nil)
-                }
-                .keyboardShortcut("/", modifiers: .command)
-                .disabled(!authManager.isAuthenticated)
+            // Pass the dispatch closure explicitly to avoid Environment lookup issues in menu bar
+            DispatchCommands { cmd in
+                appState.dispatch(cmd)
             }
         }
         #endif
+        // Plumbing: Feed ScenePhase to Coordinator
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active && authManager.isAuthenticated {
-                Task {
-                    // Check app compatibility before sync
-                    let compatStatus = await AppCompatManager.shared.checkCompatibility()
-                    if compatStatus.isBlocked {
-                        // TODO: Show force update alert
-                        debugLog.log("App version incompatible: \(AppCompatManager.shared.statusMessage)", category: .error)
-                        return
-                    }
-
-                    await SyncManager.shared.sync()
-                    await SyncManager.shared.startListening()
-                }
-            } else if newPhase == .background {
-                Task {
-                    await SyncManager.shared.stopListening()
-                }
-            }
+            appState.syncCoordinator.handle(scenePhase: newPhase)
         }
-        // Listen for auth state changes to trigger sync
-        .onChange(of: authManager.isAuthenticated) { _, isAuthenticated in
-            if isAuthenticated {
-                Task {
-                    // Update SyncManager with current user
-                    // Note: AuthManager runs on MainActor, so we access currentUserID directly
-                    SyncManager.shared.updateCurrentUser(authManager.currentUserID)
-                    await SyncManager.shared.sync()
-                    await SyncManager.shared.startListening()
-                }
-            } else {
-                Task {
-                    await SyncManager.shared.stopListening()
-                    SyncManager.shared.updateCurrentUser(nil)
-                }
-            }
+        // Plumbing: Feed Auth changes to Coordinator
+        .onChange(of: appState.authManager.isAuthenticated) { _, isAuthenticated in
+            appState.syncCoordinator.handle(authStatusIsAuthenticated: isAuthenticated)
         }
     }
 }

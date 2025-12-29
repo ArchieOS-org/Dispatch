@@ -172,7 +172,7 @@ extension DS {
         /// Bottom toolbar horizontal padding
         static let bottomToolbarPadding: CGFloat = 12
         
-        // MARK: - Things 3 Layout (macOS)
+        // MARK: - Layout Constants
         
         enum Layout {
             /// Content side margin (Things 3 style spacious layout)
@@ -187,6 +187,9 @@ extension DS {
             
             /// Spacing below the large title before content begins
             static let titleBottomSpacing: CGFloat = 20
+
+            /// Maximum width for content in detail views to prevent it from stretching too wide
+            static let maxContentWidth: CGFloat = 800
         }
     }
 }

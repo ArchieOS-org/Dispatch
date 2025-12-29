@@ -3,13 +3,13 @@
 //  Dispatch
 //
 //  Created by Claude on 2025-12-28.
+//  Refactored for Layout Unification (StandardScreen)
 //
 
 import SwiftUI
 import SwiftData
 
 /// Detailed profile view for a realtor.
-/// Shows contact info, active listings, and global activity history.
 struct RealtorProfileView: View {
     // MARK: - Properties
 
@@ -17,13 +17,8 @@ struct RealtorProfileView: View {
 
     // MARK: - Queries
 
-    /// Fetch listings owned by this user
     @Query private var listings: [Listing]
-    
-    /// Fetch tasks claimed by this user
     @Query private var tasks: [TaskItem]
-    
-    /// Fetch activities claimed by this user
     @Query private var activities: [Activity]
 
     // MARK: - Filtered Properties
@@ -35,19 +30,16 @@ struct RealtorProfileView: View {
     private var recentActivity: [WorkItem] {
         var items: [WorkItem] = []
         
-        // Add tasks
         let userTasks = tasks.filter { 
             ($0.claimedByUser?.id == user.id || $0.declaredBy == user.id) && $0.status != .deleted 
         }
         items.append(contentsOf: userTasks.map { WorkItem.task($0) })
         
-        // Add activities
         let userActivities = activities.filter {
             ($0.claimedByUser?.id == user.id || $0.declaredBy == user.id) && $0.status != .deleted
         }
         items.append(contentsOf: userActivities.map { WorkItem.activity($0) })
         
-        // Sort by most recently updated
         return items.sorted { $0.updatedAt > $1.updatedAt }
     }
 
@@ -60,58 +52,60 @@ struct RealtorProfileView: View {
     // MARK: - Body
 
     var body: some View {
-        StandardPageLayout(title: user.name) {
-        ScrollView {
-            LazyVStack(spacing: DS.Spacing.sectionSpacing) {
-                // Profile Header (Avatar & Type only)
-                profileHeader
-    
-                // Active Listings Section
-                if !userListings.isEmpty {
-                    VStack(alignment: .leading, spacing: DS.Spacing.md) {
-                        sectionHeader("Active Listings (\(userListings.count))")
-                        ForEach(userListings) { listing in
-                            NavigationLink(value: listing) {
-                                ListingRowView(listing: listing)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-    
-                // Recent Activity Section
-                if !recentActivity.isEmpty {
-                    VStack(alignment: .leading, spacing: DS.Spacing.md) {
-                        sectionHeader("Recent Activity")
-                        ForEach(recentActivity) { item in
-                            NavigationLink(value: WorkItemRef.from(item)) {
-                                WorkItemRow(
-                                    item: item,
-                                    claimState: item.claimState(currentUserId: actions.currentUserId, userLookup: actions.userLookup),
-                                    onComplete: { actions.onComplete(item) },
-                                    onEdit: {},
-                                    onDelete: {},
-                                    onClaim: { actions.onClaim(item) },
-                                    onRelease: { actions.onRelease(item) }
-                                )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
+        StandardScreen(title: user.name, layout: .column, scroll: .automatic) {
+            content
+        } toolbarContent: {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit") {
+                    showEditSheet = true
                 }
             }
-            .padding(.bottom, DS.Spacing.xxl)
-        }
-        } headerActions: {
-            Button("Edit") {
-                showEditSheet = true
-            }
-            .font(DS.Typography.bodySecondary)
-            .buttonStyle(.plain)
         }
         .sheet(isPresented: $showEditSheet) {
             EditRealtorSheet(user: user)
         }
+    }
+    
+    private var content: some View {
+        LazyVStack(spacing: DS.Spacing.sectionSpacing) {
+            // Profile Header
+            profileHeader
+
+            // Active Listings Section
+            if !userListings.isEmpty {
+                VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                    sectionHeader("Active Listings (\(userListings.count))")
+                    ForEach(userListings) { listing in
+                        NavigationLink(value: listing) {
+                            ListingRowView(listing: listing)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            // Recent Activity Section
+            if !recentActivity.isEmpty {
+                VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                    sectionHeader("Recent Activity")
+                    ForEach(recentActivity) { item in
+                        NavigationLink(value: WorkItemRef.from(item)) {
+                            WorkItemRow(
+                                item: item,
+                                claimState: item.claimState(currentUserId: actions.currentUserId, userLookup: actions.userLookup),
+                                onComplete: { actions.onComplete(item) },
+                                onEdit: {},
+                                onDelete: {},
+                                onClaim: { actions.onClaim(item) },
+                                onRelease: { actions.onRelease(item) }
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(.bottom, DS.Spacing.xxl)
     }
 
     // MARK: - Subviews
@@ -121,7 +115,7 @@ struct RealtorProfileView: View {
             // Avatar
             Circle()
                 .fill(DS.Colors.Background.secondary)
-                .frame(width: 80, height: 80) // Slightly smaller avatar to balance
+                .frame(width: 80, height: 80)
                 .overlay {
                     if let avatarData = user.avatar, let pImage = PlatformImage.from(data: avatarData) {
                         Image(platformImage: pImage)
@@ -136,12 +130,11 @@ struct RealtorProfileView: View {
                 }
 
             VStack(spacing: DS.Spacing.xs) {
-                // Name moved to Title
-                
                 Text(user.userType.rawValue.capitalized)
                     .font(DS.Typography.bodySecondary)
                     .foregroundStyle(DS.Colors.Text.tertiary)
-                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.leading, DS.Spacing.sm)
+                    .padding(.trailing, DS.Spacing.sm)
                     .padding(.vertical, DS.Spacing.xxs)
                     .background(DS.Colors.Background.tertiary)
                     .clipShape(Capsule())
@@ -154,8 +147,7 @@ struct RealtorProfileView: View {
                 actionButton(icon: "message.fill", label: "Slack") {}
             }
         }
-        .frame(maxWidth: .infinity)
-        // Removed top padding; StandardPageLayout handles spacing
+        // Frame max width removed to satisfy layout contract; relies on StandardScreen column width
     }
 
     private func actionButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
@@ -188,14 +180,11 @@ struct RealtorProfileView: View {
 
 // MARK: - Helper Views
 
-/// Recreating a simplified ListingRow for the profile view 
-/// (Since ListingRow is likely internal to ListingListView or we want a specific style here)
 private struct ListingRowView: View {
     let listing: Listing
     
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
-            // Icon
             Image(systemName: DS.Icons.Entity.listingFill)
                 .font(.title2)
                 .foregroundColor(DS.Colors.Text.tertiary)
@@ -213,10 +202,10 @@ private struct ListingRowView: View {
             
             Spacer()
             
-            // Status Pill
             Text(listing.status.rawValue.capitalized)
                 .font(DS.Typography.caption)
-                .padding(.horizontal, 8)
+                .padding(.leading, 8)
+                .padding(.trailing, 8)
                 .padding(.vertical, 4)
                 .background(DS.Colors.Background.tertiary)
                 .clipShape(Capsule())

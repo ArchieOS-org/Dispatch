@@ -3,18 +3,17 @@
 //  Dispatch
 //
 //  Created by Claude on 2025-12-28.
+//  Refactored for Layout Unification (StandardScreen)
 //
 
 import SwiftUI
 import SwiftData
 
 /// Displays a list of realtors in the organization.
-/// Part of the "Things 3" style menu navigation.
 struct RealtorsListView: View {
     // MARK: - Configuration
 
     /// Whether this view is embedded in a parent NavigationStack.
-    /// If false, it provides its own stack for standalone previewing/testing.
     var embedInNavigationStack: Bool = true
 
     // MARK: - Queries
@@ -42,42 +41,36 @@ struct RealtorsListView: View {
     // MARK: - Body
 
     var body: some View {
-        if embedInNavigationStack {
-            content
-                .sheet(isPresented: $showAddSheet) {
-                    EditRealtorSheet()
+        Group {
+            if embedInNavigationStack {
+                NavigationStack {
+                    content
                 }
-        } else {
-            NavigationStack {
+            } else {
                 content
             }
-            .sheet(isPresented: $showAddSheet) {
-                EditRealtorSheet()
-            }
+        }
+        .sheet(isPresented: $showAddSheet) {
+            EditRealtorSheet()
         }
     }
 
     private var content: some View {
-        StandardPageLayout(title: "Realtors", useContentPadding: true) {
-            LazyVStack(spacing: 0) {
-                ForEach(activeRealtorList) { user in
-                    NavigationLink(value: user) {
-                        RealtorRow(user: user)
-                    }
-                    .buttonStyle(.plain)
+        StandardScreen(title: "Realtors", layout: .column, scroll: .disabled) {
+            StandardList(activeRealtorList) { user in
+                NavigationLink(value: user) {
+                    RealtorRow(user: user)
+                }
+                .buttonStyle(.plain)
+            }
+        } toolbarContent: {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showAddSheet = true
+                } label: {
+                    Image(systemName: "plus")
                 }
             }
-            // Force the list to pin to the top instead of being vertically centered by a parent frame.
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        } headerActions: {
-            Button {
-                showAddSheet = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(DS.Colors.Text.primary)
-            }
-            .buttonStyle(.plain)
         }
         .onAppear {
             lensState.currentScreen = .realtors
@@ -147,7 +140,6 @@ private struct RealtorRow: View {
     )
     context.insert(user)
     
-    // Add dummy listing
     let listing = Listing(address: "123 Main St", city: "Toronto", province: "ON", postalCode: "M5V 2H1", ownedBy: user.id)
     context.insert(listing)
 
