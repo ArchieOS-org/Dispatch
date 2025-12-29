@@ -15,8 +15,8 @@ struct WorkspaceGroup: Identifiable {
     var items: [WorkItem]
 }
 
-struct MyWorkspaceView: View {
     @EnvironmentObject private var syncManager: SyncManager
+    @EnvironmentObject private var lensState: LensState
     @Environment(\.modelContext) private var modelContext
     @Query private var tasks: [TaskItem]
     @Query private var activities: [Activity]
@@ -68,6 +68,8 @@ struct MyWorkspaceView: View {
                             }
                         }
                         .padding(.horizontal, DS.Spacing.Layout.pageMargin)
+                        // Force refresh when filter changes to prevent stale groups
+                        .id(selectedFilter)
                     }
                 }
                 .padding(.bottom, 100)
@@ -110,13 +112,21 @@ struct MyWorkspaceView: View {
             return []
         }
         
-        // Filter by Current User AND Selected Filter AND Not Deleted
+        // Filter by Current User AND Selected Filter AND Not Deleted AND Audience
         let relevantTasks = (selectedFilter == .all || selectedFilter == .tasks) 
-            ? tasks.filter { $0.claimedBy == currentUserID && $0.status != .deleted } 
+            ? tasks.filter { 
+                $0.claimedBy == currentUserID && 
+                $0.status != .deleted &&
+                lensState.audience.matches(audiences: $0.audiences)
+            } 
             : []
             
         let relevantActivities = (selectedFilter == .all || selectedFilter == .activities) 
-            ? activities.filter { $0.claimedBy == currentUserID && $0.status != .deleted } 
+            ? activities.filter { 
+                $0.claimedBy == currentUserID && 
+                $0.status != .deleted &&
+                lensState.audience.matches(audiences: $0.audiences)
+            } 
             : []
         
         let allItems: [WorkItem] = relevantTasks.map { .task($0) } + relevantActivities.map { .activity($0) }
