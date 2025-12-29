@@ -15,6 +15,7 @@ final class User {
     var name: String
     var email: String
     var avatar: Data?
+    var avatarHash: String?
     var userType: UserType
 
     // Timestamps
@@ -49,6 +50,7 @@ final class User {
         name: String,
         email: String,
         avatar: Data? = nil,
+        avatarHash: String? = nil,
         userType: UserType,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
@@ -58,6 +60,7 @@ final class User {
         self.name = name
         self.email = email
         self.avatar = avatar
+        self.avatarHash = avatarHash
         self.userType = userType
         self.createdAt = createdAt
         self.updatedAt = updatedAt
