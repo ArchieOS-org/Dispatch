@@ -375,6 +375,13 @@ struct ContentView: View {
             }
             // toolbar(.hidden) removed to restore traffic lights
             .id(stackID) // Force rebuild when ID changes (pop to root)
+            .toolbar {
+                // FORCE the NSToolbar to exist at all times.
+                // This prevents the window corner radius from flickering (Large vs Small) when navigating between views.
+                ToolbarItem(placement: .primaryAction) {
+                    Color.clear.frame(width: 0, height: 0)
+                }
+            }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 BottomToolbar(
                     context: toolbarContext,
