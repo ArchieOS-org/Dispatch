@@ -19,7 +19,7 @@ struct NoteInputArea: View {
     @FocusState private var isFocused: Bool
 
     #if os(iOS)
-    @EnvironmentObject private var overlayState: AppOverlayState
+    // @EnvironmentObject private var overlayState: AppOverlayState // Removed
     #endif
 
     private var isValidInput: Bool {
@@ -90,13 +90,9 @@ struct NoteInputArea: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Note input")
         #if os(iOS)
-        .onChange(of: isFocused) { _, focused in
-            if focused {
-                overlayState.hide(reason: .textInput)
-            } else {
-                overlayState.show(reason: .textInput)
-            }
-        }
+        // One Boss Refactor: Removed legacy AppOverlayState logic.
+        // Hiding/Showing overlay buttons should be handled by AppState or focus state propagation if needed.
+        // For now, removing the crash.
         #endif
     }
 }

@@ -14,8 +14,7 @@ import SwiftUI
 /// Hides with animation when text input is focused or keyboard is visible.
 struct GlobalFloatingButtons: View {
     @EnvironmentObject private var lensState: LensState
-    @EnvironmentObject private var quickEntryState: QuickEntryState
-    @EnvironmentObject private var overlayState: AppOverlayState
+    @EnvironmentObject private var appState: AppState // One Boss
 
     var body: some View {
         #if os(iOS)
@@ -33,17 +32,18 @@ struct GlobalFloatingButtons: View {
 
                 // FAB (right)
                 FloatingActionButton {
-                    quickEntryState.isPresenting = true
+                    appState.sheetState = .quickEntry(type: nil)
                 }
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.bottom, DS.Spacing.lg) // Standard bottom padding
         }
-        // Animate visibility via opacity + offset (not conditional render)
-        .opacity(overlayState.isOverlayHidden ? 0 : 1)
-        .offset(y: overlayState.isOverlayHidden ? 12 : 0)
-        .allowsHitTesting(!overlayState.isOverlayHidden)
-        .animation(.easeInOut(duration: 0.2), value: overlayState.isOverlayHidden)
+        // Animate visibility via opacity + offset
+        // Hide if ANY overlay is active (One Boss)
+        .opacity(appState.overlayState != .none ? 0 : 1)
+        .offset(y: appState.overlayState != .none ? 12 : 0)
+        .allowsHitTesting(appState.overlayState == .none)
+        .animation(.easeInOut(duration: 0.2), value: appState.overlayState)
         #endif
     }
 
@@ -71,8 +71,7 @@ struct GlobalFloatingButtons: View {
         GlobalFloatingButtons()
     }
     .environmentObject(LensState())
-    .environmentObject(QuickEntryState())
-    .environmentObject(AppOverlayState())
+    .environmentObject(AppState(mode: .preview))
 }
 
 #Preview("Global Floating Buttons - Filtered") {
@@ -86,7 +85,6 @@ struct GlobalFloatingButtons: View {
         GlobalFloatingButtons()
     }
     .environmentObject(lensState)
-    .environmentObject(QuickEntryState())
-    .environmentObject(AppOverlayState())
+    .environmentObject(AppState(mode: .preview))
 }
 #endif

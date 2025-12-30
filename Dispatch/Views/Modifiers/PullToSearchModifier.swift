@@ -22,7 +22,7 @@ import SwiftUI
 /// - Triggers once per pull gesture via `didTriggerThisPull` flag
 /// - Resets when `pullDistance < 2` OR scroll phase becomes `.idle`
 struct PullToSearchModifier: ViewModifier {
-    @EnvironmentObject private var searchManager: SearchPresentationManager
+    @EnvironmentObject private var appState: AppState // One Boss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var didTriggerThisPull = false
@@ -66,18 +66,20 @@ struct PullToSearchModifier: ViewModifier {
         }
 
         // Trigger logic
+        // Check if ANY overlay is active (One Boss) to prevent double trigger
         guard pullDistance >= DS.Spacing.searchPullThreshold,
               !didTriggerThisPull,
-              !searchManager.isSearchPresented else { return }
+              appState.overlayState == .none else { return }
 
         didTriggerThisPull = true
         HapticFeedback.light()
 
+        // Dispatch Command (One Boss)
         if reduceMotion {
-            searchManager.presentSearch()
+             appState.dispatch(.openSearch(initialText: nil))
         } else {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                searchManager.presentSearch()
+                appState.dispatch(.openSearch(initialText: nil))
             }
         }
     }

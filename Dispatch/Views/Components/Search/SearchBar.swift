@@ -24,7 +24,7 @@ struct SearchBar: View {
     @FocusState private var isFocused: Bool
 
     #if os(iOS)
-    @EnvironmentObject private var overlayState: AppOverlayState
+    // @EnvironmentObject private var overlayState: AppOverlayState // Removed
     #endif
 
     var body: some View {
@@ -88,13 +88,9 @@ struct SearchBar: View {
             }
         }
         #if os(iOS)
-        .onChange(of: isFocused) { _, focused in
-            if focused {
-                overlayState.hide(reason: .textInput)
-            } else {
-                overlayState.show(reason: .textInput)
-            }
-        }
+        // One Boss Refactor: SearchBar is inside the overlay, no need to hide/show buttons manually.
+        // The overlay presence itself hides the buttons in ContentView.
+        // .onChange(of: isFocused) { ... } Removed
         #endif
     }
 }

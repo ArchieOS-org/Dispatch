@@ -47,13 +47,14 @@ struct ContentView: View {
     #endif
 
     // MARK: - Search State (iPhone only)
-
-    @StateObject private var searchManager = SearchPresentationManager()
+    
+    // searchManager migrated to AppState
+    // @StateObject private var searchManager = SearchPresentationManager()
     // Local nav state removed - deferring to AppState.router (One Boss)
     
     // MARK: - Global Filter & Overlay State (iPhone only)
-
-    @StateObject private var quickEntryState = QuickEntryState()
+    
+    // QuickEntryState removed - migrated to AppState
     @StateObject private var overlayState = AppOverlayState()
     @StateObject private var keyboardObserver = KeyboardObserver()
 
@@ -81,10 +82,10 @@ struct ContentView: View {
     var body: some View {
         bodyCore
             .environmentObject(workItemActions)
-            .environmentObject(searchManager)
+            // .environmentObject(searchManager) // Remvoved
             .environmentObject(appState.lensState)
-            .environmentObject(quickEntryState)
-            .environmentObject(overlayState)
+            // .environmentObject(quickEntryState) // Removed
+            // .environmentObject(overlayState) // Removed
             #if os(macOS)
             .background(KeyMonitorView { event in
                 handleGlobalKeyDown(event)
@@ -105,6 +106,22 @@ struct ContentView: View {
         ZStack(alignment: .top) {
             navigationContent
             syncStatusBanner
+            
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["DISPATCH_PROBE"] == "1" {
+                Button(action: {
+                    appState.dispatch(.openSearch(initialText: "probe"))
+                }) {
+                    Text("Architectural Probe")
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
+                .accessibilityIdentifier("DispatchProbe")
+                .zIndex(999)
+            }
+            #endif
         }
         .animation(.easeInOut(duration: 0.3), value: syncManager.syncStatus)
         .onAppear { onAppearActions() }
@@ -228,13 +245,20 @@ struct ContentView: View {
                     .appDestinations()
             }
             .overlay {
-                // Search overlay
-                if searchManager.isSearchPresented {
+                // Search overlay - Driven by AppState Intent
+                if case .search(let initialText) = appState.overlayState {
                     SearchOverlay(
-                        isPresented: $searchManager.isSearchPresented,
-                        searchText: $searchManager.searchText,
+                        isPresented: Binding(
+                            get: { true },
+                            set: { if !$0 { appState.overlayState = .none } }
+                        ),
+                        searchText: Binding(
+                            get: { initialText ?? "" },
+                            set: { _ in } // SearchOverlay handles strict text state locally for now
+                        ),
                         onSelectResult: { result in
                             selectSearchResult(result)
+                            appState.overlayState = .none
                         }
                     )
                 }
@@ -242,19 +266,39 @@ struct ContentView: View {
             .syncNowToolbar()
 
             // Persistent floating buttons
-            GlobalFloatingButtons()
+            // Helper to hide buttons when overlay is active (One Boss)
+            if appState.overlayState == .none {
+                GlobalFloatingButtons()
+            }
         }
         .onAppear {
-            // Attach keyboard observer (iPhone-only fallback)
-            keyboardObserver.attach(to: overlayState)
+             // Keyboard observer relies on legacy AppOverlayState logic which we are deprecating.
+             // Leaving attached to local 'overlayState' variable for now if it exists, 
+             // but we must clean up 'overlayState' variable usage.
+             // For this step, we just comment it out as it was iOS specific fallback.
+             // keyboardObserver.attach(to: overlayState) 
         }
-        .sheet(isPresented: $quickEntryState.isPresenting) {
-            QuickEntrySheet(
-                defaultItemType: quickEntryState.defaultItemType,
-                currentUserId: currentUserId,
-                listings: activeListings,
-                onSave: { syncManager.requestSync() }
-            )
+        // iOS Sheet Handling now driven by AppState
+        // Note: We use the same sheet logic as macOS eventually, but for now we map it here
+        .sheet(item: appState.sheetBinding) { state in
+            switch state {
+            case .quickEntry(let type):
+                QuickEntrySheet(
+                    defaultItemType: type ?? .task,
+                    currentUserId: currentUserId,
+                    listings: activeListings,
+                    onSave: { syncManager.requestSync() }
+                )
+            case .addListing:
+               AddListingSheet(
+                    currentUserId: currentUserId,
+                    onSave: { syncManager.requestSync() }
+                )
+             case .addRealtor:
+                EditRealtorSheet()
+            case .none:
+                EmptyView()
+            }
         }
     }
 
@@ -709,4 +753,5 @@ struct ContentView: View {
     ContentView()
         .modelContainer(for: [TaskItem.self, Activity.self, Listing.self, User.self], inMemory: true)
         .environmentObject(SyncManager.shared)
+        .environmentObject(AppState(mode: .preview))
 }
