@@ -308,16 +308,16 @@ extension DS {
         /// Icons for user roles/audiences
         enum Role {
             /// Admin role
-            static let admin = "shield"
+            static let admin = "a.circle"
 
             /// Admin role filled
-            static let adminFill = "shield.fill"
+            static let adminFill = "a.circle.fill"
 
             /// Marketing role
-            static let marketing = "megaphone"
+            static let marketing = "m.circle"
 
             /// Marketing role filled
-            static let marketingFill = "megaphone.fill"
+            static let marketingFill = "m.circle.fill"
         }
 
         // MARK: - Time & Date Icons

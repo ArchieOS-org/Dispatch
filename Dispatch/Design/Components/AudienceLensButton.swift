@@ -34,13 +34,22 @@ struct AudienceLensButton: View {
                 .frame(width: size, height: size)
                 .glassCircleBackground()
                 .overlay {
-                    // Symbol with palette rendering
-                    // Style 1 = outer circle (subtle), Style 2 = inner lines (tinted)
-                    Image(systemName: "line.3.horizontal.decrease.circle")
-                        .font(.system(size: size * 0.43, weight: .semibold))
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(.primary.opacity(0.35), lens.tintColor)
-                        .symbolEffect(.bounce.up.wholeSymbol, options: .nonRepeating, value: bounceTrigger)
+                    // Symbol with dynamic rendering based on lens type
+                    // .all -> Palette (Ring + Tinted Lines)
+                    // .role -> Hierarchical (Clean letter in circle)
+                    if lens == .all {
+                         Image(systemName: lens.icon)
+                            .font(.system(size: size * 0.43, weight: .semibold))
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(.primary.opacity(0.35), lens.tintColor)
+                            .symbolEffect(.bounce.up.wholeSymbol, options: .nonRepeating, value: bounceTrigger)
+                    } else {
+                        Image(systemName: lens.icon)
+                            .font(.system(size: size * 0.43, weight: .semibold))
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(lens.tintColor)
+                            .symbolEffect(.bounce.up.wholeSymbol, options: .nonRepeating, value: bounceTrigger)
+                    }
                 }
 
             // Dot indicator when filtered
@@ -51,6 +60,13 @@ struct AudienceLensButton: View {
                     .offset(x: -4, y: 4)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("AudienceFilterButton")
+        // Label for VoiceOver (User Facing)
+        .accessibilityLabel("Audience Filter: \(lens.label)")
+        // Value for Tests (Stable ID)
+        .accessibilityValue(lens.rawValue)
+        .accessibilityAddTraits(.isButton)
     }
 }
 
