@@ -348,6 +348,12 @@ final class SyncManager: ObservableObject, Sendable {
         debugLog.startTiming("syncDownClaimEvents")
         try await syncDownClaimEvents(context: context, since: lastSyncISO)
         debugLog.endTiming("syncDownClaimEvents")
+        
+        // JOBS-STANDARD: Order-Independent Relationship Reconciliation
+        // Ensure Listing.owner is resolved regardless of sync order
+        debugLog.startTiming("reconcileListingRelationships")
+        try reconcileListingRelationships(context: context)
+        debugLog.endTiming("reconcileListingRelationships")
 
         // ORPHAN RECONCILIATION: Remove local records that no longer exist on Supabase
         // This handles the case where records are hard-deleted on the server
@@ -821,12 +827,19 @@ final class SyncManager: ObservableObject, Sendable {
             existing.deletedAt = dto.deletedAt
             existing.dueDate = dto.dueDate
             existing.updatedAt = dto.updatedAt
+            
+            // Link Owner Relationship
+            try establishListingOwnerRelationship(listing: existing, ownerId: dto.ownedBy, context: context)
+            
             existing.markSynced()
         } else {
             debugLog.log("    INSERT new listing: \(dto.id)", category: .sync)
             let newListing = dto.toModel()
             newListing.markSynced()
             context.insert(newListing)
+            
+            // Link Owner Relationship
+            try establishListingOwnerRelationship(listing: newListing, ownerId: dto.ownedBy, context: context)
         }
     }
 
@@ -915,6 +928,69 @@ final class SyncManager: ObservableObject, Sendable {
             parentListing.tasks.append(task)
         }
         task.listing = parentListing
+    }
+
+    /// Establishes relationship between a listing and its owner (User)
+    /// - Parameters:
+    ///   - listing: The listing entity
+    ///   - ownerId: The UUID of the owner (from owned_by)
+    ///   - context: SwiftData context
+    func establishListingOwnerRelationship(listing: Listing, ownerId: UUID, context: ModelContext) throws {
+        // If already linked correctly, exit early
+        if let currentOwner = listing.owner, currentOwner.id == ownerId {
+            // Already correct
+            return
+        }
+
+        let userDescriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == ownerId })
+        if let user = try context.fetch(userDescriptor).first {
+            // Only log if we are actually changing it (to avoid noise)
+            if listing.owner == nil {
+                debugLog.log("      Linking listing \(listing.address) to owner \(user.name)", category: .sync)
+            }
+            listing.owner = user
+        } else {
+            // Use this sporadically? Or only when it fails? 
+            // In initial sync, user might not be there yet. That's expected.
+        }
+    }
+
+    /// Reconciles missing Listing.owner relationships by linking them to available Users
+    /// Called at the end of syncDown to ensure order-independence
+    func reconcileListingRelationships(context: ModelContext) throws {
+        debugLog.log("reconcileListingRelationships() - Starting...", category: .sync)
+        
+        // 1. Fetch all 'active' listings that are missing an owner
+        // We exclude deleted listings to avoid churning on history
+        let descriptor = FetchDescriptor<Listing>(
+            predicate: #Predicate { $0.owner == nil && $0.deletedAt == nil }
+        )
+        let orphans = try context.fetch(descriptor)
+        
+        guard !orphans.isEmpty else {
+            debugLog.log("  No active orphan listings found. Reconciliation complete.", category: .sync)
+            return
+        }
+        
+        debugLog.log("  Found \(orphans.count) orphan listings. Batch resolving...", category: .sync)
+
+        // 2. Batch fetch ALL users into a dictionary for O(1) lookup
+        // Efficiency: <1s for <10k users. Access by UUID is fast.
+        let userDescriptor = FetchDescriptor<User>()
+        let allUsers = try context.fetch(userDescriptor)
+        let usersById = Dictionary(uniqueKeysWithValues: allUsers.map { ($0.id, $0) })
+        
+        // 3. Resolve
+        var repairedCount = 0
+        
+        for listing in orphans {
+            if let user = usersById[listing.ownedBy] {
+                listing.owner = user
+                repairedCount += 1
+            }
+        }
+        
+        debugLog.log("  Reconciliation summary: Found \(orphans.count) orphans, Repaired \(repairedCount)", category: .sync)
     }
 
     // MARK: - Sync Down: Activities
