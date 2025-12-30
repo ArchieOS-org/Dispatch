@@ -20,6 +20,7 @@ final class FilterUITests: XCTestCase {
     /// 3. Cycling the button reveals "all", "admin", "marketing" states.
     /// 4. No unknown states are encountered.
     @MainActor
+    @MainActor
     func testAudienceFilterCycle() throws {
         let app = XCUIApplication()
         app.launch()
@@ -28,29 +29,42 @@ final class FilterUITests: XCTestCase {
         let filterButton = app.buttons["AudienceFilterButton"]
         XCTAssertTrue(filterButton.waitForExistence(timeout: 5), "Audience Filter Button should exist on launch")
         
-        // We expect to find these 3 states (rawValues)
-        // Note: Using Set to be order-independent
-        let expectedStates: Set<String> = ["all", "admin", "marketing"]
+        // Expected mapping: Lens -> Icon Name
+        let expectedIcons: [String: String] = [
+            "all": "line.3.horizontal.decrease",
+            "admin": "shield.lefthalf.filled",
+            "marketing": "megaphone.fill"
+        ]
+        
         var foundStates = Set<String>()
         
         // Cycle enough times to cover all cases + 1 to wrap around
-        // (Assuming 3 cases, 4 taps should see everything and return to start)
         for _ in 0...4 {
-            // Get current value (lens.rawValue)
-            let currentValue = filterButton.value as? String
-            
-            if let value = currentValue {
-                foundStates.insert(value)
-                
-                // Assert it's a valid known state
-                XCTAssertTrue(expectedStates.contains(value), "Encountered unknown filter state: \(value)")
+            guard let rawValue = filterButton.value as? String else {
+                XCTFail("Filter button value should be a string")
+                return
             }
+            
+            // Format is "lens|icon"
+            let parts = rawValue.split(separator: "|")
+            XCTAssertEqual(parts.count, 2, "Accessibility value should be 'lens|icon'")
+            
+            let lens = String(parts[0])
+            let icon = String(parts[1])
+            
+            // 1. Verify we know this lens
+            XCTAssertNotNil(expectedIcons[lens], "Unknown lens state: \(lens)")
+            
+            // 2. Verify the icon matches the specific spec (Regression Lock)
+            XCTAssertEqual(expectedIcons[lens], icon, "Icon mismatch for lens '\(lens)'")
+            
+            foundStates.insert(lens)
             
             // Tap to cycle
             filterButton.tap()
         }
         
         // Assert we found all expected states
-        XCTAssertTrue(foundStates.isSuperset(of: expectedStates), "Failed to find all expected filter states. Found: \(foundStates)")
+        XCTAssertTrue(foundStates.isSuperset(of: expectedIcons.keys), "Failed to find all expected filter states. Found: \(foundStates)")
     }
 }

@@ -78,30 +78,14 @@ struct BottomToolbar: View {
     // Left group
     HStack(spacing: 0) {
       if let audienceBinding = audience {
-        ToolbarIconButton(
-            icon: audienceBinding.wrappedValue.icon,
+        AudienceFilterButton(
+            lens: audienceBinding.wrappedValue,
             action: {
                 withAnimation(.snappy(duration: 0.2)) {
                     audienceBinding.wrappedValue = audienceBinding.wrappedValue.next
                 }
-            },
-            accessibilityLabel: "Filter: \(audienceBinding.wrappedValue.label)"
-        )
-        .contextMenu {
-            ForEach(AudienceLens.allCases, id: \.self) { lens in
-                Button {
-                    withAnimation(.snappy(duration: 0.2)) {
-                        audienceBinding.wrappedValue = lens
-                    }
-                } label: {
-                    if lens == audienceBinding.wrappedValue {
-                        Label(lens.label, systemImage: "checkmark")
-                    } else {
-                        Text(lens.label)
-                    }
-                }
             }
-        }
+        )
         .padding(.trailing, DS.Spacing.md)
         .transition(.opacity)
       }

@@ -443,6 +443,14 @@ struct ContentView: View {
                     }
                 }
                 .appDestinations() // Registry Attached!
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        AudienceFilterButton(
+                            lens: appState.lensState.audience,
+                            action: appState.lensState.cycleAudience
+                        )
+                    }
+                }
             }
             .syncNowToolbar()
         }
