@@ -23,7 +23,7 @@ struct MyWorkspaceView: View {
     @Query private var tasks: [TaskItem]
     @Query private var activities: [Activity]
     
-    @Binding var navigationPath: NavigationPath // If used in NavigationStack
+
     
     // MARK: - Filter Logic
     enum WorkspaceFilter: String, CaseIterable, Identifiable {
@@ -101,22 +101,34 @@ struct MyWorkspaceView: View {
             return []
         }
         
-        // Filter by Current User AND Selected Filter AND Not Deleted AND Audience
-        let relevantTasks = (selectedFilter == .all || selectedFilter == .tasks) 
-            ? tasks.filter { 
-                $0.claimedBy == currentUserID && 
-                $0.status != .deleted &&
-                lensState.audience.matches(audiences: $0.audiences)
-            } 
-            : []
+        // Filter by Current User AND Not Deleted AND Audience
+        // Pre-filter to reduce complexity
+        let allTasks: [TaskItem] = tasks
+        let allActivities: [Activity] = activities
+        
+        let shouldShowTasks = (selectedFilter == .all || selectedFilter == .tasks)
+        let relevantTasks: [TaskItem]
+        if shouldShowTasks {
+            relevantTasks = allTasks.filter { task in
+                task.claimedBy == currentUserID &&
+                task.status != .deleted &&
+                lensState.audience.matches(audiences: task.audiences)
+            }
+        } else {
+            relevantTasks = []
+        }
             
-        let relevantActivities = (selectedFilter == .all || selectedFilter == .activities) 
-            ? activities.filter { 
-                $0.claimedBy == currentUserID && 
-                $0.status != .deleted &&
-                lensState.audience.matches(audiences: $0.audiences)
-            } 
-            : []
+        let shouldShowActivities = (selectedFilter == .all || selectedFilter == .activities)
+        let relevantActivities: [Activity]
+        if shouldShowActivities {
+            relevantActivities = allActivities.filter { activity in
+                activity.claimedBy == currentUserID &&
+                activity.status != .deleted &&
+                lensState.audience.matches(audiences: activity.audiences)
+            }
+        } else {
+            relevantActivities = []
+        }
         
         let allItems: [WorkItem] = relevantTasks.map { .task($0) } + relevantActivities.map { .activity($0) }
         

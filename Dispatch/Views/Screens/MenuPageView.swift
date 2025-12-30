@@ -76,9 +76,6 @@ struct MenuPageView: View {
             }
             .pullToSearch()
         }
-        .onAppear {
-            lensState.currentScreen = .menu
-        }
     }
 }
 

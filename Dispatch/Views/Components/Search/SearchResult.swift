@@ -23,7 +23,7 @@ enum SearchResult: Identifiable, Hashable {
     case task(TaskItem)
     case activity(Activity)
     case listing(Listing)
-    case navigation(title: String, icon: String, tab: ContentView.Tab, badgeCount: Int? = nil)
+    case navigation(title: String, icon: String, tab: AppTab, badgeCount: Int? = nil)
 
     // MARK: - Identifiable
 

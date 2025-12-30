@@ -7,6 +7,9 @@
 
 import SwiftUI
 import Combine
+#if os(macOS)
+import AppKit
+#endif
 
 /// The central "Brain" of the application.
 /// Owns high-level state, routing, and command handling.
@@ -23,10 +26,32 @@ final class AppState: ObservableObject {
     // MARK: - UI State
     @Published var overlayState: OverlayState = .none
     
+    // MARK: - Lens State (Filtering)
+    @Published var lensState = LensState()
+    
     enum OverlayState: Equatable {
         case none
         case quickFind(initialText: String?)
         case settings
+    }
+    
+    // MARK: - Sheet State
+    @Published var sheetState: SheetState = .none
+    
+    enum SheetState: Equatable, Identifiable {
+        case none
+        case quickEntry(type: QuickEntryItemType?)
+        case addListing
+        case addRealtor
+        
+        var id: String {
+            switch self {
+            case .none: return "none"
+            case .quickEntry: return "quickEntry"
+            case .addListing: return "addListing"
+            case .addRealtor: return "addRealtor"
+            }
+        }
     }
     
     // MARK: - Init
@@ -62,29 +87,42 @@ final class AppState: ObservableObject {
         case .popToRoot:
             router.popToRoot()
             
+        case .selectTab(let tab):
+            router.selectTab(tab)
+            
         case .newItem:
-            // TODO: Route to creation sheet or focused input
-            // For now, post legacy notification to bridge gap during migration
-            NotificationCenter.default.post(name: .newItem, object: nil)
+            // Context-aware creation based on current tab
+            switch router.selectedTab {
+            case .listings:
+                sheetState = .addListing
+            case .realtors:
+                sheetState = .addRealtor
+            case .workspace, .search:
+                // Default to quick entry for workspace or search
+                sheetState = .quickEntry(type: nil) // nil uses default behavior
+            }
             
         case .openSearch(let initialText):
             overlayState = .quickFind(initialText: initialText)
-            // Legacy bridge
-            NotificationCenter.default.post(name: .openSearch, object: nil)
             
         case .toggleSidebar:
-            // Legacy bridge (NSApp target usually handles this via responder chain, but we can force it)
-            NotificationCenter.default.post(name: .toggleSidebar, object: nil)
+            #if os(macOS)
+            NSApp.keyWindow?.firstResponder?.tryToPerform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
+            #endif
             
         case .syncNow:
             syncCoordinator.forceSync()
             
         case .filterMine:
-            NotificationCenter.default.post(name: .filterMine, object: nil)
+            // TODO: Implement AssignmentFilter in LensState (AudienceLens is for Role, not Assignment)
+            // lensState.audience = .me
+            break
         case .filterOthers:
-            NotificationCenter.default.post(name: .filterOthers, object: nil)
+            // lensState.audience = .everyone
+            break
         case .filterUnclaimed:
-            NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
+            // lensState.audience = .unclaimed
+            break
             
         case .debugSimulateCrash:
             fatalError("Debug Crash Triggered")

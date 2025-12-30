@@ -64,9 +64,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         if embedInNavigationStack {
             NavigationStack {
                 mainScreen
-                    .navigationDestination(for: WorkItemRef.self) { ref in
-                        destinationBuilder(ref)
-                    }
+
             }
         } else {
             mainScreen

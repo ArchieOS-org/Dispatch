@@ -7,8 +7,9 @@ import SwiftData
 struct NavigationPopover: View {
     @Binding var searchText: String
     @Binding var isPresented: Bool
-    let currentTab: ContentView.Tab
-    let onNavigate: (ContentView.Tab) -> Void
+    let currentTab: AppTab
+    let onNavigate: (AppTab) -> Void
+    let onSelectResult: (SearchResult) -> Void
     
     // Search Data Queries
     @Query(sort: \TaskItem.title) private var tasks: [TaskItem]
@@ -21,11 +22,12 @@ struct NavigationPopover: View {
     let inboxCount = 4
     let todayCount = 8
 
-    init(searchText: Binding<String>, isPresented: Binding<Bool>, currentTab: ContentView.Tab, onNavigate: @escaping (ContentView.Tab) -> Void) {
+    init(searchText: Binding<String>, isPresented: Binding<Bool>, currentTab: AppTab, onNavigate: @escaping (AppTab) -> Void, onSelectResult: @escaping (SearchResult) -> Void) {
         self._searchText = searchText
         self._isPresented = isPresented
         self.currentTab = currentTab
         self.onNavigate = onNavigate
+        self.onSelectResult = onSelectResult
     }
 
     // Filtered data for search
@@ -86,8 +88,8 @@ struct NavigationPopover: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Navigation Items
                 let items: [SearchResult] = [
-                    .navigation(title: "Inbox", icon: "tray", tab: .myWorkspace, badgeCount: inboxCount),
-                    .navigation(title: "Today", icon: "star.fill", tab: .myWorkspace, badgeCount: todayCount),
+                    .navigation(title: "Inbox", icon: "tray", tab: .workspace, badgeCount: inboxCount),
+                    .navigation(title: "Today", icon: "star.fill", tab: .workspace, badgeCount: todayCount),
                     .navigation(title: "Listings", icon: "building.2", tab: .listings, badgeCount: nil),
                     .navigation(title: "Realtors", icon: DS.Icons.Entity.realtor, tab: .realtors, badgeCount: nil)
                 ]
@@ -116,11 +118,7 @@ struct NavigationPopover: View {
         isPresented = false
         searchText = ""
         
-        // Post notification for ContentView to handle navigation
-        NotificationCenter.default.post(
-            name: .navigateSearchResult,
-            object: nil,
-            userInfo: ["result": result]
-        )
+        // Use callback instead of notification
+        onSelectResult(result)
     }
 }

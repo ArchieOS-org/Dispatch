@@ -13,6 +13,7 @@ enum AppCommand: Equatable {
     // MARK: - Navigation
     case navigate(Destination)
     case popToRoot
+    case selectTab(AppTab)
     
     // MARK: - Global Actions
     case newItem

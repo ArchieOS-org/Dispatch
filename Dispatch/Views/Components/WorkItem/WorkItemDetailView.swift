@@ -43,9 +43,6 @@ struct WorkItemDetailView: View {
         StandardScreen(title: item.title, layout: .column, scroll: .automatic) {
             content
         }
-        .onAppear {
-            lensState.currentScreen = .detail
-        }
     }
     
     // MARK: - Content

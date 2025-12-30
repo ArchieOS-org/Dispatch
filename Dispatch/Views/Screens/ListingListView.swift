@@ -17,9 +17,7 @@ private struct ListingGroup: Identifiable {
 }
 
 struct ListingListView: View {
-    /// Whether to wrap content in NavigationStack. Set to false when used in menu/split-view navigation.
-    var embedInNavigationStack: Bool = true
-    
+
     @Query(sort: \Listing.address)
     private var allListingsRaw: [Listing]
 
@@ -57,9 +55,21 @@ struct ListingListView: View {
 
     /// Listings grouped by owner, sorted by owner name
     private var groupedByOwner: [ListingGroup] {
-        let grouped = Dictionary(grouping: allListings) { $0.ownedBy }
-        return grouped.map { ListingGroup(owner: userCache[$0.key], listings: $0.value) }
-            .sorted { ($0.owner?.name ?? "~") < ($1.owner?.name ?? "~") }
+        // Explicit typing helper
+        let listings: [Listing] = allListings
+        let grouped: [UUID: [Listing]] = Dictionary(grouping: listings) { (listing: Listing) in
+            listing.ownedBy
+        }
+        
+        let groups: [ListingGroup] = grouped.map { (key: UUID, value: [Listing]) -> ListingGroup in
+             return ListingGroup(owner: userCache[key], listings: value)
+        }
+        
+        return groups.sorted { (a: ListingGroup, b: ListingGroup) -> Bool in
+            let nameA = a.owner?.name ?? "~"
+            let nameB = b.owner?.name ?? "~"
+            return nameA < nameB
+        }
     }
 
     /// Whether the list is empty
@@ -76,24 +86,7 @@ struct ListingListView: View {
     // MARK: - Body
 
     var body: some View {
-        Group {
-            if embedInNavigationStack {
-                NavigationStack {
-                    mainScreen
-                        .navigationDestination(for: Listing.self) { listing in
-                            ListingDetailView(listing: listing, userLookup: { userCache[$0] })
-                        }
-                        .navigationDestination(for: WorkItemRef.self) { ref in
-                            workItemDestination(for: ref)
-                        }
-                }
-            } else {
-                mainScreen
-            }
-        }
-        .onAppear {
-            lensState.currentScreen = .listings
-        }
+        mainScreen
         // MARK: - Alerts
         .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
             Button("Cancel", role: .cancel) {
@@ -152,8 +145,8 @@ struct ListingListView: View {
         } toolbarContent: {
              ToolbarItem(placement: .automatic) {
                  EmptyView()
-             }
         }
+    }
     }
 
     @ViewBuilder

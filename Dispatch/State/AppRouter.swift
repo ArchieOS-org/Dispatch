@@ -10,7 +10,7 @@ import SwiftUI
 /// Source of truth for Application Navigation State.
 /// Owned by AppState.
 struct AppRouter {
-    var path = NavigationPath()
+    var pathMain = NavigationPath()
     var selectedTab: AppTab = .workspace
     
     // Used to signal programmatic pushes even if path doesn't change
@@ -18,14 +18,14 @@ struct AppRouter {
     var stackID = UUID()
     
     mutating func navigate(to destination: Destination) {
-        path.append(destination)
+        pathMain.append(destination)
     }
     
     mutating func popToRoot() {
-        if path.isEmpty {
+        if pathMain.isEmpty {
             // Already at root
         } else {
-            path = NavigationPath()
+            pathMain = NavigationPath()
         }
     }
     
@@ -39,7 +39,7 @@ struct AppRouter {
             selectedTab = tab
             // Consider if switching tabs should clear path of previous tab?
             // For now, let's say yes for simplicity, or manage per-tab paths later.
-            path = NavigationPath() 
+            pathMain = NavigationPath() 
         }
     }
 }

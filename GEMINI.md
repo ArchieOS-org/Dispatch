@@ -1,5 +1,5 @@
 # Dispatch
-Dispatch is a premium, multi-platform Swift application (iOS, iPadOS, macOS) built on Supabase. It synchronizes data between specific, strictly typed SwiftData models and a Postgres backend.
+Dispatch is a premium, multi-platform Swift application (iOS, iPadOS, macOS) built on Supabase. It synchronizes data between specific, strictly typed SwiftData models and a Postgres backend. Built to Steve Jobs standards.
 
 ## Tech Stack
 - **Language**: Swift 6 (Strict Concurrency)

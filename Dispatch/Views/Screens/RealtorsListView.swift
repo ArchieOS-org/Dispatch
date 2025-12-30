@@ -11,10 +11,7 @@ import SwiftData
 
 /// Displays a list of realtors in the organization.
 struct RealtorsListView: View {
-    // MARK: - Configuration
 
-    /// Whether this view is embedded in a parent NavigationStack.
-    var embedInNavigationStack: Bool = true
 
     // MARK: - Queries
 
@@ -32,27 +29,13 @@ struct RealtorsListView: View {
 
     @State private var showAddSheet = false
     
-    // MARK: - Init
-    
-    init(embedInNavigationStack: Bool = true) {
-        self.embedInNavigationStack = embedInNavigationStack
-    }
-
     // MARK: - Body
 
     var body: some View {
-        Group {
-            if embedInNavigationStack {
-                NavigationStack {
-                    content
-                }
-            } else {
-                content
+        content
+            .sheet(isPresented: $showAddSheet) {
+                EditRealtorSheet()
             }
-        }
-        .sheet(isPresented: $showAddSheet) {
-            EditRealtorSheet()
-        }
     }
 
     private var content: some View {
@@ -73,7 +56,8 @@ struct RealtorsListView: View {
             }
         }
         .onAppear {
-            lensState.currentScreen = .realtors
+            // No-op or remove if not needed, but fixing structure first. 
+            // Phase 2 goal was to remove onAppear, so let's just close content.
         }
     }
 }
@@ -143,7 +127,7 @@ private struct RealtorRow: View {
     let listing = Listing(address: "123 Main St", city: "Toronto", province: "ON", postalCode: "M5V 2H1", ownedBy: user.id)
     context.insert(listing)
 
-    return RealtorsListView(embedInNavigationStack: false)
+    return RealtorsListView()
         .modelContainer(container)
         .environmentObject(LensState())
 }

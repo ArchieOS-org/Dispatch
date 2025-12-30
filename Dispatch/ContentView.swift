@@ -19,6 +19,7 @@ import SwiftData
 /// - iPad Landscape/macOS: NavigationSplitView with sidebar
 struct ContentView: View {
     @EnvironmentObject private var syncManager: SyncManager
+    @EnvironmentObject private var appState: AppState // One Boss injection
     @Environment(\.modelContext) private var modelContext
 
     #if os(iOS)
@@ -28,36 +29,30 @@ struct ContentView: View {
     @Query private var users: [User]
     @Query private var allListings: [Listing]
 
-    enum Tab: Hashable {
-        case myWorkspace, listings, realtors
+    // Local Tab state removed - using AppState.router.selectedTab (One Boss)
+    private var selectedTab: AppTab {
+        appState.router.selectedTab
     }
-
-    @State private var selectedTab: Tab = .myWorkspace
 
     /// Centralized WorkItemActions environment object for shared navigation
     @StateObject private var workItemActions = WorkItemActions()
 
     // MARK: - macOS Bottom Toolbar State
 
-    #if os(macOS)
-    @State private var showMacOSQuickEntry = false
-    @State private var showMacOSAddListing = false
-    @State private var showMacOSAddRealtor = false
+    // MARK: - macOS Bottom Toolbar State
     
-    // Global Quick Find (Popover) State
-    @State private var showQuickFind = false
+    #if os(macOS)
+    // Global Quick Find (Popover) State managed by AppState.overlayState
     @State private var quickFindText = ""
     #endif
 
     // MARK: - Search State (iPhone only)
 
     @StateObject private var searchManager = SearchPresentationManager()
-    @State private var searchNavigationPath = NavigationPath()
-    @State private var stackID = UUID() // Used to force-refresh navigation stack on root pop
+    // Local nav state removed - deferring to AppState.router (One Boss)
     
     // MARK: - Global Filter & Overlay State (iPhone only)
 
-    @StateObject private var lensState = LensState()
     @StateObject private var quickEntryState = QuickEntryState()
     @StateObject private var overlayState = AppOverlayState()
     @StateObject private var keyboardObserver = KeyboardObserver()
@@ -84,83 +79,93 @@ struct ContentView: View {
     // MARK: - Body
 
     var body: some View {
+        bodyCore
+            .environmentObject(workItemActions)
+            .environmentObject(searchManager)
+            .environmentObject(appState.lensState)
+            .environmentObject(quickEntryState)
+            .environmentObject(overlayState)
+            #if os(macOS)
+            .background(KeyMonitorView { event in
+                handleGlobalKeyDown(event)
+            })
+            .overlay(alignment: .top) {
+                quickFindOverlay
+            }
+            .sheet(item: sheetStateBinding) { state in
+                sheetContent(for: state)
+            }
+            #endif
+    }
+    
+    // MARK: - Body Subviews (Compiler Performance)
+    
+    @ViewBuilder
+    private var bodyCore: some View {
         ZStack(alignment: .top) {
             navigationContent
-
-            if case .error = syncManager.syncStatus {
-                SyncStatusBanner(
-                    message: syncManager.lastSyncErrorMessage ?? "Sync failed",
-                    onRetry: { syncManager.requestSync() }
-                )
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .zIndex(1)
-            }
+            syncStatusBanner
         }
         .animation(.easeInOut(duration: 0.3), value: syncManager.syncStatus)
-        .onAppear {
-            updateWorkItemActions()
-        }
-        .onChange(of: currentUserId) { _, _ in
-            updateWorkItemActions()
-        }
-        .onChange(of: userCache) { _, _ in
-            updateWorkItemActions()
-        }
-        // Inject environment objects at root so both navigation paths inherit them
-        .environmentObject(workItemActions)
-        .environmentObject(searchManager)
-        .environmentObject(lensState)
-        .environmentObject(quickEntryState)
-        .environmentObject(overlayState)
-        #if os(macOS)
-        .background(KeyMonitorView { event in
-            handleGlobalKeyDown(event)
-        })
-        .overlay(alignment: .top) {
-            if showQuickFind {
-                ZStack(alignment: .top) {
-                    // Dimmer Background (Click to dismiss)
-                    Color.black.opacity(0.1) // Transparent enough to see content, tangible enough to click
-                        .edgesIgnoringSafeArea(.all)
-                        .onTapGesture {
-                            showQuickFind = false
-                        }
-                    
-                    // The Popover Itself
-                    NavigationPopover(
-                        searchText: $quickFindText,
-                        isPresented: $showQuickFind,
-                        currentTab: selectedTab,
-                        onNavigate: { tab in
-                            handleTabSelection(tab)
-
-                            // Post filters logic
-                            switch tab {
-                            case .listings: NotificationCenter.default.post(name: .filterUnclaimed, object: nil)
-                            case .realtors: break
-                            case .myWorkspace: break
-                            }
-                            showQuickFind = false
-                        }
-                    )
-                    .padding(.top, 100) // Position it nicely near the top
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
-                .zIndex(100) // Ensure it floats above everything
-            }
-        }
-        // Removed old .sheet modifier
-        .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { notification in
-            if let initialText = notification.userInfo?["initialText"] as? String {
-                // Wait for popover animation + autofocus
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    quickFindText = initialText
-                }
-            }
-            showQuickFind = true
-        }
-        #endif
+        .onAppear { onAppearActions() }
+        .onChange(of: currentUserId) { _, _ in updateWorkItemActions() }
+        .onChange(of: userCache) { _, _ in updateWorkItemActions() }
+        .onChange(of: appState.router.selectedTab) { _, _ in updateLensState() }
+        .onChange(of: appState.router.pathMain.count) { _, _ in updateLensState() }
     }
+    
+    @ViewBuilder
+    private var syncStatusBanner: some View {
+        if case .error = syncManager.syncStatus {
+            SyncStatusBanner(
+                message: syncManager.lastSyncErrorMessage ?? "Sync failed",
+                onRetry: { syncManager.requestSync() }
+            )
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .zIndex(1)
+        }
+    }
+    
+    private func onAppearActions() {
+        updateWorkItemActions()
+        updateLensState()
+    }
+    
+    #if os(macOS)
+    @ViewBuilder
+    private func sheetContent(for state: AppState.SheetState) -> some View {
+        switch state {
+        case .quickEntry(let type):
+            QuickEntrySheet(
+                defaultItemType: type ?? .task,
+                currentUserId: currentUserId,
+                listings: activeListings,
+                onSave: { syncManager.requestSync() }
+            )
+        case .addListing:
+            AddListingSheet(
+                currentUserId: currentUserId,
+                onSave: { syncManager.requestSync() }
+            )
+        case .addRealtor:
+            EditRealtorSheet()
+        case .none:
+            EmptyView()
+        }
+    }
+    
+    /// Binding wrapper to make SheetState work with `.sheet(item:)` which requires Optional
+    private var sheetStateBinding: Binding<AppState.SheetState?> {
+        Binding<AppState.SheetState?>(
+            get: {
+                appState.sheetState == .none ? nil : appState.sheetState
+            },
+            set: { newValue in
+                appState.sheetState = newValue ?? .none
+            }
+        )
+    }
+    #endif
 
     #if os(macOS)
     /// Global key handler for Type Travel
@@ -191,11 +196,7 @@ struct ContentView: View {
            char.isLetter || char.isNumber {
 
             // Trigger Quick Find with this character
-            NotificationCenter.default.post(
-                name: .openSearch,
-                object: nil,
-                userInfo: ["initialText": String(char)]
-            )
+            appState.dispatch(.openSearch(initialText: String(char)))
             return nil
         }
         return event
@@ -222,9 +223,9 @@ struct ContentView: View {
     /// Things 3-style menu page navigation for iPhone with pull-down search
     private var menuNavigation: some View {
         ZStack {
-            NavigationStack(path: $searchNavigationPath) {
+            NavigationStack(path: $appState.router.pathMain) {
                 MenuPageView()
-                    .dispatchDestinations()
+                    .appDestinations()
             }
             .overlay {
                 // Search overlay
@@ -261,30 +262,30 @@ struct ContentView: View {
 
     /// Handles navigation after selecting a search result
     private func selectSearchResult(_ result: SearchResult) {
-        // Helper to switch tab and push destination
-        func navigate(to tab: Tab, destination: any Hashable) {
-            if selectedTab != tab {
-                selectedTab = tab
-                searchNavigationPath = NavigationPath() // Clear previous tab's stack
-            }
-            // If already on tab, we don't clear stack (unlike sidebar click), 
-            // BUT we probably want to show this result on top? 
-            // Or should searching ALWAYS clear stack?
-            // "Type Travel" usually implies jumping to the thing. 
-            // Let's clear stack to be safe and avoid confusing history.
-            searchNavigationPath = NavigationPath() 
-            searchNavigationPath.append(destination)
-        }
+
 
         switch result {
         case .task(let task):
-            navigate(to: .myWorkspace, destination: WorkItemRef.task(task))
+            // Convert to Destination
+            appState.dispatch(.selectTab(.workspace))
+            appState.dispatch(.navigate(.workItem(task.id)))
         case .activity(let activity):
-            navigate(to: .myWorkspace, destination: WorkItemRef.activity(activity))
+            appState.dispatch(.selectTab(.workspace))
+            appState.dispatch(.navigate(.workItem(activity.id)))
         case .listing(let listing):
-            navigate(to: .listings, destination: listing)
+            appState.dispatch(.selectTab(.listings))
+            appState.dispatch(.navigate(.listing(listing.id)))
         case .navigation(_, _, let tab, _):
-            handleTabSelection(tab) // Use the standard handler
+            // Map SearchResult tab (likely legacy or string) to AppTab
+            // Assuming tab is ContentView.Tab-like.
+            // Wait, SearchResult definition?
+            // Let's assume the mapped enum cases match AppTab.
+            switch tab {
+            case .workspace: appState.dispatch(.selectTab(.workspace))
+            case .listings: appState.dispatch(.selectTab(.listings))
+            case .realtors: appState.dispatch(.selectTab(.realtors))
+            case .search: break // Search tab doesn't navigate
+            }
             #if !os(macOS)
              // iPhone specific logic if needed
             #endif
@@ -294,24 +295,7 @@ struct ContentView: View {
     // MARK: - iPad/macOS Sidebar Navigation
 
     // MARK: - Navigation Logic
-    
-    /// centralized handler for sidebar/tab interactions
-    /// - Implements "Pop to Root" behavior when clicking the active tab
-    /// - Clears navigation stack when switching tabs to ensure a clean slate
-    private func handleTabSelection(_ tab: Tab) {
-        if selectedTab == tab {
-            // "Pop to Root": Clear navigation stack if already on this tab
-            searchNavigationPath = NavigationPath()
-            // Force re-identity of the stack to ensure UI update
-            stackID = UUID()
-        } else {
-            // Switch tabs and clear any existing navigation state
-            selectedTab = tab
-            searchNavigationPath = NavigationPath()
-            // Fresh stack identity for new tab
-            stackID = UUID()
-        }
-    }
+    // handleTabSelection removed - use appState.dispatch(.selectTab) directly
     
     // MARK: - iPad/macOS Sidebar Navigation
     
@@ -323,7 +307,7 @@ struct ContentView: View {
             return .listingList
         case .realtors:
             return .realtorList
-        case .myWorkspace:
+        case .workspace, .search:
             return .taskList // Re-use task actions for now
         }
     }
@@ -339,42 +323,42 @@ struct ContentView: View {
                     SidebarRow(
                         title: "My Workspace",
                         icon: "briefcase",
-                        isSelected: selectedTab == .myWorkspace,
-                        action: { handleTabSelection(.myWorkspace) }
+                        isSelected: selectedTab == .workspace,
+                        action: { appState.dispatch(.selectTab(.workspace)) }
                     )
                     
                     SidebarRow(
                         title: "Listings",
                         icon: DS.Icons.Entity.listing,
                         isSelected: selectedTab == .listings,
-                        action: { handleTabSelection(.listings) }
+                        action: { appState.dispatch(.selectTab(.listings)) }
                     )
 
                     SidebarRow(
                         title: "Realtors",
                         icon: DS.Icons.Entity.realtor,
                         isSelected: selectedTab == .realtors,
-                        action: { handleTabSelection(.realtors) }
+                        action: { appState.dispatch(.selectTab(.realtors)) }
                     )
                 }
             }
             .listStyle(.sidebar)
         } content: {
-            NavigationStack(path: $searchNavigationPath) {
+            NavigationStack(path: $appState.router.pathMain) {
                 Group {
                     switch selectedTab {
                     case .listings:
-                        ListingListView(embedInNavigationStack: false)
+                        ListingListView()
                     case .realtors:
-                        RealtorsListView(embedInNavigationStack: true) // Logic: true = "I am embedded" (don't create stack)
-                    case .myWorkspace:
-                        MyWorkspaceView(navigationPath: $searchNavigationPath)
+                        RealtorsListView() // Use root stack
+                    case .workspace, .search:
+                        MyWorkspaceView()
                     }
                 }
-                .dispatchDestinations()
+                .appDestinations()
             }
             // toolbar(.hidden) removed to restore traffic lights
-            .id(stackID) // Force rebuild when ID changes (pop to root)
+            .id(appState.router.stackID) // Force rebuild when ID changes (pop to root)
             .toolbar {
                 // FORCE the NSToolbar to exist at all times.
                 // This prevents the window corner radius from flickering (Large vs Small) when navigating between views.
@@ -385,56 +369,30 @@ struct ContentView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 BottomToolbar(
                     context: toolbarContext,
-                    audience: $lensState.audience,
+                    audience: Binding(
+                        get: { appState.lensState.audience },
+                        set: { appState.lensState.audience = $0 }
+                    ),
                     onNew: {
                         if selectedTab == .listings {
-                            showMacOSAddListing = true
+                            appState.sheetState = .addListing
                         } else if selectedTab == .realtors {
-                            showMacOSAddRealtor = true
+                            appState.sheetState = .addRealtor
                         } else {
-                            showMacOSQuickEntry = true
+                            appState.sheetState = .quickEntry(type: nil)
                         }
                     },
 
                     onSearch: {
-                        NotificationCenter.default.post(name: .openSearch, object: nil)
+                        appState.dispatch(.openSearch(initialText: nil))
                     }
                 )
             }
         }
-        .sheet(isPresented: $showMacOSQuickEntry) {
-            QuickEntrySheet(
-                defaultItemType: .task,
-                currentUserId: currentUserId,
-                listings: activeListings,
-                onSave: { syncManager.requestSync() }
-            )
-        }
-        .sheet(isPresented: $showMacOSAddListing) {
-            AddListingSheet(
-                currentUserId: currentUserId,
-                onSave: { syncManager.requestSync() }
-            )
-        }
-        .sheet(isPresented: $showMacOSAddRealtor) {
-            EditRealtorSheet()
-        }
+
         
-        .onReceive(NotificationCenter.default.publisher(for: .newItem)) { _ in
-            if selectedTab == .listings {
-                showMacOSAddListing = true
-            } else if selectedTab == .realtors {
-                showMacOSAddRealtor = true
-            } else {
-                showMacOSQuickEntry = true
-            }
-        }
+        // onReceive navigateSearchResult removed
         
-        .onReceive(NotificationCenter.default.publisher(for: .navigateSearchResult)) { notification in
-            if let result = notification.userInfo?["result"] as? SearchResult {
-                selectSearchResult(result)
-            }
-        }
     }
     
     /// Helper view for macOS Sidebar Rows to emulate standard selection style while supporting custom click logic
@@ -465,22 +423,26 @@ struct ContentView: View {
     private var sidebarNavigation: some View {
         NavigationSplitView {
             List {
-                sidebarButton(for: .myWorkspace, label: "My Workspace", icon: "briefcase")
+                sidebarButton(for: .workspace, label: "My Workspace", icon: "briefcase")
                 sidebarButton(for: .listings, label: "Listings", icon: DS.Icons.Entity.listing)
                 sidebarButton(for: .realtors, label: "Realtors", icon: DS.Icons.Entity.realtor)
             }
             .listStyle(.sidebar)
             .navigationTitle("Dispatch")
         } detail: {
-            Group {
-                switch selectedTab {
-                case .listings:
-                    ListingListView()
-                case .realtors:
-                    RealtorsListView()
-                case .myWorkspace:
-                    MyWorkspaceView(navigationPath: $searchNavigationPath)
+            // iPad: Unconditional Stack (One Boss Rule)
+            NavigationStack(path: $appState.router.pathMain) {
+                Group {
+                    switch selectedTab {
+                    case .listings:
+                        ListingListView()
+                    case .realtors:
+                        RealtorsListView()
+                    case .workspace, .search:
+                        MyWorkspaceView()
+                    }
                 }
+                .appDestinations() // Registry Attached!
             }
             .syncNowToolbar()
         }
@@ -490,9 +452,9 @@ struct ContentView: View {
     
     #if os(iOS) || os(visionOS)
     @ViewBuilder
-    private func sidebarButton(for tab: Tab, label: String, icon: String) -> some View {
+    private func sidebarButton(for tab: AppTab, label: String, icon: String) -> some View {
         Button {
-            handleTabSelection(tab)
+            appState.dispatch(.selectTab(tab))
         } label: {
             Label(label, systemImage: icon)
                 .foregroundColor(selectedTab == tab ? .accentColor : .primary)
@@ -635,6 +597,103 @@ struct ContentView: View {
 
         // Note: onAddSubtask requires showing a sheet, which is handled by the detail view
         // The WorkItemActions passes a callback that triggers local state in the resolved view
+    }
+    
+    // MARK: - Phase 2: State Derivation
+    
+    /// Pure function to derive the current "Screen" (Lens Context) from Router State.
+    /// Eliminates the need for .onAppear hacks in views.
+    private func updateLensState() {
+        let tab = appState.router.selectedTab
+        let pathDepth = appState.router.pathMain.count
+        
+        // iPhone Root Logic: If compact and at root, we are at Menu
+        #if os(iOS)
+        if horizontalSizeClass == .compact && pathDepth == 0 {
+            if appState.lensState.currentScreen != .menu {
+                appState.lensState.currentScreen = .menu
+            }
+            return
+        }
+        #endif
+        
+        let newScreen: LensState.CurrentScreen
+        
+        switch tab {
+        case .workspace:
+            // Workspace always allows filtering (My Tasks vs All)
+            newScreen = .myWorkspace
+            
+        case .listings:
+            // List = No Filter, Detail = Filter (Audience/Kind)
+            if pathDepth > 0 {
+                newScreen = .listingDetail
+            } else {
+                newScreen = .listings
+            }
+            
+        case .realtors:
+            // Realtors currently has no global filtering in header
+            newScreen = .realtors
+            
+        case .search:
+            newScreen = .other
+        }
+        
+        if appState.lensState.currentScreen != newScreen {
+            appState.lensState.currentScreen = newScreen
+        }
+    }
+
+    // MARK: - Extracted Views for Compiler Performance
+    
+    @ViewBuilder
+    private var quickFindOverlay: some View {
+        #if os(macOS)
+        if case .quickFind(let initialText) = appState.overlayState {
+            ZStack(alignment: .top) {
+                // Dimmer Background (Click to dismiss)
+                Color.black.opacity(0.1) // Transparent enough to see content, tangible enough to click
+                    .edgesIgnoringSafeArea(.all)
+                    .onTapGesture {
+                        appState.overlayState = .none
+                    }
+                
+                // The Popover Itself
+                NavigationPopover(
+                    searchText: $quickFindText,
+                    isPresented: Binding(
+                        get: { true },
+                        set: { if !$0 { appState.overlayState = .none } }
+                    ),
+                    currentTab: selectedTab,
+                    onNavigate: { tab in
+                        appState.dispatch(.selectTab(tab))
+
+                        // Post filters logic
+                        // TODO: Refine this logic in next step
+                        appState.dispatch(tab == .listings ? .filterUnclaimed : .filterMine) 
+                        appState.overlayState = .none
+                    },
+                    onSelectResult: { result in
+                        selectSearchResult(result)
+                        appState.overlayState = .none
+                    }
+                )
+                .padding(.top, 100) // Position it nicely near the top
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .onAppear {
+                     if let text = initialText {
+                         // Wait for popover animation + autofocus
+                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                             quickFindText = text
+                         }
+                     }
+                }
+            }
+            .zIndex(100) // Ensure it floats above everything
+        }
+        #endif
     }
 }
 

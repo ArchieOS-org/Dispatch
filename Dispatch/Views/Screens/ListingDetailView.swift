@@ -94,9 +94,6 @@ struct ListingDetailView: View {
         } message: {
             Text("This note will be permanently deleted.")
         }
-        .onAppear {
-            lensState.currentScreen = .listingDetail
-        }
     }
 
     // MARK: - Content Sections

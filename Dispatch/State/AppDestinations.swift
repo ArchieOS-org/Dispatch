@@ -1,37 +1,21 @@
 //
-//  WorkItemDestinations.swift
+//  AppDestinations.swift
 //  Dispatch
 //
-//  Shared navigation destinations modifier for WorkItem navigation.
-//  Reads callbacks from WorkItemActions environment object.
+//  Central registry for all navigation destinations in the app.
+//  Implementation of "One Boss" Phase 3: Consolidate Destinations.
 //
 
 import SwiftUI
 
-extension View {
-    /// Applies shared navigation destinations for WorkItem and Listing navigation.
-    /// Must be called **inside** a NavigationStack (destinations must be inside the stack doing the pushing).
-    ///
-    /// Usage:
-    /// ```
-    /// NavigationStack {
-    ///     MyListView()
-    ///         .dispatchDestinations()
-    /// }
-    /// .environmentObject(actions)
-    /// ```
-    func dispatchDestinations() -> some View {
-        modifier(DispatchDestinationsModifier())
-    }
-}
-
-/// ViewModifier that provides shared navigation destinations.
-/// Reads all state and callbacks from WorkItemActions environment object.
-private struct DispatchDestinationsModifier: ViewModifier {
+/// Central registry of all navigation destinations.
+/// Attached to the Root Stack of each "Captain" (AppShell).
+struct AppDestinationsModifier: ViewModifier {
     @EnvironmentObject private var actions: WorkItemActions
 
     func body(content: Content) -> some View {
         content
+            // MARK: - Work Items (Tasks/Activities)
             .navigationDestination(for: WorkItemRef.self) { ref in
                 WorkItemResolverView(
                     ref: ref,
@@ -48,37 +32,50 @@ private struct DispatchDestinationsModifier: ViewModifier {
                     onAddSubtask: actions.onAddSubtask
                 )
             }
+            // MARK: - Core Entities
             .navigationDestination(for: Listing.self) { listing in
                 ListingDetailView(listing: listing, userLookup: actions.userLookup)
-            }
-            .navigationDestination(for: MenuSection.self) { section in
-                menuDestination(for: section)
             }
             .navigationDestination(for: User.self) { user in
                 RealtorProfileView(user: user)
             }
+            // MARK: - iPhone Menu Navigation
+            .navigationDestination(for: MenuSection.self) { section in
+                menuDestination(for: section)
+            }
+            // PROBE: Signal that registry is active
+            .environment(\.destinationsAttached, true)
     }
     
     @ViewBuilder
     private func menuDestination(for section: MenuSection) -> some View {
         switch section {
         case .myWorkspace:
-            MyWorkspaceView(navigationPath: .constant(.init()))
+            MyWorkspaceView()
         case .listings:
-            ListingListView(embedInNavigationStack: false)
+            ListingListView()
         case .realtors:
-            RealtorsListView(embedInNavigationStack: false)
+            RealtorsListView()
         }
     }
 }
 
+// MARK: - Debug Probe
+private struct DestinationsAttachedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var destinationsAttached: Bool {
+        get { self[DestinationsAttachedKey.self] }
+        set { self[DestinationsAttachedKey.self] = newValue }
+    }
+}
+
 extension View {
-    func hideMacToolbar() -> some View {
-        #if os(macOS)
-        self.toolbar(.hidden, for: .windowToolbar)
-            .navigationTitle("")
-        #else
-        self
-        #endif
+    /// Attaches the central navigation destination registry to a NavigationStack.
+    /// Must be called on the *content* of a NavigationStack, not the stack itself.
+    func appDestinations() -> some View {
+        modifier(AppDestinationsModifier())
     }
 }
