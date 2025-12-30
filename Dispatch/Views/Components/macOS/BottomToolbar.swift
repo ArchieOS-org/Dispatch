@@ -77,7 +77,7 @@ struct BottomToolbar: View {
   private var listToolbar: some View {
     // Left group
     HStack(spacing: 0) {
-      if let audienceBinding = audience {
+        if let audienceBinding = audience {
         AudienceFilterButton(
             lens: audienceBinding.wrappedValue,
             action: {
@@ -88,6 +88,7 @@ struct BottomToolbar: View {
         )
         .padding(.trailing, DS.Spacing.md)
         .transition(.opacity)
+        .id(audienceBinding.wrappedValue) // Force redraw to fix Toolbar cache issue
       }
 
       if let onNew {

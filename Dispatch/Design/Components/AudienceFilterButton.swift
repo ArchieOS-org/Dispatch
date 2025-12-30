@@ -31,9 +31,10 @@ struct AudienceFilterButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: lens.icon)
-                .symbolRenderingMode(lens == .all ? .monochrome : .hierarchical)
+                .symbolRenderingMode(.monochrome)
                 .foregroundStyle(lens == .all ? .secondary : lens.tintColor)
-                .font(.system(size: 15, weight: .medium)) // Visual balance
+                .font(.system(size: 17, weight: .semibold)) // Legible Toolbar Weight
+                .imageScale(.medium) // Balance within 36pt frame
                 .frame(width: 36, height: 36) // Hit target
                 .background {
                     #if os(macOS)

@@ -308,13 +308,13 @@ extension DS {
         /// Icons for user roles/audiences
         enum Role {
             /// Admin role
-            static let admin = "a.circle.fill"
+            static let admin = "a.circle"
 
             /// Admin role filled
             static let adminFill = "a.circle.fill"
 
             /// Marketing role
-            static let marketing = "m.circle.fill"
+            static let marketing = "m.circle"
 
             /// Marketing role filled
             static let marketingFill = "m.circle.fill"

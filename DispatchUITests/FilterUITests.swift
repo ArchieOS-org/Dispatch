@@ -50,11 +50,11 @@ final class FilterUITests: XCTestCase {
         
         // 2. Cycle to Admin
         filterButton.tap()
-        verifyState("admin", icon: "a.circle.fill")
+        verifyState("admin", icon: "a.circle")
         
         // 3. Cycle to Marketing
         filterButton.tap()
-        verifyState("marketing", icon: "m.circle.fill")
+        verifyState("marketing", icon: "m.circle")
         
         // 4. Cycle back to All
         filterButton.tap()

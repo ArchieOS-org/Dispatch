@@ -85,14 +85,16 @@ struct WorkItemRow: View {
             // Role Icon (Inline - Left of title)
             if item.audiences.contains(.admin) {
                 Image(systemName: DS.Icons.Role.admin)
-                    .symbolRenderingMode(.hierarchical)
+                    .symbolRenderingMode(.monochrome)
                     .font(DS.Typography.body)
+                    .imageScale(.medium)
                     .foregroundStyle(DS.Colors.RoleColors.admin)
             }
             if item.audiences.contains(.marketing) {
                 Image(systemName: DS.Icons.Role.marketing)
-                    .symbolRenderingMode(.hierarchical)
+                    .symbolRenderingMode(.monochrome)
                     .font(DS.Typography.body)
+                    .imageScale(.medium)
                     .foregroundStyle(DS.Colors.RoleColors.marketing)
             }
 
