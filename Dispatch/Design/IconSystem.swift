@@ -158,7 +158,7 @@ extension DS {
         }
 
         // MARK: - Navigation Icons
-
+        
         /// Icons for navigation elements
         enum Navigation {
             /// Back arrow
@@ -189,7 +189,7 @@ extension DS {
             static let search = "magnifyingglass"
 
             /// Filter
-            static let filter = "line.3.horizontal.decrease.circle"
+            static let filter = "line.3.horizontal.decrease"
         }
 
         // MARK: - Entity Type Icons
@@ -308,13 +308,13 @@ extension DS {
         /// Icons for user roles/audiences
         enum Role {
             /// Admin role
-            static let admin = "a.circle"
+            static let admin = "a.circle.fill"
 
             /// Admin role filled
             static let adminFill = "a.circle.fill"
 
             /// Marketing role
-            static let marketing = "m.circle"
+            static let marketing = "m.circle.fill"
 
             /// Marketing role filled
             static let marketingFill = "m.circle.fill"
