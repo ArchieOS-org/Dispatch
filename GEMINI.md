@@ -1,91 +1,137 @@
 # Dispatch
 Dispatch is a premium, multi-platform Swift application (iOS, iPadOS, macOS) built on Supabase. It synchronizes data between specific, strictly typed SwiftData models and a Postgres backend. Built to Steve Jobs standards.
 
-## Tech Stack
-- **Language**: Swift 6 (Strict Concurrency)
-- **UI Framework**: SwiftUI (Unified `StandardScreen` layout)
-- **Backend**: Supabase (Postgres, Auth, Realtime v2)
-- **Persistence**: SwiftData (Local-first, syncs via `SyncManager`)
-- **Build System**: Xcode 16+ / Swift Package Manager
+## Non-negotiable Principles
+1.  **The Steve Jobs Standard**: Zero glitches. Silky smooth rendering. Premium aesthetics (invisible toolbars, perfect typography). Simplicity over complexity.
+2.  **One Boss Architecture**: Every domain has exactly one owner. No split authorities. Use the Command Bus (`AppCommand`) for all state changes.
+3.  **Local-First / Offline-First**: The UI *always* trusts local SwiftData. Sync happens in the background. We never block the UI on network requests.
 
-## Architecture: "One Boss"
-We strictly follow the **One Boss** pattern to manage state and navigation.
-1.  **AppState**: The single source of truth. Owns `AuthManager` and `SyncCoordinator`.
-2.  **DispatchApp (Scene)**: Plumbing only. Decides which Root View to show.
-    - Uses a `ZStack` and explicit `.transition(.opacity)` to switch between `LoginView`, `OnboardingLoadingView`, and `AppShellView`.
-3.  **AppShellView**: The main UI container / Router.
-    - Handles the root `NavigationStack`.
-    - Defines global `navigationDestination` modifiers (using `DispatchDestinationsModifier` or explicit `.navigationDestination`).
-    - **Chrome Policy**: Only `AppShellView` controls the toolbar style and background. Individual screens may ONLY add items.
-4.  **StandardScreen**: ALL screens must use `StandardScreen(title: ...)` generic wrapper.
-    - **CRITICAL**: Do NOT use `NavigationStack` inside a `StandardScreen` unless it is a modal or a standalone flow. The screen should rely on the parent `AppShellView` stack.
+## One Boss Map
+We strictly follow the **One Boss** pattern. Breaking this contract requires Architect approval.
+
+| Domain | Boss (Owner) | Responsibilities | Forbidden |
+| :--- | :--- | :--- | :--- |
+| **Root Entry** | `DispatchApp` | Scene Phase, Env Injection, Root ZStack (Login/Shell) | No Business Logic here. |
+| **Shell / Chrome** | `AppShellView` | Window Policy, Toolbar Background, Global Chrome | No Navigation Stacks here. |
+| **Router / Container** | `ContentView` | Root `NavigationStack`, TabView, Sidebar | No Screens defined inline. |
+| **State & Logic** | `AppState` | Auth, SyncCoordinator, Routing State, Sheet State | Not allowed to be `@State` in Views (except ephemeral). |
+| **Destinations** | `AppDestinations.swift` | Single registry of `.navigationDestination(for:)` | No destinations in Screens. |
+| **Data Sync** | `SyncManager` | Bidirectional Sync, Conflict Resolution | No Supabase calls in Views. |
+
+## Navigation Contract
+### Root Structure
+- **iOS**: `ContentView` uses a specific iPhone/iPad adaptation logic.
+- **macOS**: `ContentView` manages a Sidebar + Detail structure.
+- **Router**: Managed via `AppState.router` (One Boss).
+
+### Rules
+1.  **Root-Only Stack**: There is EXACTLY ONE `NavigationStack` per column, owned by `ContentView`.
+2.  **Central Registry**: All `.navigationDestination(for:)` modifiers live in `Dispatch/State/AppDestinations.swift`.
+3.  **No Embeds**: `embedInNavigationStack` is Forbidden in production screens (legacy components may validly use it if marked deprecated).
+4.  **Path Management**: `AppState.router.pathMain` is the single source of truth for the stack.
 
 ## Layout Contract
 We enforce a strict layout contract via `StandardScreen`.
-- **Default**: Use `StandardScreen(layout: .column)` for 95% of screens (text, forms, lists, details).
-- **Exceptions**: Use `StandardScreen(layout: .fullBleed)` ONLY for:
-    - Interactive Maps
-    - Dense, multi-column data tables
-    - Media canvases (images/video)
-    - Special dashboards (approved explicitly)
-- **Tokens**: `DS.Layout.pageMargin`, `DS.Layout.maxContentWidth`.
-- **Violations**: NEVER add top-level `.padding(.horizontal)` or `.frame(maxWidth:)` inside a screen. The wrapper handles this.
-    - *Top-level means applied to the view returned directly from body / content of a Screen (outside reusable components).*
 
-## Navigation & Routing
-- **Router Pattern**: We define navigation destinations at the **ROOT** level (`AppShellView` or `ContentView`'s main tab view), usually via a centralized modifier (e.g., `DispatchDestinationsModifier`).
-- **New Types**: If you add a new destination type, you MUST:
-    1. Ensure it conforms to `Hashable`.
-    2. Add a `.navigationDestination(for:)` entry in `DispatchDestinationsModifier`.
-    3. Add a minimal UI smoke test that pushes this destination.
-- **No Dual-Mode Screens**: Do NOT implement `embedInNavigationStack` flags in production views.
-- **PreviewShell**: use `PreviewShell { MyScreen() }` for previews and test harnesses.
-    - `PreviewShell` provides: `NavigationStack`, `DispatchDestinationsModifier`, and required mock environments (`AppState`, `SyncManager`, `LensState`).
-    - **Rule**: No screen carries preview/test scaffolding flags in production code.
+### StandardScreen API
+All screens **MUST** be wrapped in `StandardScreen`.
 
-## Data Mutation & Sync (Local-First)
-- **SyncManager**: The singleton orchestrator (`SyncManager.shared`).
-- **Mutation Rules**:
-    1.  **MainActor**: All model mutations happen on MainActor using `@Environment(\.modelContext)`. Views may read via `@Query`, but significant logic should live in an Action layer.
-    2.  **Trigger Sync**: After ANY mutation, call `syncManager.requestSync()` immediately.
-    3.  **Deletes**: Use soft-delete conventions. Set status to `.deleted`, call `markPending()`. DO NOT hard delete unless explicitly allowed.
-    4.  **No Direct API**: NEVER call Supabase client directly from Views.
+```swift
+StandardScreen(title: "My Title", layout: .column) {
+    // Content
+}
+.toolbar { ... }
+```
 
-## Design System (Monochrome)
-- **Files**: `Dispatch/Design/ColorSystem.swift`, `Dispatch/Design/Typography.swift`.
-- **DS.Colors**: Use `DS.Colors.Text.primary`, `DS.Colors.Background.card`, etc.
-    - ❌ NO raw `Color.red` or `Color(.systemGray)`.
-- **DS.Typography**: Use `DS.Typography.headline`, `DS.Typography.body`, etc.
-- **Components**: Prefer `StandardList`, `StandardRow`, `PrimaryButton`.
+- **layout**: `.column` (default, constrained width) or `.fullBleed` (maps/media).
+- **scroll**: `.automatic` (default) or `.disabled` (for custom scrolling).
 
-## Screen Creation Guide (Non-negotiables)
-When creating a new screen, you must strict adherence to this checklist:
-1.  **Wrapper**: Must start with `StandardScreen(title: "My Title", layout: .column)`.
-2.  **Forbidden Modifiers**:
-    - ❌ `NavigationStack`, `NavigationSplitView` (unless modal)
-    - ❌ `.navigationTitle("...")` (handled by StandardScreen)
-    - ❌ `.toolbarBackground(...)`, `.windowToolbarStyle(...)` (AppShell owns chrome)
-    - ❌ Top-level `.padding(.horizontal)` or `.frame(maxWidth:)`
-    - ❌ `NSWindow`, `NSApp`, `WindowAccessor` hacks
-3.  **Allowed Interactions**:
-    - ✅ `.toolbar { ToolbarItem... }` (Items only)
-    - ✅ `NavigationLink(value: MyModel)` (Value-based only, no destination builders)
-4.  **Registration**: Register the destination in `AppShellView` or `DispatchDestinationsModifier`.
+### Forbidden Modifiers
+- ❌ Top-level `.padding(.horizontal)` (StandardScreen handles this).
+- ❌ Top-level `.frame(maxWidth:)` (StandardScreen handles this).
+- ❌ `.navigationTitle` (StandardScreen handles this for consistency).
+- ❌ `NavigationStack` (Unless inside a modal sheet).
 
-## Definition of Done (new screen)
-- [ ] Appears via router destinations (root-level).
-- [ ] Uses strict `DS.*` tokens only.
-- [ ] No guardrail violations (padding/frame/navigation hacks).
-- [ ] **Tests**:
-    - Core logic/commands have unit tests.
-    - **Core Screens** (Main Nav / Primary Detail views) MUST have a Snapshot test.
-    - Main Nav changes include a UI smoke test update.
+## State & Command Bus
+### AppState (The Brain)
+`AppState` is the Single Source of Truth. It is injected via `.environmentObject`.
+- Owns `AuthManager`, `SyncCoordinator`, `router`, `lensState`, `sheetState`.
 
-## Agent Rules (The Steve Jobs Standard)
-- **No Glitches**: Transitions must be smooth (`.transition(.opacity)`). No blank screens.
-- **Premium Feel**: Use "Invisible Toolbar" look on macOS.
-- **Consistency**: Don't invent new patterns. Use `StandardScreen` and `DS.*` tokens.
-- **Safety**: Verify `SyncManager.currentUser` before mounting the main app.
+### AppCommand (The Bus)
+All user intentions flow through `AppState.dispatch(_:)`.
+
+```swift
+// ✅ Good
+appState.dispatch(.selectTab(.listings))
+appState.dispatch(.navigate(.listing(id)))
+
+// ❌ Bad
+appState.router.selectedTab = .listings
+```
+
+### Sheet Management
+Sheets are central on macOS.
+- **Types**: Defined in `AppState.SheetState` (e.g., `.addListing`, `.quickEntry`).
+- **Usage**: Set `appState.sheetState = .addListing`.
+- **Binding**: Use `sheetStateBinding` in `ContentView`.
+
+## Sync Contract
+The `SyncManager` orchestrates all data movement.
+
+### Lifecycle
+1.  **Change**: User performs action → Model updated in SwiftData → `markPending()`.
+2.  **Trigger**: `syncManager.requestSync()` called immediately.
+3.  **SyncDown**: Users → Listings → Tasks → Activities → ClaimEvents.
+4.  **SyncUp**: Pushes all `.pending` records to Supabase.
+
+### Conflict Resolution
+- **Server Wins** (mostly).
+- **Pending Protection**: If a local record is `.pending`, SyncDown skips scalar updates to avoid overwriting user input before it uploads.
+- **Orphans**: On first sync (`lastSyncTime == nil`), `reconcileOrphans` runs to delete local records missing from server.
+
+### Avatars
+- **Hashing**: SHA256 hash of normalized image stored in `avatar_hash`.
+- **Download**: Downloads from public bucket if local hash != remote hash.
+- **Optimization**: Does NOT download if hashes match.
+
+## Supabase Backend
+**Project URL**: `https://uhkrvxlclflgevocqtkh.supabase.co`
+
+### Schema (Key Tables)
+| Table | PK | Key Columns | Notes |
+| :--- | :--- | :--- | :--- |
+| `users` | `id` (uuid) | `email`, `auth_id`, `avatar_path`, `avatar_hash` | Linked to `auth.users` |
+| `listings` | `id` (uuid) | `address`, `status`, `owned_by` | |
+| `tasks` | `id` (uuid) | `title`, `status`, `listing_id` | Soft-delete enabled |
+| `activities` | `id` (uuid) | `type`, `status`, `listing_id` | Soft-delete enabled |
+| `claim_events` | `id` (uuid) | `entity_id`, `entity_type` | Audit trail for claims |
+
+### Realtime
+- **Version**: Realtime v2 (Broadcast + Postgres Changes).
+- **Usage**: Listens for changes to keep multi-user sessions in sync.
+
+## Project Structure
+```
+Dispatch/
+├── DispatchApp.swift       # Entry Point
+├── ContentView.swift       # Router / Container
+├── Services/
+│   ├── Supabase/           # Backend services
+│   └── Sync/               # SyncManager
+├── State/
+│   ├── AppState.swift      # The Brain
+│   └── AppDestinations.swift # Navigation Registry
+├── Views/
+│   ├── Shell/              # AppShellView, StandardScreen
+│   ├── Screens/            # Feature Views (Listings, Tasks)
+│   └── Components/         # Reusable UI
+└── Models/                 # SwiftData Models
+```
+
+## Testing & Guardrails
+- **Smoke Tests**: Validate critical flows (Login, Sync, Nav).
+- **Compilation**: Complex Views (like `ContentView`) MUST split body into computed properties to prevent type-checker hangs.
+- **Linting**: No raw `Color` or `Font`. Use `DS.Colors` and `DS.Typography`.
 
 ## Screen Template
 Use this template for new screens to ensure compliance:
@@ -98,6 +144,7 @@ import SwiftData
 struct NewFeatureView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var syncManager: SyncManager
+    @EnvironmentObject private var appState: AppState // Access Command Bus
 
     @Query private var items: [MyModel]
 
@@ -126,3 +173,4 @@ struct NewFeatureView: View {
     }
 }
 ```
+
