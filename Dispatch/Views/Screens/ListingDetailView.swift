@@ -19,9 +19,8 @@ struct ListingDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     // MARK: - State
+    // noteText removed - NotesContent uses internal state
 
-    @State private var noteText = ""
-    // showNoteInput removed - always-visible composer
     @State private var showDeleteNoteAlert = false
     @State private var noteToDelete: Note?
     @State private var showDeleteListingAlert = false
@@ -272,25 +271,15 @@ struct ListingDetailView: View {
     }
 
     private var notesSection: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            // Always-visible composer
-            NoteInputArea(
-                text: $noteText,
-                onSave: { content in addNote(content: content) }
-            )
-
-            let visibleNotes = listing.notes.filter { $0.deletedAt == nil }
-            if !visibleNotes.isEmpty {
-                NoteStack(
-                    notes: visibleNotes,
-                    userLookup: userLookup,
-                    onDelete: { note in
-                        noteToDelete = note
-                        showDeleteNoteAlert = true
-                    }
-                )
+        NotesContent(
+            notes: listing.notes,
+            userLookup: userLookup,
+            onSave: { content in addNote(content: content) },
+            onDelete: { note in
+                noteToDelete = note
+                showDeleteNoteAlert = true
             }
-        }
+        )
     }
 
     // MARK: - Previews

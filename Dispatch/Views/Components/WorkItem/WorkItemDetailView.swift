@@ -28,9 +28,7 @@ struct WorkItemDetailView: View {
     // Environment
     @EnvironmentObject private var lensState: LensState
 
-    // State
-    @State private var noteText = ""
-    // showNoteInput removed - always-visible composer
+    // showNoteInput removed - always-visible composer uses internal state
 
     private static let detailDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -220,30 +218,12 @@ struct WorkItemDetailView: View {
     // MARK: - Notes Section
 
     private var notesSection: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            sectionHeader("Notes")
-
-            // Always-visible composer
-            NoteInputArea(
-                text: $noteText,
-                onSave: { content in
-                    onAddNote?(content)
-                    noteText = ""
-                }
-            )
-
-            let visibleNotes = item.notes.filter { $0.deletedAt == nil }
-            if !visibleNotes.isEmpty {
-                NoteStack(
-                    notes: visibleNotes,
-                    userLookup: userLookup,
-                    onDelete: onDeleteNote
-                )
-            }
-        }
-        .padding(DS.Spacing.md)
-        .background(DS.Colors.Background.card)
-        .cornerRadius(DS.Spacing.radiusCard)
+        NotesSection(
+            notes: item.notes,
+            userLookup: userLookup,
+            onSave: { content in onAddNote?(content) },
+            onDelete: onDeleteNote
+        )
     }
 
     // MARK: - Helpers
