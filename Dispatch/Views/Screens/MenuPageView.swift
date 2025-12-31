@@ -136,7 +136,7 @@ private struct MenuCardButtonStyle: ButtonStyle {
 #Preview("Menu Page View") {
     MenuPageView()
         .modelContainer(for: [TaskItem.self, Activity.self, Listing.self, User.self], inMemory: true)
-        .environmentObject(SyncManager.shared)
+        .environmentObject(SyncManager(mode: .preview))
         .environmentObject(SearchPresentationManager())
         .environmentObject(LensState())
 }

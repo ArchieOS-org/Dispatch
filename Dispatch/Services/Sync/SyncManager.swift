@@ -15,7 +15,7 @@ import Network
 import CryptoKit
 
 @MainActor
-final class SyncManager: ObservableObject, Sendable {
+final class SyncManager: ObservableObject {
     static let shared = SyncManager()
     
     // MARK: - Run Mode
@@ -34,19 +34,31 @@ final class SyncManager: ObservableObject, Sendable {
     var _telemetry_syncRequests = 0
 
     // MARK: - UserDefaults Keys
-    private static let lastSyncTimeKey = "dispatch.lastSyncTime"
+    static let lastSyncTimeKey = "dispatch.lastSyncTime"
 
     // MARK: - Published State
     @Published private(set) var isSyncing = false
     @Published private(set) var lastSyncTime: Date? {
         didSet {
-            if let time = lastSyncTime {
-                UserDefaults.standard.set(time, forKey: Self.lastSyncTimeKey)
-            } else {
-                UserDefaults.standard.removeObject(forKey: Self.lastSyncTimeKey)
+            // Jobs Standard: Isolated Persistance
+            // Only persist in .live mode. Tests must effectively run in memory.
+            if mode == .live {
+                if let time = lastSyncTime {
+                    UserDefaults.standard.set(time, forKey: Self.lastSyncTimeKey)
+                } else {
+                    UserDefaults.standard.removeObject(forKey: Self.lastSyncTimeKey)
+                }
             }
         }
     }
+    
+    #if DEBUG
+    /// Test Hook: Allows setting lastSyncTime in tests without triggering persistence side effects
+    /// or violating read-only visibility.
+    internal func _debugSetLastSyncTime(_ date: Date?) {
+        self.lastSyncTime = date
+    }
+    #endif
     @Published private(set) var syncError: Error?
     @Published private(set) var syncStatus: SyncStatus = .idle
     @Published var currentUserID: UUID? {  // Set when authenticated
@@ -69,8 +81,8 @@ final class SyncManager: ObservableObject, Sendable {
 
     // MARK: - Private Properties
     private var modelContainer: ModelContainer?
-    private var realtimeChannel: RealtimeChannelV2?
-    private var broadcastChannel: RealtimeChannelV2?
+    var realtimeChannel: RealtimeChannelV2?
+    var broadcastChannel: RealtimeChannelV2?
     private var isListening = false
     private var syncRequestedDuringSync = false
     private var wasDisconnected = false  // Track disconnection for reconnect sync
@@ -80,20 +92,20 @@ final class SyncManager: ObservableObject, Sendable {
     /// Strong capture + explicit shutdown() ensures deterministic lifecycle.
     
     // Core Tasks
-    private var syncLoopTask: Task<Void, Never>?
+    var syncLoopTask: Task<Void, Never>?
     private var syncRequested = false
     
     // Status & Broadcast
-    private var statusTask: Task<Void, Never>?
-    private var broadcastTask: Task<Void, Never>?
+    var statusTask: Task<Void, Never>?
+    var broadcastTask: Task<Void, Never>?
     
     // Per-Table Listener Groups
-    private var startBroadcastListeningTask: Task<Void, Never>? // Tracks the setup task
-    private var tasksSubscriptionTask: Task<Void, Never>?
-    private var activitiesSubscriptionTask: Task<Void, Never>?
-    private var listingsSubscriptionTask: Task<Void, Never>?
-    private var usersSubscriptionTask: Task<Void, Never>?
-    private var claimEventsSubscriptionTask: Task<Void, Never>?
+    var startBroadcastListeningTask: Task<Void, Never>? // Tracks the setup task
+    var tasksSubscriptionTask: Task<Void, Never>?
+    var activitiesSubscriptionTask: Task<Void, Never>?
+    var listingsSubscriptionTask: Task<Void, Never>?
+    var usersSubscriptionTask: Task<Void, Never>?
+    var claimEventsSubscriptionTask: Task<Void, Never>?
     
     #if DEBUG
     /// For verifying shutdown logic without side effects
@@ -258,9 +270,7 @@ final class SyncManager: ObservableObject, Sendable {
             debugLog.log("Starting sync loop...", category: .sync)
             syncLoopTask = Task {
                 // Guaranteed Nil-ing: Clear property on exit (finish or cancel)
-                defer {
-                    Task { @MainActor in self.syncLoopTask = nil }
-                }
+                // RULE: cleanup at bottom of scope via MainActor.run. NO defer watcher.
                 
                 // Drain Loop
                 while !Task.isCancelled {
@@ -279,7 +289,11 @@ final class SyncManager: ObservableObject, Sendable {
                     await self.sync()
                 }
                 
-                debugLog.log("Sync loop exited.", category: .sync)
+                // Explicit Cleanup: Must happen on MainActor
+                await MainActor.run {
+                    self.syncLoopTask = nil
+                    debugLog.log("Sync loop exited.", category: .sync)
+                }
             }
         } else {
             debugLog.log("Sync request coalesced into existing loop.", category: .sync)
@@ -1872,6 +1886,9 @@ final class SyncManager: ObservableObject, Sendable {
         broadcastTask?.cancel()
         syncLoopTask?.cancel()
         
+        // Ensure startup task is also cancelled if it's running
+        startBroadcastListeningTask?.cancel()
+        
         tasksSubscriptionTask?.cancel()
         activitiesSubscriptionTask?.cancel()
         listingsSubscriptionTask?.cancel()
@@ -1893,6 +1910,8 @@ final class SyncManager: ObservableObject, Sendable {
                  _ = await self.broadcastTask?.result
                  _ = await self.syncLoopTask?.result
                  
+                 _ = await self.startBroadcastListeningTask?.result
+                 
                  _ = await self.tasksSubscriptionTask?.result
                  _ = await self.activitiesSubscriptionTask?.result
                  _ = await self.listingsSubscriptionTask?.result
@@ -1909,6 +1928,8 @@ final class SyncManager: ObservableObject, Sendable {
             _ = await broadcastTask?.result
             _ = await syncLoopTask?.result
             
+            _ = await startBroadcastListeningTask?.result
+            
             _ = await tasksSubscriptionTask?.result
             _ = await activitiesSubscriptionTask?.result
             _ = await listingsSubscriptionTask?.result
@@ -1924,6 +1945,8 @@ final class SyncManager: ObservableObject, Sendable {
         statusTask = nil
         broadcastTask = nil
         syncLoopTask = nil
+        startBroadcastListeningTask = nil
+        
         tasksSubscriptionTask = nil
         activitiesSubscriptionTask = nil
         listingsSubscriptionTask = nil

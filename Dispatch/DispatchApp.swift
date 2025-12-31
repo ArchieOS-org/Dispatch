@@ -59,23 +59,6 @@ struct DispatchApp: App {
                     if appState.authManager.isAuthenticated {
                         if SyncManager.shared.currentUser != nil {
                             AppShellView()
-                                // Inject Brain
-                                .environmentObject(appState)
-                                // Legacy injections for views relying on them directly:
-                                .environmentObject(appState.authManager)
-                                .environmentObject(SyncManager.shared)
-                                
-                                #if DEBUG
-                                .sheet(isPresented: $showTestHarness) {
-                                    SyncTestHarness()
-                                        .environmentObject(SyncManager.shared)
-                                }
-                                #if os(iOS)
-                                .onShake {
-                                    showTestHarness = true
-                                }
-                                #endif
-                                #endif
                                 .transition(.opacity)
                         } else {
                             OnboardingLoadingView()
@@ -89,6 +72,22 @@ struct DispatchApp: App {
                 .animation(.easeInOut, value: appState.authManager.isAuthenticated)
                 .animation(.easeInOut, value: SyncManager.shared.currentUser)
             }
+            // Inject Brain & Core Services globally
+            .environmentObject(appState)
+            .environmentObject(appState.authManager)
+            .environmentObject(SyncManager.shared)
+            
+            #if DEBUG
+            .sheet(isPresented: $showTestHarness) {
+                SyncTestHarness()
+                    .environmentObject(SyncManager.shared)
+            }
+            #if os(iOS)
+            .onShake {
+                showTestHarness = true
+            }
+            #endif
+            #endif
             .onOpenURL { url in
                 appState.authManager.handleRedirect(url)
             }

@@ -77,5 +77,5 @@ extension View {
             .navigationTitle("Test")
     }
     .syncNowToolbar()
-    .environmentObject(SyncManager.shared)
+    .environmentObject(SyncManager(mode: .preview))
 }

@@ -31,11 +31,51 @@ final class SyncManagerIsolationTests: XCTestCase {
         // This MUST cancel the task and await its completion.
         await manager.shutdown()
         
-        // 5. Verify quiescence
+        // 5. Verify quiescence (Exhaustive Checklist)
+        // Ensure ALL named tasks are nil-ed out.
         #if DEBUG
-        XCTAssertNil(manager.debugHangingTask, "Debug task should be nil after shutdown")
+        XCTAssertNil(manager.debugHangingTask, "debugHangingTask should be nil")
         #endif
         
-        // Ensure no leakage (though memory graph debugging is hard in XCTest, this logical check is good)
+        XCTAssertNil(manager.syncLoopTask, "syncLoopTask should be nil")
+        XCTAssertNil(manager.statusTask, "statusTask should be nil")
+        XCTAssertNil(manager.broadcastTask, "broadcastTask should be nil")
+        XCTAssertNil(manager.startBroadcastListeningTask, "startBroadcastListeningTask should be nil")
+        
+        XCTAssertNil(manager.tasksSubscriptionTask, "tasksSubscriptionTask should be nil")
+        XCTAssertNil(manager.activitiesSubscriptionTask, "activitiesSubscriptionTask should be nil")
+        XCTAssertNil(manager.listingsSubscriptionTask, "listingsSubscriptionTask should be nil")
+        XCTAssertNil(manager.usersSubscriptionTask, "usersSubscriptionTask should be nil")
+        XCTAssertNil(manager.claimEventsSubscriptionTask, "claimEventsSubscriptionTask should be nil")
+        
+        XCTAssertNil(manager.realtimeChannel, "realtimeChannel should be nil")
+        XCTAssertNil(manager.broadcastChannel, "broadcastChannel should be nil")
+    }
+    
+    func testUserDefaultsIsolation() async {
+        #if DEBUG
+        // 1. Capture current defaults state
+        let key = SyncManager.lastSyncTimeKey
+        let originalValue = UserDefaults.standard.object(forKey: key)
+        
+        // 2. Create TEST mode manager
+        let manager = SyncManager(mode: .test)
+        
+        // 3. Set lastSyncTime via debug hook
+        let testDate = Date()
+        manager._debugSetLastSyncTime(testDate)
+        
+        // 4. Assert: Manager state updated
+        XCTAssertEqual(manager.lastSyncTime, testDate, "Manager state should update in memory")
+        
+        // 5. Assert: Persistence UNCHANGED
+        let currentValue = UserDefaults.standard.object(forKey: key)
+        
+        if let originalDate = originalValue as? Date, let currDate = currentValue as? Date {
+            XCTAssertEqual(originalDate, currDate, "UserDefaults should not be modified in .test mode")
+        } else {
+            XCTAssertNil(currentValue, "UserDefaults should remain nil if originally nil")
+        }
+        #endif
     }
 }

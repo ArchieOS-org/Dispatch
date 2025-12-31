@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct OnboardingLoadingView: View {
-    @ObservedObject private var syncManager = SyncManager.shared
+    @EnvironmentObject private var syncManager: SyncManager
     @State private var message: String = "Setting up your workspace..."
     
     var body: some View {
@@ -85,4 +85,5 @@ struct OnboardingLoadingView: View {
 
 #Preview {
     OnboardingLoadingView()
+        .environmentObject(SyncManager(mode: .preview))
 }

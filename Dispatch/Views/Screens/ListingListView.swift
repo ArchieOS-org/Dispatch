@@ -292,6 +292,6 @@ struct ListingListView: View {
 #Preview("Listing List View") {
     ListingListView()
         .modelContainer(for: [Listing.self, User.self], inMemory: true)
-        .environmentObject(SyncManager.shared)
+        .environmentObject(SyncManager(mode: .preview))
         .environmentObject(LensState())
 }
