@@ -38,13 +38,18 @@ final class PreviewInfrastructureTests: XCTestCase {
         }
         
         // 2. Act: Host it
-        let vc = UIHostingController(rootView: shell)
-        
+        #if os(macOS)
+        let vc = NSHostingController(rootView: shell)
         // 3. Force Lifecycle & Layout
-        // This ensures .task, .onAppear, and initial layout passes actually run
+        _ = vc.view
+        vc.view.layout()
+        #else
+        let vc = UIHostingController(rootView: shell)
+        // 3. Force Lifecycle & Layout
         _ = vc.view
         vc.view.setNeedsLayout()
         vc.view.layoutIfNeeded()
+        #endif
         
         // Allow a runloop cycle for async tasks (like .task modifier) to start
         let expectation = XCTestExpectation(description: "View Lifecycle")

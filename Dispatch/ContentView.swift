@@ -702,7 +702,7 @@ struct ContentView: View {
     @ViewBuilder
     private var quickFindOverlay: some View {
         #if os(macOS)
-        if case .quickFind(let initialText) = appState.overlayState {
+        if case .search(let initialText) = appState.overlayState {
             ZStack(alignment: .top) {
                 // Dimmer Background (Click to dismiss)
                 Color.black.opacity(0.1) // Transparent enough to see content, tangible enough to click

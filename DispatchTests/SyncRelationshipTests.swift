@@ -8,7 +8,7 @@
 
 import XCTest
 import SwiftData
-@testable import Dispatch
+@testable import DispatchApp
 
 @MainActor
 final class SyncRelationshipTests: XCTestCase {

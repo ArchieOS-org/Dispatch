@@ -8,6 +8,47 @@
 import Foundation
 
 struct ActivityDTO: Codable, Sendable {
+    init(
+        id: UUID = UUID(),
+        title: String,
+        description: String? = nil,
+        activityType: String,
+        dueDate: Date? = nil,
+        priority: String,
+        status: String,
+        declaredBy: UUID,
+        claimedBy: UUID? = nil,
+        listing: UUID? = nil,
+        createdVia: String,
+        sourceSlackMessages: [String]? = nil,
+        audiences: [String]? = nil,
+        durationMinutes: Int? = nil,
+        claimedAt: Date? = nil,
+        completedAt: Date? = nil,
+        deletedAt: Date? = nil,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.activityType = activityType
+        self.dueDate = dueDate
+        self.priority = priority
+        self.status = status
+        self.declaredBy = declaredBy
+        self.claimedBy = claimedBy
+        self.listing = listing
+        self.createdVia = createdVia
+        self.sourceSlackMessages = sourceSlackMessages
+        self.audiences = audiences
+        self.durationMinutes = durationMinutes
+        self.claimedAt = claimedAt
+        self.completedAt = completedAt
+        self.deletedAt = deletedAt
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
     let id: UUID
     let title: String
     let description: String?

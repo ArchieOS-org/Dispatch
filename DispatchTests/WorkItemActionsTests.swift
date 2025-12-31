@@ -2,7 +2,7 @@
 import Testing
 import SwiftUI
 import SwiftData
-@testable import Dispatch
+@testable import DispatchApp
 
 struct WorkItemActionsTests {
     

@@ -6,7 +6,8 @@
 //
 
 import XCTest
-@testable import Dispatch
+import SwiftUI
+@testable import DispatchApp
 
 @MainActor
 class AppStateTests: XCTestCase {
@@ -26,7 +27,7 @@ class AppStateTests: XCTestCase {
         let destination = Destination.listing(UUID())
         appState.dispatch(.navigate(destination))
         
-        XCTAssertEqual(appState.router.path.count, 1)
+        XCTAssertEqual(appState.router.pathMain.count, 1)
         // Note: checking deep equality on path is tricky in SwiftUI, 
         // but verifying count > 0 confirms append happened.
     }
@@ -34,10 +35,10 @@ class AppStateTests: XCTestCase {
     func test_dispatch_popToRoot_clearsRouterPath() {
         let destination = Destination.listing(UUID())
         appState.dispatch(.navigate(destination))
-        XCTAssertFalse(appState.router.path.isEmpty)
+        XCTAssertFalse(appState.router.pathMain.isEmpty)
         
         appState.dispatch(.popToRoot)
-        XCTAssertTrue(appState.router.path.isEmpty)
+        XCTAssertTrue(appState.router.pathMain.isEmpty)
     }
     
     func test_router_selectSameTab_popsToRoot() {
@@ -47,7 +48,7 @@ class AppStateTests: XCTestCase {
         // Select same tab
         appState.router.selectTab(.workspace)
         
-        XCTAssertTrue(appState.router.path.isEmpty)
+        XCTAssertTrue(appState.router.pathMain.isEmpty)
     }
     
     func test_router_switchTab_clearsPath() {
@@ -59,7 +60,7 @@ class AppStateTests: XCTestCase {
         appState.router.selectTab(.listings)
         
         XCTAssertEqual(appState.router.selectedTab, .listings)
-        XCTAssertTrue(appState.router.path.isEmpty)
+        XCTAssertTrue(appState.router.pathMain.isEmpty)
     }
     
     // MARK: - Command Tests
@@ -67,10 +68,10 @@ class AppStateTests: XCTestCase {
     func test_dispatch_openSearch_setsOverlayState() {
         appState.dispatch(.openSearch(initialText: "test"))
         
-        if case .quickFind(let text) = appState.overlayState {
+        if case .search(let text) = appState.overlayState {
             XCTAssertEqual(text, "test")
         } else {
-            XCTFail("Overlay state should be quickFind")
+            XCTFail("Overlay state should be search")
         }
     }
 }

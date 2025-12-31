@@ -133,6 +133,33 @@ Dispatch/
 - **Compilation**: Complex Views (like `ContentView`) MUST split body into computed properties to prevent type-checker hangs.
 - **Linting**: No raw `Color` or `Font`. Use `DS.Colors` and `DS.Typography`.
 
+## Previews (Jobs Standard)
+All SwiftUI Previews MUST adhere to the following strict standards to ensure determinism and zero side effects.
+
+### 1. Canonical Shell
+- **Rule**: All screen previews MUST be wrapped in `PreviewShell`.
+- **Why**: Use `PreviewShell` to inject all required Environment Objects (`AppState`, `SyncManager`, `LensState`, `AppOverlayState`) and provide a stable in-memory `ModelContainer`.
+- **Usage**:
+  ```swift
+  #Preview {
+      PreviewShell { context in
+          PreviewDataFactory.seed(context)
+      } content: { context in
+          MyView(...)
+      }
+  }
+  ```
+
+### 2. Strict Isolation (No Side Effects)
+- **Rule**: NEVER use `.shared` singletons (e.g., `SyncManager.shared`) in previews.
+- **Rule**: `SyncManager` and `AppOverlayState` must be in `.preview` mode.
+- **Why**: Prevent network calls, database writes, or keyboard observers from leaking into the canvas.
+
+### 3. Deterministic Data
+- **Rule**: Logic that fetches data MUST use `PreviewDataFactory` fixed UUIDs.
+- **Rule**: Fetching must use `#Predicate { $0.id == ID }` to guarantee the correct entity is retrieved.
+- **Why**: "First" or "Any" fetches are nondeterministic and will break previews randomly.
+
 ## Screen Template
 Use this template for new screens to ensure compliance:
 

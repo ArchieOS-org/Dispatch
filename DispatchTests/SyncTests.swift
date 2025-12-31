@@ -1,7 +1,7 @@
 
 import XCTest
 import SwiftData
-@testable import Dispatch
+@testable import DispatchApp
 
 @MainActor
 final class SyncTests: XCTestCase {
@@ -16,9 +16,9 @@ final class SyncTests: XCTestCase {
     // 1. Test Hash Determinism
     func test_avatarHash_isComputedFromNormalizedJPEGBytes() async throws {
         // Given
-        let data1 = Data([0x01, 0x02, 0x03, 0x04])
-        let data2 = Data([0x01, 0x02, 0x03, 0x04])
-        let data3 = Data([0x05, 0x06]) // Different
+        _ = Data([0x01, 0x02, 0x03, 0x04])
+        _ = Data([0x01, 0x02, 0x03, 0x04])
+        _ = Data([0x05, 0x06]) // Different
         
         // When (We need to access normalizeAndHash, which is private. 
         // We might need to expose it or test via a public wrapper.
@@ -84,7 +84,7 @@ final class SyncTests: XCTestCase {
             email: "jony@apple.com",
             avatar: Data([0xFF]),
             avatarHash: "oldHash",
-            userType: .architect
+            userType: .admin
         )
         
         // When (Remote hash is nil)

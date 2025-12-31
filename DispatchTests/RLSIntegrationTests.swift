@@ -16,7 +16,7 @@
 
 import Testing
 import Foundation
-@testable import Dispatch
+@testable import DispatchApp
 
 // MARK: - Test Configuration
 
@@ -68,6 +68,7 @@ struct TaskRLSTests {
             listing: nil,
             createdVia: "dispatch",
             sourceSlackMessages: nil,
+            audiences: nil,
             claimedAt: nil,
             completedAt: nil,
             deletedAt: nil,

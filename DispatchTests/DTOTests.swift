@@ -9,7 +9,7 @@
 
 import Testing
 import Foundation
-@testable import Dispatch
+@testable import DispatchApp
 
 struct TaskDTOTests {
     
@@ -65,6 +65,7 @@ struct TaskDTOTests {
             listing: nil,
             createdVia: "dispatch",
             sourceSlackMessages: nil,
+            audiences: nil,
             claimedAt: nil,
             completedAt: nil,
             deletedAt: nil,
@@ -102,6 +103,7 @@ struct TaskDTOTests {
             listing: nil,
             createdVia: "slack",
             sourceSlackMessages: ["message1", "message2"],
+            audiences: nil,
             claimedAt: nil,
             completedAt: nil,
             deletedAt: nil,
@@ -114,10 +116,10 @@ struct TaskDTOTests {
         #expect(model.id == id)
         #expect(model.title == "Test Task")
         #expect(model.taskDescription == "Description")
-        #expect(model.priority == .urgent)
-        #expect(model.status == .inProgress)
+        #expect(model.priority == Priority.urgent)
+        #expect(model.status == TaskStatus.inProgress)
         #expect(model.declaredBy == declaredBy)
-        #expect(model.createdVia == .slack)
+        #expect(model.createdVia == CreationSource.slack)
         #expect(model.sourceSlackMessages?.count == 2)
     }
     
@@ -135,6 +137,7 @@ struct TaskDTOTests {
             listing: nil,
             createdVia: "dispatch",
             sourceSlackMessages: nil,
+            audiences: nil,
             claimedAt: nil,
             completedAt: nil,
             deletedAt: nil,
@@ -160,6 +163,7 @@ struct TaskDTOTests {
             listing: nil,
             createdVia: "dispatch",
             sourceSlackMessages: nil,
+            audiences: nil,
             claimedAt: nil,
             completedAt: nil,
             deletedAt: nil,
@@ -185,6 +189,7 @@ struct TaskDTOTests {
             listing: nil,
             createdVia: "dispatch",
             sourceSlackMessages: nil,
+            audiences: nil,
             claimedAt: nil,
             completedAt: nil,
             deletedAt: nil,
@@ -251,6 +256,7 @@ struct ActivityDTOTests {
             listing: nil,
             createdVia: "realtor_app",
             sourceSlackMessages: nil,
+            audiences: nil,
             durationMinutes: 60,
             claimedAt: nil,
             completedAt: nil,
@@ -263,9 +269,9 @@ struct ActivityDTOTests {
         
         #expect(model.id == id)
         #expect(model.title == "Property Showing")
-        #expect(model.type == .showProperty)
+        #expect(model.type == ActivityType.showProperty)
         #expect(model.duration == 3600.0) // 60 minutes in seconds
-        #expect(model.status == .inProgress)
+        #expect(model.status == ActivityStatus.inProgress)
     }
     
     @Test("ActivityDTO handles nil duration")
@@ -283,6 +289,7 @@ struct ActivityDTOTests {
             listing: nil,
             createdVia: "dispatch",
             sourceSlackMessages: nil,
+            audiences: nil,
             durationMinutes: nil,
             claimedAt: nil,
             completedAt: nil,
@@ -305,7 +312,8 @@ struct UserDTOTests {
             "id": "550e8400-e29b-41d4-a716-446655440000",
             "name": "John Doe",
             "email": "john@example.com",
-            "avatar_url": null,
+            "avatar_path": null,
+            "avatar_hash": null,
             "user_type": "admin",
             "created_at": "2025-01-01T00:00:00Z",
             "updated_at": "2025-01-01T00:00:00Z"
@@ -328,7 +336,8 @@ struct UserDTOTests {
             id: id,
             name: "Jane Smith",
             email: "jane@example.com",
-            avatarUrl: nil,
+            avatarPath: nil,
+            avatarHash: nil,
             userType: "marketing",
             createdAt: Date(),
             updatedAt: Date()
@@ -339,7 +348,7 @@ struct UserDTOTests {
         #expect(model.id == id)
         #expect(model.name == "Jane Smith")
         #expect(model.email == "jane@example.com")
-        #expect(model.userType == .marketing)
+        #expect(model.userType == UserType.marketing)
     }
 }
 
@@ -355,7 +364,8 @@ struct ListingDTOTests {
             "province": "ON",
             "postal_code": "M5H 2N2",
             "country": "Canada",
-            "price": "750000.00",
+            "country": "Canada",
+            "price": 750000.00,
             "mls_number": "C1234567",
             "listing_type": "sale",
             "status": "active",
@@ -393,7 +403,7 @@ struct ListingDTOTests {
             province: "BC",
             postalCode: "V6B 1A1",
             country: "Canada",
-            price: "1200000.00",
+            price: 1200000.00,
             mlsNumber: "V9876543",
             listingType: "lease",
             status: "active",
@@ -404,6 +414,7 @@ struct ListingDTOTests {
             pendingAt: nil,
             closedAt: nil,
             deletedAt: nil,
+            dueDate: nil,
             createdAt: Date(),
             updatedAt: Date()
         )
@@ -413,8 +424,8 @@ struct ListingDTOTests {
         #expect(model.id == id)
         #expect(model.address == "456 Oak Ave")
         #expect(model.city == "Vancouver")
-        #expect(model.listingType == .lease)
-        #expect(model.status == .active)
+        #expect(model.listingType == ListingType.lease)
+        #expect(model.status == ListingStatus.active)
         #expect(model.ownedBy == ownedBy)
     }
 
@@ -430,7 +441,8 @@ struct ListingDTOTests {
             "province": "AB",
             "postal_code": "T2P 1A1",
             "country": "Canada",
-            "price": "500000.00",
+            "country": "Canada",
+            "price": 500000.00,
             "mls_number": "A7654321",
             "listing_type": "sale",
             "status": "active",
@@ -497,9 +509,9 @@ struct NoteDTOTests {
             createdBy: createdBy,
             parentType: "activity",
             parentId: parentId,
-            createdAt: Date(),
             editedAt: nil,
-            editedBy: nil
+            editedBy: nil,
+            createdAt: Date()
         )
         
         let model = dto.toModel()
@@ -507,7 +519,7 @@ struct NoteDTOTests {
         #expect(model.id == id)
         #expect(model.content == "Important note")
         #expect(model.createdBy == createdBy)
-        #expect(model.parentType == .activity)
+        #expect(model.parentType == ParentType.activity)
         #expect(model.parentId == parentId)
     }
 }

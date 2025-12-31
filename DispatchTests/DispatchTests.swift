@@ -6,7 +6,7 @@
 //
 
 import Testing
-@testable import Dispatch
+@testable import DispatchApp
 
 struct DispatchTests {
 

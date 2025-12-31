@@ -24,6 +24,9 @@ final class KeyboardObserver: NSObject, ObservableObject {
     /// Only observes keyboard notifications on iPhone, not iPad.
     func attach(to overlayState: AppOverlayState) {
         guard !isAttached else { return }
+        // Preview Isolation: Do not observe keyboard in preview mode
+        if overlayState.mode == .preview { return }
+        
         self.overlayState = overlayState
         self.isAttached = true
 
