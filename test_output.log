@@ -1,0 +1,345 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project Dispatch.xcodeproj -scheme Dispatch -destination "platform=iOS Simulator,name=iPhone 17" "-only-testing:DispatchTests"
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  xctest-dynamic-overlay: https://github.com/pointfreeco/xctest-dynamic-overlay @ 1.8.0
+  swift-clocks: https://github.com/pointfreeco/swift-clocks @ 1.0.6
+  swift-concurrency-extras: https://github.com/pointfreeco/swift-concurrency-extras @ 1.3.2
+  swift-http-types: https://github.com/apple/swift-http-types.git @ 1.5.1
+  swift-asn1: https://github.com/apple/swift-asn1.git @ 1.5.1
+  swift-crypto: https://github.com/apple/swift-crypto.git @ 4.2.0
+  Supabase: https://github.com/supabase/supabase-swift.git @ 2.39.0
+
+2025-12-30 17:49:21.070 xcodebuild[26113:3757034] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+Build Preparation
+Build task concurrency set to 5 via user default IDEBuildOperationMaxNumberOfConcurrentCompileTasks
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (25 targets)
+    Target 'DispatchTests' in project 'Dispatch'
+        ➜ Explicit dependency on target 'Dispatch' in project 'Dispatch'
+    Target 'DispatchUITests' in project 'Dispatch'
+        ➜ Explicit dependency on target 'Dispatch' in project 'Dispatch'
+    Target 'Dispatch' in project 'Dispatch'
+        ➜ Explicit dependency on target 'Supabase' in project 'Supabase'
+    Target 'Supabase' in project 'Supabase'
+        ➜ Explicit dependency on target 'Supabase' in project 'Supabase'
+        ➜ Explicit dependency on target 'Functions' in project 'Supabase'
+        ➜ Explicit dependency on target 'PostgREST' in project 'Supabase'
+        ➜ Explicit dependency on target 'Auth' in project 'Supabase'
+        ➜ Explicit dependency on target 'Realtime' in project 'Supabase'
+        ➜ Explicit dependency on target 'Storage' in project 'Supabase'
+        ➜ Explicit dependency on target 'Helpers' in project 'Supabase'
+        ➜ Explicit dependency on target 'ConcurrencyExtras' in project 'swift-concurrency-extras'
+        ➜ Explicit dependency on target 'HTTPTypes' in project 'swift-http-types'
+        ➜ Explicit dependency on target 'Clocks' in project 'swift-clocks'
+        ➜ Explicit dependency on target 'XCTestDynamicOverlay' in project 'xctest-dynamic-overlay'
+        ➜ Explicit dependency on target 'Crypto' in project 'swift-crypto'
+        ➜ Explicit dependency on target 'IssueReporting' in project 'xctest-dynamic-overlay'
+    Target 'Supabase' in project 'Supabase'
+        ➜ Explicit dependency on target 'Helpers' in project 'Supabase'
+        ➜ Explicit dependency on target 'Auth' in project 'Supabase'
+        ➜ Explicit dependency on target 'Functions' in project 'Supabase'
+        ➜ Explicit dependency on target 'PostgREST' in project 'Supabase'
+        ➜ Explicit dependency on target 'Realtime' in project 'Supabase'
+        ➜ Explicit dependency on target 'Storage' in project 'Supabase'
+        ➜ Explicit dependency on target 'ConcurrencyExtras' in project 'swift-concurrency-extras'
+        ➜ Explicit dependency on target 'HTTPTypes' in project 'swift-http-types'
+        ➜ Explicit dependency on target 'Clocks' in project 'swift-clocks'
+        ➜ Explicit dependency on target 'XCTestDynamicOverlay' in project 'xctest-dynamic-overlay'
+        ➜ Explicit dependency on target 'Crypto' in project 'swift-crypto'
+        ➜ Explicit dependency on target 'IssueReporting' in project 'xctest-dynamic-overlay'
+    Target 'Storage' in project 'Supabase'
+        ➜ Explicit dependency on target 'Helpers' in project 'Supabase'
+        ➜ Explicit dependency on target 'ConcurrencyExtras' in project 'swift-concurrency-extras'
+        ➜ Explicit dependency on target 'HTTPTypes' in project 'swift-http-types'
+        ➜ Explicit dependency on target 'Clocks' in project 'swift-clocks'
+        ➜ Explicit dependency on target 'XCTestDynamicOverlay' in project 'xctest-dynamic-overlay'
+    Target 'Realtime' in project 'Supabase'
+        ➜ Explicit dependency on target 'Helpers' in project 'Supabase'
+        ➜ Explicit dependency on target 'ConcurrencyExtras' in project 'swift-concurrency-extras'
+        ➜ Explicit dependency on target 'HTTPTypes' in project 'swift-http-types'
+        ➜ Explicit dependency on target 'Clocks' in project 'swift-clocks'
+        ➜ Explicit dependency on target 'XCTestDynamicOverlay' in project 'xctest-dynamic-overlay'
+        ➜ Explicit dependency on target 'IssueReporting' in project 'xctest-dynamic-overlay'
+    Target 'PostgREST' in project 'Supabase'
+        ➜ Explicit dependency on target 'Helpers' in project 'Supabase'
+        ➜ Explicit dependency on target 'ConcurrencyExtras' in project 'swift-concurrency-extras'
+        ➜ Explicit dependency on target 'HTTPTypes' in project 'swift-http-types'
+        ➜ Explicit dependency on target 'Clocks' in project 'swift-clocks'
+        ➜ Explicit dependency on target 'XCTestDynamicOverlay' in project 'xctest-dynamic-overlay'
+    Target 'Functions' in project 'Supabase'
+        ➜ Explicit dependency on target 'Helpers' in project 'Supabase'
+        ➜ Explicit dependency on target 'ConcurrencyExtras' in project 'swift-concurrency-extras'
+        ➜ Explicit dependency on target 'HTTPTypes' in project 'swift-http-types'
+        ➜ Explicit dependency on target 'Clocks' in project 'swift-clocks'
+        ➜ Explicit dependency on target 'XCTestDynamicOverlay' in project 'xctest-dynamic-overlay'
+    Target 'Auth' in project 'Supabase'
+        ➜ Explicit dependency on target 'Helpers' in project 'Supabase'
+        ➜ Explicit dependency on target 'ConcurrencyExtras' in project 'swift-concurrency-extras'
+        ➜ Explicit dependency on target 'HTTPTypes' in project 'swift-http-types'
+        ➜ Explicit dependency on target 'Clocks' in project 'swift-clocks'
+        ➜ Explicit dependency on target 'XCTestDynamicOverlay' in project 'xctest-dynamic-overlay'
+        ➜ Explicit dependency on target 'Crypto' in project 'swift-crypto'
+    Target 'Crypto' in project 'swift-crypto'
+        ➜ Explicit dependency on target 'Crypto' in project 'swift-crypto'
+        ➜ Explicit dependency on target 'swift-crypto_Crypto' in project 'swift-crypto'
+    Target 'Crypto' in project 'swift-crypto'
+        ➜ Explicit dependency on target 'swift-crypto_Crypto' in project 'swift-crypto'
+    Target 'swift-crypto_Crypto' in project 'swift-crypto' (no dependencies)
+    Target 'Helpers' in project 'Supabase'
+        ➜ Explicit dependency on target 'ConcurrencyExtras' in project 'swift-concurrency-extras'
+        ➜ Explicit dependency on target 'HTTPTypes' in project 'swift-http-types'
+        ➜ Explicit dependency on target 'Clocks' in project 'swift-clocks'
+        ➜ Explicit dependency on target 'XCTestDynamicOverlay' in project 'xctest-dynamic-overlay'
+    Target 'XCTestDynamicOverlay' in project 'xctest-dynamic-overlay'
+        ➜ Explicit dependency on target 'XCTestDynamicOverlay' in project 'xctest-dynamic-overlay'
+        ➜ Explicit dependency on target 'IssueReportingPackageSupport' in project 'xctest-dynamic-overlay'
+        ➜ Explicit dependency on target 'IssueReporting' in project 'xctest-dynamic-overlay'
+    Target 'XCTestDynamicOverlay' in project 'xctest-dynamic-overlay'
+        ➜ Explicit dependency on target 'IssueReportingPackageSupport' in project 'xctest-dynamic-overlay'
+        ➜ Explicit dependency on target 'IssueReporting' in project 'xctest-dynamic-overlay'
+    Target 'Clocks' in project 'swift-clocks'
+        ➜ Explicit dependency on target 'Clocks' in project 'swift-clocks'
+        ➜ Explicit dependency on target 'ConcurrencyExtras' in project 'swift-concurrency-extras'
+        ➜ Explicit dependency on target 'IssueReporting' in project 'xctest-dynamic-overlay'
+    Target 'Clocks' in project 'swift-clocks'
+        ➜ Explicit dependency on target 'ConcurrencyExtras' in project 'swift-concurrency-extras'
+        ➜ Explicit dependency on target 'IssueReporting' in project 'xctest-dynamic-overlay'
+    Target 'IssueReporting' in project 'xctest-dynamic-overlay'
+        ➜ Explicit dependency on target 'IssueReporting' in project 'xctest-dynamic-overlay'
+        ➜ Explicit dependency on target 'IssueReportingPackageSupport' in project 'xctest-dynamic-overlay'
+    Target 'IssueReporting' in project 'xctest-dynamic-overlay'
+        ➜ Explicit dependency on target 'IssueReportingPackageSupport' in project 'xctest-dynamic-overlay'
+    Target 'IssueReportingPackageSupport' in project 'xctest-dynamic-overlay' (no dependencies)
+    Target 'HTTPTypes' in project 'swift-http-types'
+        ➜ Explicit dependency on target 'HTTPTypes' in project 'swift-http-types'
+    Target 'HTTPTypes' in project 'swift-http-types' (no dependencies)
+    Target 'ConcurrencyExtras' in project 'swift-concurrency-extras'
+        ➜ Explicit dependency on target 'ConcurrencyExtras' in project 'swift-concurrency-extras'
+    Target 'ConcurrencyExtras' in project 'swift-concurrency-extras' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/noahdeskin/conductor/workspaces/dispatch/philadelphia/Dispatch/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+ReadFileContents /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/share/docc/features.json
+
+Build description signature: 4714bc8397f8339f629480481e7968f2
+Build description path: /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Intermediates.noindex/XCBuildData/4714bc8397f8339f629480481e7968f2.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk /Users/noahdeskin/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+    cd /Users/noahdeskin/conductor/workspaces/dispatch/philadelphia/Dispatch.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk -o /Users/noahdeskin/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/iphonesimulator26.2-23C53-7d00a8b37fbd7999ea79df8ebc024bf0.sdkstatcache
+
+ProcessInfoPlistFile /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/swift-crypto_Crypto.bundle/Info.plist /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Intermediates.noindex/swift-crypto.build/Debug-iphonesimulator/swift-crypto_Crypto.build/empty-swift-crypto_Crypto.plist (in target 'swift-crypto_Crypto' from project 'swift-crypto')
+    cd /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/SourcePackages/checkouts/swift-crypto
+    builtin-infoPlistUtility /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Intermediates.noindex/swift-crypto.build/Debug-iphonesimulator/swift-crypto_Crypto.build/empty-swift-crypto_Crypto.plist -producttype com.apple.product-type.bundle -expandbuildsettings -format binary -platform iphonesimulator -o /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/swift-crypto_Crypto.bundle/Info.plist
+
+note: Disabling hardened runtime with ad-hoc codesigning. (in target 'Dispatch' from project 'Dispatch')
+CopySwiftLibs /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app (in target 'Dispatch' from project 'Dispatch')
+    cd /Users/noahdeskin/conductor/workspaces/dispatch/philadelphia
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/Dispatch.debug.dylib --scan-folder /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/Frameworks --scan-folder /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/PlugIns --scan-folder /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/SystemExtensions --scan-folder /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Intermediates.noindex/Dispatch.build/Debug-iphonesimulator/Dispatch.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ProcessInfoPlistFile /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/Info.plist /Users/noahdeskin/conductor/workspaces/dispatch/philadelphia/Dispatch/Info.plist (in target 'Dispatch' from project 'Dispatch')
+    cd /Users/noahdeskin/conductor/workspaces/dispatch/philadelphia
+    builtin-infoPlistUtility /Users/noahdeskin/conductor/workspaces/dispatch/philadelphia/Dispatch/Info.plist -producttype com.apple.product-type.application -genpkginfo /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/PkgInfo -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Intermediates.noindex/Dispatch.build/Debug-iphonesimulator/Dispatch.build/assetcatalog_generated_info.plist -scanforprivacyfile /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/swift-crypto_Crypto.bundle -o /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/Info.plist
+
+ProcessInfoPlistFile /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/PlugIns/DispatchTests.xctest/Info.plist /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Intermediates.noindex/Dispatch.build/Debug-iphonesimulator/DispatchTests.build/empty-DispatchTests.plist (in target 'DispatchTests' from project 'Dispatch')
+    cd /Users/noahdeskin/conductor/workspaces/dispatch/philadelphia
+    builtin-infoPlistUtility /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Intermediates.noindex/Dispatch.build/Debug-iphonesimulator/DispatchTests.build/empty-DispatchTests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -format binary -platform iphonesimulator -scanforprivacyfile /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/PlugIns/DispatchTests.xctest/swift-crypto_Crypto.bundle -o /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/PlugIns/DispatchTests.xctest/Info.plist
+
+CopySwiftLibs /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/PlugIns/DispatchTests.xctest (in target 'DispatchTests' from project 'Dispatch')
+    cd /Users/noahdeskin/conductor/workspaces/dispatch/philadelphia
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/PlugIns/DispatchTests.xctest/DispatchTests --scan-folder /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/PlugIns/DispatchTests.xctest/Frameworks --scan-folder /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/PlugIns/DispatchTests.xctest/PlugIns --scan-folder /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/PlugIns/DispatchTests.xctest/SystemExtensions --scan-folder /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/PlugIns/DispatchTests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/Dispatch.app/PlugIns/DispatchTests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Intermediates.noindex/Dispatch.build/Debug-iphonesimulator/DispatchTests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+ProcessInfoPlistFile /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/DispatchUITests-Runner.app/PlugIns/DispatchUITests.xctest/Info.plist /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Intermediates.noindex/Dispatch.build/Debug-iphonesimulator/DispatchUITests.build/empty-DispatchUITests.plist (in target 'DispatchUITests' from project 'Dispatch')
+    cd /Users/noahdeskin/conductor/workspaces/dispatch/philadelphia
+    builtin-infoPlistUtility /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Intermediates.noindex/Dispatch.build/Debug-iphonesimulator/DispatchUITests.build/empty-DispatchUITests.plist -producttype com.apple.product-type.bundle.ui-testing -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Intermediates.noindex/Dispatch.build/Debug-iphonesimulator/DispatchUITests.build/ProductTypeInfoPlistAdditions.plist -o /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/DispatchUITests-Runner.app/PlugIns/DispatchUITests.xctest/Info.plist
+
+CopySwiftLibs /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/DispatchUITests-Runner.app/PlugIns/DispatchUITests.xctest (in target 'DispatchUITests' from project 'Dispatch')
+    cd /Users/noahdeskin/conductor/workspaces/dispatch/philadelphia
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/DispatchUITests-Runner.app/PlugIns/DispatchUITests.xctest/DispatchUITests --scan-folder /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/DispatchUITests-Runner.app/PlugIns/DispatchUITests.xctest/Frameworks --scan-folder /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/DispatchUITests-Runner.app/PlugIns/DispatchUITests.xctest/PlugIns --scan-folder /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/DispatchUITests-Runner.app/PlugIns/DispatchUITests.xctest/SystemExtensions --scan-folder /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/DispatchUITests-Runner.app/PlugIns/DispatchUITests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Products/Debug-iphonesimulator/DispatchUITests-Runner.app/PlugIns/DispatchUITests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Build/Intermediates.noindex/Dispatch.build/Debug-iphonesimulator/DispatchUITests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+Testing started
+Test suite 'SyncRelationshipTests' started on 'Clone 1 of iPhone 17 - Dispatch (26451)'
+Test case 'SyncRelationshipTests.testListingArrivesSynced_ThenUserArrives_RelationshipResolves()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.116 seconds)
+Test case 'SyncRelationshipTests.testReconciliation_LeavesValidLinksIntact()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.010 seconds)
+Test case 'SyncRelationshipTests.testUserArrives_ThenListingArrives_RelationshipResolves()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.009 seconds)
+Test suite 'AppStateTests' started on 'Clone 1 of iPhone 17 - Dispatch (26451)'
+Test case 'AppStateTests.test_dispatch_navigate_updatesRouterPath()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.015 seconds)
+Test case 'AppStateTests.test_dispatch_openSearch_setsOverlayState()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.005 seconds)
+Test case 'AppStateTests.test_dispatch_popToRoot_clearsRouterPath()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.008 seconds)
+Test case 'AppStateTests.test_router_selectSameTab_popsToRoot()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.001 seconds)
+Test case 'AppStateTests.test_router_switchTab_clearsPath()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.008 seconds)
+Test suite 'SyncTests' started on 'Clone 1 of iPhone 17 - Dispatch (26451)'
+Test case 'SyncTests.test_avatarHash_isComputedFromNormalizedJPEGBytes()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.001 seconds)
+Test case 'SyncTests.test_syncUp_flow_logic_SKIP_hashing_if_avatar_nil()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.000 seconds)
+Test case 'SyncTests.test_syncUp_flow_logic_SKIP_upsert_on_upload_failure()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.000 seconds)
+Test case 'SyncTests.test_User_clearsAvatar_whenRemoteHashIsNil()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.002 seconds)
+Test case 'SyncTests.test_User_updatesAvatarFromDownload()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.001 seconds)
+Test case 'SyncTests.test_UserDTO_mapsAvatarFieldsCorrectly()' passed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.001 seconds)
+Test suite 'PreviewInfrastructureTests' started on 'Clone 1 of iPhone 17 - Dispatch (26451)'
+Test case 'PreviewInfrastructureTests.testListingDetailView_isolation_and_stability()' failed on 'Clone 1 of iPhone 17 - Dispatch (26451)' (0.000 seconds)
+Test suite 'ActivityRLSTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ConflictStrategyTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ListingRLSTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'TaskDTOTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'SyncStatusTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ParentTypeTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'CreationSourceTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ActivityStatusTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'UserDTOTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'TaskStatusTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'UserTypeTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'NoteDTOTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ListingDTOTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ClaimEventDTOTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'UserRLSTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'TaskRLSTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'DateSectionTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'PriorityTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'SubtaskDTOTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ClaimActionTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ListingStatusTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ActivityTypeTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'WorkItemActionsTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ClaimEventRLSTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ClaimFilterTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'CrossEntityAccessTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ActivityDTOTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ClaimRaceConditionTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'DispatchTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test suite 'ListingTypeTests' started on 'Clone 1 of iPhone 17 - Dispatch (26523)'
+Test case 'ListingRLSTests/testReadOwnListings()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ListingRLSTests/testCannotReadOthersListings()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ActivityRLSTests/testReadOwnDeclaredActivities()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ListingRLSTests/testExecCanReadAllListings()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskRLSTests/testReadOwnDeclaredTasks()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskRLSTests/testCannotUpdateOthersTasks()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskRLSTests/testExecCanReadAllTasks()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskRLSTests/testCannotReadOthersDeclaredTasks()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskRLSTests/testReadClaimedTasks()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ActivityRLSTests/testReadClaimedActivities()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskRLSTests/testCannotDeleteOthersTasks()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ActivityRLSTests/testCannotReadOthersDeclaredActivities()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'UserRLSTests/testUserSyncWithRLS()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskRLSTests/testDeleteOwnDeclaredTasks()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskRLSTests/testUpdateOwnDeclaredTasks()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'CrossEntityAccessTests/testNotesInheritParentAccess()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'CrossEntityAccessTests/testTaskAccessViaListing()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'CrossEntityAccessTests/testSubtasksInheritParentAccess()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimEventRLSTests/testCreateClaimEvent()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimEventRLSTests/testCannotReadClaimEventsForOthersTasks()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimEventRLSTests/testReadClaimEventsForOwnTasks()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimRaceConditionTests/testClaimAlreadyClaimedTask()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimRaceConditionTests/testConcurrentClaimsOneWinner()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimRaceConditionTests/testReleaseByNonClaimer()' skipped on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'SyncStatusTests/testAssociatedValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ParentTypeTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'SyncStatusTests/testBasicCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'CreationSourceTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'UserTypeTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'UserTypeTests/testIsStaff()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ConflictStrategyTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ParentTypeTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskStatusTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ActivityStatusTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'UserTypeTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'CreationSourceTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskDTOTests/testInvalidPriority()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskStatusTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'DateSectionTests/testTomorrow()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskDTOTests/testInvalidStatus()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'DateSectionTests/testIdentifiable()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskDTOTests/testNilDescription()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'DateSectionTests/testToday()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'UserTypeTests/testCodable()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskStatusTests/testSnakeCaseDecoding()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'PriorityTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'DateSectionTests/testBoundaryConditions()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'DateSectionTests/testNilDate()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskDTOTests/testDecodeFromJSON()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'PriorityTests/testSorting()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ListingDTOTests/testIgnoresUnknownKeys()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'DateSectionTests/testOverdue()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskDTOTests/testToModel()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ActivityStatusTests/testCodable()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'DateSectionTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskStatusTests/testCodable()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ListingDTOTests/testToModel()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'NoteDTOTests/testToModel()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'DateSectionTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'PriorityTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ActivityTypeTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'PriorityTests/testCodable()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'DateSectionTests/testUpcoming()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ActivityStatusTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimEventDTOTests/testDecodeFromJSON()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ListingDTOTests/testDecodeFromJSON()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'NoteDTOTests/testDecodeFromJSON()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimEventDTOTests/testNilReason()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'PriorityTests/testComparable()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'SubtaskDTOTests/testDecodeFromJSON()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimEventDTOTests/testInitFromModel()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimEventDTOTests/testToModel()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimActionTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimEventDTOTests/testInvalidAction()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'SubtaskDTOTests/testToModel()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'TaskDTOTests/testEncodeToJSON()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ActivityTypeTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ConflictStrategyTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimActionTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimFilterTests/testUnclaimedFilter()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimFilterTests/testDisplayNameTasks()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimFilterTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ListingStatusTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ActivityDTOTests/testNilDuration()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimEventDTOTests/testInvalidParentType()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ActivityDTOTests/testToModel()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimFilterTests/testIdentifiable()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimFilterTests/testDisplayNameActivities()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimFilterTests/testOthersFilter()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimFilterTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimFilterTests/testMineFilter()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'DispatchTests/example()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ListingTypeTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ActivityDTOTests/testDecodeFromJSON()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ClaimEventDTOTests/testEncodeToJSON()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ListingTypeTests/testAllCases()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'ListingStatusTests/testRawValues()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'WorkItemActionsTests/testCurre2025-12-30 17:50:26.278 xcodebuild[26113:3757034] [MT] IDETestOperationsObserverDebug: 62.536 elapsed -- Testing started completed.
+2025-12-30 17:50:26.278 xcodebuild[26113:3757034] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2025-12-30 17:50:26.278 xcodebuild[26113:3757034] [MT] IDETestOperationsObserverDebug: 62.536 sec, +62.536 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/noahdeskin/Library/Developer/Xcode/DerivedData/Dispatch-dhygaqrfhsetnmccamtixvonfmwv/Logs/Test/Test-Dispatch-2025.12.30_17-49-21--0500.xcresult
+
+** TEST FAILED **
+
+ntUserIdUpdates()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'UserDTOTests/testToModel()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)
+Test case 'UserDTOTests/testDecodeFromJSON()' passed on 'Clone 1 of iPhone 17 - Dispatch (26523)' (0.000 seconds)

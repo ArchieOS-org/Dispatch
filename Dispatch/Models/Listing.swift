@@ -23,6 +23,7 @@ final class Listing: NotableProtocol {
 
     // Foreign keys
     var ownedBy: UUID
+    var typeDefinitionId: UUID? // Links to ListingTypeDefinition (nullable during client transition)
 
     // Metadata
     var createdVia: CreationSource
@@ -62,6 +63,9 @@ final class Listing: NotableProtocol {
 
     // Inverse relationships
     var owner: User?
+    
+    // Dynamic type definition relationship (Non-Optional post-migration)
+    var typeDefinition: ListingTypeDefinition?
 
     init(
         id: UUID = UUID(),

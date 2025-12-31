@@ -47,6 +47,7 @@ struct MenuPageView: View {
         case .myWorkspace: return openTasks.count + openActivities.count
         case .listings: return activeListings.count
         case .realtors: return activeRealtors.count
+        case .settings: return 0 // Settings doesn't have a count
         }
     }
 

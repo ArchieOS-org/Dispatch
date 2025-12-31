@@ -12,6 +12,7 @@ enum MenuSection: String, CaseIterable, Identifiable, Hashable {
     case myWorkspace
     case listings
     case realtors
+    case settings
 
     var id: String { rawValue }
 
@@ -21,6 +22,7 @@ enum MenuSection: String, CaseIterable, Identifiable, Hashable {
         case .myWorkspace: return "My Workspace"
         case .listings: return "Listings"
         case .realtors: return "Realtors"
+        case .settings: return "Settings"
         }
     }
 
@@ -30,6 +32,7 @@ enum MenuSection: String, CaseIterable, Identifiable, Hashable {
         case .myWorkspace: return "briefcase"
         case .listings: return DS.Icons.Entity.listing
         case .realtors: return DS.Icons.Entity.realtor
+        case .settings: return "gearshape"
         }
     }
 
@@ -39,6 +42,7 @@ enum MenuSection: String, CaseIterable, Identifiable, Hashable {
         case .myWorkspace: return DS.Colors.Section.myWorkspace
         case .listings: return DS.Colors.Section.listings
         case .realtors: return DS.Colors.Section.realtors
+        case .settings: return DS.Colors.Text.secondary
         }
     }
 }

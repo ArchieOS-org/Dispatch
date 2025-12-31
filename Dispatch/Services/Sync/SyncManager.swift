@@ -14,19 +14,21 @@ import Combine
 import Network
 import CryptoKit
 
+enum SyncRunMode: Sendable {
+    case live
+    case preview
+    case test // Deterministic mode: no network, timers, or side effects
+}
+
+
 @MainActor
 final class SyncManager: ObservableObject {
     static let shared = SyncManager()
     
     // MARK: - Run Mode
     
-    enum RunMode {
-        case live
-        case preview
-        case test // Deterministic mode: no network, timers, or side effects
-    }
-    
-    let mode: RunMode
+    typealias RunMode = SyncRunMode
+    nonisolated let mode: RunMode
     private var isShutdown = false // Jobs Standard: Track lifecycle state
     
     // MARK: - Telemetry (Preview Only)
@@ -152,7 +154,7 @@ final class SyncManager: ObservableObject {
     private var recentlyProcessedIds: Set<UUID> = []
     #endif
 
-    init(mode: RunMode = .live) {
+    init(mode: SyncRunMode = .live) {
         self.mode = mode
         
         // Only load expensive state in live mode
@@ -170,10 +172,9 @@ final class SyncManager: ObservableObject {
     }
 
     deinit {
-        // Jobs Standard: Verify deterministic shutdown
-        if !isShutdown && mode != .live {
-            print("⚠️ [SyncManager] deinit called WITHOUT shutdown()! This causes leaks/crashes in tests.")
-        }
+        // Strict Jobs Standard: NO calls to actor-isolated state (isShutdown) here.
+        // Lifecycle enforcement belongs in tests.
+        // Only safe, non-isolated reads allowed.
     }
 
     // MARK: - Configuration
@@ -894,11 +895,8 @@ final class SyncManager: ObservableObject {
             // Apply Avatar Update (independent of scalar pending state? Usually yes, binary assets sync separately)
             // But if we have a pending avatar upload (local hash != remote hash), we shouldn't overwrite?
             // "Avatar processing ... off-main"
-            // If we are pending, we might have a local avatar that hasn't uploaded.
-            // If we blindly apply remote, we lose our new photo.
-            // CHECK: If user.syncState == .pending, do we skip avatar too?
-            // If pending, we assume local is newer.
-            // YES. If pending, skip avatar overwrite.
+            // If we are pending, we assume local is newer.
+            // If pending, skip avatar overwrite.
             if shouldApplyScalars {
                 if shouldUpdateAvatar {
                     user.avatar = newAvatarData
@@ -1702,74 +1700,85 @@ final class SyncManager: ObservableObject {
         debugLog.log("║           startListening() CALLED                          ║", category: .realtime)
         debugLog.log("╚════════════════════════════════════════════════════════════╝", category: .realtime)
 
-        guard isAuthenticated, !isListening else {
+        guard isAuthenticated else {
+            debugLog.log("SKIPPING startListening - not authenticated", category: .realtime)
+            return
+        }
+        guard !isListening else {
+            debugLog.log("SKIPPING startListening - already listening", category: .realtime)
+            return
+        }
+        guard modelContainer != nil else {
+            debugLog.log("SKIPPING startListening - no modelContainer", category: .realtime)
             return
         }
 
-        isListening = true
-        
-        // 1. Socket Status
-        statusTask = Task {
-            debugLog.log("📡 Socket status monitor task STARTED", category: .websocket)
-            for await status in supabase.realtimeV2.statusChange {
-                if Task.isCancelled { break }
-                switch status {
-                case .disconnected:
-                    self.wasDisconnected = true
-                case .connected:
-                    if self.wasDisconnected {
-                        self.wasDisconnected = false
-                        await self.sync()
-                    }
-                default: break
-                }
-            }
-        }
-
-        // 2. Create Channel
+        // 1. Create Channel
         let channelName = "dispatch-sync"
         let channel = supabase.realtimeV2.channel(channelName)
         
-        // 3. Configure Streams (Insert/Update/Delete) for each table
-        let tables = ["tasks", "activities", "listings", "users", "claim_events"]
-        
+        // 2. Configure Streams (Insert/Update/Delete) for each table
         // --- TASKS ---
         let tasksInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "tasks")
         let tasksUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "tasks")
         let tasksDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "tasks")
-        
-        tasksSubscriptionTask = Task {
-            await withTaskGroup(of: Void.self) { group in
-                group.addTask {
-                    for await insert in tasksInserts {
-                        if Task.isCancelled { return }
-                        // Inline handling logic for now, or extract to helper
-                        // For brevity in this refactor, we keep logic minimal or call existing helpers if possible.
-                        // Ideally, we move the big blocks into `handleTaskInsert` etc.
-                        // But to minimize diff, we'll inline the existing logic block here.
-                         await self.handleTaskInsert(insert)
-                    }
-                }
-                group.addTask {
-                    for await update in tasksUpdates {
-                        if Task.isCancelled { return }
-                        await self.handleTaskUpdate(update)
-                    }
-                }
-                group.addTask {
-                    for await delete in tasksDeletes {
-                        if Task.isCancelled { return }
-                        await self.handleTaskDelete(delete)
-                    }
-                }
-            }
-        }
         
         // --- ACTIVITIES ---
         let actInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "activities")
         let actUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "activities")
         let actDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "activities")
 
+        // --- LISTINGS ---
+        let listInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "listings")
+        let listUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "listings")
+        let listDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "listings")
+
+        // --- USERS ---
+        let usersInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "users")
+        let usersUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "users")
+        let usersDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "users")
+
+        // --- CLAIM EVENTS ---
+        let claimInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "claim_events")
+        let claimUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "claim_events")
+        let claimDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "claim_events")
+
+        // PHASE A: Prepare (Create channel + stream refs, no global state writes)
+        // Subscribe to channel
+        do {
+            try await channel.subscribeWithError()
+        } catch {
+            debugLog.error("❌ Realtime subscribe failed", error: error)
+            await shutdown()
+            return
+        }
+        
+        // PHASE B: Publish (Commit state + spawn tasks)
+        // Only set this AFTER successful subscribe
+        realtimeChannel = channel
+        isListening = true
+        
+        // PHASE C: Spawn Consumption Tasks
+        // Now it is safe to spawn tasks because we are committed.
+        
+        statusTask = Task {
+             for await status in channel.statusChange {
+                 if Task.isCancelled { return }
+                 debugLog.log("Realtime Status: \(status)", category: .realtime)
+                 await MainActor.run { 
+                     self.syncStatus = self.mapRealtimeStatus(status)
+                 }
+             }
+         }
+
+        tasksSubscriptionTask = Task {
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { for await e in tasksInserts { if Task.isCancelled { return }; await self.handleTaskInsert(e) } }
+                group.addTask { for await e in tasksUpdates { if Task.isCancelled { return }; await self.handleTaskUpdate(e) } }
+                group.addTask { for await e in tasksDeletes { if Task.isCancelled { return }; await self.handleTaskDelete(e) } }
+            }
+        }
+        
         activitiesSubscriptionTask = Task {
             await withTaskGroup(of: Void.self) { group in
                 group.addTask { for await e in actInserts { if Task.isCancelled { return }; await self.handleActivityInsert(e) } }
@@ -1777,12 +1786,7 @@ final class SyncManager: ObservableObject {
                 group.addTask { for await e in actDeletes { if Task.isCancelled { return }; await self.handleActivityDelete(e) } }
             }
         }
-
-        // --- LISTINGS ---
-        let listInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "listings")
-        let listUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "listings")
-        let listDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "listings")
-
+        
         listingsSubscriptionTask = Task {
             await withTaskGroup(of: Void.self) { group in
                 group.addTask { for await e in listInserts { if Task.isCancelled { return }; await self.handleListingInsert(e) } }
@@ -1790,11 +1794,6 @@ final class SyncManager: ObservableObject {
                 group.addTask { for await e in listDeletes { if Task.isCancelled { return }; await self.handleListingDelete(e) } }
             }
         }
-
-        // --- USERS ---
-        let usersInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "users")
-        let usersUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "users")
-        let usersDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "users")
 
         usersSubscriptionTask = Task {
             await withTaskGroup(of: Void.self) { group in
@@ -1819,11 +1818,6 @@ final class SyncManager: ObservableObject {
             }
         }
         
-        // --- CLAIM EVENTS ---
-        let claimInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "claim_events")
-        let claimUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "claim_events")
-        let claimDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "claim_events")
-
         claimEventsSubscriptionTask = Task {
             await withTaskGroup(of: Void.self) { group in
                 group.addTask { 
@@ -1846,16 +1840,6 @@ final class SyncManager: ObservableObject {
                 }
             }
         }
-        
-        realtimeChannel = channel
-        
-        debugLog.log("✅ Realtime setup complete. Configured listeners for \(tables.count) tables.", category: .realtime)
-
-        // Start broadcast listener if enabled (runs in parallel with postgres_changes)
-        await startBroadcastListening()
-        
-        // Subscribe to channel
-        await channel.subscribe()
     }
     
     // MARK: - Shutdown (Jobs Standard)
@@ -1905,22 +1889,26 @@ final class SyncManager: ObservableObject {
         
         if mode == .test {
             // Provable Termination: Fail if tasks don't exit
-             await withTimeout(seconds: 2.0) {
-                 _ = await self.statusTask?.result
-                 _ = await self.broadcastTask?.result
-                 _ = await self.syncLoopTask?.result
-                 
-                 _ = await self.startBroadcastListeningTask?.result
-                 
-                 _ = await self.tasksSubscriptionTask?.result
-                 _ = await self.activitiesSubscriptionTask?.result
-                 _ = await self.listingsSubscriptionTask?.result
-                 _ = await self.usersSubscriptionTask?.result
-                 _ = await self.claimEventsSubscriptionTask?.result
-                 
-                 #if DEBUG
-                 _ = await self.debugHangingTask?.result
-                 #endif
+             do {
+                 try await withTimeout(seconds: 2.0) {
+                     _ = await self.statusTask?.result
+                     _ = await self.broadcastTask?.result
+                     _ = await self.syncLoopTask?.result
+                     
+                     _ = await self.startBroadcastListeningTask?.result
+                     
+                     _ = await self.tasksSubscriptionTask?.result
+                     _ = await self.activitiesSubscriptionTask?.result
+                     _ = await self.listingsSubscriptionTask?.result
+                     _ = await self.usersSubscriptionTask?.result
+                     _ = await self.claimEventsSubscriptionTask?.result
+                     
+                     #if DEBUG
+                     _ = await self.debugHangingTask?.result
+                     #endif
+                 }
+             } catch {
+                 print("🚨 FATAL: SyncManager.shutdown() timed out! Tasks stuck.")
              }
         } else {
             // In live/preview, just await (logging ensures visibility)
@@ -1986,17 +1974,32 @@ final class SyncManager: ObservableObject {
     #endif
 
     // Helper for test timeout
-    private func withTimeout(seconds: TimeInterval, operation: @escaping @Sendable () async -> Void) async {
-        await withTaskGroup(of: Void.self) { group in
+    private func withTimeout(seconds: TimeInterval, operation: @escaping @Sendable () async -> Void) async throws {
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            // Task 1: Operation
             group.addTask {
                 await operation()
             }
+            
+            // Task 2: Timer
             group.addTask {
-                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                if !Task.isCancelled {
-                   // If timeout hits, we log a fatal error equivalent (or print for now)
-                   // In a real test, this would be XCTFail, but here we log loudly.
-                   print("🚨 FATAL: SyncManager.shutdown() timed out! Tasks stuck.")
+                try await Task.sleep(for: .seconds(seconds))
+                throw CancellationError() // Timer won
+            }
+            
+            // Wait for first completion
+            do {
+                try await group.next()
+                // If operation finished first, cancel timer
+                group.cancelAll()
+            } catch {
+                // If timer finished first (threw), cancel operation and rethrow
+                group.cancelAll()
+                if mode == .test {
+                    struct TimeoutError: Error {}
+                    throw TimeoutError()
+                } else {
+                    debugLog.error("Operation timed out after \(seconds)s")
                 }
             }
         }
@@ -2027,6 +2030,20 @@ final class SyncManager: ObservableObject {
         debugLog.log("✓ Realtime stopped. isListening = false", category: .realtime)
     }
 
+    /// Maps Supabase RealtimeChannelStatus to our global SyncStatus
+    private func mapRealtimeStatus(_ status: RealtimeChannelStatus) -> SyncStatus {
+        switch status {
+        case .subscribed:
+            return .ok(Date()) // Connected and healthy
+        case .subscribing:
+            return .syncing    // Connecting...
+        case .unsubscribed:
+            return .idle       // Stopped
+        @unknown default:
+            return .idle
+        }
+    }
+
     // MARK: - Broadcast Realtime (v2 Pattern)
 
     /// Starts listening to broadcast channel (v2 pattern).
@@ -2036,7 +2053,7 @@ final class SyncManager: ObservableObject {
             debugLog.log("Broadcast realtime disabled (useBroadcastRealtime = false)", category: .channel)
             return
         }
-        guard isAuthenticated, let container = modelContainer else {
+        guard isAuthenticated, modelContainer != nil else {
             debugLog.log("Skipping broadcast listener - not authenticated or no container", category: .channel)
             return
         }
@@ -2356,7 +2373,7 @@ extension SyncManager {
     func handleTaskDelete(_ action: DeleteAction) async {
         guard let container = modelContainer else { return }
         if let id = extractUUID(from: action.oldRecord, key: "id") {
-            try? deleteLocalTask(id: id, context: container.mainContext)
+            _ = try? deleteLocalTask(id: id, context: container.mainContext)
         }
     }
     
@@ -2384,7 +2401,7 @@ extension SyncManager {
      func handleActivityDelete(_ action: DeleteAction) async {
          guard let container = modelContainer else { return }
          if let id = extractUUID(from: action.oldRecord, key: "id") {
-             try? deleteLocalActivity(id: id, context: container.mainContext)
+             _ = try? deleteLocalActivity(id: id, context: container.mainContext)
          }
      }
      
@@ -2412,7 +2429,7 @@ extension SyncManager {
      func handleListingDelete(_ action: DeleteAction) async {
          guard let container = modelContainer else { return }
          if let id = extractUUID(from: action.oldRecord, key: "id") {
-             try? deleteLocalListing(id: id, context: container.mainContext)
+             _ = try? deleteLocalListing(id: id, context: container.mainContext)
          }
      }
      
@@ -2440,7 +2457,7 @@ extension SyncManager {
      func handleUserDelete(_ action: DeleteAction) async {
          guard let container = modelContainer else { return }
          if let id = extractUUID(from: action.oldRecord, key: "id") {
-             try? deleteLocalUser(id: id, context: container.mainContext)
+             _ = try? deleteLocalUser(id: id, context: container.mainContext)
          }
      }
      
@@ -2468,7 +2485,7 @@ extension SyncManager {
       func handleClaimEventDelete(_ action: DeleteAction) async {
           guard let container = modelContainer else { return }
           if let id = extractUUID(from: action.oldRecord, key: "id") {
-              try? deleteLocalClaimEvent(id: id, context: container.mainContext)
+               _ = try? deleteLocalClaimEvent(id: id, context: container.mainContext)
           }
       }
 }

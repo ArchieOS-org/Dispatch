@@ -48,5 +48,6 @@ enum AppTab: String, CaseIterable, Equatable {
     case workspace
     case listings
     case realtors
+    case settings
     case search // If search is a tab? Or just an overlay?
 }

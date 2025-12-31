@@ -31,7 +31,9 @@ struct DispatchApp: App {
             Note.self,
             Subtask.self,
             StatusChange.self,
-            ClaimEvent.self
+            ClaimEvent.self,
+            ListingTypeDefinition.self,
+            ActivityTemplate.self
         ])
         let modelConfiguration = ModelConfiguration(
             schema: schema,

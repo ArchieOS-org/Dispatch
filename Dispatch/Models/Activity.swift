@@ -22,6 +22,7 @@ final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     var declaredBy: UUID
     var claimedBy: UUID?
     var listingId: UUID?
+    var sourceTemplateId: UUID? // For idempotency: links to ActivityTemplate that generated this
 
     // Metadata
     var createdVia: CreationSource
@@ -75,6 +76,7 @@ final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     // Inverse relationships
     var claimedByUser: User?
     var listing: Listing?
+    var sourceTemplate: ActivityTemplate? // Source template that generated this activity
 
     init(
         id: UUID = UUID(),

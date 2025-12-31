@@ -328,6 +328,7 @@ struct ContentView: View {
             case .workspace: appState.dispatch(.selectTab(.workspace))
             case .listings: appState.dispatch(.selectTab(.listings))
             case .realtors: appState.dispatch(.selectTab(.realtors))
+            case .settings: appState.dispatch(.selectTab(.settings))
             case .search: break // Search tab doesn't navigate
             }
             #if !os(macOS)
@@ -344,13 +345,14 @@ struct ContentView: View {
     // MARK: - iPad/macOS Sidebar Navigation
     
     #if os(macOS)
-    /// Toolbar context based on current tab selection
     private var toolbarContext: ToolbarContext {
         switch selectedTab {
         case .listings:
             return .listingList
         case .realtors:
             return .realtorList
+        case .settings:
+            return .taskList // Settings uses default toolbar
         case .workspace, .search:
             return .taskList // Re-use task actions for now
         }
@@ -384,6 +386,16 @@ struct ContentView: View {
                         isSelected: selectedTab == .realtors,
                         action: { appState.dispatch(.selectTab(.realtors)) }
                     )
+                    
+                    Divider()
+                        .padding(.vertical, DS.Spacing.sm)
+                    
+                    SidebarRow(
+                        title: "Settings",
+                        icon: "gearshape",
+                        isSelected: selectedTab == .settings,
+                        action: { appState.dispatch(.selectTab(.settings)) }
+                    )
                 }
             }
             .listStyle(.sidebar)
@@ -395,6 +407,8 @@ struct ContentView: View {
                         ListingListView()
                     case .realtors:
                         RealtorsListView() // Use root stack
+                    case .settings:
+                        SettingsView()
                     case .workspace, .search:
                         MyWorkspaceView()
                     }
@@ -687,6 +701,10 @@ struct ContentView: View {
         case .realtors:
             // Realtors currently has no global filtering in header
             newScreen = .realtors
+        
+        case .settings:
+            // Settings has no filtering
+            newScreen = .other
             
         case .search:
             newScreen = .other

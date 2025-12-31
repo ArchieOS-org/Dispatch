@@ -36,7 +36,7 @@ class PreviewContext: ObservableObject {
         self.overlayState = overlayState
         
         // InMemory Container with Full Schema
-        let schema = Schema([User.self, Listing.self, TaskItem.self, Activity.self, Note.self, ClaimEvent.self])
+        let schema = Schema([User.self, Listing.self, TaskItem.self, Activity.self, Note.self, ClaimEvent.self, ListingTypeDefinition.self, ActivityTemplate.self])
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         do {
             self.container = try ModelContainer(for: schema, configurations: [config])

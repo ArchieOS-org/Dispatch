@@ -138,6 +138,9 @@ final class AppState: ObservableObject {
                 sheetState = .addListing
             case .realtors:
                 sheetState = .addRealtor
+            case .settings:
+                // Settings doesn't have a "new item" action
+                break
             case .workspace, .search:
                 // Default to quick entry for workspace or search
                 sheetState = .quickEntry(type: nil) // nil uses default behavior

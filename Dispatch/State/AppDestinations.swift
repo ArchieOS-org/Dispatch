@@ -43,6 +43,13 @@ struct AppDestinationsModifier: ViewModifier {
             .navigationDestination(for: MenuSection.self) { section in
                 menuDestination(for: section)
             }
+            // MARK: - Settings Navigation
+            .navigationDestination(for: SettingsSection.self) { section in
+                settingsDestination(for: section)
+            }
+            .navigationDestination(for: ListingTypeDefinition.self) { listingType in
+                ListingTypeDetailView(listingType: listingType)
+            }
             // PROBE: Signal that registry is active
             .environment(\.destinationsAttached, true)
     }
@@ -56,6 +63,16 @@ struct AppDestinationsModifier: ViewModifier {
             ListingListView()
         case .realtors:
             RealtorsListView()
+        case .settings:
+            SettingsView()
+        }
+    }
+    
+    @ViewBuilder
+    private func settingsDestination(for section: SettingsSection) -> some View {
+        switch section {
+        case .listingTypes:
+            ListingTypeListView()
         }
     }
 }
