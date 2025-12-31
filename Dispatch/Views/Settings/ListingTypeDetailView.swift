@@ -39,13 +39,11 @@ struct ListingTypeDetailView: View {
                 templatesSection
             }
         } toolbarContent: {
-            if !listingType.isSystem {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showAddTemplateSheet = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showAddTemplateSheet = true
+                } label: {
+                    Image(systemName: "plus")
                 }
             }
         }
