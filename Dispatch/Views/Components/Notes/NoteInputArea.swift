@@ -2,98 +2,91 @@
 //  NoteInputArea.swift
 //  Dispatch
 //
-//  Notes Component - TextEditor with save/cancel buttons
-//  Created by Claude on 2025-12-06.
+//  Notes Component - Always-visible inline composer
+//  Jobs-Standard v2: Save on blur, conditional send icon, double-commit guard
 //
 
 import SwiftUI
 
-/// A text input area for creating or editing notes.
-/// Features placeholder text, dynamic height, and save/cancel actions.
+/// An always-visible inline composer for creating notes.
+/// - Placeholder: "Add a note…"
+/// - Commit on blur (focus lost) or tap send icon
+/// - Only clears on successful save
+/// - Double-commit protection via isCommitting guard
 struct NoteInputArea: View {
     @Binding var text: String
-    var placeholder: String = "Add a note..."
-    var onSave: () -> Void
-    var onCancel: () -> Void
+    var onSave: (String) -> Void
 
     @FocusState private var isFocused: Bool
+    @State private var isCommitting = false
 
-    #if os(iOS)
-    // @EnvironmentObject private var overlayState: AppOverlayState // Removed
-    #endif
-
-    private var isValidInput: Bool {
+    private var hasValidInput: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
-        VStack(spacing: DS.Spacing.sm) {
-            // Text Editor with placeholder
-            ZStack(alignment: .topLeading) {
-                // Placeholder - use opacity instead of conditional to avoid layout thrashing
-                Text(placeholder)
-                    .font(DS.Typography.body)
-                    .foregroundColor(DS.Colors.Text.placeholder)
-                    .padding(.horizontal, DS.Spacing.xs)
-                    .padding(.vertical, DS.Spacing.sm)
-                    .allowsHitTesting(false)
-                    .opacity(text.isEmpty ? 1 : 0)
+        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+            HStack(alignment: .top, spacing: DS.Spacing.sm) {
+                ZStack(alignment: .topLeading) {
+                    // Placeholder (visible when empty and not focused)
+                    if text.isEmpty && !isFocused {
+                        Text("Add a note…")
+                            .font(DS.Typography.body)
+                            .foregroundColor(DS.Colors.Text.tertiary)
+                            .padding(.horizontal, DS.Spacing.xs)
+                            .padding(.vertical, DS.Spacing.sm)
+                            .allowsHitTesting(false)
+                    }
 
-                // Text Editor
-                TextEditor(text: $text)
-                    .font(DS.Typography.body)
-                    .foregroundColor(DS.Colors.Text.primary)
-                    .scrollContentBackground(.hidden) // iOS 16+
-                    .focused($isFocused)
-                    .frame(
-                        minHeight: DS.Spacing.noteInputMinHeight,
-                        maxHeight: DS.Spacing.noteInputMaxHeight
-                    )
-                    .fixedSize(horizontal: false, vertical: true)
+                    // TextEditor
+                    TextEditor(text: $text)
+                        .font(DS.Typography.body)
+                        .foregroundColor(DS.Colors.Text.primary)
+                        .scrollContentBackground(.hidden)
+                        .focused($isFocused)
+                        .frame(minHeight: 40, maxHeight: 120)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // Send button (appears only when valid input + focused)
+                if hasValidInput && isFocused {
+                    Button(action: commitNote) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(DS.Colors.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.scale.combined(with: .opacity))
+                }
             }
             .padding(DS.Spacing.sm)
-            .background(DS.Colors.Background.secondary)
+            .background(isFocused ? DS.Colors.Background.secondary : .clear)
             .cornerRadius(DS.Spacing.radiusCard)
-            .overlay(
-                RoundedRectangle(cornerRadius: DS.Spacing.radiusCard)
-                    .stroke(
-                        isFocused ? DS.Colors.borderFocused : DS.Colors.border,
-                        lineWidth: isFocused ? 2 : 1
-                    )
-            )
-
-            // Action Buttons
-            HStack(spacing: DS.Spacing.sm) {
-                Button(action: {
-                    isFocused = false
-                    onCancel()
-                }) {
-                    Text("Cancel")
-                        .font(DS.Typography.bodySecondary)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .tint(DS.Colors.Text.secondary)
-
-                Button(action: {
-                    isFocused = false
-                    onSave()
-                }) {
-                    Text("Save")
-                        .font(DS.Typography.bodySecondary)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!isValidInput)
+            .animation(.easeInOut(duration: 0.15), value: isFocused)
+            .animation(.easeInOut(duration: 0.15), value: hasValidInput)
+        }
+        .onChange(of: isFocused) { _, newValue in
+            // Commit on blur if there's valid input
+            if !newValue && hasValidInput {
+                commitNote()
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Note input")
-        #if os(iOS)
-        // One Boss Refactor: Removed legacy AppOverlayState logic.
-        // Hiding/Showing overlay buttons should be handled by AppState or focus state propagation if needed.
-        // For now, removing the crash.
-        #endif
+    }
+
+    // MARK: - Commit
+
+    private func commitNote() {
+        // Double-commit guard
+        guard !isCommitting else { return }
+        guard hasValidInput else { return }
+
+        isCommitting = true
+        let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        onSave(content)
+        text = ""  // Clear after save (local-first: insert always succeeds)
+        isCommitting = false
     }
 }
 
@@ -109,8 +102,7 @@ struct NoteInputArea: View {
                     .font(DS.Typography.caption)
                 NoteInputArea(
                     text: $noteText,
-                    onSave: { print("Save: \(noteText)") },
-                    onCancel: { noteText = "" }
+                    onSave: { content in print("Saved: \(content)") }
                 )
 
                 Divider()
@@ -119,8 +111,7 @@ struct NoteInputArea: View {
                     .font(DS.Typography.caption)
                 NoteInputArea(
                     text: .constant("This is a sample note with some content that the user has typed."),
-                    onSave: {},
-                    onCancel: {}
+                    onSave: { _ in }
                 )
             }
             .padding()

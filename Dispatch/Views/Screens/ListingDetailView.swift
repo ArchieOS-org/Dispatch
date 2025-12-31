@@ -21,7 +21,7 @@ struct ListingDetailView: View {
     // MARK: - State
 
     @State private var noteText = ""
-    @State private var showNoteInput = false
+    // showNoteInput removed - always-visible composer
     @State private var showDeleteNoteAlert = false
     @State private var noteToDelete: Note?
     @State private var showDeleteListingAlert = false
@@ -178,20 +178,9 @@ struct ListingDetailView: View {
     // MARK: - Section Headers
 
     private var notesHeader: some View {
-        HStack {
-            Text("Notes")
-                .font(DS.Typography.headline)
-                .foregroundColor(DS.Colors.Text.primary)
-            Text("(\(listing.notes.count))")
-                .font(DS.Typography.bodySecondary)
-                .foregroundColor(DS.Colors.Text.secondary)
-            Spacer()
-            Button(action: { showNoteInput.toggle() }) {
-                Image(systemName: showNoteInput ? DS.Icons.Action.cancel : DS.Icons.Action.add)
-                    .font(.system(size: 16))
-                    .foregroundColor(DS.Colors.accent)
-            }
-        }
+        Text("Notes")
+            .font(DS.Typography.headline)
+            .foregroundColor(DS.Colors.Text.primary)
     }
 
     private var tasksHeader: some View {
@@ -284,29 +273,17 @@ struct ListingDetailView: View {
 
     private var notesSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            if showNoteInput {
-                NoteInputArea(
-                    text: $noteText,
-                    placeholder: "Add a note to this listing...",
-                    onSave: {
-                        addNote(content: noteText)
-                        noteText = ""
-                        showNoteInput = false
-                    },
-                    onCancel: {
-                        noteText = ""
-                        showNoteInput = false
-                    }
-                )
-            }
+            // Always-visible composer
+            NoteInputArea(
+                text: $noteText,
+                onSave: { content in addNote(content: content) }
+            )
 
-            if listing.notes.isEmpty && !showNoteInput {
-                NoteStack.emptyState
-            } else if !listing.notes.isEmpty {
+            let visibleNotes = listing.notes.filter { $0.deletedAt == nil }
+            if !visibleNotes.isEmpty {
                 NoteStack(
-                    notes: listing.notes,
+                    notes: visibleNotes,
                     userLookup: userLookup,
-                    onEdit: nil,
                     onDelete: { note in
                         noteToDelete = note
                         showDeleteNoteAlert = true
@@ -325,15 +302,13 @@ struct ListingDetailView: View {
     private func addNote(content: String) {
         let note = Note(content: content, createdBy: currentUserId, parentType: .listing, parentId: listing.id)
         listing.notes.append(note)
-        listing.markPending()
+        // No need to mark listing pending, Note is first-class syncable now
         syncManager.requestSync()
     }
 
     private func confirmDeleteNote() {
         guard let note = noteToDelete else { return }
-        listing.notes.removeAll { $0.id == note.id }
-        modelContext.delete(note)
-        listing.markPending()
+        note.softDelete()
         noteToDelete = nil
         syncManager.requestSync()
     }

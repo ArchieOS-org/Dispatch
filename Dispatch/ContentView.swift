@@ -496,6 +496,8 @@ struct ContentView: View {
                         ListingListView()
                     case .realtors:
                         RealtorsListView()
+                    case .settings:
+                        SettingsView()
                     case .workspace, .search:
                         MyWorkspaceView()
                     }
@@ -630,16 +632,8 @@ struct ContentView: View {
             syncManager.requestSync()
         }
 
-        workItemActions.onDeleteNote = { [syncManager, modelContext] note, item in
-            switch item {
-            case .task(let task, _):
-                task.notes.removeAll { $0.id == note.id }
-                task.markPending()
-            case .activity(let activity, _):
-                activity.notes.removeAll { $0.id == note.id }
-                activity.markPending()
-            }
-            modelContext.delete(note)
+        workItemActions.onDeleteNote = { [syncManager] note, item in
+            note.softDelete()
             syncManager.requestSync()
         }
 

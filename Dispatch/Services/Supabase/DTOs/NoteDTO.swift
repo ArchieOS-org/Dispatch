@@ -16,6 +16,8 @@ struct NoteDTO: Codable, Sendable {
     let editedAt: Date?
     let editedBy: UUID?
     let createdAt: Date
+    let updatedAt: Date? // Nullable for legacy data, but DB default is now()
+    let deletedAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id, content
@@ -25,6 +27,21 @@ struct NoteDTO: Codable, Sendable {
         case editedAt = "edited_at"
         case editedBy = "edited_by"
         case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case deletedAt = "deleted_at"
+    }
+
+    init(from model: Note) {
+        self.id = model.id
+        self.content = model.content
+        self.createdBy = model.createdBy
+        self.parentType = model.parentType.rawValue
+        self.parentId = model.parentId
+        self.editedAt = model.editedAt
+        self.editedBy = model.editedBy
+        self.createdAt = model.createdAt
+        self.updatedAt = model.updatedAt
+        self.deletedAt = model.deletedAt
     }
 
     func toModel() -> Note {
@@ -46,6 +63,9 @@ struct NoteDTO: Codable, Sendable {
         )
         note.editedAt = editedAt
         note.editedBy = editedBy
+        note.updatedAt = updatedAt ?? createdAt // Fallback for old records
+        note.deletedAt = deletedAt
+        note.markSynced() // Mark as synced since it came from server
         return note
     }
 }

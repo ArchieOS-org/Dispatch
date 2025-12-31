@@ -30,7 +30,7 @@ struct WorkItemDetailView: View {
 
     // State
     @State private var noteText = ""
-    @State private var showNoteInput = false
+    // showNoteInput removed - always-visible composer
 
     private static let detailDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -221,39 +221,22 @@ struct WorkItemDetailView: View {
 
     private var notesSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            HStack {
-                sectionHeader("Notes")
-                Spacer()
-                Button(action: { showNoteInput.toggle() }) {
-                    Image(systemName: showNoteInput ? DS.Icons.Action.cancel : DS.Icons.Action.add)
-                        .font(.system(size: 16))
-                        .foregroundColor(DS.Colors.accent)
+            sectionHeader("Notes")
+
+            // Always-visible composer
+            NoteInputArea(
+                text: $noteText,
+                onSave: { content in
+                    onAddNote?(content)
+                    noteText = ""
                 }
-            }
+            )
 
-            if showNoteInput {
-                NoteInputArea(
-                    text: $noteText,
-                    placeholder: "Add a note...",
-                    onSave: {
-                        onAddNote?(noteText)
-                        noteText = ""
-                        showNoteInput = false
-                    },
-                    onCancel: {
-                        noteText = ""
-                        showNoteInput = false
-                    }
-                )
-            }
-
-            if item.notes.isEmpty && !showNoteInput {
-                NoteStack.emptyState
-            } else if !item.notes.isEmpty {
+            let visibleNotes = item.notes.filter { $0.deletedAt == nil }
+            if !visibleNotes.isEmpty {
                 NoteStack(
-                    notes: item.notes,
+                    notes: visibleNotes,
                     userLookup: userLookup,
-                    onEdit: onEditNote,
                     onDelete: onDeleteNote
                 )
             }

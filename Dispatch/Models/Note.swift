@@ -22,7 +22,22 @@ final class Note {
 
     // Timestamps
     var createdAt: Date
+    var updatedAt: Date
+    var deletedAt: Date? // Soft delete tombstone
+    
+    // Sync state
     var syncedAt: Date?
+    var syncStateRaw: EntitySyncState?
+    var lastSyncError: String?
+    
+    // Conflict tracking (Local only, not synced)
+    var hasRemoteChangeWhilePending: Bool = false
+
+    // Computed sync state
+    var syncState: EntitySyncState {
+        get { syncStateRaw ?? .synced }
+        set { syncStateRaw = newValue }
+    }
 
     init(
         id: UUID = UUID(),
@@ -38,5 +53,32 @@ final class Note {
         self.parentType = parentType
         self.parentId = parentId
         self.createdAt = createdAt
+        self.updatedAt = createdAt
+        self.syncStateRaw = .pending
+    }
+}
+
+// MARK: - RealtimeSyncable Conformance
+extension Note: RealtimeSyncable {
+    func markPending() {
+        syncState = .pending
+        lastSyncError = nil
+        updatedAt = Date()
+    }
+
+    func markSynced() {
+        syncState = .synced
+        lastSyncError = nil
+        syncedAt = Date()
+    }
+
+    func markFailed(_ message: String) {
+        syncState = .failed
+        lastSyncError = message
+    }
+    
+    func softDelete() {
+        deletedAt = Date()
+        markPending()
     }
 }

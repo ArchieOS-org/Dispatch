@@ -3,95 +3,75 @@
 //  Dispatch
 //
 //  Notes Component - Single note display card
-//  Created by Claude on 2025-12-06.
+//  Jobs-Standard v2: No avatar, compact timestamp, balanced typography
 //
 
 import SwiftUI
 
-/// A card displaying a single note with timestamp and content.
-/// Supports edit/delete actions that appear on tap with spring animation.
+/// A card displaying a single note with author and compact timestamp.
+/// Clean, minimal design—no avatars, no dividers.
 struct NoteCard: View {
     let note: Note
     let author: User?
-    var onEdit: (() -> Void)?
     var onDelete: (() -> Void)?
-
-    @State private var showActions = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private static let timestampFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        return formatter
-    }()
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-            // Header: Author + Timestamp
+            // Header: Author (semibold) + compact timestamp (tertiary, right)
             HStack {
-                if let author {
-                    UserAvatar(user: author, size: .small)
-                    Text(author.name)
-                        .font(DS.Typography.bodySecondary)
-                        .foregroundColor(DS.Colors.Text.secondary)
-                }
+                Text(author?.name ?? "Unknown")
+                    .font(DS.Typography.bodySecondary.weight(.semibold))
+                    .foregroundColor(DS.Colors.Text.primary)
                 Spacer()
-                Text(Self.timestampFormatter.string(from: note.createdAt))
-                    .font(DS.Typography.bodySecondary)
+                Text(compactTimestamp(note.createdAt))
+                    .font(DS.Typography.caption)
                     .foregroundColor(DS.Colors.Text.tertiary)
             }
 
             // Content
             Text(note.content)
                 .font(DS.Typography.body)
-                .foregroundColor(DS.Colors.Text.primary)
+                .foregroundColor(DS.Colors.Text.secondary)
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // Edit indicator if edited
+            // Edited indicator (if applicable)
             if let editedAt = note.editedAt {
-                Text("Edited \(Self.timestampFormatter.string(from: editedAt))")
+                Text("Edited \(compactTimestamp(editedAt))")
                     .font(DS.Typography.captionSecondary)
                     .foregroundColor(DS.Colors.Text.quaternary)
                     .italic()
             }
-
-            // Action buttons (appear on tap)
-            if showActions, onEdit != nil || onDelete != nil {
-                HStack(spacing: DS.Spacing.sm) {
-                    Spacer()
-                    if let onEdit {
-                        Button(action: onEdit) {
-                            Image(systemName: DS.Icons.Action.edit)
-                                .font(.system(size: 14))
-                        }
-                        .buttonStyle(.plain)
-                        .tint(DS.Colors.info)
-                    }
-                    if let onDelete {
-                        Button(action: onDelete) {
-                            Image(systemName: DS.Icons.Action.delete)
-                                .font(.system(size: 14))
-                        }
-                        .buttonStyle(.plain)
-                        .tint(DS.Colors.destructive)
-                    }
-                }
-                .transition(.opacity.combined(with: .scale(scale: 0.8)))
-            }
         }
-        .padding(.horizontal, DS.Spacing.md)
         .padding(.vertical, DS.Spacing.sm)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.7)) {
-                showActions.toggle()
-            }
-        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Note by \(author?.name ?? "Unknown"): \(note.content)")
-        .accessibilityHint(showActions ? "Actions visible. Tap to hide." : "Tap to show edit and delete options")
+    }
+
+    // MARK: - Compact Timestamp
+
+    /// Returns human-readable relative time: "now", "5m", "2h", "Dec 31", etc.
+    private func compactTimestamp(_ date: Date) -> String {
+        let interval = Date().timeIntervalSince(date)
+
+        // < 60 seconds
+        if interval < 60 {
+            return "now"
+        }
+        // < 60 minutes
+        if interval < 3600 {
+            return "\(Int(interval / 60))m"
+        }
+        // < 24 hours
+        if interval < 86400 {
+            return "\(Int(interval / 3600))h"
+        }
+
+        // Absolute date
+        let formatter = DateFormatter()
+        let isSameYear = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
+        formatter.dateFormat = isSameYear ? "MMM d" : "MMM d, yyyy"
+        return formatter.string(from: date)
     }
 }
 
@@ -107,7 +87,6 @@ struct NoteCard: View {
                 parentId: UUID()
             ),
             author: User(name: "John Doe", email: "john@example.com", userType: .admin),
-            onEdit: { print("Edit") },
             onDelete: { print("Delete") }
         )
 

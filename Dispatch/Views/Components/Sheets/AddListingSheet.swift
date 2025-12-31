@@ -26,6 +26,7 @@ struct AddListingSheet: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var syncManager: SyncManager
 
     // MARK: - Queries (Scoped + Sorted)
     
@@ -68,11 +69,12 @@ struct AddListingSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                addressSection
-                locationSection
-                typeSection
-                ownerSection
+            Group {
+                if syncManager.isListingConfigReady {
+                    formContent
+                } else {
+                    loadingContent
+                }
             }
             .navigationTitle("New Listing")
             #if os(iOS)
@@ -84,7 +86,7 @@ struct AddListingSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") { saveAndDismiss() }
-                        .disabled(!canSave)
+                        .disabled(!canSave || !syncManager.isListingConfigReady)
                 }
             }
             .onAppear { setSmartDefaults() }
@@ -93,6 +95,25 @@ struct AddListingSheet: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         #endif
+    }
+    
+    private var loadingContent: some View {
+        VStack(spacing: DS.Spacing.md) {
+            ProgressView()
+            Text("Loading configuration...")
+                .font(DS.Typography.body)
+                .foregroundStyle(DS.Colors.Text.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    private var formContent: some View {
+        Form {
+            addressSection
+            locationSection
+            typeSection
+            ownerSection
+        }
     }
     
     // MARK: - Sections
