@@ -3,7 +3,6 @@
 //  Dispatch
 //
 //  Things 3-style menu page for iPhone navigation.
-//  Refactored for Layout Unification (StandardScreen)
 //
 
 import SwiftUI
@@ -30,114 +29,127 @@ struct MenuPageView: View {
     private var activeListings: [Listing] {
         allListingsRaw.filter { $0.status != .deleted }
     }
-    
+
     private var activeRealtors: [User] {
         allRealtors.filter { $0.userType == .realtor }
     }
 
-    // MARK: - Environment
+    // MARK: - Computed Counts
 
-    @EnvironmentObject private var syncManager: SyncManager
-    @EnvironmentObject private var lensState: LensState
-
-    // MARK: - Helpers
+    private var overdueCount: Int {
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        let overdueTasks = openTasks.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
+        let overdueActivities = openActivities.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
+        return overdueTasks.count + overdueActivities.count
+    }
 
     private func count(for section: MenuSection) -> Int {
         switch section {
         case .myWorkspace: return openTasks.count + openActivities.count
         case .listings: return activeListings.count
         case .realtors: return activeRealtors.count
-        case .settings: return 0 // Settings doesn't have a count
+        case .settings: return 0
         }
     }
 
     // MARK: - Body
 
     var body: some View {
-        StandardScreen(title: "Dispatch", layout: .column, scroll: .disabled) {
-            ScrollView {
-                VStack(spacing: DS.Spacing.lg) {
-                    #if os(iOS)
-                    if UIDevice.current.userInterfaceIdiom == .phone {
-                        PullToSearchSensor()
-                    }
-                    #endif
-
-                    ForEach(MenuSection.allCases) { section in
-                        NavigationLink(value: section) {
-                            MenuSectionCard(
-                                section: section,
-                                count: count(for: section)
-                            )
-                        }
-                        .buttonStyle(MenuCardButtonStyle())
-                    }
+        List {
+            ForEach(MenuSection.allCases) { section in
+                NavigationLink(value: section) {
+                    MenuSectionRow(
+                        section: section,
+                        count: count(for: section),
+                        overdueCount: section == .myWorkspace ? overdueCount : 0
+                    )
                 }
-                .padding(DS.Spacing.lg)
+                .listRowInsets(EdgeInsets(top: 0, leading: DS.Spacing.lg, bottom: 0, trailing: DS.Spacing.lg))
+                .listRowBackground(DS.Colors.Background.primary)
+                .listRowSeparator(.hidden)
+                .padding(.top, section == .settings ? DS.Spacing.xl : 0)
             }
-            .pullToSearch()
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(DS.Colors.Background.primary)
+        .navigationTitle("Dispatch")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.large)
+        #endif
     }
 }
 
-// MARK: - Menu Section Card
+// MARK: - Menu Section Row
 
-private struct MenuSectionCard: View {
+private struct MenuSectionRow: View {
     let section: MenuSection
     let count: Int
+    let overdueCount: Int
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
-            Circle()
-                .fill(section.accentColor.opacity(0.15))
-                .frame(width: 44, height: 44)
-                .overlay {
-                    Image(systemName: section.icon)
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(section.accentColor)
-                }
+            Image(systemName: section.icon)
+                .font(.system(size: 22, weight: .medium))
+                .foregroundColor(section.accentColor)
+                .frame(width: 28, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-                Text(section.title)
-                    .font(DS.Typography.headline)
-                    .foregroundColor(DS.Colors.Text.primary)
-                Text("\(count) open")
-                    .font(DS.Typography.bodySecondary)
-                    .foregroundColor(DS.Colors.Text.secondary)
-            }
+            Text(section.title)
+                .font(DS.Typography.headline)
+                .foregroundColor(DS.Colors.Text.primary)
+                .lineLimit(1)
 
             Spacer()
 
-            Image(systemName: DS.Icons.Navigation.forward)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(DS.Colors.Text.tertiary)
+            rightSideContent
+                .frame(minWidth: 28, alignment: .trailing)
         }
-        .padding(DS.Spacing.cardPadding)
-        .background(DS.Colors.Background.card)
-        .cornerRadius(DS.Spacing.radiusCard)
-        .dsShadow(DS.Shadows.card)
+        .frame(minHeight: DS.Spacing.minTouchTarget)
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabelText)
     }
-}
 
-// MARK: - Button Style
+    @ViewBuilder
+    private var rightSideContent: some View {
+        if section == .settings {
+            EmptyView()
+        } else if section == .myWorkspace && overdueCount > 0 {
+            Text("\(overdueCount)")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(DS.Colors.overdue)
+                .clipShape(Capsule())
+        } else if count > 0 {
+            Text("\(count)")
+                .font(DS.Typography.body)
+                .foregroundColor(DS.Colors.Text.secondary)
+        }
+    }
 
-private struct MenuCardButtonStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .opacity(configuration.isPressed ? 0.9 : 1.0)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: configuration.isPressed)
+    private var accessibilityLabelText: String {
+        if section == .settings {
+            return section.title
+        } else if section == .myWorkspace && overdueCount > 0 {
+            return "\(section.title), \(overdueCount) overdue"
+        } else if count > 0 {
+            return "\(section.title), \(count) open"
+        } else {
+            return section.title
+        }
     }
 }
 
 // MARK: - Previews
 
 #Preview("Menu Page View") {
-    MenuPageView()
-        .modelContainer(for: [TaskItem.self, Activity.self, Listing.self, User.self], inMemory: true)
-        .environmentObject(SyncManager(mode: .preview))
-        .environmentObject(SearchPresentationManager())
-        .environmentObject(LensState())
+    NavigationStack {
+        MenuPageView()
+    }
+    .modelContainer(for: [TaskItem.self, Activity.self, Listing.self, User.self], inMemory: true)
+    .environmentObject(SyncManager(mode: .preview))
+    .environmentObject(LensState())
 }
