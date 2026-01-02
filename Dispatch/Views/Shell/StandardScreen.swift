@@ -69,7 +69,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
             }
             .applyLayoutWitness() // Debug overlay (only visible if enabled in AppShell)
             #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline) // Standardize on inline for now, or make configurable
+            .navigationBarTitleDisplayMode(.automatic)
             #endif
     }
     
@@ -107,7 +107,10 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
             #endif
             
             content()
-                .frame(maxWidth: layout == .fullBleed ? .infinity : DS.Spacing.Layout.maxContentWidth)
+                .frame(
+                    maxWidth: layout == .fullBleed ? .infinity : DS.Spacing.Layout.maxContentWidth,
+                    alignment: .leading
+                )
                 .padding(.horizontal, horizontalPadding)
         }
         .frame(maxWidth: .infinity, alignment: .top) // Align Top
@@ -116,10 +119,113 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
         #endif
     }
     
-    private var horizontalPadding: CGFloat {
+    private var horizontalPadding: CGFloat? {
         switch layout {
-        case .fullBleed: return 0
-        case .column: return DS.Spacing.Layout.pageMargin
+        case .fullBleed:
+            return 0
+        case .column:
+            #if os(iOS)
+            // Use Apple’s platform default inset so content aligns with the system large title.
+            return nil
+            #else
+            return DS.Spacing.Layout.pageMargin
+            #endif
         }
     }
+}
+
+// MARK: - Previews
+
+private struct StandardScreenPreviewContent: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+            Text("Section Header")
+                .font(DS.Typography.headline)
+                .foregroundColor(DS.Colors.Text.primary)
+
+            Text("This is a representative block of content used to validate margins, max width, typography, and scrolling behavior across StandardScreen variants.")
+                .font(DS.Typography.body)
+                .foregroundColor(DS.Colors.Text.secondary)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                ForEach(0..<12) { i in
+                    HStack {
+                        Text("Row \(i + 1)")
+                            .font(DS.Typography.body)
+                            .foregroundColor(DS.Colors.Text.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(DS.Colors.Text.tertiary)
+                    }
+                    if i != 11 { Divider() }
+                }
+            }
+        }
+        .padding(.vertical, DS.Spacing.md)
+    }
+}
+
+#Preview("StandardScreen · Column · Automatic Scroll") {
+    NavigationStack {
+        StandardScreen(title: "StandardScreen") {
+            StandardScreenPreviewContent()
+        }
+    }
+    #if os(macOS)
+    .frame(width: 900, height: 700)
+    #endif
+}
+
+#Preview("StandardScreen · Column · Scroll Disabled") {
+    NavigationStack {
+        StandardScreen(title: "StandardScreen", layout: .column, scroll: .disabled) {
+            StandardScreenPreviewContent()
+        }
+    }
+    #if os(macOS)
+    .frame(width: 900, height: 700)
+    #endif
+}
+
+#Preview("StandardScreen · Full Bleed · Automatic Scroll") {
+    NavigationStack {
+        StandardScreen(title: "StandardScreen", layout: .fullBleed, scroll: .automatic) {
+            StandardScreenPreviewContent()
+        }
+    }
+    #if os(macOS)
+    .frame(width: 900, height: 700)
+    #endif
+}
+
+#Preview("StandardScreen · Full Bleed · Scroll Disabled") {
+    NavigationStack {
+        StandardScreen(title: "StandardScreen", layout: .fullBleed, scroll: .disabled) {
+            StandardScreenPreviewContent()
+        }
+    }
+    #if os(macOS)
+    .frame(width: 900, height: 700)
+    #endif
+}
+
+#Preview("StandardScreen · With Toolbar") {
+    NavigationStack {
+        StandardScreen(title: "StandardScreen", layout: .column, scroll: .automatic) {
+            StandardScreenPreviewContent()
+        } toolbarContent: {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    // Preview action
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+        }
+    }
+    #if os(macOS)
+    .frame(width: 900, height: 700)
+    #endif
 }
