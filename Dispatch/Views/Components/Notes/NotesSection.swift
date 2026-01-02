@@ -46,31 +46,49 @@ struct NotesContent: View {
   var onDelete: ((Note) -> Void)? = nil
 
   @State private var noteText = ""
+  @FocusState private var isComposerFocused: Bool
 
   private var visibleNotes: [Note] {
     notes
       .filter { $0.deletedAt == nil }
-      .sorted { $0.createdAt > $1.createdAt }
+      .sorted { $0.createdAt < $1.createdAt }
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-      // Composer (always visible)
-      NoteComposer(text: $noteText, onSave: onSave)
-
-      // Note list
-      if !visibleNotes.isEmpty {
-        LazyVStack(alignment: .leading, spacing: DS.Spacing.sm) {
-          ForEach(visibleNotes) { note in
-            NoteCard(
-              note: note,
-              author: userLookup(note.createdBy),
-              onDelete: onDelete.map { callback in { callback(note) } }
-            )
-          }
+    ZStack {
+      // Tap anywhere in the notes area to dismiss the editor focus
+      Color.clear
+        .contentShape(Rectangle())
+        .onTapGesture {
+          isComposerFocused = false
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Notes list with \(visibleNotes.count) note\(visibleNotes.count == 1 ? "" : "s")")
+
+      VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+        // Note list
+        if !visibleNotes.isEmpty {
+          LazyVStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            ForEach(visibleNotes) { note in
+              NoteCard(
+                note: note,
+                author: userLookup(note.createdBy),
+                onDelete: onDelete.map { callback in { callback(note) } },
+                onTap: {
+                  isComposerFocused = false
+                }
+              )
+            }
+          }
+          .accessibilityElement(children: .contain)
+          .accessibilityLabel("Notes list with \(visibleNotes.count) note\(visibleNotes.count == 1 ? "" : "s")")
+        }
+
+        if !visibleNotes.isEmpty {
+          Divider()
+            .padding(.vertical, DS.Spacing.xs)
+        }
+
+        // Composer (always visible)
+        NoteComposer(text: $noteText, isFocused: $isComposerFocused, onSave: onSave)
       }
     }
   }
@@ -83,6 +101,7 @@ private struct NoteCard: View {
   let note: Note
   let author: User?
   var onDelete: (() -> Void)?
+  var onTap: (() -> Void)? = nil
 
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Spacing.xs) {
@@ -113,6 +132,10 @@ private struct NoteCard: View {
       }
     }
     .padding(.vertical, DS.Spacing.sm)
+    .contentShape(Rectangle())
+    .onTapGesture {
+      onTap?()
+    }
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Note by \(author?.name ?? "Unknown"): \(note.content)")
     .contextMenu {
@@ -157,9 +180,9 @@ private struct NoteCard: View {
 /// - Double-commit protection via isCommitting guard
 private struct NoteComposer: View {
   @Binding var text: String
+  @FocusState.Binding var isFocused: Bool
   var onSave: (String) -> Void
 
-  @FocusState private var isFocused: Bool
   @State private var isCommitting = false
 
   private var hasValidInput: Bool {
@@ -174,8 +197,7 @@ private struct NoteComposer: View {
           Text("Add a note…")
             .font(DS.Typography.body)
             .foregroundColor(DS.Colors.Text.tertiary)
-            .padding(.horizontal, DS.Spacing.xs)
-            .padding(.vertical, DS.Spacing.sm)
+            .padding(.vertical, DS.Spacing.xs)
             .allowsHitTesting(false)
         }
 
@@ -200,8 +222,7 @@ private struct NoteComposer: View {
         .transition(.scale.combined(with: .opacity))
       }
     }
-    .padding(DS.Spacing.sm)
-    .background(isFocused ? DS.Colors.Background.secondary : .clear)
+    .padding(.vertical, DS.Spacing.xs)
     .cornerRadius(DS.Spacing.radiusCard)
     .animation(.easeInOut(duration: 0.15), value: isFocused)
     .animation(.easeInOut(duration: 0.15), value: hasValidInput)
@@ -274,5 +295,4 @@ private let previewNotes: [Note] = (0..<3).map { i in
     )
   }
   .padding()
-  .background(Color.gray.opacity(0.1))
 }
