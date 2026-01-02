@@ -23,7 +23,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     
     // Debug environment
     @Environment(\.layoutMetrics) var layoutMetrics
-    
+
     enum LayoutMode {
         case column      // Enforces max width + margins (Default)
         case fullBleed   // Edge to edge (Maps, etc)
@@ -63,11 +63,11 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     
     var body: some View {
         mainContent
-            .navigationTitle(title) // StandardScreen is the Source of Truth
+            .navigationTitle(title)
             .toolbar {
                 toolbarContent()
             }
-            .applyLayoutWitness() // Debug overlay (only visible if enabled in AppShell)
+            .applyLayoutWitness()
             #if os(iOS)
             .navigationBarTitleDisplayMode(.automatic)
             #endif
@@ -79,7 +79,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
             // 1. Unified Background
             DS.Colors.Background.primary
                 .ignoresSafeArea()
-            
+
             // 2. Content Container
             switch scroll {
             case .automatic:
@@ -96,16 +96,16 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     private var innerContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             #if os(macOS)
-            // Left-Aligned "Things 3" Header
+            // macOS: Custom static header (Things 3 style)
             Text(title)
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .foregroundColor(DS.Colors.Text.primary)
                 .padding(.horizontal, horizontalPadding)
-                .padding(.top, DS.Spacing.md)
-                .padding(.bottom, DS.Spacing.sm)
+                .padding(.top, DS.Spacing.sm)
+                .padding(.bottom, DS.Spacing.Layout.titleContentSpacing)
             #endif
-            
+
             content()
                 .frame(
                     maxWidth: layout == .fullBleed ? .infinity : DS.Spacing.Layout.maxContentWidth,
@@ -113,7 +113,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
                 )
                 .padding(.horizontal, horizontalPadding)
         }
-        .frame(maxWidth: .infinity, alignment: .top) // Align Top
+        .frame(maxWidth: .infinity, alignment: .top)
         #if os(macOS)
         .navigationTitle("") // Hide system title on Mac in favor of our custom header
         #endif
@@ -150,7 +150,7 @@ private struct StandardScreenPreviewContent: View {
             Divider()
 
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                ForEach(0..<12) { i in
+                ForEach(0..<60) { i in
                     HStack {
                         Text("Row \(i + 1)")
                             .font(DS.Typography.body)
@@ -159,7 +159,7 @@ private struct StandardScreenPreviewContent: View {
                         Image(systemName: "chevron.right")
                             .foregroundColor(DS.Colors.Text.tertiary)
                     }
-                    if i != 11 { Divider() }
+                    if i != 59 { Divider() }
                 }
             }
         }
@@ -223,6 +223,21 @@ private struct StandardScreenPreviewContent: View {
                     Image(systemName: "ellipsis.circle")
                 }
             }
+        }
+    }
+    #if os(macOS)
+    .frame(width: 900, height: 700)
+    #endif
+}
+
+#Preview("StandardScreen · Long Title") {
+    NavigationStack {
+        StandardScreen(
+            title: "This is an intentionally long StandardScreen title to verify wrapping at the top and correct collapse behavior when scrolling",
+            layout: .column,
+            scroll: .automatic
+        ) {
+            StandardScreenPreviewContent()
         }
     }
     #if os(macOS)

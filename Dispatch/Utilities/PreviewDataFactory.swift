@@ -58,6 +58,7 @@ struct PreviewDataFactory {
             status: .active,
             ownedBy: aliceID
         )
+        listing.dueDate = Calendar.current.date(byAdding: .day, value: 3, to: Date())
         listing.syncState = EntitySyncState.synced
         listing.owner = alice
         context.insert(listing)

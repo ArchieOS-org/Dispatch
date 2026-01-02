@@ -188,6 +188,10 @@ extension DS {
             /// Spacing below the large title before content begins
             static let titleBottomSpacing: CGFloat = 20
 
+            /// Spacing below navigation title before content (Apple HIG: 20pt)
+            /// Use this as the single source of truth for title-to-content spacing
+            static let titleContentSpacing: CGFloat = 20
+
             /// Maximum width for content in detail views to prevent it from stretching too wide
             static let maxContentWidth: CGFloat = 800
         }

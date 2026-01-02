@@ -52,7 +52,29 @@ struct ListingDetailView: View {
     private var filteredActivities: [Activity] {
         activeActivities.filter { lensState.audience.matches(audiences: $0.audiences) }
     }
-    
+
+    private var isOverdue: Bool {
+        guard let date = listing.dueDate else { return false }
+        return date < Calendar.current.startOfDay(for: Date())
+    }
+
+    private var overdueText: String {
+        guard let date = listing.dueDate else { return "" }
+        let startToday = Calendar.current.startOfDay(for: Date())
+        let startDue = Calendar.current.startOfDay(for: date)
+        let days = Calendar.current.dateComponents([.day], from: startDue, to: startToday).day ?? 0
+
+        if days < 7 {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEE"
+            return formatter.string(from: date)
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
+    }
+
     private var listingActions: [OverflowMenu.Action] {
         [
             OverflowMenu.Action(id: "edit", title: "Edit Listing", icon: DS.Icons.Action.edit) {
@@ -101,11 +123,7 @@ struct ListingDetailView: View {
         VStack(alignment: .leading, spacing: DS.Spacing.lg) {
             metadataSection
             
-            VStack(alignment: .leading, spacing: 0) {
-                notesHeader
-                Divider().padding(.vertical, DS.Spacing.sm)
-                notesSection
-            }
+            notesSection
             
             VStack(alignment: .leading, spacing: 0) {
                 tasksHeader
@@ -119,7 +137,7 @@ struct ListingDetailView: View {
                 activitiesSection
             }
         }
-        .padding(.vertical, DS.Spacing.md) 
+        .padding(.bottom, DS.Spacing.md)
     }
 
     private var metadataSection: some View {
@@ -131,22 +149,39 @@ struct ListingDetailView: View {
                     .foregroundColor(DS.Colors.Text.secondary)
             }
             
-            if let owner = owner {
+            if owner != nil || listing.dueDate != nil {
                 Divider().padding(.top, DS.Spacing.sm)
-                
-                HStack(spacing: DS.Spacing.xs) {
-                    Text(owner.name)
-                        .font(DS.Typography.bodySecondary)
-                        .foregroundColor(DS.Colors.Text.primary)
-                        .padding(.leading, DS.Spacing.md)
-                        .padding(.trailing, DS.Spacing.md)
-                        .padding(.vertical, DS.Spacing.xs)
-                        .background(DS.Colors.success.opacity(0.15))
-                        .clipShape(Capsule())
+
+                HStack {
+                    if let owner = owner {
+                        Text(owner.name)
+                            .font(DS.Typography.bodySecondary)
+                            .foregroundColor(DS.Colors.Text.primary)
+                            .padding(.leading, DS.Spacing.md)
+                            .padding(.trailing, DS.Spacing.md)
+                            .padding(.vertical, DS.Spacing.xs)
+                            .background(DS.Colors.success.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+
+                    Spacer()
+
+                    if let date = listing.dueDate {
+                        if isOverdue {
+                            HStack(spacing: 4) {
+                                Image(systemName: "flag.fill")
+                                Text(overdueText)
+                            }
+                            .font(DS.Typography.caption)
+                            .foregroundStyle(.red)
+                        } else {
+                            DatePill(date: date)
+                        }
+                    }
                 }
                 .padding(.top, DS.Spacing.xs)
             }
-            
+
             Divider().padding(.top, DS.Spacing.sm)
 
             // Listing type
@@ -154,33 +189,11 @@ struct ListingDetailView: View {
                 .font(DS.Typography.body)
                 .foregroundColor(DS.Colors.Text.primary)
 
-            // Due date
-            if let due = listing.dueDate {
-                Divider().padding(.top, DS.Spacing.sm)
-
-                HStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: "flag")
-                        .foregroundColor(DS.Colors.Text.secondary)
-
-                    Text(formattedDueDate(due))
-                        .font(DS.Typography.body)
-                        .foregroundColor(DS.Colors.Text.primary)
-
-                    Text(relativeDueText(for: due))
-                        .font(DS.Typography.bodySecondary)
-                        .foregroundColor(relativeDueColor(for: due))
-                }
-            }
+            Divider().padding(.top, DS.Spacing.sm)
         }
     }
 
     // MARK: - Section Headers
-
-    private var notesHeader: some View {
-        Text("Notes")
-            .font(DS.Typography.headline)
-            .foregroundColor(DS.Colors.Text.primary)
-    }
 
     private var tasksHeader: some View {
         HStack {
@@ -347,38 +360,6 @@ struct ListingDetailView: View {
     }
     
     // MARK: - Helpers
-
-    private static let dueDateFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        df.dateFormat = "EEE, MMM, d"
-        return df
-    }()
-
-    private func formattedDueDate(_ date: Date) -> String {
-        Self.dueDateFormatter.string(from: date)
-    }
-
-    private func relativeDueText(for date: Date) -> String {
-        let cal = Calendar.current
-        let startToday = cal.startOfDay(for: Date())
-        let startDue = cal.startOfDay(for: date)
-        let diff = cal.dateComponents([.day], from: startToday, to: startDue).day ?? 0
-
-        if diff == 0 { return "Today" }
-        if diff == 1 { return "1 day left" }
-        if diff > 1 { return "\(diff) days left" }
-        let overdue = abs(diff)
-        return "Overdue: \(overdue) days"
-    }
-
-    private func relativeDueColor(for date: Date) -> Color {
-        let cal = Calendar.current
-        let startToday = cal.startOfDay(for: Date())
-        let startDue = cal.startOfDay(for: date)
-        let diff = cal.dateComponents([.day], from: startToday, to: startDue).day ?? 0
-        return diff < 0 ? .red : DS.Colors.Text.secondary
-    }
 
     private func emptyStateView(icon: String, title: String, message: String) -> some View {
         VStack(spacing: DS.Spacing.sm) {
