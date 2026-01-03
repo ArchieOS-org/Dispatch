@@ -52,3 +52,11 @@ enum AppTab: String, CaseIterable, Equatable {
     case settings
     case search // If search is a tab? Or just an overlay?
 }
+
+/// Explicit navigation routes for type-safe, extensible routing.
+/// Prevents navigation stack from becoming a bag of unrelated types.
+/// Use for new navigation destinations; existing Destination type remains for backwards compatibility.
+enum Route: Hashable, Codable {
+    case stagedListings(ListingStage)
+    // Future routes go here without breaking existing navigation
+}

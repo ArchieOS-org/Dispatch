@@ -141,6 +141,23 @@ extension DS {
         /// Search overlay modal max width (for larger screens)
         static let searchModalMaxWidth: CGFloat = 500
 
+        // MARK: - Stage Cards
+
+        /// Stage cards grid configuration for menu/sidebar
+        enum StageCards {
+            /// Spacing between cards in the grid
+            static let gridSpacing: CGFloat = 10
+
+            /// Internal card padding
+            static let cardPadding: CGFloat = 12
+
+            /// Card height (fixed for consistency)
+            static let cardHeight: CGFloat = 72
+
+            /// Icon size within card
+            static let iconSize: CGFloat = 18
+        }
+
         // MARK: - Sidebar (macOS)
 
         /// Minimum sidebar width

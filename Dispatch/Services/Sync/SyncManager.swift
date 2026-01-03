@@ -1098,8 +1098,10 @@ final class SyncManager: ObservableObject {
             existing.mlsNumber = dto.mlsNumber
             existing.listingType = ListingType(rawValue: dto.listingType) ?? .sale
             existing.status = ListingStatus(rawValue: dto.status) ?? .draft
-            if let stageValue = dto.stage {
-                existing.stage = ListingStage(rawValue: stageValue) ?? .pending
+            if let stageValue = dto.stage, let resolvedStage = ListingStage(rawValue: stageValue) {
+                existing.stage = resolvedStage
+            } else {
+                existing.stage = .pending
             }
             existing.propertyId = dto.propertyId
             existing.activatedAt = dto.activatedAt

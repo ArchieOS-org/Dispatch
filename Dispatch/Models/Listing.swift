@@ -20,7 +20,13 @@ final class Listing: NotableProtocol {
     var mlsNumber: String?
     var listingType: ListingType
     var status: ListingStatus
-    var stage: ListingStage
+    var stageRaw: ListingStage?
+
+    /// Computed stage with fallback for schema migration compatibility
+    var stage: ListingStage {
+        get { stageRaw ?? .pending }
+        set { stageRaw = newValue }
+    }
 
     // Foreign keys
     var ownedBy: UUID
@@ -102,7 +108,7 @@ final class Listing: NotableProtocol {
         self.mlsNumber = mlsNumber
         self.listingType = listingType
         self.status = status
-        self.stage = stage
+        self.stageRaw = stage
         self.ownedBy = ownedBy
         self.createdVia = createdVia
         self.sourceSlackMessages = sourceSlackMessages

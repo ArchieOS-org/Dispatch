@@ -32,6 +32,10 @@ struct AppDestinationsModifier: ViewModifier {
                     onAddSubtask: actions.onAddSubtask
                 )
             }
+            // MARK: - Routes (Type-safe navigation)
+            .navigationDestination(for: Route.self) { route in
+                routeDestination(for: route)
+            }
             // MARK: - Core Entities
             .navigationDestination(for: Listing.self) { listing in
                 ListingDetailView(listing: listing, userLookup: actions.userLookup)
@@ -78,6 +82,14 @@ struct AppDestinationsModifier: ViewModifier {
         switch section {
         case .listingTypes:
             ListingTypeListView()
+        }
+    }
+
+    @ViewBuilder
+    private func routeDestination(for route: Route) -> some View {
+        switch route {
+        case .stagedListings(let stage):
+            StagedListingsView(stage: stage)
         }
     }
 }

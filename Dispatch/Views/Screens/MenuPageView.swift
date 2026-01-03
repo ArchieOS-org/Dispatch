@@ -9,6 +9,10 @@ import SwiftUI
 import SwiftData
 
 struct MenuPageView: View {
+    // MARK: - Environment
+
+    @EnvironmentObject private var appState: AppState
+
     // MARK: - Queries
 
     @Query private var allTasksRaw: [TaskItem]
@@ -41,6 +45,11 @@ struct MenuPageView: View {
 
     // MARK: - Computed Counts
 
+    /// Stage counts computed once per render cycle from activeListings.
+    private var stageCounts: [ListingStage: Int] {
+        activeListings.stageCounts()
+    }
+
     private var overdueCount: Int {
         let startOfToday = Calendar.current.startOfDay(for: Date())
         let overdueTasks = openTasks.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
@@ -62,6 +71,20 @@ struct MenuPageView: View {
 
     var body: some View {
         List {
+            // MARK: - Stage Cards Section
+            Section {
+                StageCardsSection(
+                    stageCounts: stageCounts,
+                    onSelectStage: { stage in
+                        appState.router.pathMain.append(Route.stagedListings(stage))
+                    }
+                )
+            }
+            .listRowInsets(EdgeInsets(top: 0, leading: DS.Spacing.lg, bottom: 0, trailing: DS.Spacing.lg))
+            .listRowBackground(DS.Colors.Background.primary)
+            .listRowSeparator(.hidden)
+
+            // MARK: - Menu Sections
             ForEach(MenuSection.allCases) { section in
                 NavigationLink(value: section) {
                     MenuSectionRow(
@@ -156,6 +179,7 @@ private struct MenuSectionRow: View {
         MenuPageView()
     }
     .modelContainer(for: [TaskItem.self, Activity.self, Property.self, Listing.self, User.self], inMemory: true)
+    .environmentObject(AppState())
     .environmentObject(SyncManager(mode: .preview))
     .environmentObject(LensState())
 }

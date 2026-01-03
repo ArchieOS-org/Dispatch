@@ -70,6 +70,11 @@ struct ContentView: View {
         allListings.filter { $0.status != .deleted }
     }
 
+    /// Stage counts computed once per render cycle from activeListings.
+    private var stageCounts: [ListingStage: Int] {
+        activeListings.stageCounts()
+    }
+
     /// Sentinel UUID for unauthenticated state
     private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
 
@@ -366,7 +371,20 @@ struct ContentView: View {
             List {
                 // We use manual button rows or TapGestures to ensure we capture the "click active" event
                 // Standard List(selection:) consumes clicks on selected items without reporting them.
-                
+
+                // Stage Cards Section
+                Section {
+                    StageCardsSection(
+                        stageCounts: stageCounts,
+                        onSelectStage: { stage in
+                            appState.router.pathMain.append(Route.stagedListings(stage))
+                        }
+                    )
+                }
+                .listRowInsets(EdgeInsets(top: DS.Spacing.sm, leading: DS.Spacing.md, bottom: DS.Spacing.sm, trailing: DS.Spacing.md))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
                 Group {
                     SidebarRow(
                         title: "My Workspace",
@@ -492,6 +510,19 @@ struct ContentView: View {
     private var sidebarNavigation: some View {
         NavigationSplitView {
             List {
+                // Stage Cards Section
+                Section {
+                    StageCardsSection(
+                        stageCounts: stageCounts,
+                        onSelectStage: { stage in
+                            appState.router.pathMain.append(Route.stagedListings(stage))
+                        }
+                    )
+                }
+                .listRowInsets(EdgeInsets(top: DS.Spacing.sm, leading: DS.Spacing.md, bottom: DS.Spacing.sm, trailing: DS.Spacing.md))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
                 sidebarButton(for: .workspace, label: "My Workspace", icon: "briefcase")
                 sidebarButton(for: .properties, label: "Properties", icon: DS.Icons.Entity.property)
                 sidebarButton(for: .listings, label: "Listings", icon: DS.Icons.Entity.listing)
