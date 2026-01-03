@@ -510,6 +510,10 @@ final class SyncManager: ObservableObject {
         try await syncDownUsers(context: context, since: lastSyncISO)
         debugLog.endTiming("syncDownUsers")
 
+        debugLog.startTiming("syncDownProperties")
+        try await syncDownProperties(context: context, since: lastSyncISO)
+        debugLog.endTiming("syncDownProperties")
+
         debugLog.startTiming("syncDownListings")
         try await syncDownListings(context: context, since: lastSyncISO)
         debugLog.endTiming("syncDownListings")
@@ -536,6 +540,11 @@ final class SyncManager: ObservableObject {
         debugLog.startTiming("reconcileListingRelationships")
         try reconcileListingRelationships(context: context)
         debugLog.endTiming("reconcileListingRelationships")
+
+        // Reconcile Listing -> Property relationships
+        debugLog.startTiming("reconcileListingPropertyRelationships")
+        try reconcileListingPropertyRelationships(context: context)
+        debugLog.endTiming("reconcileListingPropertyRelationships")
 
         // ORPHAN RECONCILIATION: Remove local records that no longer exist on Supabase
         // This handles the case where records are hard-deleted on the server
@@ -970,6 +979,83 @@ final class SyncManager: ObservableObject {
         }
     }
 
+    // MARK: - Sync Down: Properties
+    private func syncDownProperties(context: ModelContext, since: String) async throws {
+        debugLog.log("syncDownProperties() - querying Supabase...", category: .sync)
+        let dtos: [PropertyDTO] = try await supabase
+            .from("properties")
+            .select()
+            .gt("updated_at", value: since)
+            .execute()
+            .value
+
+        debugLog.logSyncOperation(operation: "FETCH", table: "properties", count: dtos.count)
+
+        for (index, dto) in dtos.enumerated() {
+            debugLog.log("  Upserting property \(index + 1)/\(dtos.count): \(dto.id) - \(dto.address)", category: .sync)
+            try upsertProperty(dto: dto, context: context)
+        }
+    }
+
+    private func upsertProperty(dto: PropertyDTO, context: ModelContext) throws {
+        let targetId = dto.id
+        let descriptor = FetchDescriptor<Property>(
+            predicate: #Predicate { $0.id == targetId }
+        )
+
+        if let existing = try context.fetch(descriptor).first {
+            // Local-first: skip ALL updates if local-authoritative
+            if isLocalAuthoritative(existing, inFlight: false) {
+                debugLog.log("[SyncDown] Skip update for property \(dto.id) — local-authoritative (state=\(existing.syncState))", category: .sync)
+                return
+            }
+
+            debugLog.log("    UPDATE existing property: \(dto.id)", category: .sync)
+            existing.address = dto.address
+            existing.unit = dto.unit
+            existing.city = dto.city ?? ""
+            existing.province = dto.province ?? ""
+            existing.postalCode = dto.postalCode ?? ""
+            existing.country = dto.country ?? "Canada"
+            existing.propertyType = PropertyType(rawValue: dto.propertyType) ?? .residential
+            existing.deletedAt = dto.deletedAt
+            existing.updatedAt = dto.updatedAt
+
+            existing.markSynced()
+        } else {
+            debugLog.log("    INSERT new property: \(dto.id)", category: .sync)
+            let newProperty = dto.toModel()
+            newProperty.markSynced()
+            context.insert(newProperty)
+        }
+    }
+
+    /// Reconciles Listing -> Property relationships after sync
+    private func reconcileListingPropertyRelationships(context: ModelContext) throws {
+        let listingsDescriptor = FetchDescriptor<Listing>()
+        let propertiesDescriptor = FetchDescriptor<Property>()
+
+        let allListings = try context.fetch(listingsDescriptor)
+        let allProperties = try context.fetch(propertiesDescriptor)
+
+        // Build property lookup by ID
+        let propertiesById = Dictionary(uniqueKeysWithValues: allProperties.map { ($0.id, $0) })
+
+        var linkedCount = 0
+        for listing in allListings {
+            if let propertyId = listing.propertyId, listing.property == nil {
+                if let property = propertiesById[propertyId] {
+                    listing.property = property
+                    linkedCount += 1
+                }
+            }
+        }
+
+        if linkedCount > 0 {
+            debugLog.log("  Linked \(linkedCount) listings to their properties", category: .sync)
+        }
+    }
+
     // MARK: - Sync Down: Listings
     private func syncDownListings(context: ModelContext, since: String) async throws {
         debugLog.log("syncDownListings() - querying Supabase...", category: .sync)
@@ -1012,6 +1098,10 @@ final class SyncManager: ObservableObject {
             existing.mlsNumber = dto.mlsNumber
             existing.listingType = ListingType(rawValue: dto.listingType) ?? .sale
             existing.status = ListingStatus(rawValue: dto.status) ?? .draft
+            if let stageValue = dto.stage {
+                existing.stage = ListingStage(rawValue: stageValue) ?? .pending
+            }
+            existing.propertyId = dto.propertyId
             existing.activatedAt = dto.activatedAt
             existing.pendingAt = dto.pendingAt
             existing.closedAt = dto.closedAt
@@ -1570,10 +1660,11 @@ final class SyncManager: ObservableObject {
             debugLog.log("Non-admin user - skipping ListingTypes/Templates SyncUp", category: .sync)
         }
         
-        debugLog.log("Sync order: Users → Listings → Tasks → Activities → ClaimEvents (FK dependencies)", category: .sync)
+        debugLog.log("Sync order: Users → Properties → Listings → Tasks → Activities → ClaimEvents (FK dependencies)", category: .sync)
 
-        // Sync in FK dependency order: Users first (owners), then Listings, then Tasks/Activities
+        // Sync in FK dependency order: Users first (owners), then Properties, then Listings, then Tasks/Activities
         try await syncUpUsers(context: context)
+        try await syncUpProperties(context: context)
         try await syncUpListings(context: context)
         try await syncUpTasks(context: context)
         try await syncUpActivities(context: context)
@@ -1907,6 +1998,55 @@ final class SyncManager: ObservableObject {
                     let message = userFacingMessage(for: error)
                     note.markFailed(message)
                     debugLog.error("  ✗ Note \(note.id) sync failed: \(message)")
+                }
+            }
+        }
+    }
+
+    private func syncUpProperties(context: ModelContext) async throws {
+        let descriptor = FetchDescriptor<Property>()
+        let allProperties = try context.fetch(descriptor)
+        debugLog.log("syncUpProperties() - fetched \(allProperties.count) total properties from SwiftData", category: .sync)
+
+        let pendingProperties = allProperties.filter { $0.syncState == .pending || $0.syncState == .failed }
+        debugLog.logSyncOperation(operation: "PENDING", table: "properties", count: pendingProperties.count, details: "of \(allProperties.count) total")
+
+        guard !pendingProperties.isEmpty else {
+            debugLog.log("  No pending properties to sync", category: .sync)
+            return
+        }
+
+        // Try batch first for efficiency
+        do {
+            let dtos = pendingProperties.map { PropertyDTO(from: $0) }
+            debugLog.log("  Batch upserting \(dtos.count) properties to Supabase...", category: .sync)
+            try await supabase
+                .from("properties")
+                .upsert(dtos)
+                .execute()
+            debugLog.log("  Batch upsert successful", category: .sync)
+
+            for property in pendingProperties {
+                property.markSynced()
+            }
+            debugLog.log("  Marked \(pendingProperties.count) properties as synced", category: .sync)
+        } catch {
+            // Batch failed - try individual items to isolate failures
+            debugLog.log("Batch property sync failed, trying individually: \(error.localizedDescription)", category: .error)
+
+            for property in pendingProperties {
+                do {
+                    let dto = PropertyDTO(from: property)
+                    try await supabase
+                        .from("properties")
+                        .upsert([dto])
+                        .execute()
+                    property.markSynced()
+                    debugLog.log("  ✓ Property \(property.id) synced individually", category: .sync)
+                } catch {
+                    let message = userFacingMessage(for: error)
+                    property.markFailed(message)
+                    debugLog.error("  ✗ Property \(property.id) sync failed: \(message)")
                 }
             }
         }

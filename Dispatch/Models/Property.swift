@@ -1,47 +1,37 @@
 //
-//  Listing.swift
+//  Property.swift
 //  Dispatch
 //
-//  Created by Noah Deskin on 2025-12-06.
+//  Property entity - groups multiple listings at a single location
 //
 
 import Foundation
 import SwiftData
 
 @Model
-final class Listing: NotableProtocol {
+final class Property {
     @Attribute(.unique) var id: UUID
     var address: String
+    var unit: String?
     var city: String
     var province: String
     var postalCode: String
     var country: String
-    var price: Decimal?
-    var mlsNumber: String?
-    var listingType: ListingType
-    var status: ListingStatus
-    var stage: ListingStage
+    var propertyType: PropertyType
 
     // Foreign keys
     var ownedBy: UUID
-    var propertyId: UUID?
-    var typeDefinitionId: UUID? // Links to ListingTypeDefinition (nullable during client transition)
 
     // Metadata
     var createdVia: CreationSource
-    var sourceSlackMessages: [String]?
 
     // Timestamps
-    var activatedAt: Date?
-    var pendingAt: Date?
-    var closedAt: Date?
     var deletedAt: Date?
-    var dueDate: Date?
     var createdAt: Date
     var updatedAt: Date
     var syncedAt: Date?
 
-    // Sync state tracking - optional storage with computed wrapper for schema migration compatibility
+    // Sync state tracking
     var syncStateRaw: EntitySyncState?
     var lastSyncError: String?
 
@@ -51,62 +41,48 @@ final class Listing: NotableProtocol {
     }
 
     // Relationships
-    @Relationship(deleteRule: .cascade)
-    var tasks: [TaskItem] = []
-
-    @Relationship(deleteRule: .cascade)
-    var activities: [Activity] = []
-
-    @Relationship(deleteRule: .cascade)
-    var notes: [Note] = []
-
-    @Relationship(deleteRule: .cascade)
-    var statusHistory: [StatusChange] = []
+    @Relationship(deleteRule: .nullify, inverse: \Listing.property)
+    var listings: [Listing] = []
 
     // Inverse relationships
     var owner: User?
-    
-    // Dynamic type definition relationship (Non-Optional post-migration)
-    var typeDefinition: ListingTypeDefinition?
 
-    // Property relationship
-    @Relationship(deleteRule: .nullify)
-    var property: Property?
+    // Computed
+    var activeListings: [Listing] {
+        listings.filter { $0.deletedAt == nil }
+    }
+
+    var displayAddress: String {
+        if let unit = unit, !unit.isEmpty {
+            return "\(address), Unit \(unit)"
+        }
+        return address
+    }
 
     init(
         id: UUID = UUID(),
         address: String,
+        unit: String? = nil,
         city: String = "",
         province: String = "",
         postalCode: String = "",
         country: String = "Canada",
-        price: Decimal? = nil,
-        mlsNumber: String? = nil,
-        listingType: ListingType = .sale,
-        status: ListingStatus = .draft,
-        stage: ListingStage = .pending,
+        propertyType: PropertyType = .residential,
         ownedBy: UUID,
         createdVia: CreationSource = .dispatch,
-        sourceSlackMessages: [String]? = nil,
-        dueDate: Date? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
         self.id = id
         self.address = address
+        self.unit = unit
         self.city = city
         self.province = province
         self.postalCode = postalCode
         self.country = country
-        self.price = price
-        self.mlsNumber = mlsNumber
-        self.listingType = listingType
-        self.status = status
-        self.stage = stage
+        self.propertyType = propertyType
         self.ownedBy = ownedBy
         self.createdVia = createdVia
-        self.sourceSlackMessages = sourceSlackMessages
-        self.dueDate = dueDate
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.syncStateRaw = .synced
@@ -114,11 +90,7 @@ final class Listing: NotableProtocol {
 }
 
 // MARK: - RealtimeSyncable Conformance
-extension Listing: RealtimeSyncable {
-    // syncState, lastSyncError, syncedAt are stored properties
-    // isDirty, isSyncFailed computed from syncState via protocol extension
-    // conflictResolution uses default from protocol extension (.lastWriteWins)
-
+extension Property: RealtimeSyncable {
     /// Mark as pending when modified
     func markPending() {
         syncState = .pending

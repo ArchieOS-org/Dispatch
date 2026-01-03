@@ -36,6 +36,9 @@ struct AppDestinationsModifier: ViewModifier {
             .navigationDestination(for: Listing.self) { listing in
                 ListingDetailView(listing: listing, userLookup: actions.userLookup)
             }
+            .navigationDestination(for: Property.self) { property in
+                PropertyDetailView(property: property, userLookup: actions.userLookup)
+            }
             .navigationDestination(for: User.self) { user in
                 RealtorProfileView(user: user)
             }
@@ -59,6 +62,8 @@ struct AppDestinationsModifier: ViewModifier {
         switch section {
         case .myWorkspace:
             MyWorkspaceView()
+        case .properties:
+            PropertiesListView()
         case .listings:
             ListingListView()
         case .realtors:

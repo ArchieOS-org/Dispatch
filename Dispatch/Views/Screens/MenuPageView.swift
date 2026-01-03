@@ -13,6 +13,7 @@ struct MenuPageView: View {
 
     @Query private var allTasksRaw: [TaskItem]
     @Query private var allActivitiesRaw: [Activity]
+    @Query private var allPropertiesRaw: [Property]
     @Query private var allListingsRaw: [Listing]
     @Query private var allRealtors: [User]
 
@@ -24,6 +25,10 @@ struct MenuPageView: View {
 
     private var openActivities: [Activity] {
         allActivitiesRaw.filter { $0.status != .completed && $0.status != .deleted }
+    }
+
+    private var activeProperties: [Property] {
+        allPropertiesRaw.filter { $0.deletedAt == nil }
     }
 
     private var activeListings: [Listing] {
@@ -46,6 +51,7 @@ struct MenuPageView: View {
     private func count(for section: MenuSection) -> Int {
         switch section {
         case .myWorkspace: return openTasks.count + openActivities.count
+        case .properties: return activeProperties.count
         case .listings: return activeListings.count
         case .realtors: return activeRealtors.count
         case .settings: return 0
@@ -149,7 +155,7 @@ private struct MenuSectionRow: View {
     NavigationStack {
         MenuPageView()
     }
-    .modelContainer(for: [TaskItem.self, Activity.self, Listing.self, User.self], inMemory: true)
+    .modelContainer(for: [TaskItem.self, Activity.self, Property.self, Listing.self, User.self], inMemory: true)
     .environmentObject(SyncManager(mode: .preview))
     .environmentObject(LensState())
 }

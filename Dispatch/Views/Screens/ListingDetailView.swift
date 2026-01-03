@@ -121,16 +121,18 @@ struct ListingDetailView: View {
     
     private var content: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+            stageSection
+
             metadataSection
-            
+
             notesSection
-            
+
             VStack(alignment: .leading, spacing: 0) {
                 tasksHeader
                 Divider().padding(.vertical, DS.Spacing.sm)
                 tasksSection
             }
-            
+
             VStack(alignment: .leading, spacing: 0) {
                 activitiesHeader
                 Divider().padding(.vertical, DS.Spacing.sm)
@@ -138,6 +140,22 @@ struct ListingDetailView: View {
             }
         }
         .padding(.bottom, DS.Spacing.md)
+    }
+
+    private var stageSection: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            Text("Stage")
+                .font(DS.Typography.caption)
+                .foregroundColor(DS.Colors.Text.secondary)
+            StagePicker(stage: .init(
+                get: { listing.stage },
+                set: { newStage in
+                    listing.stage = newStage
+                    listing.markPending()
+                    syncManager.requestSync()
+                }
+            ))
+        }
     }
 
     private var metadataSection: some View {

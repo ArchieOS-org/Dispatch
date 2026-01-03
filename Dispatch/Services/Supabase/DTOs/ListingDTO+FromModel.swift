@@ -21,7 +21,9 @@ extension ListingDTO {
         self.mlsNumber = model.mlsNumber
         self.listingType = model.listingType.rawValue
         self.status = model.status.rawValue
+        self.stage = model.stage.rawValue
         self.ownedBy = model.ownedBy
+        self.propertyId = model.propertyId
         self.createdVia = model.createdVia.rawValue
         self.sourceSlackMessages = model.sourceSlackMessages
         self.activatedAt = model.activatedAt

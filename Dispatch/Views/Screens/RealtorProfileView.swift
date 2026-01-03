@@ -17,11 +17,16 @@ struct RealtorProfileView: View {
 
     // MARK: - Queries
 
+    @Query private var allProperties: [Property]
     @Query private var listings: [Listing]
     @Query private var tasks: [TaskItem]
     @Query private var activities: [Activity]
 
-    // MARK: - Filtered Properties
+    // MARK: - Filtered Data
+
+    private var userProperties: [Property] {
+        allProperties.filter { $0.ownedBy == user.id && $0.deletedAt == nil }
+    }
 
     private var userListings: [Listing] {
         listings.filter { $0.owner?.id == user.id && $0.status != .deleted }
@@ -70,6 +75,19 @@ struct RealtorProfileView: View {
         LazyVStack(spacing: DS.Spacing.sectionSpacing) {
             // Profile Header
             profileHeader
+
+            // Properties Section
+            if !userProperties.isEmpty {
+                VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                    sectionHeader("Properties (\(userProperties.count))")
+                    ForEach(userProperties) { property in
+                        NavigationLink(value: property) {
+                            PropertyRowView(property: property)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
 
             // Active Listings Section
             if !userListings.isEmpty {
@@ -180,28 +198,69 @@ struct RealtorProfileView: View {
 
 // MARK: - Helper Views
 
+private struct PropertyRowView: View {
+    let property: Property
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.md) {
+            Image(systemName: DS.Icons.Entity.property)
+                .font(.title2)
+                .foregroundColor(DS.Colors.Section.properties)
+                .frame(width: 40)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(property.displayAddress)
+                    .font(DS.Typography.body)
+                    .foregroundColor(DS.Colors.Text.primary)
+
+                if !property.city.isEmpty {
+                    Text("\(property.city), \(property.province)")
+                        .font(DS.Typography.caption)
+                        .foregroundColor(DS.Colors.Text.secondary)
+                }
+            }
+
+            Spacer()
+
+            // Listing count badge
+            let listingCount = property.activeListings.count
+            if listingCount > 0 {
+                Text("\(listingCount) listing\(listingCount == 1 ? "" : "s")")
+                    .font(DS.Typography.caption)
+                    .foregroundColor(DS.Colors.Section.properties)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(DS.Colors.Section.properties.opacity(0.15))
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(.vertical, DS.Spacing.sm)
+        .contentShape(Rectangle())
+    }
+}
+
 private struct ListingRowView: View {
     let listing: Listing
-    
+
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
             Image(systemName: DS.Icons.Entity.listingFill)
                 .font(.title2)
                 .foregroundColor(DS.Colors.Text.tertiary)
                 .frame(width: 40)
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(listing.address)
                     .font(DS.Typography.body)
                     .foregroundColor(DS.Colors.Text.primary)
-                
+
                 Text("\(listing.city), \(listing.province)")
                     .font(DS.Typography.caption)
                     .foregroundColor(DS.Colors.Text.secondary)
             }
-            
+
             Spacer()
-            
+
             Text(listing.status.rawValue.capitalized)
                 .font(DS.Typography.caption)
                 .padding(.leading, 8)

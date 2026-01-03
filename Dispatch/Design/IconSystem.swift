@@ -214,6 +214,12 @@ extension DS {
             /// Listing entity filled
             static let listingFill = "house.fill"
 
+            /// Property entity
+            static let property = "mappin.and.ellipse"
+
+            /// Property entity filled
+            static let propertyFill = "mappin.and.ellipse.fill"
+
             /// Note entity
             static let note = "note.text"
 
@@ -318,6 +324,30 @@ extension DS {
 
             /// Marketing role filled
             static let marketingFill = "m.circle.fill"
+        }
+
+        // MARK: - Listing Stage Icons
+
+        /// Icons for listing lifecycle stages
+        enum Stage {
+            static let pending = "clock"
+            static let workingOn = "hammer"
+            static let live = "checkmark.seal"
+            static let sold = "dollarsign.circle"
+            static let reList = "arrow.clockwise"
+            static let done = "checkmark.circle"
+
+            /// Returns the appropriate icon for a listing stage
+            static func icon(for stage: ListingStage) -> String {
+                switch stage {
+                case .pending: return pending
+                case .workingOn: return workingOn
+                case .live: return live
+                case .sold: return sold
+                case .reList: return reList
+                case .done: return done
+                }
+            }
         }
 
         // MARK: - Time & Date Icons

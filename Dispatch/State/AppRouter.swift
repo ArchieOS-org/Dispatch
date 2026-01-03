@@ -46,6 +46,7 @@ struct AppRouter {
 
 enum AppTab: String, CaseIterable, Equatable {
     case workspace
+    case properties
     case listings
     case realtors
     case settings

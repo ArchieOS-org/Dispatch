@@ -134,6 +134,9 @@ final class AppState: ObservableObject {
         case .newItem:
             // Context-aware creation based on current tab
             switch router.selectedTab {
+            case .properties:
+                // TODO: Add property creation sheet when implemented
+                break
             case .listings:
                 sheetState = .addListing
             case .realtors:

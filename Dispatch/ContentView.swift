@@ -263,7 +263,6 @@ struct ContentView: View {
                     )
                 }
             }
-            .syncNowToolbar()
 
             // Persistent floating buttons
             // Helper to hide buttons when overlay is active (One Boss)
@@ -326,6 +325,7 @@ struct ContentView: View {
             // Let's assume the mapped enum cases match AppTab.
             switch tab {
             case .workspace: appState.dispatch(.selectTab(.workspace))
+            case .properties: appState.dispatch(.selectTab(.properties))
             case .listings: appState.dispatch(.selectTab(.listings))
             case .realtors: appState.dispatch(.selectTab(.realtors))
             case .settings: appState.dispatch(.selectTab(.settings))
@@ -347,6 +347,8 @@ struct ContentView: View {
     #if os(macOS)
     private var toolbarContext: ToolbarContext {
         switch selectedTab {
+        case .properties:
+            return .listingList // Properties uses listing-style toolbar
         case .listings:
             return .listingList
         case .realtors:
@@ -372,7 +374,14 @@ struct ContentView: View {
                         isSelected: selectedTab == .workspace,
                         action: { appState.dispatch(.selectTab(.workspace)) }
                     )
-                    
+
+                    SidebarRow(
+                        title: "Properties",
+                        icon: DS.Icons.Entity.property,
+                        isSelected: selectedTab == .properties,
+                        action: { appState.dispatch(.selectTab(.properties)) }
+                    )
+
                     SidebarRow(
                         title: "Listings",
                         icon: DS.Icons.Entity.listing,
@@ -386,10 +395,10 @@ struct ContentView: View {
                         isSelected: selectedTab == .realtors,
                         action: { appState.dispatch(.selectTab(.realtors)) }
                     )
-                    
+
                     Divider()
                         .padding(.vertical, DS.Spacing.sm)
-                    
+
                     SidebarRow(
                         title: "Settings",
                         icon: "gearshape",
@@ -403,6 +412,8 @@ struct ContentView: View {
             NavigationStack(path: $appState.router.pathMain) {
                 Group {
                     switch selectedTab {
+                    case .properties:
+                        PropertiesListView()
                     case .listings:
                         ListingListView()
                     case .realtors:
@@ -482,6 +493,7 @@ struct ContentView: View {
         NavigationSplitView {
             List {
                 sidebarButton(for: .workspace, label: "My Workspace", icon: "briefcase")
+                sidebarButton(for: .properties, label: "Properties", icon: DS.Icons.Entity.property)
                 sidebarButton(for: .listings, label: "Listings", icon: DS.Icons.Entity.listing)
                 sidebarButton(for: .realtors, label: "Realtors", icon: DS.Icons.Entity.realtor)
             }
@@ -492,6 +504,8 @@ struct ContentView: View {
             NavigationStack(path: $appState.router.pathMain) {
                 Group {
                     switch selectedTab {
+                    case .properties:
+                        PropertiesListView()
                     case .listings:
                         ListingListView()
                     case .realtors:
@@ -512,7 +526,6 @@ struct ContentView: View {
                     }
                 }
             }
-            .syncNowToolbar()
         }
         .navigationSplitViewStyle(.balanced)
     }
@@ -683,7 +696,11 @@ struct ContentView: View {
         case .workspace:
             // Workspace always allows filtering (My Tasks vs All)
             newScreen = .myWorkspace
-            
+
+        case .properties:
+            // Properties list - no filtering needed
+            newScreen = .other
+
         case .listings:
             // List = No Filter, Detail = Filter (Audience/Kind)
             if pathDepth > 0 {
@@ -691,15 +708,15 @@ struct ContentView: View {
             } else {
                 newScreen = .listings
             }
-            
+
         case .realtors:
             // Realtors currently has no global filtering in header
             newScreen = .realtors
-        
+
         case .settings:
             // Settings has no filtering
             newScreen = .other
-            
+
         case .search:
             newScreen = .other
         }
