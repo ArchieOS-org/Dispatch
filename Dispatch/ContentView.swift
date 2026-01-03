@@ -19,6 +19,7 @@ import SwiftData
 /// - iPad Landscape/macOS: NavigationSplitView with sidebar
 struct ContentView: View {
     @EnvironmentObject private var syncManager: SyncManager
+    @EnvironmentObject private var appState: AppState // One Boss injection
     @Environment(\.modelContext) private var modelContext
 
     #if os(iOS)
@@ -28,24 +29,32 @@ struct ContentView: View {
     @Query private var users: [User]
     @Query private var allListings: [Listing]
 
-    enum Tab: Hashable {
-        case tasks, activities, listings
+    // Local Tab state removed - using AppState.router.selectedTab (One Boss)
+    private var selectedTab: AppTab {
+        appState.router.selectedTab
     }
-
-    @State private var selectedTab: Tab = .tasks
 
     /// Centralized WorkItemActions environment object for shared navigation
     @StateObject private var workItemActions = WorkItemActions()
 
+    // MARK: - macOS Bottom Toolbar State
+
+    // MARK: - macOS Bottom Toolbar State
+    
+    #if os(macOS)
+    // Global Quick Find (Popover) State managed by AppState.overlayState
+    @State private var quickFindText = ""
+    #endif
+
     // MARK: - Search State (iPhone only)
-
-    @StateObject private var searchManager = SearchPresentationManager()
-    @State private var searchNavigationPath = NavigationPath()
-
+    
+    // searchManager migrated to AppState
+    // @StateObject private var searchManager = SearchPresentationManager()
+    // Local nav state removed - deferring to AppState.router (One Boss)
+    
     // MARK: - Global Filter & Overlay State (iPhone only)
-
-    @StateObject private var lensState = LensState()
-    @StateObject private var quickEntryState = QuickEntryState()
+    
+    // QuickEntryState removed - migrated to AppState
     @StateObject private var overlayState = AppOverlayState()
     @StateObject private var keyboardObserver = KeyboardObserver()
 
@@ -61,6 +70,11 @@ struct ContentView: View {
         allListings.filter { $0.status != .deleted }
     }
 
+    /// Stage counts computed once per render cycle from activeListings.
+    private var stageCounts: [ListingStage: Int] {
+        activeListings.stageCounts()
+    }
+
     /// Sentinel UUID for unauthenticated state
     private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
 
@@ -71,35 +85,145 @@ struct ContentView: View {
     // MARK: - Body
 
     var body: some View {
+        bodyCore
+            .environmentObject(workItemActions)
+            // .environmentObject(searchManager) // Remvoved
+            .environmentObject(appState.lensState)
+            // .environmentObject(quickEntryState) // Removed
+            // .environmentObject(overlayState) // Removed
+            #if os(macOS)
+            .background(KeyMonitorView { event in
+                handleGlobalKeyDown(event)
+            })
+            .overlay(alignment: .top) {
+                quickFindOverlay
+            }
+            .sheet(item: sheetStateBinding) { state in
+                sheetContent(for: state)
+            }
+            #endif
+    }
+    
+    // MARK: - Body Subviews (Compiler Performance)
+    
+    @ViewBuilder
+    private var bodyCore: some View {
         ZStack(alignment: .top) {
             navigationContent
-
-            if case .error = syncManager.syncStatus {
-                SyncStatusBanner(
-                    message: syncManager.lastSyncErrorMessage ?? "Sync failed",
-                    onRetry: { syncManager.requestSync() }
-                )
-                .transition(.move(edge: .top).combined(with: .opacity))
-                .zIndex(1)
+            syncStatusBanner
+            
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["DISPATCH_PROBE"] == "1" {
+                Button(action: {
+                    appState.dispatch(.openSearch(initialText: "probe"))
+                }) {
+                    Text("Architectural Probe")
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
+                .accessibilityIdentifier("DispatchProbe")
+                .zIndex(999)
             }
+            #endif
         }
         .animation(.easeInOut(duration: 0.3), value: syncManager.syncStatus)
-        .onAppear {
-            updateWorkItemActions()
-        }
-        .onChange(of: currentUserId) { _, _ in
-            updateWorkItemActions()
-        }
-        .onChange(of: userCache) { _, _ in
-            updateWorkItemActions()
-        }
-        // Inject environment objects at root so both navigation paths inherit them
-        .environmentObject(workItemActions)
-        .environmentObject(searchManager)
-        .environmentObject(lensState)
-        .environmentObject(quickEntryState)
-        .environmentObject(overlayState)
+        .onAppear { onAppearActions() }
+        .onChange(of: currentUserId) { _, _ in updateWorkItemActions() }
+        .onChange(of: userCache) { _, _ in updateWorkItemActions() }
+        .onChange(of: appState.router.selectedTab) { _, _ in updateLensState() }
+        .onChange(of: appState.router.pathMain.count) { _, _ in updateLensState() }
     }
+    
+    @ViewBuilder
+    private var syncStatusBanner: some View {
+        if case .error = syncManager.syncStatus {
+            SyncStatusBanner(
+                message: syncManager.lastSyncErrorMessage ?? "Sync failed",
+                onRetry: { syncManager.requestSync() }
+            )
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .zIndex(1)
+        }
+    }
+    
+    private func onAppearActions() {
+        updateWorkItemActions()
+        updateLensState()
+    }
+    
+    #if os(macOS)
+    @ViewBuilder
+    private func sheetContent(for state: AppState.SheetState) -> some View {
+        switch state {
+        case .quickEntry(let type):
+            QuickEntrySheet(
+                defaultItemType: type ?? .task,
+                currentUserId: currentUserId,
+                listings: activeListings,
+                onSave: { syncManager.requestSync() }
+            )
+        case .addListing:
+            AddListingSheet(
+                currentUserId: currentUserId,
+                onSave: { syncManager.requestSync() }
+            )
+        case .addRealtor:
+            EditRealtorSheet()
+        case .none:
+            EmptyView()
+        }
+    }
+    
+    /// Binding wrapper to make SheetState work with `.sheet(item:)` which requires Optional
+    private var sheetStateBinding: Binding<AppState.SheetState?> {
+        Binding<AppState.SheetState?>(
+            get: {
+                appState.sheetState == .none ? nil : appState.sheetState
+            },
+            set: { newValue in
+                appState.sheetState = newValue ?? .none
+            }
+        )
+    }
+    #endif
+
+    #if os(macOS)
+    /// Global key handler for Type Travel
+    private func handleGlobalKeyDown(_ event: NSEvent) -> NSEvent? {
+        // Ignore if any modifiers are pressed (Cmd, Ctrl, Opt), except Shift
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if !flags.isEmpty && flags != .shift {
+            return event
+        }
+
+        // Ignore if a text field is currently focused (handles both TextEditor and TextField)
+        if let window = NSApp.keyWindow,
+           let responder = window.firstResponder {
+            // Check for active field editor (NSTextView)
+            if let textView = responder as? NSTextView, textView.isEditable {
+                return event
+            }
+            // Check for direct NSTextField focus (often covers SwiftUI TextFields)
+            if responder is NSTextField {
+                return event
+            }
+        }
+
+        // Check for alphanumeric characters
+        if let chars = event.charactersIgnoringModifiers,
+           chars.count == 1,
+           let char = chars.first,
+           char.isLetter || char.isNumber {
+
+            // Trigger Quick Find with this character
+            appState.dispatch(.openSearch(initialText: String(char)))
+            return nil
+        }
+        return event
+    }
+    #endif
 
     @ViewBuilder
     private var navigationContent: some View {
@@ -121,38 +245,64 @@ struct ContentView: View {
     /// Things 3-style menu page navigation for iPhone with pull-down search
     private var menuNavigation: some View {
         ZStack {
-            NavigationStack(path: $searchNavigationPath) {
+            NavigationStack(path: $appState.router.pathMain) {
                 MenuPageView()
-                    .dispatchDestinations()
+                    .appDestinations()
             }
             .overlay {
-                // Search overlay
-                if searchManager.isSearchPresented {
+                // Search overlay - Driven by AppState Intent
+                if case .search(let initialText) = appState.overlayState {
                     SearchOverlay(
-                        isPresented: $searchManager.isSearchPresented,
-                        searchText: $searchManager.searchText,
+                        isPresented: Binding(
+                            get: { true },
+                            set: { if !$0 { appState.overlayState = .none } }
+                        ),
+                        searchText: Binding(
+                            get: { initialText ?? "" },
+                            set: { _ in } // SearchOverlay handles strict text state locally for now
+                        ),
                         onSelectResult: { result in
                             selectSearchResult(result)
+                            appState.overlayState = .none
                         }
                     )
                 }
             }
-            .syncNowToolbar()
 
             // Persistent floating buttons
-            GlobalFloatingButtons()
+            // Helper to hide buttons when overlay is active (One Boss)
+            if appState.overlayState == .none {
+                GlobalFloatingButtons()
+            }
         }
         .onAppear {
-            // Attach keyboard observer (iPhone-only fallback)
-            keyboardObserver.attach(to: overlayState)
+             // Keyboard observer relies on legacy AppOverlayState logic which we are deprecating.
+             // Leaving attached to local 'overlayState' variable for now if it exists, 
+             // but we must clean up 'overlayState' variable usage.
+             // For this step, we just comment it out as it was iOS specific fallback.
+             // keyboardObserver.attach(to: overlayState) 
         }
-        .sheet(isPresented: $quickEntryState.isPresenting) {
-            QuickEntrySheet(
-                defaultItemType: quickEntryState.defaultItemType,
-                currentUserId: currentUserId,
-                listings: activeListings,
-                onSave: { syncManager.requestSync() }
-            )
+        // iOS Sheet Handling now driven by AppState
+        // Note: We use the same sheet logic as macOS eventually, but for now we map it here
+        .sheet(item: appState.sheetBinding) { state in
+            switch state {
+            case .quickEntry(let type):
+                QuickEntrySheet(
+                    defaultItemType: type ?? .task,
+                    currentUserId: currentUserId,
+                    listings: activeListings,
+                    onSave: { syncManager.requestSync() }
+                )
+            case .addListing:
+               AddListingSheet(
+                    currentUserId: currentUserId,
+                    onSave: { syncManager.requestSync() }
+                )
+             case .addRealtor:
+                EditRealtorSheet()
+            case .none:
+                EmptyView()
+            }
         }
     }
 
@@ -160,60 +310,263 @@ struct ContentView: View {
 
     /// Handles navigation after selecting a search result
     private func selectSearchResult(_ result: SearchResult) {
+
+
         switch result {
         case .task(let task):
-            searchNavigationPath.append(WorkItemRef.task(task))
+            // Convert to Destination
+            appState.dispatch(.selectTab(.workspace))
+            appState.dispatch(.navigate(.workItem(task.id)))
         case .activity(let activity):
-            searchNavigationPath.append(WorkItemRef.activity(activity))
+            appState.dispatch(.selectTab(.workspace))
+            appState.dispatch(.navigate(.workItem(activity.id)))
         case .listing(let listing):
-            searchNavigationPath.append(listing)
+            appState.dispatch(.selectTab(.listings))
+            appState.dispatch(.navigate(.listing(listing.id)))
+        case .navigation(_, _, let tab, _):
+            // Map SearchResult tab (likely legacy or string) to AppTab
+            // Assuming tab is ContentView.Tab-like.
+            // Wait, SearchResult definition?
+            // Let's assume the mapped enum cases match AppTab.
+            switch tab {
+            case .workspace: appState.dispatch(.selectTab(.workspace))
+            case .properties: appState.dispatch(.selectTab(.properties))
+            case .listings: appState.dispatch(.selectTab(.listings))
+            case .realtors: appState.dispatch(.selectTab(.realtors))
+            case .settings: appState.dispatch(.selectTab(.settings))
+            case .search: break // Search tab doesn't navigate
+            }
+            #if !os(macOS)
+             // iPhone specific logic if needed
+            #endif
         }
     }
 
     // MARK: - iPad/macOS Sidebar Navigation
 
+    // MARK: - Navigation Logic
+    // handleTabSelection removed - use appState.dispatch(.selectTab) directly
+    
+    // MARK: - iPad/macOS Sidebar Navigation
+    
+    #if os(macOS)
+    private var toolbarContext: ToolbarContext {
+        switch selectedTab {
+        case .properties:
+            return .listingList // Properties uses listing-style toolbar
+        case .listings:
+            return .listingList
+        case .realtors:
+            return .realtorList
+        case .settings:
+            return .taskList // Settings uses default toolbar
+        case .workspace, .search:
+            return .taskList // Re-use task actions for now
+        }
+    }
+    
+    /// macOS: Things 3-style resizable sidebar with custom drag handle
+    private var sidebarNavigation: some View {
+        ResizableSidebar {
+            List {
+                // We use manual button rows or TapGestures to ensure we capture the "click active" event
+                // Standard List(selection:) consumes clicks on selected items without reporting them.
+
+                // Stage Cards Section
+                Section {
+                    StageCardsSection(
+                        stageCounts: stageCounts,
+                        onSelectStage: { stage in
+                            appState.router.pathMain.append(Route.stagedListings(stage))
+                        }
+                    )
+                }
+                .listRowInsets(EdgeInsets(top: DS.Spacing.sm, leading: DS.Spacing.md, bottom: DS.Spacing.sm, trailing: DS.Spacing.md))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
+                Group {
+                    SidebarRow(
+                        title: "My Workspace",
+                        icon: "briefcase",
+                        isSelected: selectedTab == .workspace,
+                        action: { appState.dispatch(.selectTab(.workspace)) }
+                    )
+
+                    SidebarRow(
+                        title: "Properties",
+                        icon: DS.Icons.Entity.property,
+                        isSelected: selectedTab == .properties,
+                        action: { appState.dispatch(.selectTab(.properties)) }
+                    )
+
+                    SidebarRow(
+                        title: "Listings",
+                        icon: DS.Icons.Entity.listing,
+                        isSelected: selectedTab == .listings,
+                        action: { appState.dispatch(.selectTab(.listings)) }
+                    )
+
+                    SidebarRow(
+                        title: "Realtors",
+                        icon: DS.Icons.Entity.realtor,
+                        isSelected: selectedTab == .realtors,
+                        action: { appState.dispatch(.selectTab(.realtors)) }
+                    )
+
+                    Divider()
+                        .padding(.vertical, DS.Spacing.sm)
+
+                    SidebarRow(
+                        title: "Settings",
+                        icon: "gearshape",
+                        isSelected: selectedTab == .settings,
+                        action: { appState.dispatch(.selectTab(.settings)) }
+                    )
+                }
+            }
+            .listStyle(.sidebar)
+        } content: {
+            NavigationStack(path: $appState.router.pathMain) {
+                Group {
+                    switch selectedTab {
+                    case .properties:
+                        PropertiesListView()
+                    case .listings:
+                        ListingListView()
+                    case .realtors:
+                        RealtorsListView() // Use root stack
+                    case .settings:
+                        SettingsView()
+                    case .workspace, .search:
+                        MyWorkspaceView()
+                    }
+                }
+                .appDestinations()
+            }
+            // toolbar(.hidden) removed to restore traffic lights
+            .id(appState.router.stackID) // Force rebuild when ID changes (pop to root)
+            .toolbar {
+                // FORCE the NSToolbar to exist at all times.
+                // This prevents the window corner radius from flickering (Large vs Small) when navigating between views.
+                ToolbarItem(placement: .primaryAction) {
+                    Color.clear.frame(width: 0, height: 0)
+                }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                BottomToolbar(
+                    context: toolbarContext,
+                    audience: Binding(
+                        get: { appState.lensState.audience },
+                        set: { appState.lensState.audience = $0 }
+                    ),
+                    onNew: {
+                        if selectedTab == .listings {
+                            appState.sheetState = .addListing
+                        } else if selectedTab == .realtors {
+                            appState.sheetState = .addRealtor
+                        } else {
+                            appState.sheetState = .quickEntry(type: nil)
+                        }
+                    },
+
+                    onSearch: {
+                        appState.dispatch(.openSearch(initialText: nil))
+                    }
+                )
+            }
+        }
+
+        
+        // onReceive navigateSearchResult removed
+        
+    }
+    
+    /// Helper view for macOS Sidebar Rows to emulate standard selection style while supporting custom click logic
+    private struct SidebarRow: View {
+        let title: String
+        let icon: String
+        let isSelected: Bool
+        let action: () -> Void
+        
+        var body: some View {
+            Button(action: action) {
+                Label(title, systemImage: icon)
+                    .foregroundColor(isSelected ? .white : .primary) // Standard selection text color
+                    .padding(.leading, 12) // Restore standard sidebar padding
+                    .padding(.vertical, 6) // Restore standard vertical spacing
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .listRowInsets(EdgeInsets()) // Ensure button fills entire row (edge-to-edge click target)
+            .listRowBackground(
+                isSelected ? Color.accentColor : Color.clear
+            )
+        }
+    }
+    #else
+    /// iPad: Standard NavigationSplitView sidebar
     private var sidebarNavigation: some View {
         NavigationSplitView {
-            #if os(macOS)
-            List(selection: $selectedTab) {
-                Label("Tasks", systemImage: DS.Icons.Entity.task)
-                    .tag(Tab.tasks)
-                Label("Activities", systemImage: DS.Icons.Entity.activity)
-                    .tag(Tab.activities)
-                Label("Listings", systemImage: DS.Icons.Entity.listing)
-                    .tag(Tab.listings)
-            }
-            .navigationTitle("Dispatch")
-            #else
             List {
-                sidebarButton(for: .tasks, label: "Tasks", icon: DS.Icons.Entity.task)
-                sidebarButton(for: .activities, label: "Activities", icon: DS.Icons.Entity.activity)
+                // Stage Cards Section
+                Section {
+                    StageCardsSection(
+                        stageCounts: stageCounts,
+                        onSelectStage: { stage in
+                            appState.router.pathMain.append(Route.stagedListings(stage))
+                        }
+                    )
+                }
+                .listRowInsets(EdgeInsets(top: DS.Spacing.sm, leading: DS.Spacing.md, bottom: DS.Spacing.sm, trailing: DS.Spacing.md))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
+                sidebarButton(for: .workspace, label: "My Workspace", icon: "briefcase")
+                sidebarButton(for: .properties, label: "Properties", icon: DS.Icons.Entity.property)
                 sidebarButton(for: .listings, label: "Listings", icon: DS.Icons.Entity.listing)
+                sidebarButton(for: .realtors, label: "Realtors", icon: DS.Icons.Entity.realtor)
             }
             .listStyle(.sidebar)
             .navigationTitle("Dispatch")
-            #endif
         } detail: {
-            Group {
-                switch selectedTab {
-                case .tasks:
-                    TaskListView()
-                case .activities:
-                    ActivityListView()
-                case .listings:
-                    ListingListView()
+            // iPad: Unconditional Stack (One Boss Rule)
+            NavigationStack(path: $appState.router.pathMain) {
+                Group {
+                    switch selectedTab {
+                    case .properties:
+                        PropertiesListView()
+                    case .listings:
+                        ListingListView()
+                    case .realtors:
+                        RealtorsListView()
+                    case .settings:
+                        SettingsView()
+                    case .workspace, .search:
+                        MyWorkspaceView()
+                    }
+                }
+                .appDestinations() // Registry Attached!
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        AudienceFilterButton(
+                            lens: appState.lensState.audience,
+                            action: appState.lensState.cycleAudience
+                        )
+                    }
                 }
             }
-            .syncNowToolbar()
         }
         .navigationSplitViewStyle(.balanced)
     }
-
-    #if os(iOS)
+    #endif
+    
+    #if os(iOS) || os(visionOS)
     @ViewBuilder
-    private func sidebarButton(for tab: Tab, label: String, icon: String) -> some View {
+    private func sidebarButton(for tab: AppTab, label: String, icon: String) -> some View {
         Button {
-            selectedTab = tab
+            appState.dispatch(.selectTab(tab))
         } label: {
             Label(label, systemImage: icon)
                 .foregroundColor(selectedTab == tab ? .accentColor : .primary)
@@ -323,16 +676,8 @@ struct ContentView: View {
             syncManager.requestSync()
         }
 
-        workItemActions.onDeleteNote = { [syncManager, modelContext] note, item in
-            switch item {
-            case .task(let task, _):
-                task.notes.removeAll { $0.id == note.id }
-                task.markPending()
-            case .activity(let activity, _):
-                activity.notes.removeAll { $0.id == note.id }
-                activity.markPending()
-            }
-            modelContext.delete(note)
+        workItemActions.onDeleteNote = { [syncManager] note, item in
+            note.softDelete()
             syncManager.requestSync()
         }
 
@@ -357,10 +702,116 @@ struct ContentView: View {
         // Note: onAddSubtask requires showing a sheet, which is handled by the detail view
         // The WorkItemActions passes a callback that triggers local state in the resolved view
     }
+    
+    // MARK: - Phase 2: State Derivation
+    
+    /// Pure function to derive the current "Screen" (Lens Context) from Router State.
+    /// Eliminates the need for .onAppear hacks in views.
+    private func updateLensState() {
+        let tab = appState.router.selectedTab
+        let pathDepth = appState.router.pathMain.count
+        
+        // iPhone Root Logic: If compact and at root, we are at Menu
+        #if os(iOS)
+        if horizontalSizeClass == .compact && pathDepth == 0 {
+            if appState.lensState.currentScreen != .menu {
+                appState.lensState.currentScreen = .menu
+            }
+            return
+        }
+        #endif
+        
+        let newScreen: LensState.CurrentScreen
+        
+        switch tab {
+        case .workspace:
+            // Workspace always allows filtering (My Tasks vs All)
+            newScreen = .myWorkspace
+
+        case .properties:
+            // Properties list - no filtering needed
+            newScreen = .other
+
+        case .listings:
+            // List = No Filter, Detail = Filter (Audience/Kind)
+            if pathDepth > 0 {
+                newScreen = .listingDetail
+            } else {
+                newScreen = .listings
+            }
+
+        case .realtors:
+            // Realtors currently has no global filtering in header
+            newScreen = .realtors
+
+        case .settings:
+            // Settings has no filtering
+            newScreen = .other
+
+        case .search:
+            newScreen = .other
+        }
+        
+        if appState.lensState.currentScreen != newScreen {
+            appState.lensState.currentScreen = newScreen
+        }
+    }
+
+    // MARK: - Extracted Views for Compiler Performance
+    
+    @ViewBuilder
+    private var quickFindOverlay: some View {
+        #if os(macOS)
+        if case .search(let initialText) = appState.overlayState {
+            ZStack(alignment: .top) {
+                // Dimmer Background (Click to dismiss)
+                Color.black.opacity(0.1) // Transparent enough to see content, tangible enough to click
+                    .edgesIgnoringSafeArea(.all)
+                    .onTapGesture {
+                        appState.overlayState = .none
+                    }
+                
+                // The Popover Itself
+                NavigationPopover(
+                    searchText: $quickFindText,
+                    isPresented: Binding(
+                        get: { true },
+                        set: { if !$0 { appState.overlayState = .none } }
+                    ),
+                    currentTab: selectedTab,
+                    onNavigate: { tab in
+                        appState.dispatch(.selectTab(tab))
+
+                        // Post filters logic
+                        // TODO: Refine this logic in next step
+                        appState.dispatch(tab == .listings ? .filterUnclaimed : .filterMine) 
+                        appState.overlayState = .none
+                    },
+                    onSelectResult: { result in
+                        selectSearchResult(result)
+                        appState.overlayState = .none
+                    }
+                )
+                .padding(.top, 100) // Position it nicely near the top
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .onAppear {
+                     if let text = initialText {
+                         // Wait for popover animation + autofocus
+                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                             quickFindText = text
+                         }
+                     }
+                }
+            }
+            .zIndex(100) // Ensure it floats above everything
+        }
+        #endif
+    }
 }
 
 #Preview {
     ContentView()
         .modelContainer(for: [TaskItem.self, Activity.self, Listing.self, User.self], inMemory: true)
         .environmentObject(SyncManager.shared)
+        .environmentObject(AppState(mode: .preview))
 }

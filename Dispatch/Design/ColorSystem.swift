@@ -274,5 +274,41 @@ extension DS {
                 }
             }
         }
+
+        // MARK: - Listing Stage Colors
+
+        /// Colors for listing lifecycle stages
+        enum Stage {
+            static let pending = Color.gray
+            static let workingOn = Color.orange
+            static let live = Color.green
+            static let sold = Color.blue
+            static let reList = Color.purple
+            static let done = Color.gray.opacity(0.6)
+
+            /// Returns the appropriate color for a listing stage
+            static func color(for stage: ListingStage) -> Color {
+                switch stage {
+                case .pending: return pending
+                case .workingOn: return workingOn
+                case .live: return live
+                case .sold: return sold
+                case .reList: return reList
+                case .done: return done
+                }
+            }
+        }
+
+        // MARK: - Section Colors
+
+        /// Colors for main navigation sections
+        enum Section {
+            static let myWorkspace = Color.blue
+            static let properties = Color.teal
+            static let listings = Color.green
+            static let realtors = Color.indigo
+            static let tasks = Color.blue
+            static let activities = Color.orange
+        }
     }
 }

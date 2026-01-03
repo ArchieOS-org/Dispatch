@@ -20,9 +20,18 @@ final class Listing: NotableProtocol {
     var mlsNumber: String?
     var listingType: ListingType
     var status: ListingStatus
+    var stageRaw: ListingStage?
+
+    /// Computed stage with fallback for schema migration compatibility
+    var stage: ListingStage {
+        get { stageRaw ?? .pending }
+        set { stageRaw = newValue }
+    }
 
     // Foreign keys
     var ownedBy: UUID
+    var propertyId: UUID?
+    var typeDefinitionId: UUID? // Links to ListingTypeDefinition (nullable during client transition)
 
     // Metadata
     var createdVia: CreationSource
@@ -62,6 +71,13 @@ final class Listing: NotableProtocol {
 
     // Inverse relationships
     var owner: User?
+    
+    // Dynamic type definition relationship (Non-Optional post-migration)
+    var typeDefinition: ListingTypeDefinition?
+
+    // Property relationship
+    @Relationship(deleteRule: .nullify)
+    var property: Property?
 
     init(
         id: UUID = UUID(),
@@ -74,6 +90,7 @@ final class Listing: NotableProtocol {
         mlsNumber: String? = nil,
         listingType: ListingType = .sale,
         status: ListingStatus = .draft,
+        stage: ListingStage = .pending,
         ownedBy: UUID,
         createdVia: CreationSource = .dispatch,
         sourceSlackMessages: [String]? = nil,
@@ -91,6 +108,7 @@ final class Listing: NotableProtocol {
         self.mlsNumber = mlsNumber
         self.listingType = listingType
         self.status = status
+        self.stageRaw = stage
         self.ownedBy = ownedBy
         self.createdVia = createdVia
         self.sourceSlackMessages = sourceSlackMessages

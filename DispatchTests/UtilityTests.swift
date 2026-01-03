@@ -8,7 +8,7 @@
 
 import Testing
 import Foundation
-@testable import Dispatch
+@testable import DispatchApp
 
 struct ClaimFilterTests {
     

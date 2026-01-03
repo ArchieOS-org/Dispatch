@@ -34,6 +34,19 @@ final class AppOverlayState: ObservableObject {
         case modal
     }
 
+    // MARK: - Run Mode
+    
+    enum RunMode {
+        case live
+        case preview
+    }
+    
+    let mode: RunMode
+    
+    init(mode: RunMode = .live) {
+        self.mode = mode
+    }
+
     /// Active reasons for hiding the overlay
     @Published private(set) var activeReasons: Set<HideReason> = []
 

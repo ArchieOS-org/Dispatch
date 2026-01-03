@@ -15,58 +15,88 @@ struct ListingRow: View {
     let listing: Listing
     let owner: User?
 
+    // MARK: - Computed Properties
+
+    private var isOverdue: Bool {
+        guard let date = listing.dueDate else { return false }
+        return date < Calendar.current.startOfDay(for: Date())
+    }
+
+    private var overdueText: String {
+        guard let date = listing.dueDate else { return "" }
+        let startToday = Calendar.current.startOfDay(for: Date())
+        let startDue = Calendar.current.startOfDay(for: date)
+        let days = Calendar.current.dateComponents([.day], from: startDue, to: startToday).day ?? 0
+        
+        if days < 7 {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEE"
+            return formatter.string(from: date)
+        }
+        
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+        HStack(spacing: 6) {
+            // Progress Indicator (Left) - Similar position to checkbox
+            ProgressCircle(progress: listing.progress, size: 16)
+
+            // Date Pill (Left - Normal)
+            if let date = listing.dueDate, !isOverdue {
+                DatePill(date: date)
+            }
+
             // Address
             Text(listing.address)
-                .font(DS.Typography.headline)
+                .font(DS.Typography.body)
                 .foregroundColor(DS.Colors.Text.primary)
                 .lineLimit(1)
 
-            // Metadata row
+            // Listing Type Pill
+            ListingTypePill(type: listing.listingType)
+
+            Spacer()
+
+            // Metadata (Counts) - Right aligned
             HStack(spacing: DS.Spacing.md) {
-                // Owner name
-                if let owner = owner {
-                    HStack(spacing: DS.Spacing.xxs) {
-                        Image(systemName: DS.Icons.Entity.user)
+                // Task count
+                if !listing.tasks.isEmpty {
+                    HStack(spacing: 2) {
+                        Image(systemName: DS.Icons.Entity.task)
                             .font(.system(size: 10))
-                        Text(owner.name)
+                        Text("\(listing.tasks.count)")
                             .font(DS.Typography.caption)
                     }
-                    .foregroundColor(DS.Colors.Text.secondary)
+                    .foregroundColor(DS.Colors.Text.tertiary)
+                }
+                
+                // Activity count
+                if !listing.activities.isEmpty {
+                    HStack(spacing: 2) {
+                        Image(systemName: DS.Icons.Entity.activity)
+                            .font(.system(size: 10))
+                        Text("\(listing.activities.count)")
+                            .font(DS.Typography.caption)
+                    }
+                    .foregroundColor(DS.Colors.Text.tertiary)
                 }
 
-                Spacer()
-
-                // Task count badge
-                HStack(spacing: 2) {
-                    Image(systemName: DS.Icons.Entity.task)
-                        .font(.system(size: 10))
-                    Text("\(listing.tasks.count)")
-                        .font(DS.Typography.caption)
-                }
-                .foregroundColor(DS.Colors.Text.tertiary)
-
-                // Activity count badge
-                HStack(spacing: 2) {
-                    Image(systemName: DS.Icons.Entity.activity)
-                        .font(.system(size: 10))
-                    Text("\(listing.activities.count)")
-                        .font(DS.Typography.caption)
-                }
-                .foregroundColor(DS.Colors.Text.tertiary)
-
-                // Status badge
-                Text(listing.status.displayName)
+                // Overdue Flag (Right)
+                if let _ = listing.dueDate, isOverdue {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flag.fill")
+                        Text(overdueText)
+                    }
                     .font(DS.Typography.caption)
-                    .foregroundColor(statusColor)
-                    .padding(.horizontal, DS.Spacing.xs)
-                    .padding(.vertical, 2)
-                    .background(statusColor.opacity(0.15))
-                    .cornerRadius(4)
+                    .foregroundStyle(.red)
+                }
             }
         }
-        .padding(.vertical, DS.Spacing.xs)
+        .padding(.vertical, DS.Spacing.sm)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }

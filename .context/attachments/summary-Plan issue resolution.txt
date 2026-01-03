@@ -1,0 +1,52 @@
+The user wants to implement a "glass" effect for the sidebar background on macOS, following the design language introduced in WWDC 2025.
+
+**1. Primary Request and Intent:**
+
+The user's primary request is to add a glass background to the macOS sidebar. The intent is to visually enhance the sidebar by implementing the "Liquid Glass" effect, which is a new translucent material introduced by Apple in WWDC 2025. The user wants to leverage existing `glassEffect` implementations and follow specific design guidelines for this new visual feature.
+
+**2. Problem Solving:**
+
+The main challenge is to correctly apply the new `glassEffect` modifier (or its fallback) to the existing sidebar implementation. This involves:
+*   **Researching `glassEffect` API:** Understanding how to apply it to a rectangular area and selecting the appropriate variant (`.regular` vs. `.clear` vs. `.interactive`).
+*   **Backward Compatibility:** Ensuring a fallback mechanism for macOS versions prior to the introduction of `glassEffect`. The plan suggests using `.regularMaterial` as a fallback.
+*   **Integration:** Applying the modifier to the `ResizableSidebar` view without disrupting its current functionality (drag, collapse, content sampling).
+*   **Testing:** Verifying the effect across different macOS versions, light/dark modes, and during sidebar interactions (resizing, collapsing, expanding).
+
+**3. Files and Code Sections:**
+
+*   **New File to Create:**
+    *   `Dispatch/Design/Effects/GlassEffect.swift`: This file will be extended to include a new modifier `glassSidebarBackground()`.
+
+*   **Files to Modify:**
+    *   `Dispatch/Design/Effects/GlassEffect.swift`:
+        *   Add the `glassSidebarBackground()` modifier. The proposed implementation includes:
+            ```swift
+            /// Applies a glass effect background for sidebars and panels on macOS 26+.
+            /// Falls back to regularMaterial on earlier versions.
+            @ViewBuilder
+            func glassSidebarBackground() -> some View {
+                #if os(macOS)
+                if #available(macOS 26.0, *) {
+                    self
+                        .glassEffect(.regular) // Use .regular for static sidebar
+                        .containerShape(RoundedRectangle(cornerRadius: 0)) // No corner radius for edge-to-edge
+                } else {
+                    self
+                        .background(.regularMaterial) // Fallback for pre-macOS 26
+                }
+                #else
+                self.background(.regularMaterial) // Fallback for non-macOS
+                #endif
+            }
+            ```
+    *   `Dispatch/Views/Components/macOS/ResizableSidebar.swift`:
+        *   Apply the new `glassSidebarBackground()` modifier to the `sidebar()` view.
+            ```swift
+            if state.shouldShowSidebar {
+                sidebar()
+                    .frame(width: state.displayWidth)
+                    .glassSidebarBackground()  // <-- Apply glass effect here
+                    .clipped()
+            }
+            ```
+        *   Potentially adjust the `HStack` or overlay to ensure the glass effect doesn't interfere with the `UnifiedDragHandle` or other content sampling if the effect is more complex. The plan indicates the current overlay structure should be compatible.

@@ -45,3 +45,8 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# Build logs and output
+build.log
+build_output.txt
+*.log

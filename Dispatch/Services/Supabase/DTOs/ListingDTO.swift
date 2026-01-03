@@ -18,7 +18,9 @@ struct ListingDTO: Codable, Sendable {
     let mlsNumber: String?
     let listingType: String
     let status: String
+    let stage: String?
     let ownedBy: UUID
+    let propertyId: UUID?
     let createdVia: String
     let sourceSlackMessages: [String]?
     let activatedAt: Date?
@@ -30,11 +32,12 @@ struct ListingDTO: Codable, Sendable {
     let updatedAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id, address, city, province, country, price, status
+        case id, address, city, province, country, price, status, stage
         case postalCode = "postal_code"
         case mlsNumber = "mls_number"
         case listingType = "listing_type"
         case ownedBy = "owned_by"
+        case propertyId = "property_id"
         case createdVia = "created_via"
         case sourceSlackMessages = "source_slack_messages"
         case activatedAt = "activated_at"
@@ -71,7 +74,18 @@ struct ListingDTO: Codable, Sendable {
             resolvedCreatedVia = .dispatch
         }
 
-        return Listing(
+        // Stage with fallback (nullable for backward compat during rollout)
+        let resolvedStage: ListingStage
+        if let stageValue = stage, let s = ListingStage(rawValue: stageValue) {
+            resolvedStage = s
+        } else {
+            if let stageValue = stage {
+                debugLog.log("⚠️ Invalid stage '\(stageValue)' for Listing \(id), defaulting to .pending", category: .sync)
+            }
+            resolvedStage = .pending
+        }
+
+        let listing = Listing(
             id: id,
             address: address,
             city: city ?? "",
@@ -82,6 +96,7 @@ struct ListingDTO: Codable, Sendable {
             mlsNumber: mlsNumber,
             listingType: resolvedListingType,
             status: resolvedStatus,
+            stage: resolvedStage,
             ownedBy: ownedBy,
             createdVia: resolvedCreatedVia,
             sourceSlackMessages: sourceSlackMessages,
@@ -89,5 +104,10 @@ struct ListingDTO: Codable, Sendable {
             createdAt: createdAt,
             updatedAt: updatedAt
         )
+
+        // Set propertyId (relationship reconciled later in sync)
+        listing.propertyId = propertyId
+
+        return listing
     }
 }

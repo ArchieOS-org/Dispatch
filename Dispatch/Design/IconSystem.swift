@@ -158,7 +158,7 @@ extension DS {
         }
 
         // MARK: - Navigation Icons
-
+        
         /// Icons for navigation elements
         enum Navigation {
             /// Back arrow
@@ -189,7 +189,7 @@ extension DS {
             static let search = "magnifyingglass"
 
             /// Filter
-            static let filter = "line.3.horizontal.decrease.circle"
+            static let filter = "line.3.horizontal.decrease"
         }
 
         // MARK: - Entity Type Icons
@@ -214,6 +214,12 @@ extension DS {
             /// Listing entity filled
             static let listingFill = "house.fill"
 
+            /// Property entity
+            static let property = "mappin.and.ellipse"
+
+            /// Property entity filled
+            static let propertyFill = "mappin.and.ellipse.fill"
+
             /// Note entity
             static let note = "note.text"
 
@@ -231,6 +237,9 @@ extension DS {
 
             /// Team filled
             static let teamFill = "person.2.fill"
+
+            /// Realtor entity
+            static let realtor = "person.text.rectangle"
         }
 
         // MARK: - Activity Type Icons
@@ -298,6 +307,47 @@ extension DS {
 
             /// Bell with badge
             static let notificationBadge = "bell.badge"
+        }
+
+        // MARK: - Role Icons
+
+        /// Icons for user roles/audiences
+        enum Role {
+            /// Admin role
+            static let admin = "a.circle"
+
+            /// Admin role filled
+            static let adminFill = "a.circle.fill"
+
+            /// Marketing role
+            static let marketing = "m.circle"
+
+            /// Marketing role filled
+            static let marketingFill = "m.circle.fill"
+        }
+
+        // MARK: - Listing Stage Icons
+
+        /// Icons for listing lifecycle stages
+        enum Stage {
+            static let pending = "clock"
+            static let workingOn = "hammer"
+            static let live = "checkmark.seal"
+            static let sold = "dollarsign.circle"
+            static let reList = "arrow.clockwise"
+            static let done = "checkmark.circle"
+
+            /// Returns the appropriate icon for a listing stage
+            static func icon(for stage: ListingStage) -> String {
+                switch stage {
+                case .pending: return pending
+                case .workingOn: return workingOn
+                case .live: return live
+                case .sold: return sold
+                case .reList: return reList
+                case .done: return done
+                }
+            }
         }
 
         // MARK: - Time & Date Icons

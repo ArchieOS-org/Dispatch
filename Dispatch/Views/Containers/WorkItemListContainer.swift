@@ -3,23 +3,11 @@
 //  Dispatch
 //
 //  Generic container for Task/Activity list views
-//  Created by Claude on 2025-12-06.
+//  Refactored for Layout Unification (StandardScreen)
 //
 
 import SwiftUI
 
-/// A reusable container for TaskListView and ActivityListView that provides:
-/// - Optional NavigationStack wrapper with title
-/// - Segmented filter bar (My/Others'/Unclaimed)
-/// - Date-based sectioned list (Overdue/Today/Tomorrow/Upcoming/No Due Date)
-/// - Pull-to-refresh functionality
-/// - Custom row rendering via @ViewBuilder
-/// - Navigation destination using WorkItemRef for crash-safe navigation
-///
-/// When `embedInNavigationStack` is false, the container omits its NavigationStack wrapper
-/// and expects the parent view to provide navigation context. This is required for:
-/// - iPhone menu navigation (MenuPageView → pushed list)
-/// - iPad/macOS split view detail pane
 struct WorkItemListContainer<Row: View, Destination: View>: View {
     let title: String
     let items: [WorkItem]
@@ -31,6 +19,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     @ViewBuilder let destinationBuilder: (WorkItemRef) -> Destination
 
     @State private var selectedFilter: ClaimFilter = .mine
+    @EnvironmentObject private var lensState: LensState
 
     init(
         title: String,
@@ -54,19 +43,17 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
 
     // MARK: - Computed Properties
 
-    /// Items filtered by the selected claim filter
     private var filteredItems: [WorkItem] {
         items.filter { item in
-            selectedFilter.matches(claimedBy: item.claimedBy, currentUserId: currentUserId)
+            selectedFilter.matches(claimedBy: item.claimedBy, currentUserId: currentUserId) &&
+            lensState.audience.matches(audiences: item.audiences)
         }
     }
 
-    /// Filtered items grouped and sorted by date section
     private var groupedItems: [(section: DateSection, items: [WorkItem])] {
         DateSection.sortedSections(from: filteredItems)
     }
 
-    /// Whether the filtered list is empty
     private var isEmpty: Bool {
         filteredItems.isEmpty
     }
@@ -76,33 +63,39 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     var body: some View {
         if embedInNavigationStack {
             NavigationStack {
-                content
-                    .navigationDestination(for: WorkItemRef.self) { ref in
-                        destinationBuilder(ref)
-                    }
+                mainScreen
+
             }
         } else {
-            content
+            mainScreen
         }
     }
 
-    /// The main content without NavigationStack wrapper
-    @ViewBuilder
-    private var content: some View {
-        VStack(spacing: 0) {
-            // Filter bar
-            SegmentedFilterBar(selection: $selectedFilter) { filter in
-                filter.displayName(forActivities: isActivityList)
-            }
+    private var mainScreen: some View {
+        StandardScreen(title: title, layout: .column, scroll: .disabled) {
+            VStack(spacing: 0) {
+                // Filter Bar
+                SegmentedFilterBar(selection: $selectedFilter) { filter in
+                    filter.displayName(forActivities: isActivityList)
+                }
+                .padding(.bottom, DS.Spacing.md)
 
-            // Content
-            if isEmpty {
-                emptyStateView
-            } else {
-                listView
+                if isEmpty {
+                    emptyStateView
+                } else {
+                    listView
+                }
             }
         }
-        .navigationTitle(title)
+        .onReceive(NotificationCenter.default.publisher(for: .filterMine)) { _ in
+            selectedFilter = .mine
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .filterOthers)) { _ in
+            selectedFilter = .others
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .filterUnclaimed)) { _ in
+            selectedFilter = .unclaimed
+        }
     }
 
     // MARK: - Subviews
@@ -113,6 +106,13 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                 Section {
                     ForEach(sectionItems) { item in
                         rowBuilder(item, item.claimState(currentUserId: currentUserId, userLookup: userLookup))
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(
+                                top: 0,
+                                leading: 0,
+                                bottom: 0,
+                                trailing: DS.Spacing.md
+                            ))
                     }
                 } header: {
                     DateSectionHeader(section: section)
@@ -129,7 +129,8 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         } description: {
             Text(emptyDescription)
         }
-        .frame(maxHeight: .infinity)
+        // Frame removed to use standard alignment or assumed context
+        .frame(minHeight: 300) // Ensure it takes some vertical space in the absence of list
     }
 
     private var emptyTitle: String {
@@ -172,22 +173,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             priority: .high,
             declaredBy: currentUserId,
             claimedBy: currentUserId
-        )),
-        .task(TaskItem(
-            title: "Prepare presentation",
-            taskDescription: "Create slides for meeting",
-            dueDate: Calendar.current.date(byAdding: .day, value: 1, to: Date()),
-            priority: .medium,
-            declaredBy: currentUserId,
-            claimedBy: currentUserId
-        )),
-        .task(TaskItem(
-            title: "Overdue task",
-            taskDescription: "This is overdue",
-            dueDate: Calendar.current.date(byAdding: .day, value: -2, to: Date()),
-            priority: .urgent,
-            declaredBy: currentUserId,
-            claimedBy: currentUserId
         ))
     ]
 
@@ -197,19 +182,12 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         currentUserId: currentUserId,
         userLookup: { _ in sampleUser },
         rowBuilder: { item, claimState in
-            WorkItemRow(
-                item: item,
-                claimState: claimState,
-                onComplete: {},
-                onEdit: {},
-                onDelete: {},
-                onClaim: {},
-                onRelease: {}
-            )
+            Text(item.title)
         },
         destination: { _ in
             Text("Detail View")
         }
     )
     .environmentObject(SearchPresentationManager())
+    .environmentObject(LensState())
 }

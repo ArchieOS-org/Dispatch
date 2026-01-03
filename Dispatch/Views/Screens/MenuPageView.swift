@@ -3,191 +3,183 @@
 //  Dispatch
 //
 //  Things 3-style menu page for iPhone navigation.
-//  Large cards for each section with item counts.
 //
 
 import SwiftUI
 import SwiftData
 
-/// Menu page home screen for iPhone navigation.
-/// Displays large, full-width cards for each section (Tasks, Activities, Listings).
-/// Users tap a card to push-navigate into that section.
-///
-/// Supports pull-down-to-search via `PullToSearchModifier` (iOS 18+).
 struct MenuPageView: View {
+    // MARK: - Environment
+
+    @EnvironmentObject private var appState: AppState
+
     // MARK: - Queries
 
     @Query private var allTasksRaw: [TaskItem]
     @Query private var allActivitiesRaw: [Activity]
+    @Query private var allPropertiesRaw: [Property]
     @Query private var allListingsRaw: [Listing]
+    @Query private var allRealtors: [User]
 
-    // MARK: - Filtered Computed Properties (SwiftData predicates can't compare enums directly)
+    // MARK: - Filtered Properties
 
-    /// Open tasks (not completed, not deleted)
     private var openTasks: [TaskItem] {
         allTasksRaw.filter { $0.status != .completed && $0.status != .deleted }
     }
 
-    /// Open activities (not completed, not deleted)
     private var openActivities: [Activity] {
         allActivitiesRaw.filter { $0.status != .completed && $0.status != .deleted }
     }
 
-    /// Active listings (not deleted)
+    private var activeProperties: [Property] {
+        allPropertiesRaw.filter { $0.deletedAt == nil }
+    }
+
     private var activeListings: [Listing] {
         allListingsRaw.filter { $0.status != .deleted }
     }
 
-    // MARK: - Environment
+    private var activeRealtors: [User] {
+        allRealtors.filter { $0.userType == .realtor }
+    }
 
-    @EnvironmentObject private var syncManager: SyncManager
-    @EnvironmentObject private var lensState: LensState
+    // MARK: - Computed Counts
 
-    // MARK: - Computed Properties
+    /// Stage counts computed once per render cycle from activeListings.
+    private var stageCounts: [ListingStage: Int] {
+        activeListings.stageCounts()
+    }
 
-    /// Get count for each section
+    private var overdueCount: Int {
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        let overdueTasks = openTasks.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
+        let overdueActivities = openActivities.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
+        return overdueTasks.count + overdueActivities.count
+    }
+
     private func count(for section: MenuSection) -> Int {
         switch section {
-        case .tasks: return openTasks.count
-        case .activities: return openActivities.count
+        case .myWorkspace: return openTasks.count + openActivities.count
+        case .properties: return activeProperties.count
         case .listings: return activeListings.count
+        case .realtors: return activeRealtors.count
+        case .settings: return 0
         }
     }
 
     // MARK: - Body
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: DS.Spacing.lg) {
-                ForEach(MenuSection.allCases) { section in
-                    NavigationLink(value: section) {
-                        MenuSectionCard(
-                            section: section,
-                            count: count(for: section)
-                        )
+        List {
+            // MARK: - Stage Cards Section
+            Section {
+                StageCardsSection(
+                    stageCounts: stageCounts,
+                    onSelectStage: { stage in
+                        appState.router.pathMain.append(Route.stagedListings(stage))
                     }
-                    .buttonStyle(MenuCardButtonStyle())
-                }
+                )
             }
-            .padding(DS.Spacing.lg)
+            .listRowInsets(EdgeInsets(top: 0, leading: DS.Spacing.lg, bottom: 0, trailing: DS.Spacing.lg))
+            .listRowBackground(DS.Colors.Background.primary)
+            .listRowSeparator(.hidden)
+
+            // MARK: - Menu Sections
+            ForEach(MenuSection.allCases) { section in
+                NavigationLink(value: section) {
+                    MenuSectionRow(
+                        section: section,
+                        count: count(for: section),
+                        overdueCount: section == .myWorkspace ? overdueCount : 0
+                    )
+                }
+                .listRowInsets(EdgeInsets(top: 0, leading: DS.Spacing.lg, bottom: 0, trailing: DS.Spacing.lg))
+                .listRowBackground(DS.Colors.Background.primary)
+                .listRowSeparator(.hidden)
+                .padding(.top, section == .settings ? DS.Spacing.xl : 0)
+            }
         }
-        .pullToSearch()
-        .background(DS.Colors.Background.grouped)
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(DS.Colors.Background.primary)
         .navigationTitle("Dispatch")
-        .onAppear {
-            lensState.currentScreen = .menu
-        }
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.large)
+        #endif
     }
 }
 
-// MARK: - Menu Section Card
+// MARK: - Menu Section Row
 
-/// A large card representing a section in the menu.
-/// Displays icon, title, count, and chevron.
-private struct MenuSectionCard: View {
+private struct MenuSectionRow: View {
     let section: MenuSection
     let count: Int
+    let overdueCount: Int
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
-            // Icon in colored circle (44pt)
-            Circle()
-                .fill(section.accentColor.opacity(0.15))
-                .frame(width: 44, height: 44)
-                .overlay {
-                    Image(systemName: section.icon)
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(section.accentColor)
-                }
+            Image(systemName: section.icon)
+                .font(.system(size: 22, weight: .medium))
+                .foregroundColor(section.accentColor)
+                .frame(width: 28, alignment: .leading)
 
-            // Title + count
-            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-                Text(section.title)
-                    .font(DS.Typography.headline)
-                    .foregroundColor(DS.Colors.Text.primary)
-                Text("\(count) open")
-                    .font(DS.Typography.bodySecondary)
-                    .foregroundColor(DS.Colors.Text.secondary)
-            }
+            Text(section.title)
+                .font(DS.Typography.headline)
+                .foregroundColor(DS.Colors.Text.primary)
+                .lineLimit(1)
 
             Spacer()
 
-            // Chevron
-            Image(systemName: DS.Icons.Navigation.forward)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(DS.Colors.Text.tertiary)
+            rightSideContent
+                .frame(minWidth: 28, alignment: .trailing)
         }
-        .padding(DS.Spacing.cardPadding)
-        .background(DS.Colors.Background.card)
-        .cornerRadius(DS.Spacing.radiusCard)
-        .dsShadow(DS.Shadows.card)
+        .frame(minHeight: DS.Spacing.minTouchTarget)
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabelText)
     }
-}
 
-// MARK: - Menu Card Button Style
+    @ViewBuilder
+    private var rightSideContent: some View {
+        if section == .settings {
+            EmptyView()
+        } else if section == .myWorkspace && overdueCount > 0 {
+            Text("\(overdueCount)")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(DS.Colors.overdue)
+                .clipShape(Capsule())
+        } else if count > 0 {
+            Text("\(count)")
+                .font(DS.Typography.body)
+                .foregroundColor(DS.Colors.Text.secondary)
+        }
+    }
 
-/// Button style for menu cards with press animation.
-/// Respects accessibility Reduce Motion preference.
-private struct MenuCardButtonStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .opacity(configuration.isPressed ? 0.9 : 1.0)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: configuration.isPressed)
+    private var accessibilityLabelText: String {
+        if section == .settings {
+            return section.title
+        } else if section == .myWorkspace && overdueCount > 0 {
+            return "\(section.title), \(overdueCount) overdue"
+        } else if count > 0 {
+            return "\(section.title), \(count) open"
+        } else {
+            return section.title
+        }
     }
 }
 
 // MARK: - Previews
 
 #Preview("Menu Page View") {
-    let container = try! ModelContainer(
-        for: TaskItem.self, Activity.self, Listing.self, User.self,
-        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-    )
-
-    let context = container.mainContext
-
-    // Add some sample data
-    let user = User(name: "Test User", email: "test@dispatch.ca", userType: .admin)
-    context.insert(user)
-
-    for i in 1...5 {
-        let task = TaskItem(title: "Task \(i)", priority: .medium, declaredBy: user.id)
-        context.insert(task)
-    }
-
-    for i in 1...3 {
-        let activity = Activity(title: "Activity \(i)", type: .call, priority: .medium, declaredBy: user.id)
-        context.insert(activity)
-    }
-
-    for i in 1...2 {
-        let listing = Listing(address: "\(i) Main Street", city: "Toronto", province: "ON", postalCode: "M5V 1A1", ownedBy: user.id)
-        context.insert(listing)
-    }
-
-    return NavigationStack {
+    NavigationStack {
         MenuPageView()
     }
-    .modelContainer(container)
-    .environmentObject(SyncManager.shared)
-    .environmentObject(SearchPresentationManager())
-    .environmentObject(LensState())
-}
-
-#Preview("Menu Page View - Empty") {
-    let container = try! ModelContainer(
-        for: TaskItem.self, Activity.self, Listing.self, User.self,
-        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-    )
-
-    return NavigationStack {
-        MenuPageView()
-    }
-    .modelContainer(container)
-    .environmentObject(SyncManager.shared)
-    .environmentObject(SearchPresentationManager())
+    .modelContainer(for: [TaskItem.self, Activity.self, Property.self, Listing.self, User.self], inMemory: true)
+    .environmentObject(AppState())
+    .environmentObject(SyncManager(mode: .preview))
     .environmentObject(LensState())
 }

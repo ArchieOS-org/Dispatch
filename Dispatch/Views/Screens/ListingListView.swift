@@ -3,33 +3,25 @@
 //  Dispatch
 //
 //  Main screen for displaying and managing listings
-//  Created by Claude on 2025-12-06.
+//  Refactored for Layout Unification (StandardScreen)
 //
 
 import SwiftUI
 import SwiftData
 
 /// A group of listings belonging to a single owner
-private struct ListingGroup {
+private struct ListingGroup: Identifiable {
+    var id: String { owner?.id.uuidString ?? "unknown" }
     let owner: User?
     let listings: [Listing]
 }
 
-/// Main listing list screen with:
-/// - Search bar for filtering by address
-/// - Grouped by owner
-/// - Pull-to-refresh sync
-/// - Navigation to listing detail
-///
-/// When `embedInNavigationStack` is false, the view omits its NavigationStack wrapper
-/// and expects the parent view to provide navigation context (e.g., iPhone menu, iPad split view).
 struct ListingListView: View {
-    /// Whether to wrap content in NavigationStack. Set to false when used in menu/split-view navigation.
-    var embedInNavigationStack: Bool = true
+
     @Query(sort: \Listing.address)
     private var allListingsRaw: [Listing]
 
-    /// Filter out deleted listings (SwiftData predicates can't compare enums directly)
+    /// Filter out deleted listings
     private var allListings: [Listing] {
         allListingsRaw.filter { $0.status != .deleted }
     }
@@ -54,11 +46,6 @@ struct ListingListView: View {
     @State private var itemForSubtaskAdd: WorkItem?
     @State private var newSubtaskTitle = ""
 
-    // MARK: - State for Add Listing (macOS only - iOS uses GlobalFloatingButtons for tasks/activities)
-    #if os(macOS)
-    @State private var showAddListing = false
-    #endif
-
     // MARK: - Computed Properties
 
     /// Pre-computed user lookup dictionary for O(1) access
@@ -68,9 +55,21 @@ struct ListingListView: View {
 
     /// Listings grouped by owner, sorted by owner name
     private var groupedByOwner: [ListingGroup] {
-        let grouped = Dictionary(grouping: allListings) { $0.ownedBy }
-        return grouped.map { ListingGroup(owner: userCache[$0.key], listings: $0.value) }
-            .sorted { ($0.owner?.name ?? "~") < ($1.owner?.name ?? "~") }
+        // Explicit typing helper
+        let listings: [Listing] = allListings
+        let grouped: [UUID: [Listing]] = Dictionary(grouping: listings) { (listing: Listing) in
+            listing.ownedBy
+        }
+        
+        let groups: [ListingGroup] = grouped.map { (key: UUID, value: [Listing]) -> ListingGroup in
+             return ListingGroup(owner: userCache[key], listings: value)
+        }
+        
+        return groups.sorted { (a: ListingGroup, b: ListingGroup) -> Bool in
+            let nameA = a.owner?.name ?? "~"
+            let nameB = b.owner?.name ?? "~"
+            return nameA < nameB
+        }
     }
 
     /// Whether the list is empty
@@ -78,10 +77,8 @@ struct ListingListView: View {
         allListings.isEmpty
     }
 
-    /// Sentinel UUID for unauthenticated state - stable across all accesses
     private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
 
-    /// Current user ID from sync manager (fallback to stable sentinel if not set)
     private var currentUserId: UUID {
         syncManager.currentUserID ?? Self.unauthenticatedUserId
     }
@@ -89,37 +86,8 @@ struct ListingListView: View {
     // MARK: - Body
 
     var body: some View {
-        Group {
-            if embedInNavigationStack {
-                NavigationStack {
-                    content
-                        .navigationDestination(for: Listing.self) { listing in
-                            ListingDetailView(listing: listing, userLookup: { userCache[$0] })
-                        }
-                        .navigationDestination(for: WorkItemRef.self) { ref in
-                            workItemDestination(for: ref)
-                        }
-                }
-            } else {
-                content
-            }
-        }
-        .onAppear {
-            lensState.currentScreen = .listings
-        }
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        Group {
-            if isEmpty {
-                emptyStateView
-            } else {
-                listView
-            }
-        }
-        .navigationTitle("Listings")
-        // MARK: - Alerts and Sheets
+        mainScreen
+        // MARK: - Alerts
         .alert("Delete Note?", isPresented: $showDeleteNoteAlert) {
             Button("Cancel", role: .cancel) {
                 noteToDelete = nil
@@ -152,29 +120,37 @@ struct ListingListView: View {
                 showAddSubtaskSheet = false
             }
         }
-        #if os(macOS)
-        .sheet(isPresented: $showAddListing) {
-            AddListingSheet(
-                currentUserId: currentUserId,
-                onSave: { syncManager.requestSync() }
-            )
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showAddListing = true
-                } label: {
-                    Label("Add", systemImage: "plus")
+    }
+    
+    private var mainScreen: some View {
+        StandardScreen(title: "Listings", layout: .column, scroll: .disabled) {
+            // Content
+            StandardList(groupedByOwner) { group in
+                Section(group.owner?.name ?? "Unknown Owner") {
+                    ForEach(group.listings) { listing in
+                        NavigationLink(value: listing) {
+                            ListingRow(listing: listing, owner: group.owner)
+                        }
+                    }
                 }
-                .keyboardShortcut("n", modifiers: .command)
+            } emptyContent: {
+                ContentUnavailableView {
+                    Label("No Listings", systemImage: DS.Icons.Entity.listing)
+                } description: {
+                    Text("Listings will appear here")
+                }
             }
+            .pullToSearch() // Apply search to the list context
+            
+        } toolbarContent: {
+             ToolbarItem(placement: .automatic) {
+                 EmptyView()
         }
-        #endif
+    }
     }
 
     @ViewBuilder
     private func workItemDestination(for ref: WorkItemRef) -> some View {
-        // For drill-down from listing -> task/activity detail
         WorkItemResolverView(
             ref: ref,
             currentUserId: currentUserId,
@@ -202,8 +178,8 @@ struct ListingListView: View {
         )
     }
 
-    // MARK: - Work Item Actions
-
+    // MARK: - Actions (Unchanged Logic)
+    
     private func toggleComplete(_ item: WorkItem) {
         switch item {
         case .task(let task, _):
@@ -246,26 +222,14 @@ struct ListingListView: View {
         syncManager.requestSync()
     }
 
-    // MARK: - Note Actions
-
     private func addNote(to item: WorkItem, content: String) {
         switch item {
         case .task(let task, _):
-            let note = Note(
-                content: content,
-                createdBy: currentUserId,
-                parentType: .task,
-                parentId: item.id
-            )
+            let note = Note(content: content, createdBy: currentUserId, parentType: .task, parentId: item.id)
             task.notes.append(note)
             task.markPending()
         case .activity(let activity, _):
-            let note = Note(
-                content: content,
-                createdBy: currentUserId,
-                parentType: .activity,
-                parentId: item.id
-            )
+            let note = Note(content: content, createdBy: currentUserId, parentType: .activity, parentId: item.id)
             activity.notes.append(note)
             activity.markPending()
         }
@@ -288,11 +252,8 @@ struct ListingListView: View {
         syncManager.requestSync()
     }
 
-    // MARK: - Subtask Actions
-
     private func toggleSubtask(_ subtask: Subtask) {
         subtask.completed.toggle()
-        // Note: Subtasks sync with parent - parent will be marked pending when saved
         syncManager.requestSync()
     }
 
@@ -315,67 +276,22 @@ struct ListingListView: View {
     private func addSubtask(to item: WorkItem, title: String) {
         switch item {
         case .task(let task, _):
-            let subtask = Subtask(
-                title: title,
-                parentType: .task,
-                parentId: item.id
-            )
+            let subtask = Subtask(title: title, parentType: .task, parentId: item.id)
             task.subtasks.append(subtask)
             task.markPending()
         case .activity(let activity, _):
-            let subtask = Subtask(
-                title: title,
-                parentType: .activity,
-                parentId: item.id
-            )
+            let subtask = Subtask(title: title, parentType: .activity, parentId: item.id)
             activity.subtasks.append(subtask)
             activity.markPending()
         }
         syncManager.requestSync()
     }
-
-    // MARK: - Subviews
-
-    private var listView: some View {
-        List {
-            ForEach(Array(groupedByOwner.enumerated()), id: \.offset) { _, group in
-                Section(group.owner?.name ?? "Unknown Owner") {
-                    ForEach(group.listings) { listing in
-                        NavigationLink(value: listing) {
-                            ListingRow(listing: listing, owner: group.owner)
-                        }
-                    }
-                }
-            }
-        }
-        .listStyle(.plain)
-        .pullToSearch()
-    }
-
-    private var emptyStateView: some View {
-        ContentUnavailableView {
-            Label(emptyTitle, systemImage: DS.Icons.Entity.listing)
-        } description: {
-            Text(emptyDescription)
-        }
-        .frame(maxHeight: .infinity)
-    }
-
-    private var emptyTitle: String {
-        "No Listings"
-    }
-
-    private var emptyDescription: String {
-        "Listings will appear here"
-    }
 }
 
 // MARK: - Preview
-
 #Preview("Listing List View") {
     ListingListView()
         .modelContainer(for: [Listing.self, User.self], inMemory: true)
-        .environmentObject(SyncManager.shared)
-        .environmentObject(SearchPresentationManager())
+        .environmentObject(SyncManager(mode: .preview))
         .environmentObject(LensState())
 }

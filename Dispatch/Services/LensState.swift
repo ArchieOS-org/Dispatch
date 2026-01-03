@@ -14,11 +14,11 @@ import SwiftUI
 final class LensState: ObservableObject {
     /// Current screen for determining filter button visibility
     enum CurrentScreen {
-        case tasks
-        case activities
+        case myWorkspace
         case listings
         case listingDetail
         case menu
+        case realtors
         case detail
         case other
     }
@@ -34,7 +34,7 @@ final class LensState: ObservableObject {
 
     /// Filter button shows on TaskListView, ActivityListView, and ListingDetailView
     var showFilterButton: Bool {
-        currentScreen == .tasks || currentScreen == .activities || currentScreen == .listingDetail
+        currentScreen == .myWorkspace || currentScreen == .listingDetail
     }
 
     /// Returns true if any filter is active (not set to .all)

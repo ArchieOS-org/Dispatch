@@ -24,8 +24,7 @@ struct SearchResultsList: View {
     let listings: [Listing]
     var onSelectResult: (SearchResult) -> Void
 
-    @State private var debouncedQuery = ""
-    @State private var debounceTask: Task<Void, Never>?
+    // Debounce removed - using live search text directly
 
     // MARK: - Computed Properties
 
@@ -40,7 +39,7 @@ struct SearchResultsList: View {
 
     /// Filtered and ranked results
     private var filteredResults: [SearchResult] {
-        allResults.filtered(by: debouncedQuery)
+        allResults.filtered(by: searchText)
     }
 
     /// Results grouped by section
@@ -56,25 +55,23 @@ struct SearchResultsList: View {
     // MARK: - Body
 
     var body: some View {
-        Group {
-            if debouncedQuery.isEmpty {
-                emptyPromptView
-            } else if isEmpty {
-                noResultsView
+        VStack(spacing: 0) {
+            if searchText.isEmpty {
+                 emptyPromptView
+            } else if filteredResults.isEmpty { // Use filteredResults directly, skip debounce for now
+                 noResultsView
             } else {
-                resultsList
+                 resultsList
             }
         }
-        .onChange(of: searchText) { _, newValue in
-            debounceSearch(newValue)
-        }
+        // Removed debounce logic to rule out Task creation loops
     }
 
     // MARK: - Subviews
 
     private var resultsList: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
                 ForEach(groupedResults, id: \.section) { section, results in
                     sectionHeader(section)
 
@@ -107,17 +104,33 @@ struct SearchResultsList: View {
     }
 
     private var emptyPromptView: some View {
-        VStack(spacing: DS.Spacing.md) {
-            Image(systemName: "magnifyingglass")
-                .font(.largeTitle)
-                .foregroundColor(DS.Colors.Text.tertiary)
-
-            Text("Search across all your data")
-                .font(.body)
-                .foregroundColor(DS.Colors.Text.secondary)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                // Quick Jump Header
+                sectionHeader("Quick Jump")
+                
+                // Navigation Items
+                let navigationItems: [SearchResult] = [
+                    .navigation(title: "My Workspace", icon: "briefcase", tab: .workspace),
+                    .navigation(title: "Realtors", icon: DS.Icons.Entity.realtor, tab: .realtors),
+                    .navigation(title: "Listings", icon: DS.Icons.Entity.listing, tab: .listings)
+                ]
+                
+                ForEach(navigationItems) { result in
+                    Button {
+                        onSelectResult(result)
+                    } label: {
+                        SearchResultRow(result: result)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    if result.id != navigationItems.last?.id {
+                        Divider()
+                            .padding(.leading, DS.Spacing.lg + DS.Spacing.avatarMedium + DS.Spacing.md)
+                    }
+                }
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(DS.Spacing.xxl)
     }
 
     private var noResultsView: some View {
@@ -126,7 +139,7 @@ struct SearchResultsList: View {
                 .font(.largeTitle)
                 .foregroundColor(DS.Colors.Text.tertiary)
 
-            Text("No results for \"\(debouncedQuery)\"")
+            Text("No results for \"\(searchText)\"")
                 .font(.body)
                 .foregroundColor(DS.Colors.Text.secondary)
 
@@ -136,19 +149,6 @@ struct SearchResultsList: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(DS.Spacing.xxl)
-    }
-
-    // MARK: - Debounce
-
-    private func debounceSearch(_ query: String) {
-        debounceTask?.cancel()
-
-        debounceTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
-
-            guard !Task.isCancelled else { return }
-            debouncedQuery = query
-        }
     }
 }
 

@@ -8,23 +8,53 @@
 
 import SwiftUI
 
-/// A generic segmented control that works with any CaseIterable enum.
-/// Used in TaskListView and ActivityListView for claim filtering.
+/// A generic segmented control that adapts to platform conventions.
+/// - iOS/iPadOS: Uses standard Picker with .segmented style.
+/// - macOS: Uses custom "Things 3" style pill buttons.
 struct SegmentedFilterBar<Filter: Hashable & CaseIterable & Identifiable>: View
 where Filter.AllCases: RandomAccessCollection {
     @Binding var selection: Filter
     let displayName: (Filter) -> String
+    
+    // Namespace for custom macOS animations
+    @Namespace private var animationNamespace
 
     var body: some View {
-        Picker("Filter", selection: $selection) {
+        HStack(spacing: 2) {
             ForEach(Filter.allCases) { filter in
-                Text(displayName(filter))
-                    .tag(filter)
+                segmentButton(for: filter)
+            }
+            Spacer()
+        }
+        .padding(2)
+        // Optional container styling could go here if needed for iOS
+        // e.g. .background(Color(uiColor: .secondarySystemBackground)) .clipShape(Capsule())
+        // but Things 3 uses floating text on list headers.
+    }
+
+    @ViewBuilder
+    private func segmentButton(for filter: Filter) -> some View {
+        Button {
+            withAnimation(.snappy(duration: 0.2)) {
+                selection = filter
+            }
+        } label: {
+            Text(displayName(filter))
+                .font(DS.Typography.bodySecondary)
+                .fontWeight(selection == filter ? .semibold : .regular)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6) // Slightly increased vertical padding for touch targets
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background {
+            if selection == filter {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.2))
+                    .matchedGeometryEffect(id: "selection", in: animationNamespace)
             }
         }
-        .pickerStyle(.segmented)
-        .padding(.horizontal, DS.Spacing.md)
-        .padding(.vertical, DS.Spacing.sm)
+        .foregroundStyle(selection == filter ? .primary : .secondary)
     }
 }
 
@@ -46,9 +76,9 @@ extension SegmentedFilterBar where Filter: RawRepresentable, Filter.RawValue == 
 
         var body: some View {
             VStack(spacing: DS.Spacing.lg) {
-                // Using rawValue (default)
-                SegmentedFilterBar(selection: $selectedFilter)
-
+                Text("Unified Filter Bar")
+                    .font(DS.Typography.title3)
+                
                 // Using custom display name
                 SegmentedFilterBar(selection: $selectedFilter) { filter in
                     filter.displayName(forActivities: true)
@@ -56,10 +86,10 @@ extension SegmentedFilterBar where Filter: RawRepresentable, Filter.RawValue == 
 
                 Text("Selected: \(selectedFilter.rawValue)")
                     .font(DS.Typography.body)
-
-                Spacer()
+                    .foregroundStyle(.secondary)
             }
-            .padding(.top, DS.Spacing.md)
+            .padding()
+            .frame(maxWidth: .infinity)
         }
     }
 

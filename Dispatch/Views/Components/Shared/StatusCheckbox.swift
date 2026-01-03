@@ -12,15 +12,18 @@ import SwiftUI
 /// Shows open circle when incomplete, filled checkmark when complete.
 struct StatusCheckbox: View {
     let isCompleted: Bool
+    var color: Color = DS.Colors.Text.tertiary
+    var isCircle: Bool = false
     var onToggle: () -> Void = {}
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: onToggle) {
-            Image(systemName: isCompleted ? DS.Icons.StatusIcons.completed : DS.Icons.StatusIcons.open)
-                .font(.system(size: 22))
-                .foregroundColor(isCompleted ? DS.Colors.success : DS.Colors.Text.tertiary)
+            Image(systemName: iconName)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(color)
+                .frame(width: 14, height: 14) // Match text visual height
                 .scaleEffect(isCompleted ? 1.0 : 0.95)
                 .animation(
                     reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.6),
@@ -28,10 +31,17 @@ struct StatusCheckbox: View {
                 )
         }
         .buttonStyle(.plain)
-        .frame(width: DS.Spacing.minTouchTarget, height: DS.Spacing.minTouchTarget)
         .accessibilityLabel(isCompleted ? "Completed" : "Not completed")
         .accessibilityHint("Double tap to toggle completion status")
         .accessibilityAddTraits(.isButton)
+    }
+
+    private var iconName: String {
+        if isCircle {
+            return isCompleted ? "checkmark.circle.fill" : "circle"
+        } else {
+            return isCompleted ? "checkmark.square.fill" : "square"
+        }
     }
 }
 
@@ -56,7 +66,7 @@ struct StatusCheckbox: View {
                 Divider()
 
                 HStack(spacing: DS.Spacing.md) {
-                    StatusCheckbox(isCompleted: isCompleted) {
+                    StatusCheckbox(isCompleted: isCompleted, color: .blue) {
                         isCompleted.toggle()
                     }
                     Text("Interactive: \(isCompleted ? "Done" : "Tap me")")

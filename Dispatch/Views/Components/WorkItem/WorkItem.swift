@@ -11,7 +11,7 @@ import SwiftUI
 /// Cached snapshot of work item properties for safe rendering.
 /// All values are captured at construction time, so they remain valid
 /// even if the underlying SwiftData model is invalidated by ModelContext.reset().
-struct WorkItemSnapshot {
+struct WorkItemSnapshot: Equatable, Hashable {
     let id: UUID
     let title: String
     let itemDescription: String
@@ -38,7 +38,10 @@ struct WorkItemSnapshot {
     let lastSyncError: String?
 
     // Audience targeting
-    let audiences: Set<Role>
+    let audiences: Set<Role> // was Role
+
+    // Relationships
+    let listingId: UUID?
 }
 
 /// A unified wrapper for TaskItem and Activity that provides
@@ -82,6 +85,7 @@ enum WorkItem: Identifiable {
     var createdAt: Date { snapshot.createdAt }
     var updatedAt: Date { snapshot.updatedAt }
     var declaredBy: UUID { snapshot.declaredBy }
+    var listingId: UUID? { snapshot.listingId }
 
     // MARK: - Status Handling (from cached snapshot)
 
@@ -140,6 +144,11 @@ enum WorkItem: Identifiable {
         snapshot.subtaskCount > 0
     }
 
+    var isTask: Bool {
+        if case .task = self { return true }
+        return false
+    }
+
     // MARK: - Live Model Access (USE WITH CAUTION)
     // These accessors return the live model for mutation operations.
     // Only use these when you need to modify the model - never for reading display properties.
@@ -175,6 +184,15 @@ enum WorkItem: Identifiable {
         case .activity(let activity, _): return activity.subtasks
         }
     }
+
+    /// Access live listing relationship from the model.
+    /// **Warning**: May crash if model is invalidated.
+    var listing: Listing? {
+        switch self {
+        case .task(let task, _): return task.listing
+        case .activity(let activity, _): return activity.listing
+        }
+    }
 }
 
 // MARK: - Factory Methods
@@ -203,7 +221,8 @@ extension WorkItem {
             activityType: nil,
             syncState: task.syncState,
             lastSyncError: task.lastSyncError,
-            audiences: task.audiences
+            audiences: task.audiences,
+            listingId: task.listingId
         )
         return .task(task, snapshot: snapshot)
     }
@@ -254,7 +273,8 @@ extension WorkItem {
             activityType: activity.type,
             syncState: activity.syncState,
             lastSyncError: activity.lastSyncError,
-            audiences: activity.audiences
+            audiences: activity.audiences,
+            listingId: activity.listingId
         )
         return .activity(activity, snapshot: snapshot)
     }
@@ -264,8 +284,8 @@ extension WorkItem {
 
 extension WorkItem: Equatable {
     static func == (lhs: WorkItem, rhs: WorkItem) -> Bool {
-        // Uses cached ID - safe even if underlying model is invalidated
-        lhs.id == rhs.id
+        // Compare full snapshots to ensure UI updates when properties change
+        lhs.snapshot == rhs.snapshot
     }
 }
 
@@ -273,8 +293,8 @@ extension WorkItem: Equatable {
 
 extension WorkItem: Hashable {
     func hash(into hasher: inout Hasher) {
-        // Uses cached ID - safe even if underlying model is invalidated
-        hasher.combine(id)
+        // Hash full snapshot to ensure UI updates when properties change
+        hasher.combine(snapshot)
     }
 }
 

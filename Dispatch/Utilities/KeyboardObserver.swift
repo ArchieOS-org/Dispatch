@@ -16,37 +16,51 @@ import UIKit
 ///
 /// Attaches to AppOverlayState to hide floating buttons when keyboard appears.
 @MainActor
-final class KeyboardObserver: ObservableObject {
+final class KeyboardObserver: NSObject, ObservableObject {
     private var overlayState: AppOverlayState?
+    private var isAttached = false
 
     /// Attaches the observer to an AppOverlayState instance.
     /// Only observes keyboard notifications on iPhone, not iPad.
     func attach(to overlayState: AppOverlayState) {
+        guard !isAttached else { return }
+        // Preview Isolation: Do not observe keyboard in preview mode
+        if overlayState.mode == .preview { return }
+        
         self.overlayState = overlayState
+        self.isAttached = true
 
         #if os(iOS)
         // Only observe on iPhone, not iPad
         guard UIDevice.current.userInterfaceIdiom == .phone else { return }
 
         NotificationCenter.default.addObserver(
-            forName: UIResponder.keyboardWillShowNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.overlayState?.hide(reason: .keyboard)
-            }
-        }
+            self,
+            selector: #selector(keyboardWillShow),
+            name: UIResponder.keyboardWillShowNotification,
+            object: nil
+        )
 
         NotificationCenter.default.addObserver(
-            forName: UIResponder.keyboardWillHideNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.overlayState?.show(reason: .keyboard)
-            }
-        }
+            self,
+            selector: #selector(keyboardWillHide),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
         #endif
+    }
+    
+    #if os(iOS)
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        overlayState?.hide(reason: .keyboard)
+    }
+    
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        overlayState?.show(reason: .keyboard)
+    }
+    #endif
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 }
