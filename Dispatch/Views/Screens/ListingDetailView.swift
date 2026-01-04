@@ -144,9 +144,6 @@ struct ListingDetailView: View {
 
     private var stageSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            Text("Stage")
-                .font(DS.Typography.caption)
-                .foregroundColor(DS.Colors.Text.secondary)
             StagePicker(stage: .init(
                 get: { listing.stage },
                 set: { newStage in
