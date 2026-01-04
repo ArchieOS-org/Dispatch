@@ -1,3 +1,33 @@
+/// Local row for staged listings: minimal, no icons, no chevron, trailing capsule
+private struct StagedListingRow: View {
+    let listing: Listing
+
+    private var typeTagColors: (fg: Color, bg: Color) {
+        let palette: [Color] = [.blue, .green, .orange, .purple, .teal, .pink]
+        let key = listing.listingType.rawValue.lowercased()
+        let idx = Int(key.hashValue.magnitude) % palette.count
+        let base = palette[idx]
+        return (fg: base, bg: base.opacity(0.14))
+    }
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.md) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                Text(listing.address)
+                    .font(DS.Typography.body)
+                    .foregroundStyle(.primary)
+
+                let colors = typeTagColors
+                Text(listing.listingType.rawValue.capitalized)
+                    .font(DS.Typography.caption)
+                    .foregroundStyle(colors.fg)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, DS.Spacing.sm)
+    }
+}
 //
 //  StagedListingsView.swift
 //  Dispatch
@@ -5,8 +35,20 @@
 //  Filtered listings view by stage with query-level filtering.
 //
 
+
 import SwiftUI
 import SwiftData
+
+private extension View {
+    @ViewBuilder
+    func hideDisclosureIndicator() -> some View {
+        if #available(iOS 17.0, *) {
+            self.navigationLinkIndicatorVisibility(.hidden)
+        } else {
+            self
+        }
+    }
+}
 
 /// A group of listings belonging to a single owner (reused pattern)
 private struct ListingGroup: Identifiable {
@@ -62,9 +104,18 @@ struct StagedListingsView: View {
             StandardList(groupedByOwner) { group in
                 Section(group.owner?.name ?? "Unknown Owner") {
                     ForEach(group.listings) { listing in
-                        NavigationLink(value: listing) {
-                            ListingRow(listing: listing, owner: group.owner)
+                        ZStack {
+                            StagedListingRow(listing: listing)
+
+                            // Invisible link overlay so the row is tappable without showing a disclosure indicator
+                            NavigationLink(value: listing) {
+                                Color.clear
+                            }
+                            .hideDisclosureIndicator()
+                            .buttonStyle(.plain)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
+                        .contentShape(Rectangle())
                     }
                 }
             } emptyContent: {
@@ -79,7 +130,37 @@ struct StagedListingsView: View {
     }
 }
 
+
 // MARK: - Preview
+
+private enum StagedListingsPreviewData {
+    static func seededContainer() -> ModelContainer {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try! ModelContainer(for: Listing.self, User.self, configurations: config)
+        let context = ModelContext(container)
+        PreviewDataFactory.seed(context)
+
+        // Preview-only: ensure some seeded listings appear in the Live stage
+        let descriptor = FetchDescriptor<Listing>(sortBy: [SortDescriptor(\Listing.address)])
+        if let listings = try? context.fetch(descriptor) {
+            for listing in listings.prefix(5) {
+                listing.stage = .live
+            }
+        }
+        try? context.save()
+
+        return container
+    }
+}
+
+#Preview("Staged Listings - Live (Seeded)") {
+    NavigationStack {
+        StagedListingsView(stage: .live)
+    }
+    .modelContainer(StagedListingsPreviewData.seededContainer())
+    .environmentObject(SyncManager(mode: .preview))
+    .environmentObject(LensState())
+}
 
 #Preview("Staged Listings - Live") {
     NavigationStack {
