@@ -82,22 +82,6 @@ struct WorkItemRow: View {
                 DatePill(date: date)
             }
 
-            // Role Icon (Inline - Left of title)
-            if item.audiences.contains(.admin) {
-                Image(systemName: DS.Icons.Role.admin)
-                    .symbolRenderingMode(.monochrome)
-                    .font(DS.Typography.body)
-                    .imageScale(.medium)
-                    .foregroundStyle(DS.Colors.RoleColors.admin)
-            }
-            if item.audiences.contains(.marketing) {
-                Image(systemName: DS.Icons.Role.marketing)
-                    .symbolRenderingMode(.monochrome)
-                    .font(DS.Typography.body)
-                    .imageScale(.medium)
-                    .foregroundStyle(DS.Colors.RoleColors.marketing)
-            }
-
             // Title
             Text(item.title)
                 .font(DS.Typography.body)
@@ -105,11 +89,9 @@ struct WorkItemRow: View {
                 .foregroundColor(item.isCompleted ? DS.Colors.Text.tertiary : DS.Colors.Text.primary)
                 .lineLimit(1)
 
-            // User Tag (Inline with title)
+            // User Tag (Inline with title) - only show for claimedByMe
             if !hideUserTag {
-                if case .claimedByOther(let user) = claimState {
-                    UserTag(user: user)
-                } else if case .claimedByMe(let user) = claimState {
+                if case .claimedByMe(let user) = claimState {
                     UserTag(user: user)
                 }
             }
@@ -128,7 +110,7 @@ struct WorkItemRow: View {
                     .foregroundStyle(.red)
                 }
 
-                // Actions / Status
+                // Actions / Status - omit entirely for claimedByOther
                 if item.isSyncFailed {
                     SyncRetryButton(
                         errorMessage: item.lastSyncError,
@@ -141,7 +123,10 @@ struct WorkItemRow: View {
                             }
                         }
                     )
-                } else if case .unclaimed = claimState {
+                } else if case .claimedByOther = claimState {
+                    // Nothing - truly omit, no branch renders anything
+                } else {
+                    // .unclaimed or .claimedByMe
                     ClaimButton(
                         claimState: claimState,
                         style: .compact,

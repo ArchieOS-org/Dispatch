@@ -49,8 +49,13 @@ struct ListingDetailView: View {
         activeTasks.filter { lensState.audience.matches(audiences: $0.audiences) }
     }
 
-    private var filteredActivities: [Activity] {
-        activeActivities.filter { lensState.audience.matches(audiences: $0.audiences) }
+    private var currentUserType: UserType? {
+        syncManager.currentUser?.userType
+    }
+
+    /// Only .marketing flips the order; all other roles default to Admin first.
+    private var showAdminFirst: Bool {
+        currentUserType != .marketing
     }
 
     private var isOverdue: Bool {
@@ -118,9 +123,19 @@ struct ListingDetailView: View {
     }
 
     // MARK: - Content Sections
-    
+
     private var content: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+        // Compute once per render to avoid repeated filtering
+        // Uses existing lens predicate; do not change matching semantics.
+        let adminActivities = activeActivities.filter {
+            $0.audiences.contains(.admin) && lensState.audience.matches(audiences: $0.audiences)
+        }
+        let marketingActivities = activeActivities.filter {
+            $0.audiences.contains(.marketing) && lensState.audience.matches(audiences: $0.audiences)
+        }
+        let hasAnyActivities = !adminActivities.isEmpty || !marketingActivities.isEmpty
+
+        return VStack(alignment: .leading, spacing: DS.Spacing.lg) {
             stageSection
 
             metadataSection
@@ -135,11 +150,16 @@ struct ListingDetailView: View {
                 }
             }
 
-            if !filteredActivities.isEmpty {
-                VStack(alignment: .leading, spacing: 0) {
-                    activitiesHeader
-                    Divider().padding(.vertical, DS.Spacing.sm)
-                    activitiesSection
+            // Activity sections - wrapped in container to prevent orphan spacing
+            if hasAnyActivities {
+                VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+                    if showAdminFirst {
+                        adminSection(activities: adminActivities)
+                        marketingSection(activities: marketingActivities)
+                    } else {
+                        marketingSection(activities: marketingActivities)
+                        adminSection(activities: adminActivities)
+                    }
                 }
             }
         }
@@ -225,16 +245,18 @@ struct ListingDetailView: View {
         }
     }
 
-    private var activitiesHeader: some View {
+    private func sectionHeader(title: String, count: Int) -> some View {
         HStack {
-            Text("Activities")
+            Text(title)
                 .font(DS.Typography.headline)
                 .foregroundColor(DS.Colors.Text.primary)
-            Text("(\(filteredActivities.count))")
+            Text("(\(count))")
                 .font(DS.Typography.bodySecondary)
                 .foregroundColor(DS.Colors.Text.secondary)
             Spacer()
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(count)")  // Avoid hardcoded pluralization
     }
 
     // MARK: - List Sections
@@ -266,29 +288,45 @@ struct ListingDetailView: View {
         }
     }
 
-    private var activitiesSection: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            if filteredActivities.isEmpty {
-                emptyStateView(icon: DS.Icons.Entity.activity, title: "No Activities", message: "Activities for this listing will appear here")
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(filteredActivities) { activity in
-                        NavigationLink(value: WorkItemRef.activity(activity)) {
-                            WorkItemRow(
-                                item: .activity(activity),
-                                claimState: WorkItem.activity(activity).claimState(
-                                    currentUserId: currentUserId,
-                                    userLookup: userLookup
-                                ),
-                                onClaim: { claimActivity(activity) },
-                                onRelease: { unclaimActivity(activity) },
-                                hideDueDate: true
-                            )
-                            .padding(.vertical, DS.Spacing.xs)
-                        }
-                        .buttonStyle(.plain)
-                    }
+    @ViewBuilder
+    private func adminSection(activities: [Activity]) -> some View {
+        if !activities.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                sectionHeader(title: NSLocalizedString("Admin", comment: "Section header for admin activities"), count: activities.count)
+                Divider().padding(.vertical, DS.Spacing.sm)
+                activitiesContent(activities)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func marketingSection(activities: [Activity]) -> some View {
+        if !activities.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                sectionHeader(title: NSLocalizedString("Marketing", comment: "Section header for marketing activities"), count: activities.count)
+                Divider().padding(.vertical, DS.Spacing.sm)
+                activitiesContent(activities)
+            }
+        }
+    }
+
+    private func activitiesContent(_ activities: [Activity]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(activities) { activity in
+                NavigationLink(value: WorkItemRef.activity(activity)) {
+                    WorkItemRow(
+                        item: .activity(activity),
+                        claimState: WorkItem.activity(activity).claimState(
+                            currentUserId: currentUserId,
+                            userLookup: userLookup
+                        ),
+                        onClaim: { claimActivity(activity) },
+                        onRelease: { unclaimActivity(activity) },
+                        hideDueDate: true
+                    )
+                    .padding(.vertical, DS.Spacing.xs)
                 }
+                .buttonStyle(.plain)
             }
         }
     }
