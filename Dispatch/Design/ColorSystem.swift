@@ -110,11 +110,20 @@ extension DS {
 
         /// Semantic background colors that adapt to light/dark mode
         enum Background {
-            /// Primary background (white/dark)
+            /// Primary background - custom theme colors
+            /// Light mode: #262624, Dark mode: #FAF9FF
             #if canImport(UIKit)
-            static let primary = Color(uiColor: .systemBackground)
+            static let primary = Color(uiColor: UIColor { traitCollection in
+                traitCollection.userInterfaceStyle == .dark
+                    ? UIColor(red: 250/255, green: 249/255, blue: 255/255, alpha: 1) // #FAF9FF
+                    : UIColor(red: 38/255, green: 38/255, blue: 36/255, alpha: 1)    // #262624
+            })
             #else
-            static let primary = Color(nsColor: .windowBackgroundColor)
+            static let primary = Color(nsColor: NSColor(name: nil) { appearance in
+                appearance.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
+                    ? NSColor(red: 250/255, green: 249/255, blue: 255/255, alpha: 1) // #FAF9FF
+                    : NSColor(red: 38/255, green: 38/255, blue: 36/255, alpha: 1)    // #262624
+            } ?? .windowBackgroundColor)
             #endif
 
             /// Secondary background (subtle gray)
