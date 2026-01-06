@@ -242,6 +242,29 @@ extension DS {
         /// Color for normal due dates
         static let dueNormal = Color.secondary
 
+        // MARK: - Dynamic Search Colors
+        
+        /// Colors for the dynamic search box component
+        enum DynamicSearch {
+            /// Default search box background (gray)
+            static let defaultBackground = DS.Colors.Background.secondary
+            
+            /// Activated search box background (blue)
+            static let activatedBackground = DS.Colors.accent
+            
+            /// Default search box text color
+            static let defaultText = DS.Colors.Text.tertiary
+            
+            /// Activated search box text color (white)
+            static let activatedText = Color.white
+            
+            /// Arrow color in default state
+            static let defaultArrow = DS.Colors.Text.tertiary
+            
+            /// Arrow color in activated state
+            static let activatedArrow = DS.Colors.accent
+        }
+
         // MARK: - Progress Colors
 
         /// Colors for progress indicators (e.g., ProgressCircle)

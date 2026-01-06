@@ -140,5 +140,28 @@ extension DS {
 
         /// Search overlay modal max width (for larger screens)
         static let searchModalMaxWidth: CGFloat = 500
+        
+        // MARK: - Dynamic Search Box
+        
+        /// Height of the dynamic search box
+        static let dynamicSearchBoxHeight: CGFloat = 44
+        
+        /// Horizontal padding inside the dynamic search box
+        static let dynamicSearchBoxPadding: CGFloat = 16
+        
+        /// Corner radius for the dynamic search box
+        static let dynamicSearchBoxRadius: CGFloat = 22
+        
+        /// Size of the dropdown arrow
+        static let dynamicSearchArrowSize: CGFloat = 12
+        
+        /// Spacing between search box and arrow
+        static let dynamicSearchArrowSpacing: CGFloat = 8
+        
+        /// Maximum vertical offset for the search box when pulled
+        static let dynamicSearchMaxOffset: CGFloat = 40
+        
+        /// Top padding for the dynamic search container
+        static let dynamicSearchTopPadding: CGFloat = 8
     }
 }

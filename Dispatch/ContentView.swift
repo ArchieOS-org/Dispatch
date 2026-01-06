@@ -40,6 +40,7 @@ struct ContentView: View {
     // MARK: - Search State (iPhone only)
 
     @StateObject private var searchManager = SearchPresentationManager()
+    @StateObject private var dynamicSearchState = DynamicSearchState()
     @State private var searchNavigationPath = NavigationPath()
 
     // MARK: - Global Filter & Overlay State (iPhone only)
@@ -96,6 +97,7 @@ struct ContentView: View {
         // Inject environment objects at root so both navigation paths inherit them
         .environmentObject(workItemActions)
         .environmentObject(searchManager)
+        .environmentObject(dynamicSearchState)
         .environmentObject(lensState)
         .environmentObject(quickEntryState)
         .environmentObject(overlayState)

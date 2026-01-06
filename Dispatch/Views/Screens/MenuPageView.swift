@@ -42,6 +42,7 @@ struct MenuPageView: View {
 
     @EnvironmentObject private var syncManager: SyncManager
     @EnvironmentObject private var lensState: LensState
+    @EnvironmentObject private var dynamicSearchState: DynamicSearchState
 
     // MARK: - Computed Properties
 
@@ -57,26 +58,55 @@ struct MenuPageView: View {
     // MARK: - Body
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: DS.Spacing.lg) {
-                ForEach(MenuSection.allCases) { section in
-                    NavigationLink(value: section) {
-                        MenuSectionCard(
-                            section: section,
-                            count: count(for: section)
-                        )
+        ZStack(alignment: .top) {
+            // Main content with dynamic top padding
+            ScrollView {
+                VStack(spacing: DS.Spacing.lg) {
+                    ForEach(MenuSection.allCases) { section in
+                        NavigationLink(value: section) {
+                            MenuSectionCard(
+                                section: section,
+                                count: count(for: section)
+                            )
+                        }
+                        .buttonStyle(MenuCardButtonStyle())
                     }
-                    .buttonStyle(MenuCardButtonStyle())
                 }
+                .padding(DS.Spacing.lg)
+                .padding(.top, dynamicSearchBoxTopPadding)
             }
-            .padding(DS.Spacing.lg)
+            .pullToSearch()
+            .dynamicSearchScroll()
+            .background(DS.Colors.Background.grouped)
+            
+            // Dynamic search box overlay
+            VStack {
+                DynamicSearchBox()
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.top, DS.Spacing.dynamicSearchTopPadding)
+                
+                Spacer()
+            }
         }
-        .pullToSearch()
-        .background(DS.Colors.Background.grouped)
-        .navigationTitle("Dispatch")
+        .navigationBarHidden(true)
         .onAppear {
             lensState.currentScreen = .menu
         }
+        .onDisappear {
+            // Reset search state when leaving the view
+            dynamicSearchState.reset()
+        }
+    }
+    
+    // MARK: - Computed Properties
+    
+    /// Dynamic top padding for content based on search box state
+    private var dynamicSearchBoxTopPadding: CGFloat {
+        let baseHeight = DS.Spacing.dynamicSearchBoxHeight + DS.Spacing.dynamicSearchTopPadding * 2
+        let arrowHeight = dynamicSearchState.showArrow ? (DS.Spacing.dynamicSearchArrowSize + DS.Spacing.dynamicSearchArrowSpacing) : 0
+        let offsetHeight = dynamicSearchState.searchBoxOffset
+        
+        return baseHeight + arrowHeight + offsetHeight
     }
 }
 
@@ -174,6 +204,7 @@ private struct MenuCardButtonStyle: ButtonStyle {
     .modelContainer(container)
     .environmentObject(SyncManager.shared)
     .environmentObject(SearchPresentationManager())
+    .environmentObject(DynamicSearchState())
     .environmentObject(LensState())
 }
 
@@ -189,5 +220,6 @@ private struct MenuCardButtonStyle: ButtonStyle {
     .modelContainer(container)
     .environmentObject(SyncManager.shared)
     .environmentObject(SearchPresentationManager())
+    .environmentObject(DynamicSearchState())
     .environmentObject(LensState())
 }
