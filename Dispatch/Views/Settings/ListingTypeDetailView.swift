@@ -125,6 +125,7 @@ struct ListingTypeDetailView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
+                .environment(\.defaultMinListRowHeight, 1)
             }
         }
     }
@@ -163,7 +164,7 @@ private struct ActivityTemplateRow: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(DS.Colors.Text.tertiary)
         }
-        .padding(.vertical, DS.Spacing.sm)
+        .padding(.vertical, DS.Spacing.listRowPadding)
         .contentShape(Rectangle())
     }
 }

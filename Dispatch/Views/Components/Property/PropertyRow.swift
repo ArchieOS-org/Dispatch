@@ -62,7 +62,7 @@ struct PropertyRow: View {
                     .clipShape(Capsule())
             }
         }
-        .padding(.vertical, DS.Spacing.sm)
+        .padding(.vertical, DS.Spacing.listRowPadding)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)

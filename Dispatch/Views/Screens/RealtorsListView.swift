@@ -103,7 +103,7 @@ private struct RealtorRow: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(DS.Colors.Text.tertiary)
         }
-        .padding(.vertical, DS.Spacing.md)
+        .padding(.vertical, DS.Spacing.listRowPadding)
         .contentShape(Rectangle())
     }
 }

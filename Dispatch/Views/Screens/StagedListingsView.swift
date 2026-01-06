@@ -25,7 +25,7 @@ private struct StagedListingRow: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.vertical, DS.Spacing.sm)
+        .padding(.vertical, DS.Spacing.listRowPadding)
     }
 }
 //

@@ -151,7 +151,7 @@ struct WorkItemRow: View {
                 }
             }
         }
-        .padding(.vertical, DS.Spacing.sm)
+        .padding(.vertical, DS.Spacing.listRowPadding)
         .listRowSeparator(.hidden)
         .contentShape(Rectangle())
         // NOTE: Removed .onTapGesture - it was competing with NavigationLink's gesture.

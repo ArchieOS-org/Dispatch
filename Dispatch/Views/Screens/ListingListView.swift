@@ -131,6 +131,7 @@ struct ListingListView: View {
                         NavigationLink(value: listing) {
                             ListingRow(listing: listing, owner: group.owner)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             } emptyContent: {
@@ -289,7 +290,182 @@ struct ListingListView: View {
 }
 
 // MARK: - Preview
-#Preview("Listing List View") {
+
+/// Container to inject sample data for previews
+private struct ListingListPreviewContainer: View {
+    @Environment(\.modelContext) private var modelContext
+
+    var body: some View {
+        ListingListView()
+            .onAppear { insertSampleData() }
+    }
+
+    private func insertSampleData() {
+        // Create sample owners
+        let janeRealtor = User(
+            name: "Jane Smith",
+            email: "jane@realestate.com",
+            userType: .realtor
+        )
+        let johnAgent = User(
+            name: "John Anderson",
+            email: "john@realestate.com",
+            userType: .realtor
+        )
+        let sarahBroker = User(
+            name: "Sarah Chen",
+            email: "sarah@realestate.com",
+            userType: .realtor
+        )
+
+        modelContext.insert(janeRealtor)
+        modelContext.insert(johnAgent)
+        modelContext.insert(sarahBroker)
+
+        // Jane's listings - variety of states
+        let listing1 = Listing(
+            address: "123 Main Street",
+            city: "Toronto",
+            province: "ON",
+            postalCode: "M5V 1A1",
+            price: 899000,
+            status: .active,
+            ownedBy: janeRealtor.id,
+            dueDate: Calendar.current.date(byAdding: .day, value: 3, to: Date())
+        )
+
+        let listing2 = Listing(
+            address: "456 Oak Avenue, Unit 12",
+            city: "Toronto",
+            province: "ON",
+            postalCode: "M4Y 2B3",
+            price: 1250000,
+            status: .active,
+            ownedBy: janeRealtor.id,
+            dueDate: Calendar.current.date(byAdding: .day, value: -2, to: Date()) // Overdue
+        )
+
+        let listing3 = Listing(
+            address: "789 Maple Road",
+            city: "Mississauga",
+            province: "ON",
+            status: .pending,
+            ownedBy: janeRealtor.id
+            // No due date
+        )
+
+        // John's listings
+        let listing4 = Listing(
+            address: "1010 Yonge Street, PH2",
+            city: "Toronto",
+            province: "ON",
+            postalCode: "M4W 2L1",
+            price: 2500000,
+            status: .active,
+            ownedBy: johnAgent.id,
+            dueDate: Calendar.current.date(byAdding: .day, value: 7, to: Date())
+        )
+
+        let listing5 = Listing(
+            address: "222 Queen Street West",
+            city: "Toronto",
+            province: "ON",
+            price: 750000,
+            status: .active,
+            ownedBy: johnAgent.id,
+            dueDate: Calendar.current.date(byAdding: .day, value: -5, to: Date()) // Overdue
+        )
+
+        // Sarah's listings
+        let listing6 = Listing(
+            address: "55 Bloor Street East, Suite 1800",
+            city: "Toronto",
+            province: "ON",
+            price: 3200000,
+            listingType: .lease,
+            status: .active,
+            ownedBy: sarahBroker.id,
+            dueDate: Calendar.current.date(byAdding: .day, value: 14, to: Date())
+        )
+
+        let listing7 = Listing(
+            address: "100 Harbour Street",
+            city: "Toronto",
+            province: "ON",
+            price: 1800000,
+            status: .draft,
+            ownedBy: sarahBroker.id
+        )
+
+        // Insert all listings
+        [listing1, listing2, listing3, listing4, listing5, listing6, listing7].forEach {
+            modelContext.insert($0)
+        }
+
+        // Add tasks to some listings for progress indication
+        let task1 = TaskItem(
+            title: "Schedule photography",
+            taskDescription: "Book professional photos",
+            priority: .high,
+            status: .completed,
+            declaredBy: janeRealtor.id
+        )
+        let task2 = TaskItem(
+            title: "Update MLS",
+            taskDescription: "Update listing details",
+            priority: .medium,
+            status: .open,
+            declaredBy: janeRealtor.id
+        )
+        listing1.tasks.append(task1)
+        listing1.tasks.append(task2)
+
+        let task3 = TaskItem(
+            title: "Price review",
+            taskDescription: "Review comparable sales",
+            priority: .high,
+            status: .completed,
+            declaredBy: johnAgent.id
+        )
+        let task4 = TaskItem(
+            title: "Virtual tour",
+            taskDescription: "Create 3D walkthrough",
+            priority: .medium,
+            status: .completed,
+            declaredBy: johnAgent.id
+        )
+        let task5 = TaskItem(
+            title: "Open house prep",
+            taskDescription: "Prepare for weekend showing",
+            priority: .low,
+            status: .open,
+            declaredBy: johnAgent.id
+        )
+        listing4.tasks.append(task3)
+        listing4.tasks.append(task4)
+        listing4.tasks.append(task5)
+
+        try? modelContext.save()
+    }
+}
+
+#Preview("Listing List - With Data") {
+    ListingListPreviewContainer()
+        .modelContainer(for: [
+            Listing.self,
+            User.self,
+            TaskItem.self,
+            Activity.self,
+            Note.self,
+            Subtask.self,
+            StatusChange.self,
+            ClaimEvent.self
+        ], inMemory: true)
+        .environmentObject(SyncManager(mode: .preview))
+        .environmentObject(LensState())
+}
+
+#Preview("Listing List - Empty") {
     ListingListView()
         .modelContainer(for: [Listing.self, User.self], inMemory: true)
         .environmentObject(SyncManager(mode: .preview))

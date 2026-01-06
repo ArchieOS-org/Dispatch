@@ -61,6 +61,7 @@ struct StandardList<Data: RandomAccessCollection, RowContent: View, EmptyContent
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .environment(\.defaultMinListRowHeight, 1)
         // Note: StandardScreen owns margins. List should be edge-to-edge inside StandardScreen's column.
         // Wait, if StandardScreen applies padding, the list content is already padded. 
         // BUT `List` on iOS ignores safe areas/padding differently than ScrollView.

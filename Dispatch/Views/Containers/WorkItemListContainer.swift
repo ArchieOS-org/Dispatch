@@ -120,6 +120,8 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
             }
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .environment(\.defaultMinListRowHeight, 1)
         .pullToSearch()
     }
 

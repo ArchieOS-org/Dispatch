@@ -49,6 +49,9 @@ extension DS {
         /// Default spacing for stacked items
         static let stackSpacing: CGFloat = 12
 
+        /// Vertical padding for list row components (compact design)
+        static let listRowPadding: CGFloat = 8
+
         // MARK: - Notes Section (from spec)
 
         /// Fixed height for the notes stack container (shows ~3 notes partially)

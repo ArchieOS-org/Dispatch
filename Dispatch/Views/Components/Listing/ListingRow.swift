@@ -22,32 +22,26 @@ struct ListingRow: View {
         return date < Calendar.current.startOfDay(for: Date())
     }
 
-    private var overdueText: String {
-        guard let date = listing.dueDate else { return "" }
-        let startToday = Calendar.current.startOfDay(for: Date())
-        let startDue = Calendar.current.startOfDay(for: date)
-        let days = Calendar.current.dateComponents([.day], from: startDue, to: startToday).day ?? 0
-        
-        if days < 7 {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "EEE"
-            return formatter.string(from: date)
-        }
-        
+    /// Formats a date for display - shows day name if within a week, otherwise month + day
+    private func formattedDate(_ date: Date) -> String {
+        let calendar = Calendar.current
+        let startToday = calendar.startOfDay(for: Date())
+        let startDate = calendar.startOfDay(for: date)
+        let dayDifference = abs(calendar.dateComponents([.day], from: startDate, to: startToday).day ?? 0)
+
         let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d"
+        if dayDifference < 7 {
+            formatter.dateFormat = "EEE"
+        } else {
+            formatter.dateFormat = "MMM d"
+        }
         return formatter.string(from: date)
     }
 
     var body: some View {
         HStack(spacing: 6) {
-            // Progress Indicator (Left) - Similar position to checkbox
-            ProgressCircle(progress: listing.progress, size: 16)
-
-            // Date Pill (Left - Normal)
-            if let date = listing.dueDate, !isOverdue {
-                DatePill(date: date)
-            }
+            // Progress ring (same diameter as text height - 17pt for body)
+            ProgressCircle(progress: listing.progress, size: 17)
 
             // Address
             Text(listing.address)
@@ -55,47 +49,25 @@ struct ListingRow: View {
                 .foregroundColor(DS.Colors.Text.primary)
                 .lineLimit(1)
 
-            // Listing Type Pill
-            ListingTypePill(type: listing.listingType)
-
             Spacer()
 
-            // Metadata (Counts) - Right aligned
-            HStack(spacing: DS.Spacing.md) {
-                // Task count
-                if !listing.tasks.isEmpty {
-                    HStack(spacing: 2) {
-                        Image(systemName: DS.Icons.Entity.task)
-                            .font(.system(size: 10))
-                        Text("\(listing.tasks.count)")
-                            .font(DS.Typography.caption)
-                    }
-                    .foregroundColor(DS.Colors.Text.tertiary)
-                }
-                
-                // Activity count
-                if !listing.activities.isEmpty {
-                    HStack(spacing: 2) {
-                        Image(systemName: DS.Icons.Entity.activity)
-                            .font(.system(size: 10))
-                        Text("\(listing.activities.count)")
-                            .font(DS.Typography.caption)
-                    }
-                    .foregroundColor(DS.Colors.Text.tertiary)
-                }
-
-                // Overdue Flag (Right)
-                if let _ = listing.dueDate, isOverdue {
+            // Due date (always shown when exists)
+            if let date = listing.dueDate {
+                if isOverdue {
+                    // Overdue: flag + red text
                     HStack(spacing: 4) {
                         Image(systemName: "flag.fill")
-                        Text(overdueText)
+                        Text(formattedDate(date))
                     }
                     .font(DS.Typography.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(DS.Colors.overdue)
+                } else {
+                    // Normal: DatePill style
+                    DatePill(date: date)
                 }
             }
         }
-        .padding(.vertical, DS.Spacing.sm)
+        .padding(.vertical, DS.Spacing.listRowPadding)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
