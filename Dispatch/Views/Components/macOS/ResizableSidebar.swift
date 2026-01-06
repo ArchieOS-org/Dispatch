@@ -26,20 +26,13 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
       HStack(spacing: 0) {
         // Sidebar content - always in hierarchy when visible or dragging
         if state.shouldShowSidebar {
-          VStack(spacing: 0) {
-              // Traffic light spacing
-              Color.clear.frame(height: 28)
-              sidebar()
-          }
+          sidebar()
             .frame(width: state.displayWidth)
-            .glassSidebarBackground()
             .clipped()
-            .ignoresSafeArea(.all, edges: .top)
         }
 
         content()
           .frame(maxWidth: .infinity)
-          .ignoresSafeArea(.all, edges: .top)
       }
       // Unified drag handle overlay - persists through entire drag
       .overlay(alignment: .leading) {
