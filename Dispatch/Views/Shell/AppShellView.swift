@@ -16,9 +16,8 @@ struct AppShellView: View {
         ContentView()
             .applyMacWindowPolicy() // Replaces .configureMacWindow()
             #if os(macOS)
-            // Enforce "Invisible Toolbar" look using standard SwiftUI modifiers.
-            // This allows the content background to bleed through the toolbar.
-            .toolbarBackground(.hidden, for: .windowToolbar)
+            // Hide toolbar background so column backgrounds extend to top
+            .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
             #endif
     }
 }

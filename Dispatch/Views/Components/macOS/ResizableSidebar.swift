@@ -28,7 +28,12 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
         if state.shouldShowSidebar {
           sidebar()
             .frame(width: state.displayWidth)
-            .clipped()
+            .background(alignment: .top) {
+              // Fill the titlebar void behind traffic lights
+              // Use window background to avoid material stacking with .listStyle(.sidebar)
+              Color(nsColor: .windowBackgroundColor)
+                .ignoresSafeArea(.all, edges: .top)
+            }
         }
 
         content()

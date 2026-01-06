@@ -45,12 +45,11 @@ struct MacWindowPolicy: NSViewRepresentable {
         // So we hide the default center-aligned window title.
         window.titleVisibility = .hidden
         
-        // 3. Respect Native Layout (Fix Overlap)
-        // We explicitly REMOVE .fullSizeContentView.
-        // This stops content from flowing under the toolbar, letting the OS handle the safe area.
-        // This fixes the "pushed to top" / overlap issues.
-        if window.styleMask.contains(.fullSizeContentView) {
-            window.styleMask.remove(.fullSizeContentView)
+        // 3. Enable Full-Size Content View
+        // This allows sidebar and main content backgrounds to extend under the titlebar.
+        // Content layout still respects safe areas; only backgrounds extend.
+        if !window.styleMask.contains(.fullSizeContentView) {
+            window.styleMask.insert(.fullSizeContentView)
         }
     }
 }
