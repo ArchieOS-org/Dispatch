@@ -102,9 +102,11 @@ struct MenuPageView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(DS.Colors.Background.primary)
-        .navigationTitle("Dispatch")
         #if os(iOS)
-        .navigationBarTitleDisplayMode(.large)
+        .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .top) {
+            Color.clear.frame(height: DS.Spacing.sm)
+        }
         #endif
     }
 }
