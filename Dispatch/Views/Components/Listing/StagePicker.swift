@@ -12,11 +12,17 @@ import SwiftUI
 struct StagePicker: View {
     @Binding var stage: ListingStage
     let onChange: ((ListingStage) -> Void)?
+    private let horizontalInset: CGFloat
 
     @Namespace private var animationNamespace
 
-    init(stage: Binding<ListingStage>, onChange: ((ListingStage) -> Void)? = nil) {
+    init(
+        stage: Binding<ListingStage>,
+        horizontalInset: CGFloat = DS.Spacing.md,
+        onChange: ((ListingStage) -> Void)? = nil
+    ) {
         self._stage = stage
+        self.horizontalInset = horizontalInset
         self.onChange = onChange
     }
 
@@ -27,8 +33,12 @@ struct StagePicker: View {
                     stageButton(for: stageOption)
                 }
             }
-            .padding(.horizontal, DS.Spacing.xs)
         }
+        // Let the scroll view extend beyond a typical padded column,
+        // but keep the first/last items aligned with surrounding content.
+        .padding(.horizontal, -horizontalInset)
+        .contentMargins(.horizontal, horizontalInset, for: .scrollContent)
+        .scrollClipDisabled()
     }
 
     @ViewBuilder

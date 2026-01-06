@@ -127,16 +127,20 @@ struct ListingDetailView: View {
 
             notesSection
 
-            VStack(alignment: .leading, spacing: 0) {
-                tasksHeader
-                Divider().padding(.vertical, DS.Spacing.sm)
-                tasksSection
+            if !filteredTasks.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    tasksHeader
+                    Divider().padding(.vertical, DS.Spacing.sm)
+                    tasksSection
+                }
             }
 
-            VStack(alignment: .leading, spacing: 0) {
-                activitiesHeader
-                Divider().padding(.vertical, DS.Spacing.sm)
-                activitiesSection
+            if !filteredActivities.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    activitiesHeader
+                    Divider().padding(.vertical, DS.Spacing.sm)
+                    activitiesSection
+                }
             }
         }
         .padding(.bottom, DS.Spacing.md)
@@ -144,9 +148,12 @@ struct ListingDetailView: View {
 
     private var stageSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            Text("Stage")
-                .font(DS.Typography.caption)
-                .foregroundColor(DS.Colors.Text.secondary)
+            // Location
+            if !listing.city.isEmpty {
+                Text("\(listing.city), \(listing.province) \(listing.postalCode)")
+                    .font(DS.Typography.body)
+                    .foregroundColor(DS.Colors.Text.secondary)
+            }
             StagePicker(stage: .init(
                 get: { listing.stage },
                 set: { newStage in
@@ -160,13 +167,6 @@ struct ListingDetailView: View {
 
     private var metadataSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            // Location
-            if !listing.city.isEmpty {
-                Text("\(listing.city), \(listing.province) \(listing.postalCode)")
-                    .font(DS.Typography.body)
-                    .foregroundColor(DS.Colors.Text.secondary)
-            }
-            
             if owner != nil || listing.dueDate != nil {
                 Divider().padding(.top, DS.Spacing.sm)
 
@@ -260,10 +260,6 @@ struct ListingDetailView: View {
                             .padding(.vertical, DS.Spacing.xs)
                         }
                         .buttonStyle(.plain)
-
-                        if task.id != filteredTasks.last?.id {
-                            Divider()
-                        }
                     }
                 }
             }
@@ -291,10 +287,6 @@ struct ListingDetailView: View {
                             .padding(.vertical, DS.Spacing.xs)
                         }
                         .buttonStyle(.plain)
-
-                        if activity.id != filteredActivities.last?.id {
-                            Divider()
-                        }
                     }
                 }
             }
@@ -407,17 +399,26 @@ struct ListingDetailView: View {
         }(),
         setup: { context in
             PreviewDataFactory.seed(context)
+
+            // Preview-only: populate location fields so the metadata section renders
+            let listingID = PreviewDataFactory.listingID
+            let listingDescriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingID })
+            if let listing = try? context.fetch(listingDescriptor).first {
+                listing.city = "Toronto"
+                listing.province = "ON"
+                listing.postalCode = "M5V 2T6"
+            }
         }
     ) { context in
         // Deterministic Fetch with Predicate to guarantee correct entity
         let aliceID = PreviewDataFactory.aliceID
         let ownerDescriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == aliceID })
         let owner = try! context.fetch(ownerDescriptor).first!
-        
+
         // O(1) Lookup covering all users (owner + others)
         let users = try! context.fetch(FetchDescriptor<User>())
         let usersById = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
-        
+
         // Deterministic Fetch
         let listingID = PreviewDataFactory.listingID
         let listingDescriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingID })
