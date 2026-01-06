@@ -47,8 +47,8 @@ struct AppDestinationsModifier: ViewModifier {
                 RealtorProfileView(user: user)
             }
             // MARK: - iPhone Menu Navigation
-            .navigationDestination(for: MenuSection.self) { section in
-                menuDestination(for: section)
+            .navigationDestination(for: AppTab.self) { tab in
+                menuDestination(for: tab)
             }
             // MARK: - Settings Navigation
             .navigationDestination(for: SettingsSection.self) { section in
@@ -62,9 +62,9 @@ struct AppDestinationsModifier: ViewModifier {
     }
     
     @ViewBuilder
-    private func menuDestination(for section: MenuSection) -> some View {
-        switch section {
-        case .myWorkspace:
+    private func menuDestination(for tab: AppTab) -> some View {
+        switch tab {
+        case .workspace:
             MyWorkspaceView()
         case .properties:
             PropertiesListView()
@@ -74,6 +74,8 @@ struct AppDestinationsModifier: ViewModifier {
             RealtorsListView()
         case .settings:
             SettingsView()
+        case .search:
+            EmptyView() // Search is overlay, not push destination
         }
     }
     

@@ -57,13 +57,13 @@ struct MenuPageView: View {
         return overdueTasks.count + overdueActivities.count
     }
 
-    private func count(for section: MenuSection) -> Int {
-        switch section {
-        case .myWorkspace: return openTasks.count + openActivities.count
+    private func count(for tab: AppTab) -> Int {
+        switch tab {
+        case .workspace: return openTasks.count + openActivities.count
         case .properties: return activeProperties.count
         case .listings: return activeListings.count
         case .realtors: return activeRealtors.count
-        case .settings: return 0
+        case .settings, .search: return 0
         }
     }
 
@@ -85,18 +85,18 @@ struct MenuPageView: View {
             .listRowSeparator(.hidden)
 
             // MARK: - Menu Sections
-            ForEach(MenuSection.allCases) { section in
-                NavigationLink(value: section) {
-                    MenuSectionRow(
-                        section: section,
-                        count: count(for: section),
-                        overdueCount: section == .myWorkspace ? overdueCount : 0
+            ForEach(AppTab.menuTabs) { tab in
+                NavigationLink(value: tab) {
+                    SidebarMenuRow(
+                        tab: tab,
+                        count: count(for: tab),
+                        overdueCount: tab == .workspace ? overdueCount : 0
                     )
                 }
                 .listRowInsets(EdgeInsets(top: 0, leading: DS.Spacing.lg, bottom: 0, trailing: DS.Spacing.lg))
                 .listRowBackground(DS.Colors.Background.primary)
                 .listRowSeparator(.hidden)
-                .padding(.top, section == .settings ? DS.Spacing.xl : 0)
+                .padding(.top, tab == .settings ? DS.Spacing.xl : 0)
             }
         }
         .listStyle(.plain)
@@ -108,69 +108,6 @@ struct MenuPageView: View {
             Color.clear.frame(height: DS.Spacing.sm)
         }
         #endif
-    }
-}
-
-// MARK: - Menu Section Row
-
-private struct MenuSectionRow: View {
-    let section: MenuSection
-    let count: Int
-    let overdueCount: Int
-
-    var body: some View {
-        HStack(spacing: DS.Spacing.md) {
-            Image(systemName: section.icon)
-                .font(.system(size: 22, weight: .medium))
-                .foregroundColor(section.accentColor)
-                .frame(width: 28, alignment: .leading)
-
-            Text(section.title)
-                .font(DS.Typography.headline)
-                .foregroundColor(DS.Colors.Text.primary)
-                .lineLimit(1)
-
-            Spacer()
-
-            rightSideContent
-                .frame(minWidth: 28, alignment: .trailing)
-        }
-        .frame(minHeight: DS.Spacing.minTouchTarget)
-        .padding(.vertical, 4)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityLabelText)
-    }
-
-    @ViewBuilder
-    private var rightSideContent: some View {
-        if section == .settings {
-            EmptyView()
-        } else if section == .myWorkspace && overdueCount > 0 {
-            Text("\(overdueCount)")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 2)
-                .background(DS.Colors.overdue)
-                .clipShape(Capsule())
-        } else if count > 0 {
-            Text("\(count)")
-                .font(DS.Typography.body)
-                .foregroundColor(DS.Colors.Text.secondary)
-        }
-    }
-
-    private var accessibilityLabelText: String {
-        if section == .settings {
-            return section.title
-        } else if section == .myWorkspace && overdueCount > 0 {
-            return "\(section.title), \(overdueCount) overdue"
-        } else if count > 0 {
-            return "\(section.title), \(count) open"
-        } else {
-            return section.title
-        }
     }
 }
 

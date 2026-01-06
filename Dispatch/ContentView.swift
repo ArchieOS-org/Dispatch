@@ -28,6 +28,10 @@ struct ContentView: View {
 
     @Query private var users: [User]
     @Query private var allListings: [Listing]
+    @Query private var allTasksRaw: [TaskItem]
+    @Query private var allActivitiesRaw: [Activity]
+    @Query private var allPropertiesRaw: [Property]
+    @Query private var allRealtorsRaw: [User]
 
     // Local Tab state removed - using AppState.router.selectedTab (One Boss)
     private var selectedTab: AppTab {
@@ -65,9 +69,29 @@ struct ContentView: View {
         Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
     }
 
+    /// Open tasks (not completed or deleted)
+    private var openTasks: [TaskItem] {
+        allTasksRaw.filter { $0.status != .completed && $0.status != .deleted }
+    }
+
+    /// Open activities (not completed or deleted)
+    private var openActivities: [Activity] {
+        allActivitiesRaw.filter { $0.status != .completed && $0.status != .deleted }
+    }
+
+    /// Active properties (not deleted)
+    private var activeProperties: [Property] {
+        allPropertiesRaw.filter { $0.deletedAt == nil }
+    }
+
     /// Active listings (not deleted) for quick entry
     private var activeListings: [Listing] {
         allListings.filter { $0.status != .deleted }
+    }
+
+    /// Active realtors
+    private var activeRealtors: [User] {
+        allRealtorsRaw.filter { $0.userType == .realtor }
     }
 
     /// Stage counts computed once per render cycle from activeListings.
@@ -364,14 +388,36 @@ struct ContentView: View {
             return .taskList // Re-use task actions for now
         }
     }
-    
-    /// macOS: Things 3-style resizable sidebar with custom drag handle
+
+    // MARK: - macOS Sidebar Helpers
+
+    private var sidebarSelection: Binding<AppTab?> {
+        Binding(
+            get: { appState.router.selectedTab },
+            set: { if let tab = $0 { appState.dispatch(.selectTab(tab)) } }
+        )
+    }
+
+    private func sidebarCount(for tab: AppTab) -> Int {
+        switch tab {
+        case .workspace: return openTasks.count + openActivities.count
+        case .properties: return activeProperties.count
+        case .listings: return activeListings.count
+        case .realtors: return activeRealtors.count
+        case .settings, .search: return 0
+        }
+    }
+
+    private var sidebarOverdueCount: Int {
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        return openTasks.filter { ($0.dueDate ?? .distantFuture) < startOfToday }.count
+            + openActivities.filter { ($0.dueDate ?? .distantFuture) < startOfToday }.count
+    }
+
+    /// macOS: Things 3-style resizable sidebar with native selection
     private var sidebarNavigation: some View {
         ResizableSidebar {
-            List {
-                // We use manual button rows or TapGestures to ensure we capture the "click active" event
-                // Standard List(selection:) consumes clicks on selected items without reporting them.
-
+            List(selection: sidebarSelection) {
                 // Stage Cards Section
                 Section {
                     StageCardsSection(
@@ -385,45 +431,23 @@ struct ContentView: View {
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
 
-                Group {
-                    SidebarRow(
-                        title: "My Workspace",
-                        icon: "briefcase",
-                        isSelected: selectedTab == .workspace,
-                        action: { appState.dispatch(.selectTab(.workspace)) }
-                    )
-
-                    SidebarRow(
-                        title: "Properties",
-                        icon: DS.Icons.Entity.property,
-                        isSelected: selectedTab == .properties,
-                        action: { appState.dispatch(.selectTab(.properties)) }
-                    )
-
-                    SidebarRow(
-                        title: "Listings",
-                        icon: DS.Icons.Entity.listing,
-                        isSelected: selectedTab == .listings,
-                        action: { appState.dispatch(.selectTab(.listings)) }
-                    )
-
-                    SidebarRow(
-                        title: "Realtors",
-                        icon: DS.Icons.Entity.realtor,
-                        isSelected: selectedTab == .realtors,
-                        action: { appState.dispatch(.selectTab(.realtors)) }
-                    )
-
-                    Divider()
-                        .padding(.vertical, DS.Spacing.sm)
-
-                    SidebarRow(
-                        title: "Settings",
-                        icon: "gearshape",
-                        isSelected: selectedTab == .settings,
-                        action: { appState.dispatch(.selectTab(.settings)) }
+                // Menu Sections (no Settings - it goes after divider)
+                ForEach(AppTab.sidebarTabs) { tab in
+                    SidebarMenuRow(
+                        tab: tab,
+                        count: sidebarCount(for: tab),
+                        overdueCount: tab == .workspace ? sidebarOverdueCount : 0
                     )
                 }
+
+                Divider()
+                    .padding(.vertical, DS.Spacing.sm)
+
+                SidebarMenuRow(
+                    tab: .settings,
+                    count: 0,
+                    overdueCount: 0
+                )
             }
             .listStyle(.sidebar)
         } content: {
@@ -476,40 +500,12 @@ struct ContentView: View {
                 )
             }
         }
-
-        
-        // onReceive navigateSearchResult removed
-        
-    }
-    
-    /// Helper view for macOS Sidebar Rows to emulate standard selection style while supporting custom click logic
-    private struct SidebarRow: View {
-        let title: String
-        let icon: String
-        let isSelected: Bool
-        let action: () -> Void
-        
-        var body: some View {
-            Button(action: action) {
-                Label(title, systemImage: icon)
-                    .foregroundColor(isSelected ? .white : .primary) // Standard selection text color
-                    .padding(.leading, 12) // Restore standard sidebar padding
-                    .padding(.vertical, 6) // Restore standard vertical spacing
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .listRowInsets(EdgeInsets()) // Ensure button fills entire row (edge-to-edge click target)
-            .listRowBackground(
-                isSelected ? Color.accentColor : Color.clear
-            )
-        }
     }
     #else
-    /// iPad: Standard NavigationSplitView sidebar
+    /// iPad: Standard NavigationSplitView sidebar with native selection
     private var sidebarNavigation: some View {
         NavigationSplitView {
-            List {
+            List(selection: sidebarSelection) {
                 // Stage Cards Section
                 Section {
                     StageCardsSection(
@@ -523,10 +519,14 @@ struct ContentView: View {
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
 
-                sidebarButton(for: .workspace, label: "My Workspace", icon: "briefcase")
-                sidebarButton(for: .properties, label: "Properties", icon: DS.Icons.Entity.property)
-                sidebarButton(for: .listings, label: "Listings", icon: DS.Icons.Entity.listing)
-                sidebarButton(for: .realtors, label: "Realtors", icon: DS.Icons.Entity.realtor)
+                // Menu Sections (visibility controlled by data)
+                ForEach(AppTab.sidebarTabs) { tab in
+                    SidebarMenuRow(
+                        tab: tab,
+                        count: sidebarCount(for: tab),
+                        overdueCount: tab == .workspace ? sidebarOverdueCount : 0
+                    )
+                }
             }
             .listStyle(.sidebar)
             .navigationTitle("Dispatch")
@@ -563,15 +563,29 @@ struct ContentView: View {
     #endif
     
     #if os(iOS) || os(visionOS)
-    @ViewBuilder
-    private func sidebarButton(for tab: AppTab, label: String, icon: String) -> some View {
-        Button {
-            appState.dispatch(.selectTab(tab))
-        } label: {
-            Label(label, systemImage: icon)
-                .foregroundColor(selectedTab == tab ? .accentColor : .primary)
+    // MARK: - iPad Sidebar Helpers
+
+    private var sidebarSelection: Binding<AppTab?> {
+        Binding(
+            get: { appState.router.selectedTab },
+            set: { if let tab = $0 { appState.dispatch(.selectTab(tab)) } }
+        )
+    }
+
+    private func sidebarCount(for tab: AppTab) -> Int {
+        switch tab {
+        case .workspace: return openTasks.count + openActivities.count
+        case .properties: return activeProperties.count
+        case .listings: return activeListings.count
+        case .realtors: return activeRealtors.count
+        case .settings, .search: return 0
         }
-        .listRowBackground(selectedTab == tab ? Color.accentColor.opacity(0.15) : Color.clear)
+    }
+
+    private var sidebarOverdueCount: Int {
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        return openTasks.filter { ($0.dueDate ?? .distantFuture) < startOfToday }.count
+            + openActivities.filter { ($0.dueDate ?? .distantFuture) < startOfToday }.count
     }
     #endif
 
