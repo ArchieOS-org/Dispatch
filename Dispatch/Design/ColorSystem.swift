@@ -111,18 +111,18 @@ extension DS {
         /// Semantic background colors that adapt to light/dark mode
         enum Background {
             /// Primary background - custom theme colors
-            /// Light mode: #262624, Dark mode: #FAF9FF
+            /// Light mode: #FAF9FF, Dark mode: #262624
             #if canImport(UIKit)
             static let primary = Color(uiColor: UIColor { traitCollection in
                 traitCollection.userInterfaceStyle == .dark
-                    ? UIColor(red: 250/255, green: 249/255, blue: 255/255, alpha: 1) // #FAF9FF
-                    : UIColor(red: 38/255, green: 38/255, blue: 36/255, alpha: 1)    // #262624
+                    ? UIColor(red: 38/255, green: 38/255, blue: 36/255, alpha: 1)    // #262624
+                    : UIColor(red: 250/255, green: 249/255, blue: 255/255, alpha: 1) // #FAF9FF
             })
             #else
             static let primary = Color(nsColor: NSColor(name: nil) { appearance in
                 appearance.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
-                    ? NSColor(red: 250/255, green: 249/255, blue: 255/255, alpha: 1) // #FAF9FF
-                    : NSColor(red: 38/255, green: 38/255, blue: 36/255, alpha: 1)    // #262624
+                    ? NSColor(red: 38/255, green: 38/255, blue: 36/255, alpha: 1)    // #262624
+                    : NSColor(red: 250/255, green: 249/255, blue: 255/255, alpha: 1) // #FAF9FF
             } ?? .windowBackgroundColor)
             #endif
 
