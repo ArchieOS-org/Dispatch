@@ -6,6 +6,7 @@
 //
 
 import Network
+import OSLog
 import Supabase
 import SwiftUI
 
@@ -58,6 +59,8 @@ class SyncCoordinator {
 
   // MARK: Private
 
+  private static let logger = Logger(subsystem: "Dispatch", category: "SyncCoordinator")
+
   private let syncManager: SyncManager
   private let authManager: AuthManager
 
@@ -83,7 +86,7 @@ class SyncCoordinator {
     if status == .satisfied, lastNetworkStatus != .satisfied {
       // Network restored
       if authManager.isAuthenticated {
-        print("[SyncCoordinator] Network restored - requesting sync")
+        Self.logger.info("Network restored - requesting sync")
         syncManager.requestSync()
       }
     }
@@ -100,7 +103,7 @@ class SyncCoordinator {
     Task {
       let compatStatus = await AppCompatManager.shared.checkCompatibility()
       if compatStatus.isBlocked {
-        print("[SyncCoordinator] App version blocked: \(AppCompatManager.shared.statusMessage)")
+        Self.logger.error("App version blocked: \(AppCompatManager.shared.statusMessage)")
         return
       }
 

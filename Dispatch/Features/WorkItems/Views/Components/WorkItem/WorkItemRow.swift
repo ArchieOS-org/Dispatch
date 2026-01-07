@@ -101,7 +101,7 @@ struct WorkItemRow: View {
       // Right side items
       HStack(spacing: DS.Spacing.sm) {
         // Overdue Flag (Right)
-        if let _ = item.dueDate, !hideDueDate, isOverdue {
+        if item.dueDate != nil, !hideDueDate, isOverdue {
           HStack(spacing: 4) {
             Image(systemName: "flag.fill")
             Text(overdueText)

@@ -78,13 +78,13 @@ struct PropertiesListView: View {
     let grouped: [UUID: [Property]] = Dictionary(grouping: properties) { $0.ownedBy }
 
     let groups: [PropertyGroup] = grouped.map { (key: UUID, value: [Property]) -> PropertyGroup in
-      return PropertyGroup(owner: userCache[key], properties: value)
+      PropertyGroup(owner: userCache[key], properties: value)
     }
 
     return groups.sorted { (a: PropertyGroup, b: PropertyGroup) -> Bool in
       let nameA = a.owner?.name ?? "~"
       let nameB = b.owner?.name ?? "~"
-      return nameA < nameB
+      nameA < nameB
     }
   }
 

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OSLog
 import Supabase
 
 // MARK: - SupabaseService
@@ -16,9 +17,9 @@ final class SupabaseService {
 
   private init() {
     #if DEBUG
-    print("[SupabaseService] Initializing Supabase client...")
-    print("[SupabaseService]   URL: \(Secrets.supabaseURL)")
-    print("[SupabaseService]   Anon Key (prefix): \(String(Secrets.supabaseAnonKey.prefix(30)))...")
+    Self.logger.debug("Initializing Supabase client...")
+    Self.logger.debug("URL: \(Secrets.supabaseURL, privacy: .private)")
+    Self.logger.debug("Anon Key (prefix): \(String(Secrets.supabaseAnonKey.prefix(30)), privacy: .private)...")
     #endif
 
     guard let url = URL(string: Secrets.supabaseURL) else {
@@ -26,7 +27,7 @@ final class SupabaseService {
     }
 
     #if DEBUG
-    print("[SupabaseService]   URL parsed successfully: \(url)")
+    Self.logger.debug("URL parsed successfully: \(url.absoluteString, privacy: .private)")
     #endif
 
     client = SupabaseClient(
@@ -45,10 +46,10 @@ final class SupabaseService {
     )
 
     #if DEBUG
-    print("[SupabaseService] ✅ SupabaseClient initialized successfully")
-    print("[SupabaseService]   DB Schema: public")
-    print("[SupabaseService]   Auth Flow: PKCE")
-    print("[SupabaseService]   Custom Headers: x-app-name=dispatch-ios")
+    Self.logger.info("SupabaseClient initialized successfully")
+    Self.logger.debug("DB Schema: public")
+    Self.logger.debug("Auth Flow: PKCE")
+    Self.logger.debug("Custom Headers: x-app-name=dispatch-ios")
     #endif
   }
 
@@ -57,6 +58,10 @@ final class SupabaseService {
   static let shared = SupabaseService()
 
   let client: SupabaseClient
+
+  // MARK: Private
+
+  private static let logger = Logger(subsystem: "Dispatch", category: "SupabaseService")
 
 }
 

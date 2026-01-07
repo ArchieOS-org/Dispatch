@@ -284,8 +284,8 @@ private let previewNotes: [Note] = (0..<3).map { i in
     NotesSection(
       notes: previewNotes,
       userLookup: { _ in User(name: "Test User", email: "test@example.com", userType: .admin) },
-      onSave: { print("Saved: \($0)") },
-      onDelete: { print("Delete: \($0.id)") },
+      onSave: { _ in },
+      onDelete: { _ in },
     )
     .padding()
   }
@@ -295,7 +295,7 @@ private let previewNotes: [Note] = (0..<3).map { i in
   NotesSection(
     notes: [],
     userLookup: { _ in nil },
-    onSave: { print("Saved: \($0)") },
+    onSave: { _ in },
   )
   .padding()
 }
@@ -307,8 +307,8 @@ private let previewNotes: [Note] = (0..<3).map { i in
     NotesContent(
       notes: previewNotes.prefix(2).map { $0 },
       userLookup: { _ in User(name: "Jane Doe", email: "jane@example.com", userType: .marketing) },
-      onSave: { print("Saved: \($0)") },
-      onDelete: { print("Delete: \($0.id)") },
+      onSave: { _ in },
+      onDelete: { _ in },
     )
   }
   .padding()

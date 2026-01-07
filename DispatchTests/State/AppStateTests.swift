@@ -12,7 +12,7 @@ import SwiftUI
 @MainActor
 class AppStateTests: XCTestCase {
     
-    var appState: AppState!
+    private var appState = AppState()
     
     override func setUp() {
         super.setUp()

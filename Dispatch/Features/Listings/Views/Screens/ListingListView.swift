@@ -66,7 +66,7 @@ struct ListingListView: View {
 
   // MARK: Private
 
-  private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+  private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000") ?? UUID()
 
   @Query(sort: \Listing.address)
   private var allListingsRaw: [Listing]
@@ -108,13 +108,13 @@ struct ListingListView: View {
     }
 
     let groups: [ListingGroup] = grouped.map { (key: UUID, value: [Listing]) -> ListingGroup in
-      return ListingGroup(owner: userCache[key], listings: value)
+      ListingGroup(owner: userCache[key], listings: value)
     }
 
     return groups.sorted { (a: ListingGroup, b: ListingGroup) -> Bool in
       let nameA = a.owner?.name ?? "~"
       let nameB = b.owner?.name ?? "~"
-      return nameA < nameB
+      nameA < nameB
     }
   }
 

@@ -238,7 +238,7 @@ struct QuickEntrySheet: View {
     defaultItemType: .task,
     currentUserId: UUID(),
     listings: [],
-    onSave: { print("Saved!") },
+    onSave: { },
   )
 }
 
@@ -247,6 +247,6 @@ struct QuickEntrySheet: View {
     defaultItemType: .activity,
     currentUserId: UUID(),
     listings: [],
-    onSave: { print("Saved!") },
+    onSave: { },
   )
 }

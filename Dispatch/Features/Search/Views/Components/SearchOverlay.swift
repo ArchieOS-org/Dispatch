@@ -156,9 +156,7 @@ struct SearchOverlay: View {
       SearchOverlay(
         isPresented: $isPresented,
         searchText: $searchText,
-        onSelectResult: { result in
-          print("Selected: \(result.title)")
-        },
+        onSelectResult: { _ in },
       )
     }
   }

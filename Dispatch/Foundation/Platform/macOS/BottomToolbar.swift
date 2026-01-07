@@ -180,8 +180,8 @@ struct BottomToolbar: View {
     Spacer()
     BottomToolbar(
       context: .taskList,
-      onNew: { print("New") },
-      onSearch: { print("Search") },
+      onNew: { },
+      onSearch: { },
     )
   }
   .frame(width: 400, height: 200)
@@ -192,8 +192,8 @@ struct BottomToolbar: View {
     Spacer()
     BottomToolbar(
       context: .workItemDetail,
-      onClaim: { print("Claim") },
-      onDelete: { print("Delete") },
+      onClaim: { },
+      onDelete: { },
       isClaimable: true,
       isClaimed: false,
     )

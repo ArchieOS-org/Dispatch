@@ -14,7 +14,7 @@ import UIKit
 
 /// Extension to detect shake gestures in UIWindow
 extension UIWindow {
-  open override func motionEnded(_ motion: UIEvent.EventSubtype, with _: UIEvent?) {
+  override open func motionEnded(_ motion: UIEvent.EventSubtype, with _: UIEvent?) {
     if motion == .motionShake {
       NotificationCenter.default.post(name: .deviceDidShake, object: nil)
     }

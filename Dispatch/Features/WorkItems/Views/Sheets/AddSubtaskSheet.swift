@@ -63,7 +63,5 @@ struct AddSubtaskSheet: View {
 #Preview("Add Subtask Sheet") {
   @Previewable @State var title = ""
 
-  AddSubtaskSheet(title: $title) {
-    print("Saving subtask: \(title)")
-  }
+  AddSubtaskSheet(title: $title) { }
 }

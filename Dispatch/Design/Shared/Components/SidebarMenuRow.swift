@@ -40,9 +40,9 @@ struct SidebarMenuRow: View {
   private var trailingContent: some View {
     if tab == .settings {
       EmptyView()
-    } else if tab == .workspace, overdueCount > 0 {
+    } else if tab == .workspace, !overdueCount.isZero {
       OverduePill(count: overdueCount)
-    } else if count > 0 {
+    } else if !count.isZero {
       Text("\(count)")
         .font(DS.Typography.caption)
         .foregroundStyle(.secondary)
@@ -51,8 +51,8 @@ struct SidebarMenuRow: View {
 
   private var accessibilityLabelText: String {
     var label = tab.title
-    if count > 0 { label += ", \(count) open" }
-    if overdueCount > 0 { label += ", \(overdueCount) overdue" }
+    if !count.isZero { label += ", \(count) open" }
+    if !overdueCount.isZero { label += ", \(overdueCount) overdue" }
     return label
   }
 }

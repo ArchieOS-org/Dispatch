@@ -226,6 +226,6 @@ struct AddListingSheet: View {
 #Preview("Add Listing Sheet") {
   AddListingSheet(
     currentUserId: UUID(),
-    onSave: { print("Listing saved!") },
+    onSave: { },
   )
 }

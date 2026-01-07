@@ -98,9 +98,7 @@ struct StagePicker: View {
         Text("Listing Stage")
           .font(DS.Typography.headline)
 
-        StagePicker(stage: $selectedStage) { newStage in
-          print("Stage changed to: \(newStage.displayName)")
-        }
+        StagePicker(stage: $selectedStage) { _ in }
 
         Divider()
 

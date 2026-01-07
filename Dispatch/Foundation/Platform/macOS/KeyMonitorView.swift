@@ -25,7 +25,7 @@ struct KeyMonitorView: NSViewRepresentable {
     func installMonitor() {
       guard monitor == nil else { return }
       monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-        return self?.handler(event) ?? event
+        self?.handler(event) ?? event
       }
     }
 

@@ -30,7 +30,7 @@ final class WorkItemActions: ObservableObject {
   // MARK: Internal
 
   /// Stable UUID for unauthenticated state
-  nonisolated static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+  nonisolated static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000") ?? UUID()
 
   /// Current authenticated user ID
   @MainActor var currentUserId: UUID

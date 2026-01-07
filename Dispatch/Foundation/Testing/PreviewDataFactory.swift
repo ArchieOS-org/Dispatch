@@ -6,6 +6,8 @@
 //  Ensures stable UUIDs, dates, and relationship graphs.
 //
 
+// swiftlint:disable force_unwrapping
+
 import Foundation
 import SwiftData
 

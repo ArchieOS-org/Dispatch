@@ -6,6 +6,8 @@
 //  Factory methods for creating test entities with deterministic data
 //
 
+// swiftlint:disable force_unwrapping
+
 import Foundation
 import SwiftData
 

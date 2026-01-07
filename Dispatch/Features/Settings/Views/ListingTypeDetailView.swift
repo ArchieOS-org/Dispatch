@@ -220,7 +220,10 @@ private struct AudienceChip: View {
     template.listingType = saleType
     context.insert(template)
   } content: { context in
-    let saleType = try! context.fetch(FetchDescriptor<ListingTypeDefinition>()).first!
-    ListingTypeDetailView(listingType: saleType)
+    if let saleType = try? context.fetch(FetchDescriptor<ListingTypeDefinition>()).first {
+      ListingTypeDetailView(listingType: saleType)
+    } else {
+      Text("Missing listing type")
+    }
   }
 }

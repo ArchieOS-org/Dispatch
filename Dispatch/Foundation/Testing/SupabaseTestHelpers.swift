@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import OSLog
 import Supabase
 
 // MARK: - EntityCounts
@@ -26,6 +27,8 @@ struct EntityCounts {
 @MainActor
 enum SupabaseTestHelpers {
 
+  // MARK: Internal
+
   /// Fetch all tasks from Supabase
   /// - Returns: Array of TaskDTOs or empty array on error
   static func fetchAllTasks() async -> [TaskDTO] {
@@ -37,7 +40,7 @@ enum SupabaseTestHelpers {
         .execute()
         .value
     } catch {
-      print("[SupabaseTestHelpers] Failed to fetch tasks: \(error)")
+      Self.logger.error("Failed to fetch tasks: \(String(describing: error))")
       return []
     }
   }
@@ -53,7 +56,7 @@ enum SupabaseTestHelpers {
         .execute()
         .value
     } catch {
-      print("[SupabaseTestHelpers] Failed to fetch activities: \(error)")
+      Self.logger.error("Failed to fetch activities: \(String(describing: error))")
       return []
     }
   }
@@ -69,7 +72,7 @@ enum SupabaseTestHelpers {
         .execute()
         .value
     } catch {
-      print("[SupabaseTestHelpers] Failed to fetch listings: \(error)")
+      Self.logger.error("Failed to fetch listings: \(String(describing: error))")
       return []
     }
   }
@@ -85,7 +88,7 @@ enum SupabaseTestHelpers {
         .execute()
         .value
     } catch {
-      print("[SupabaseTestHelpers] Failed to fetch users: \(error)")
+      Self.logger.error("Failed to fetch users: \(String(describing: error))")
       return []
     }
   }
@@ -103,7 +106,7 @@ enum SupabaseTestHelpers {
         .value
       return dtos.first
     } catch {
-      print("[SupabaseTestHelpers] Failed to fetch task \(id): \(error)")
+      Self.logger.error("Failed to fetch task \(id): \(String(describing: error))")
       return nil
     }
   }
@@ -121,7 +124,7 @@ enum SupabaseTestHelpers {
         .value
       return dtos.first
     } catch {
-      print("[SupabaseTestHelpers] Failed to fetch activity \(id): \(error)")
+      Self.logger.error("Failed to fetch activity \(id): \(String(describing: error))")
       return nil
     }
   }
@@ -139,7 +142,7 @@ enum SupabaseTestHelpers {
         .value
       return dtos.first
     } catch {
-      print("[SupabaseTestHelpers] Failed to fetch listing \(id): \(error)")
+      Self.logger.error("Failed to fetch listing \(id): \(String(describing: error))")
       return nil
     }
   }
@@ -168,7 +171,7 @@ enum SupabaseTestHelpers {
         .execute()
       return true
     } catch {
-      print("[SupabaseTestHelpers] Failed to delete task \(id): \(error)")
+      Self.logger.error("Failed to delete task \(id): \(String(describing: error))")
       return false
     }
   }
@@ -185,7 +188,7 @@ enum SupabaseTestHelpers {
         .execute()
       return true
     } catch {
-      print("[SupabaseTestHelpers] Failed to delete activity \(id): \(error)")
+      Self.logger.error("Failed to delete activity \(id): \(String(describing: error))")
       return false
     }
   }
@@ -202,7 +205,7 @@ enum SupabaseTestHelpers {
         .execute()
       return true
     } catch {
-      print("[SupabaseTestHelpers] Failed to delete listing \(id): \(error)")
+      Self.logger.error("Failed to delete listing \(id): \(String(describing: error))")
       return false
     }
   }
@@ -213,7 +216,7 @@ enum SupabaseTestHelpers {
     // Delete in reverse FK order: activities/tasks → listings → users
     // Test UUIDs follow pattern: 00000000-0000-0000-{type}-{index}
 
-    print("[SupabaseTestHelpers] Cleaning up test data...")
+    Self.logger.info("Cleaning up test data...")
 
     // Delete tasks (type = 0002)
     do {
@@ -222,9 +225,9 @@ enum SupabaseTestHelpers {
         .delete()
         .like("id", pattern: "00000000-0000-0000-0002-%")
         .execute()
-      print("[SupabaseTestHelpers] Deleted test tasks")
+      Self.logger.info("Deleted test tasks")
     } catch {
-      print("[SupabaseTestHelpers] Failed to delete test tasks: \(error)")
+      Self.logger.error("Failed to delete test tasks: \(String(describing: error))")
     }
 
     // Delete activities (type = 0003)
@@ -234,9 +237,9 @@ enum SupabaseTestHelpers {
         .delete()
         .like("id", pattern: "00000000-0000-0000-0003-%")
         .execute()
-      print("[SupabaseTestHelpers] Deleted test activities")
+      Self.logger.info("Deleted test activities")
     } catch {
-      print("[SupabaseTestHelpers] Failed to delete test activities: \(error)")
+      Self.logger.error("Failed to delete test activities: \(String(describing: error))")
     }
 
     // Delete listings (type = 0004)
@@ -246,13 +249,13 @@ enum SupabaseTestHelpers {
         .delete()
         .like("id", pattern: "00000000-0000-0000-0004-%")
         .execute()
-      print("[SupabaseTestHelpers] Deleted test listings")
+      Self.logger.info("Deleted test listings")
     } catch {
-      print("[SupabaseTestHelpers] Failed to delete test listings: \(error)")
+      Self.logger.error("Failed to delete test listings: \(String(describing: error))")
     }
 
     // Note: Not deleting users as they may be needed for RLS
-    print("[SupabaseTestHelpers] Test data cleanup complete (users preserved)")
+    Self.logger.info("Test data cleanup complete (users preserved)")
   }
 
   /// Verify a task exists in Supabase with matching title
@@ -284,4 +287,8 @@ enum SupabaseTestHelpers {
     guard let dto = await fetchListing(id: id) else { return false }
     return dto.address == expectedAddress
   }
+
+  // MARK: Private
+
+  private static let logger = Logger(subsystem: "Dispatch", category: "SupabaseTestHelpers")
 }

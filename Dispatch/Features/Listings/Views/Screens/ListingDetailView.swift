@@ -47,7 +47,7 @@ struct ListingDetailView: View {
 
   // MARK: Private
 
-  private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+  private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000") ?? UUID()
 
   @EnvironmentObject private var syncManager: SyncManager
   @EnvironmentObject private var lensState: LensState
@@ -437,24 +437,20 @@ struct ListingDetailView: View {
       }
     },
   ) { context in
-    // Deterministic Fetch with Predicate to guarantee correct entity
-    let aliceID = PreviewDataFactory.aliceID
-    let ownerDescriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == aliceID })
-    let owner = try! context.fetch(ownerDescriptor).first!
-
     // O(1) Lookup covering all users (owner + others)
-    let users = try! context.fetch(FetchDescriptor<User>())
+    let users = (try? context.fetch(FetchDescriptor<User>())) ?? []
     let usersById = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
 
     // Deterministic Fetch
     let listingID = PreviewDataFactory.listingID
     let listingDescriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingID })
-    // Safe bang because we just seeded strictly
-    let listing = try! context.fetch(listingDescriptor).first!
-
-    ListingDetailView(
-      listing: listing,
-      userLookup: { id in usersById[id] },
-    )
+    if let listing = try? context.fetch(listingDescriptor).first {
+      ListingDetailView(
+        listing: listing,
+        userLookup: { id in usersById[id] },
+      )
+    } else {
+      Text("Missing preview data")
+    }
   }
 }

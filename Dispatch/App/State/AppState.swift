@@ -6,6 +6,7 @@
 //
 
 import Combine
+import OSLog
 import SwiftUI
 #if os(macOS)
 import AppKit
@@ -91,7 +92,7 @@ final class AppState: ObservableObject {
   }
 
   func dispatch(_ command: AppCommand) {
-    print("[AppState] Dispatching command: \(command)")
+    Self.logger.debug("Dispatching command: \(String(describing: command))")
 
     switch command {
     case .navigate(let destination):
@@ -154,6 +155,8 @@ final class AppState: ObservableObject {
   }
 
   // MARK: Private
+
+  private static let logger = Logger(subsystem: "Dispatch", category: "AppState")
 
   private var cancellables = Set<AnyCancellable>()
 

@@ -44,7 +44,7 @@ struct ContentView: View {
   // MARK: Private
 
   /// Sentinel UUID for unauthenticated state
-  private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+  private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000") ?? UUID()
 
   @EnvironmentObject private var syncManager: SyncManager
   @EnvironmentObject private var appState: AppState // One Boss injection

@@ -50,9 +50,7 @@ struct FloatingActionButton: View {
     DS.Colors.Background.grouped
       .ignoresSafeArea()
 
-    FloatingActionButton {
-      print("FAB tapped")
-    }
+    FloatingActionButton { }
   }
 }
 

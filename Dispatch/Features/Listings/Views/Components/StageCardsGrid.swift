@@ -48,9 +48,7 @@ struct StageCardsGrid: View {
       .reList: 2,
       .done: 45,
     ],
-    onSelectStage: { stage in
-      print("Selected: \(stage.displayName)")
-    },
+    onSelectStage: { _ in },
   )
   .padding()
 }

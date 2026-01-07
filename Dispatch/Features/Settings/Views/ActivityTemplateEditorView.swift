@@ -218,7 +218,10 @@ private struct AudienceToggleChip: View {
     )
     context.insert(saleType)
   } content: { context in
-    let saleType = try! context.fetch(FetchDescriptor<ListingTypeDefinition>()).first!
-    ActivityTemplateEditorView(listingType: saleType)
+    if let saleType = try? context.fetch(FetchDescriptor<ListingTypeDefinition>()).first {
+      ActivityTemplateEditorView(listingType: saleType)
+    } else {
+      Text("Missing listing type")
+    }
   }
 }

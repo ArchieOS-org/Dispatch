@@ -358,14 +358,15 @@ final class SyncManager: ObservableObject {
         try context.save()
         debugLog.log("ModelContext saved successfully", category: .sync)
 
-        lastSyncTime = Date()
+        let syncTimestamp = Date()
+        lastSyncTime = syncTimestamp
         // Only update status if this is still the current sync run
         if syncRunId == runId {
           syncStatus = .ok(Date())
           lastSyncErrorMessage = nil
         }
         debugLog.endTiming("Full Sync")
-        debugLog.log("========== sync() COMPLETED at \(lastSyncTime!) ==========", category: .sync)
+        debugLog.log("========== sync() COMPLETED at \(syncTimestamp) ==========", category: .sync)
       } catch {
         debugLog.endTiming("Full Sync")
         debugLog.error("========== sync() FAILED ==========", error: error)
@@ -778,7 +779,7 @@ final class SyncManager: ObservableObject {
           #endif
         }
       } catch {
-        print("🚨 FATAL: SyncManager.shutdown() timed out! Tasks stuck.")
+        debugLog.error("SyncManager.shutdown() timed out! Tasks stuck.")
       }
     } else {
       // In live/preview, just await (logging ensures visibility)
@@ -2162,7 +2163,7 @@ final class SyncManager: ObservableObject {
   }
 
   /// Helper: Normalizes image to JPEG and computes SHA256 (Off-Main Actor)
-  private nonisolated func normalizeAndHash(data: Data) async -> (Data, String) {
+  nonisolated private func normalizeAndHash(data: Data) async -> (Data, String) {
     await Task.detached(priority: .userInitiated) {
       // 1. Resize/Compress (Mocking via just using data for now to avoid UIKit/ImageRenderer complexity in this snippet if not imported)
       // Ideally: Use UIImage/NSImage to resize -> JPEG 0.8

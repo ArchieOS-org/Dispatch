@@ -6,6 +6,8 @@
 //  Created by Test Generation on 2025-12-08.
 //
 
+// swiftlint:disable force_unwrapping
+
 import Testing
 import Foundation
 @testable import DispatchApp

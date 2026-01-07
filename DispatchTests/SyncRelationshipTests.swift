@@ -12,8 +12,11 @@ import SwiftData
 
 @MainActor
 final class SyncRelationshipTests: XCTestCase {
+    // swiftlint:disable:next implicitly_unwrapped_optional
     var container: ModelContainer!
+    // swiftlint:disable:next implicitly_unwrapped_optional
     var context: ModelContext!
+    // swiftlint:disable:next implicitly_unwrapped_optional
     var syncManager: SyncManager!
 
     override func setUp() async throws {

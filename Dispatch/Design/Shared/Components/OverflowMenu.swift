@@ -103,15 +103,9 @@ struct OverflowMenu: View {
         .font(DS.Typography.headline)
       Spacer()
       OverflowMenu(actions: [
-        OverflowMenu.Action(id: "edit", title: "Edit", icon: DS.Icons.Action.edit) {
-          print("Edit tapped")
-        },
-        OverflowMenu.Action(id: "share", title: "Share", icon: DS.Icons.Action.share) {
-          print("Share tapped")
-        },
-        OverflowMenu.Action(id: "delete", title: "Delete", icon: DS.Icons.Action.delete, role: .destructive) {
-          print("Delete tapped")
-        },
+        OverflowMenu.Action(id: "edit", title: "Edit", icon: DS.Icons.Action.edit) { },
+        OverflowMenu.Action(id: "share", title: "Share", icon: DS.Icons.Action.share) { },
+        OverflowMenu.Action(id: "delete", title: "Delete", icon: DS.Icons.Action.delete, role: .destructive) { },
       ])
     }
     .padding()
@@ -126,9 +120,7 @@ struct OverflowMenu: View {
     Text("Simple Case")
     Spacer()
     OverflowMenu(actions: [
-      OverflowMenu.Action(id: "delete", title: "Delete", icon: DS.Icons.Action.delete, role: .destructive) {
-        print("Delete tapped")
-      }
+      OverflowMenu.Action(id: "delete", title: "Delete", icon: DS.Icons.Action.delete, role: .destructive) { }
     ])
   }
   .padding()

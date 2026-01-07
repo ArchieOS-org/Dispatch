@@ -76,7 +76,7 @@ final class DebugLogger: ObservableObject {
     // Print to console with detailed formatting
     let timestamp = Self.isoFormatter.string(from: entry.timestamp)
     let logLine = "[\(timestamp)] [\(category.emoji) \(category.rawValue)] \(message)"
-    print(logLine)
+    consoleLog.debug("\(logLine)")
 
     // Also log to os_log for Console.app filtering
     switch category {
@@ -197,6 +197,7 @@ final class DebugLogger: ObservableObject {
   private let channelLog = Logger(subsystem: "com.dispatch.app", category: "Channel")
   private let syncLog = Logger(subsystem: "com.dispatch.app", category: "Sync")
   private let websocketLog = Logger(subsystem: "com.dispatch.app", category: "WebSocket")
+  private let consoleLog = Logger(subsystem: "com.dispatch.app", category: "DebugConsole")
 
   private var operationStartTimes = [String: Date]()
 
