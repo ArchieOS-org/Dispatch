@@ -12,6 +12,8 @@ import Foundation
 // MARK: - Stage Counts Tests
 
 struct StageCountsTests {
+    /// Test owner UUID for creating mock listings
+    private static let testOwnerId = UUID()
 
     @Test("stageCounts excludes deleted listings")
     func testStageCountsExcludesDeleted() {
@@ -19,27 +21,30 @@ struct StageCountsTests {
         let listing1 = Listing(
             address: "123 Main St",
             city: "Test",
-            state: "CA",
-            zipCode: "12345",
-            stage: .live
+            province: "ON",
+            postalCode: "M5V 1A1",
+            stage: .live,
+            ownedBy: Self.testOwnerId
         )
         listing1.status = .active
 
         let listing2 = Listing(
             address: "456 Oak Ave",
             city: "Test",
-            state: "CA",
-            zipCode: "12345",
-            stage: .live
+            province: "ON",
+            postalCode: "M5V 1A1",
+            stage: .live,
+            ownedBy: Self.testOwnerId
         )
         listing2.status = .deleted // Should not count
 
         let listing3 = Listing(
             address: "789 Pine Rd",
             city: "Test",
-            state: "CA",
-            zipCode: "12345",
-            stage: .sold
+            province: "ON",
+            postalCode: "M5V 1A1",
+            stage: .sold,
+            ownedBy: Self.testOwnerId
         )
         listing3.status = .active
 
@@ -61,9 +66,10 @@ struct StageCountsTests {
             let listing = Listing(
                 address: "Address for \(stage.displayName)",
                 city: "Test",
-                state: "CA",
-                zipCode: "12345",
-                stage: stage
+                province: "ON",
+                postalCode: "M5V 1A1",
+                stage: stage,
+                ownedBy: Self.testOwnerId
             )
             listing.status = .active
             listings.append(listing)
@@ -73,9 +79,10 @@ struct StageCountsTests {
         let extraLive = Listing(
             address: "Extra Live",
             city: "Test",
-            state: "CA",
-            zipCode: "12345",
-            stage: .live
+            province: "ON",
+            postalCode: "M5V 1A1",
+            stage: .live,
+            ownedBy: Self.testOwnerId
         )
         extraLive.status = .active
         listings.append(extraLive)
@@ -100,37 +107,23 @@ struct StageCountsTests {
     }
 }
 
-// MARK: - Badge Visibility Tests
+// MARK: - Count Visibility Tests
 
 struct StageBadgeRuleTests {
 
-    @Test("Done stage always hides badge")
-    func testDoneStageHidesBadge() {
-        // Done stage: always hidden regardless of count
-        #expect(StageBadgeRule.shouldHide(stage: .done, count: 0) == true)
-        #expect(StageBadgeRule.shouldHide(stage: .done, count: 5) == true)
-        #expect(StageBadgeRule.shouldHide(stage: .done, count: 100) == true)
+    @Test("Done stage always hides count")
+    func testDoneStageHidesCount() {
+        // Done stage: always hidden (archival, no actionable count)
+        #expect(StageBadgeRule.shouldHideCount(stage: .done) == true)
     }
 
-    @Test("Zero count hides badge for non-done stages")
-    func testZeroCountHidesBadge() {
-        // Zero count: hidden for all non-done stages
-        #expect(StageBadgeRule.shouldHide(stage: .live, count: 0) == true)
-        #expect(StageBadgeRule.shouldHide(stage: .pending, count: 0) == true)
-        #expect(StageBadgeRule.shouldHide(stage: .workingOn, count: 0) == true)
-        #expect(StageBadgeRule.shouldHide(stage: .sold, count: 0) == true)
-        #expect(StageBadgeRule.shouldHide(stage: .reList, count: 0) == true)
-    }
-
-    @Test("Non-zero count shows badge for non-done stages")
-    func testNonZeroCountShowsBadge() {
-        // Non-zero, non-done: visible
-        #expect(StageBadgeRule.shouldHide(stage: .live, count: 1) == false)
-        #expect(StageBadgeRule.shouldHide(stage: .live, count: 3) == false)
-        #expect(StageBadgeRule.shouldHide(stage: .pending, count: 10) == false)
-        #expect(StageBadgeRule.shouldHide(stage: .workingOn, count: 5) == false)
-        #expect(StageBadgeRule.shouldHide(stage: .sold, count: 2) == false)
-        #expect(StageBadgeRule.shouldHide(stage: .reList, count: 1) == false)
+    @Test("Non-done stages always show count including zero")
+    func testNonDoneStagesShowCount() {
+        // All non-done stages: always visible, including when count would be 0
+        // The count value is no longer a factor - only the stage matters
+        for stage in ListingStage.allCases where stage != .done {
+            #expect(StageBadgeRule.shouldHideCount(stage: stage) == false)
+        }
     }
 }
 

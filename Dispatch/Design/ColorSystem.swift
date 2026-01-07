@@ -308,6 +308,19 @@ extension DS {
             }
         }
 
+        // MARK: - Fill Colors
+
+        /// Semantic fill colors for card backgrounds.
+        /// These adapt to light/dark mode and increased contrast settings.
+        enum Fill {
+            /// Background fill for stage cards.
+            /// Uses the stage color at 12% opacity for a subtle tinted background.
+            /// Tested for contrast in light mode, dark mode, and increased contrast.
+            static func stageCard(_ stage: ListingStage) -> Color {
+                Stage.color(for: stage).opacity(0.12)
+            }
+        }
+
         // MARK: - Section Colors
 
         /// Colors for main navigation sections

@@ -66,5 +66,20 @@ extension DS {
 
         /// Collapsed header title
         static let detailCollapsedTitle = Font.system(size: 18, weight: .semibold)
+
+        // MARK: - Stage Cards
+
+        /// Typography for stage cards in menu/sidebar grid.
+        /// Uses Dynamic Type styles for accessibility compliance.
+        enum StageCards {
+            /// PRIMARY: Icon font - scales with Dynamic Type
+            static let primarySemibold = Font.title2.weight(.semibold)
+
+            /// PRIMARY: Count font - scales with Dynamic Type
+            static let primaryBold = Font.title2.weight(.bold)
+
+            /// SECONDARY: Label font - scales with Dynamic Type
+            static let secondary = Font.footnote.weight(.medium)
+        }
     }
 }

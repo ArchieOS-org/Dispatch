@@ -146,19 +146,17 @@ extension DS {
 
         // MARK: - Stage Cards
 
-        /// Stage cards grid configuration for menu/sidebar
+        /// Stage cards grid configuration for menu/sidebar.
+        /// Typography tokens are in DS.Typography.StageCards (Dynamic Type).
         enum StageCards {
             /// Spacing between cards in the grid
             static let gridSpacing: CGFloat = 10
 
-            /// Internal card padding
-            static let cardPadding: CGFloat = 12
+            /// Internal card padding (increased for breathing room)
+            static let cardPadding: CGFloat = 16
 
-            /// Card height (fixed for consistency)
-            static let cardHeight: CGFloat = 72
-
-            /// Icon size within card
-            static let iconSize: CGFloat = 18
+            /// Minimum card height - allows expansion at larger Dynamic Type sizes
+            static let cardMinHeight: CGFloat = 88
         }
 
         // MARK: - Sidebar (macOS)

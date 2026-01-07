@@ -3,11 +3,26 @@
 //  Dispatch
 //
 //  Individual stage filter card for the menu/sidebar grid.
+//  Layout: Icon LEFT, Count RIGHT (same row), Label LEFT below.
+//  Uses Dynamic Type for accessibility compliance.
 //
 
 import SwiftUI
 
-/// A single stage filter card showing icon, label, and count badge.
+/// A single stage filter card showing icon, count, and label.
+///
+/// Layout:
+/// ```
+/// ┌─────────────────────────────┐
+/// │ 🔵                       12 │  <- Icon LEFT, Count RIGHT
+/// │                             │
+/// │ Label                       │  <- Label LEFT
+/// └─────────────────────────────┘
+/// ```
+///
+/// - Icon and count use `.title2` (Dynamic Type PRIMARY)
+/// - Label uses `.footnote` (Dynamic Type SECONDARY)
+/// - Card expands at larger accessibility text sizes
 struct StageCard: View {
     let stage: ListingStage
     let count: Int
@@ -21,44 +36,45 @@ struct StageCard: View {
         DS.Icons.Stage.icon(for: stage)
     }
 
-    private var shouldHideBadge: Bool {
-        StageBadgeRule.shouldHide(stage: stage, count: count)
+    private var shouldHideCount: Bool {
+        StageBadgeRule.shouldHideCount(stage: stage)
     }
 
     var body: some View {
         Button(action: action) {
-            ZStack(alignment: .topTrailing) {
-                // Main card content
-                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    // Icon
+            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                // PRIMARY ROW: Icon LEFT, Count RIGHT
+                HStack(alignment: .center) {
+                    // Icon - left aligned
                     Image(systemName: stageIcon)
-                        .font(.system(size: DS.Spacing.StageCards.iconSize, weight: .semibold))
+                        .font(DS.Typography.StageCards.primarySemibold)
                         .foregroundStyle(stageColor)
 
                     Spacer()
 
-                    // Label
-                    Text(stage.displayName)
-                        .font(DS.Typography.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(DS.Colors.Text.primary)
-                        .lineLimit(1)
+                    // Count - right aligned (hidden for Done stage)
+                    if !shouldHideCount {
+                        Text("\(count)")
+                            .font(DS.Typography.StageCards.primaryBold)
+                            .foregroundStyle(DS.Colors.Text.primary)
+                    }
                 }
-                .padding(DS.Spacing.StageCards.cardPadding)
-                .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Count badge (hidden for done stage or zero count)
-                if !shouldHideBadge {
-                    Text("\(count)")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(DS.Colors.Text.secondary)
-                        .padding(.top, DS.Spacing.sm)
-                        .padding(.trailing, DS.Spacing.sm)
-                }
+                Spacer(minLength: 0)
+
+                // SECONDARY: Label - left aligned
+                Text(stage.displayName)
+                    .font(DS.Typography.StageCards.secondary)
+                    .foregroundStyle(DS.Colors.Text.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-            .frame(height: DS.Spacing.StageCards.cardHeight)
-            .background(stageColor.opacity(0.12))
+            .padding(DS.Spacing.StageCards.cardPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: DS.Spacing.StageCards.cardMinHeight)
+            .background(DS.Colors.Fill.stageCard(stage))
             .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusCard, style: .continuous))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
@@ -67,8 +83,10 @@ struct StageCard: View {
     }
 
     private var accessibilityLabelText: String {
-        if shouldHideBadge {
+        if stage == .done {
             return stage.displayName
+        } else if count == 1 {
+            return "\(stage.displayName), 1 listing"
         } else {
             return "\(stage.displayName), \(count) listings"
         }
@@ -80,7 +98,7 @@ struct StageCard: View {
 #Preview("Stage Cards") {
     HStack(spacing: DS.Spacing.StageCards.gridSpacing) {
         StageCard(stage: .live, count: 12) { }
-        StageCard(stage: .done, count: 45) { } // Badge hidden
+        StageCard(stage: .done, count: 45) { } // Count hidden
     }
     .padding()
 }
@@ -95,6 +113,21 @@ struct StageCard: View {
     ) {
         ForEach(ListingStage.allCases.sorted(by: { $0.sortOrder < $1.sortOrder }), id: \.self) { stage in
             StageCard(stage: stage, count: stage == .done ? 45 : Int.random(in: 0...15)) { }
+        }
+    }
+    .padding()
+}
+
+#Preview("Zero Counts") {
+    LazyVGrid(
+        columns: [
+            GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing),
+            GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing)
+        ],
+        spacing: DS.Spacing.StageCards.gridSpacing
+    ) {
+        ForEach(ListingStage.allCases.sorted(by: { $0.sortOrder < $1.sortOrder }), id: \.self) { stage in
+            StageCard(stage: stage, count: 0) { }
         }
     }
     .padding()
