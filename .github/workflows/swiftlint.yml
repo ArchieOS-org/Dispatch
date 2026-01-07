@@ -1,24 +1,66 @@
-# SwiftLint Code Quality Workflow
-# Runs SwiftLint on pull requests to enforce code style
+# SwiftLint + SwiftFormat Workflow
+# Runs linting, formatting checks, and design import gating
 
-name: SwiftLint
+name: Lint & Format
 
 on:
+  push:
   pull_request:
-    paths:
-      - '**/*.swift'
+
+env:
+  SWIFTFORMAT_VERSION: "0.54.6"
+  SWIFTLINT_VERSION: "0.57.0"
 
 jobs:
-  swiftlint:
-    name: SwiftLint
+  lint-format:
+    name: Lint & Format
     runs-on: macos-14
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install SwiftLint
-        run: brew install swiftlint
+      - name: Cache Homebrew
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/Homebrew
+          key: ${{ runner.os }}-brew-swiftformat-${{ env.SWIFTFORMAT_VERSION }}-swiftlint-${{ env.SWIFTLINT_VERSION }}
 
-      - name: Run SwiftLint
-        run: swiftlint lint --reporter github-actions-logging
+      - name: Install pinned tools + verify versions
+        run: |
+          brew install swiftformat swiftlint
+
+          INSTALLED_SF=$(swiftformat --version | tr -d '[:space:]')
+          INSTALLED_SL=$(swiftlint version | tr -d '[:space:]')
+
+          if [ "$INSTALLED_SF" != "${SWIFTFORMAT_VERSION}" ]; then
+            echo "❌ SwiftFormat version drift: $INSTALLED_SF (expected ${SWIFTFORMAT_VERSION})"
+            exit 1
+          fi
+
+          if [ "$INSTALLED_SL" != "${SWIFTLINT_VERSION}" ]; then
+            echo "❌ SwiftLint version drift: $INSTALLED_SL (expected ${SWIFTLINT_VERSION})"
+            exit 1
+          fi
+
+          echo "✅ Tool versions pinned"
+
+      - name: Lint
+        run: swiftlint lint --strict --path Dispatch --config .swiftlint.yml
+
+      - name: Check Formatting
+        run: swiftformat Dispatch --lint --config .swiftformat.airbnb
+
+      - name: Gate Design imports
+        run: |
+          DOMAIN_TYPES='\b(User|Priority|Role|ClaimState|AppState|Listing|TaskItem|Activity|WorkItem)\b'
+          FORBIDDEN_IMPORTS='^import\s+(Features|SharedUI)\b'
+
+          VIOLATIONS=$(grep -rEn --include="*.swift" -E "(${FORBIDDEN_IMPORTS}|${DOMAIN_TYPES})" Dispatch/Design || true)
+
+          if [ -n "$VIOLATIONS" ]; then
+            echo "❌ Design/ contains domain imports or types:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "✅ Design/ is clean of domain dependencies"

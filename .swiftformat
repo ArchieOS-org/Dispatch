@@ -1,0 +1,2 @@
+# SwiftFormat overrides for Dispatch.
+# Intentionally empty: uses Airbnb defaults from .swiftformat.airbnb.
