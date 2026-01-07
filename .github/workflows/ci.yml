@@ -56,6 +56,40 @@ jobs:
           xcrun simctl list runtimes
           xcrun simctl list devices available
 
+      - name: Validate scheme
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+          import sys
+
+          project = os.environ["PROJECT"]
+          scheme = os.environ["SCHEME"]
+          output = subprocess.check_output(["xcodebuild", "-list", "-project", project], text=True)
+
+          schemes = []
+          capture = False
+          for line in output.splitlines():
+            stripped = line.strip()
+            if stripped == "Schemes:":
+              capture = True
+              continue
+            if capture:
+              if not stripped:
+                continue
+              if line.startswith("    ") or line.startswith("\t"):
+                schemes.append(stripped)
+                continue
+              break
+
+          if scheme not in schemes:
+            available = ", ".join(schemes) if schemes else "none"
+            print(f"Scheme '{scheme}' not found. Available schemes: {available}")
+            sys.exit(1)
+
+          print(f"Using scheme: {scheme}")
+          PY
+
       - name: Ensure iOS runtime available
         if: matrix.platform != 'macos'
         run: |
