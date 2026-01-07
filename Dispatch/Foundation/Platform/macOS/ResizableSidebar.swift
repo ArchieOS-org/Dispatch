@@ -22,7 +22,7 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
   @ViewBuilder let content: () -> Content
 
   var body: some View {
-    GeometryReader { geometry in
+    GeometryReader { _ in
       HStack(spacing: 0) {
         // Sidebar content - always in hierarchy when visible or dragging
         if state.shouldShowSidebar {
@@ -48,7 +48,7 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
     // Only animate isVisible changes, NOT during drag
     .animation(
       state.isDragging ? .none : (reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)),
-      value: state.isVisible
+      value: state.isVisible,
     )
     .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
       withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -63,11 +63,12 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
 /// A persistent drag handle that works in both collapsed and expanded states.
 /// This overlay persists through the entire drag operation, preventing gesture cancellation.
 private struct UnifiedDragHandle: View {
-  @ObservedObject var state: SidebarState
-  let reduceMotion: Bool
 
-  @State private var isHovering: Bool = false
-  @State private var dragStartWidth: CGFloat = 0
+  // MARK: Internal
+
+  @ObservedObject var state: SidebarState
+
+  let reduceMotion: Bool
 
   var body: some View {
     Rectangle()
@@ -82,15 +83,15 @@ private struct UnifiedDragHandle: View {
           .opacity(isHovering || state.isDragging ? 1 : 0)
           .animation(
             reduceMotion ? .none : .easeInOut(duration: 0.15),
-            value: isHovering || state.isDragging
+            value: isHovering || state.isDragging,
           )
       }
       .onHover { hovering in
         isHovering = hovering
         if hovering {
-            NSCursor.resizeLeftRight.push()
+          NSCursor.resizeLeftRight.push()
         } else {
-            NSCursor.pop()
+          NSCursor.pop()
         }
       }
       .gesture(dragGesture)
@@ -101,6 +102,11 @@ private struct UnifiedDragHandle: View {
         }
       }
   }
+
+  // MARK: Private
+
+  @State private var isHovering = false
+  @State private var dragStartWidth: CGFloat = 0
 
   private var dragGesture: some Gesture {
     DragGesture(minimumDistance: 1)

@@ -8,15 +8,15 @@
 import Foundation
 
 enum UserType: String, Codable, CaseIterable {
-    case realtor
-    case admin
-    case marketing
-    case `operator`
-    case exec
+  case realtor
+  case admin
+  case marketing
+  case `operator`
+  case exec
 
-    /// Staff members can claim tasks/activities. Only admin, marketing, and operator are staff.
-    /// Execs have visibility but don't claim work items.
-    var isStaff: Bool {
-        self == .admin || self == .marketing || self == .operator
-    }
+  /// Staff members can claim tasks/activities. Only admin, marketing, and operator are staff.
+  /// Execs have visibility but don't claim work items.
+  var isStaff: Bool {
+    self == .admin || self == .marketing || self == .operator
+  }
 }

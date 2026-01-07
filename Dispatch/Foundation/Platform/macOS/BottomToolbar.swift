@@ -26,9 +26,9 @@ enum ToolbarContext {
   var isList: Bool {
     switch self {
     case .taskList, .activityList, .listingList, .realtorList:
-      return true
+      true
     case .workItemDetail, .listingDetail:
-      return false
+      false
     }
   }
 }
@@ -36,6 +36,9 @@ enum ToolbarContext {
 /// A Things 3-style bottom toolbar for macOS with context-aware actions.
 /// Icons only, no labels, with hover states and glass material background.
 struct BottomToolbar: View {
+
+  // MARK: Internal
+
   let context: ToolbarContext
 
   // List context actions
@@ -48,8 +51,8 @@ struct BottomToolbar: View {
   var onDelete: (() -> Void)?
 
   // Claim state for detail views
-  var isClaimable: Bool = true
-  var isClaimed: Bool = false
+  var isClaimable = true
+  var isClaimed = false
 
   var body: some View {
     HStack(spacing: 0) {
@@ -71,20 +74,20 @@ struct BottomToolbar: View {
     }
   }
 
-  // MARK: - List Toolbar
+  // MARK: Private
 
   @ViewBuilder
   private var listToolbar: some View {
     // Left group
     HStack(spacing: 0) {
-        if let audienceBinding = audience {
+      if let audienceBinding = audience {
         AudienceFilterButton(
-            lens: audienceBinding.wrappedValue,
-            action: {
-                withAnimation(.snappy(duration: 0.2)) {
-                    audienceBinding.wrappedValue = audienceBinding.wrappedValue.next
-                }
+          lens: audienceBinding.wrappedValue,
+          action: {
+            withAnimation(.snappy(duration: 0.2)) {
+              audienceBinding.wrappedValue = audienceBinding.wrappedValue.next
             }
+          },
         )
         .padding(.trailing, DS.Spacing.md)
         .transition(.opacity)
@@ -95,23 +98,23 @@ struct BottomToolbar: View {
         ToolbarIconButton(
           icon: "plus",
           action: onNew,
-          accessibilityLabel: "New item"
+          accessibilityLabel: "New item",
         )
       }
 
       // Placeholder buttons for future features
       ToolbarIconButton(
         icon: "plus.square",
-        action: {},
-        accessibilityLabel: "Add subtask"
+        action: { },
+        accessibilityLabel: "Add subtask",
       )
       .disabled(true)
       .opacity(0.4)
 
       ToolbarIconButton(
         icon: "calendar",
-        action: {},
-        accessibilityLabel: "Schedule"
+        action: { },
+        accessibilityLabel: "Schedule",
       )
       .disabled(true)
       .opacity(0.4)
@@ -124,8 +127,8 @@ struct BottomToolbar: View {
     HStack(spacing: 0) {
       ToolbarIconButton(
         icon: "arrow.right",
-        action: {},
-        accessibilityLabel: "Move"
+        action: { },
+        accessibilityLabel: "Move",
       )
       .disabled(true)
       .opacity(0.4)
@@ -134,14 +137,12 @@ struct BottomToolbar: View {
         ToolbarIconButton(
           icon: "magnifyingglass",
           action: onSearch,
-          accessibilityLabel: "Search"
+          accessibilityLabel: "Search",
         )
       }
     }
     .padding(.trailing, DS.Spacing.bottomToolbarPadding)
   }
-
-  // MARK: - Detail Toolbar
 
   @ViewBuilder
   private var detailToolbar: some View {
@@ -151,7 +152,7 @@ struct BottomToolbar: View {
         ToolbarIconButton(
           icon: isClaimed ? "hand.raised.slash" : "hand.raised",
           action: onClaim,
-          accessibilityLabel: isClaimed ? "Release" : "Claim"
+          accessibilityLabel: isClaimed ? "Release" : "Claim",
         )
       }
     }
@@ -166,7 +167,7 @@ struct BottomToolbar: View {
           icon: "trash",
           action: onDelete,
           accessibilityLabel: "Delete",
-          isDestructive: true
+          isDestructive: true,
         )
       }
     }
@@ -180,7 +181,7 @@ struct BottomToolbar: View {
     BottomToolbar(
       context: .taskList,
       onNew: { print("New") },
-      onSearch: { print("Search") }
+      onSearch: { print("Search") },
     )
   }
   .frame(width: 400, height: 200)
@@ -194,7 +195,7 @@ struct BottomToolbar: View {
       onClaim: { print("Claim") },
       onDelete: { print("Delete") },
       isClaimable: true,
-      isClaimed: false
+      isClaimed: false,
     )
   }
   .frame(width: 400, height: 200)

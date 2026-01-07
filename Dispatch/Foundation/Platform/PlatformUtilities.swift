@@ -16,17 +16,17 @@ typealias PlatformImage = UIImage
 #endif
 
 extension Image {
-    init(platformImage: PlatformImage) {
-        #if os(macOS)
-        self.init(nsImage: platformImage)
-        #else
-        self.init(uiImage: platformImage)
-        #endif
-    }
+  init(platformImage: PlatformImage) {
+    #if os(macOS)
+    self.init(nsImage: platformImage)
+    #else
+    self.init(uiImage: platformImage)
+    #endif
+  }
 }
 
 extension PlatformImage {
-    static func from(data: Data) -> PlatformImage? {
-        PlatformImage(data: data)
-    }
+  static func from(data: Data) -> PlatformImage? {
+    PlatformImage(data: data)
+  }
 }

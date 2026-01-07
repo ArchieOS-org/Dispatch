@@ -11,5 +11,5 @@ import SwiftUI
 /// Main namespace for all design tokens.
 /// Usage: DS.Spacing.md, DS.Colors.Primary, DS.Typography.headline, etc.
 enum DS {
-    // Sub-enums defined in separate files extend this namespace via extensions
+  // Sub-enums defined in separate files extend this namespace via extensions
 }

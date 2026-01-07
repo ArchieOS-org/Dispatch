@@ -11,28 +11,30 @@ import Foundation
 /// Used for UI display to determine which actions are available.
 /// Not Codable because it contains SwiftData model references.
 enum ClaimState {
-    case unclaimed
-    case claimedByMe(user: User)
-    case claimedByOther(user: User)
+  case unclaimed
+  case claimedByMe(user: User)
+  case claimedByOther(user: User)
 
-    var isClaimed: Bool {
-        switch self {
-        case .unclaimed: return false
-        case .claimedByMe, .claimedByOther: return true
-        }
-    }
+  // MARK: Internal
 
-    var canClaim: Bool {
-        switch self {
-        case .unclaimed: return true
-        case .claimedByMe, .claimedByOther: return false
-        }
+  var isClaimed: Bool {
+    switch self {
+    case .unclaimed: false
+    case .claimedByMe, .claimedByOther: true
     }
+  }
 
-    var canRelease: Bool {
-        switch self {
-        case .claimedByMe: return true
-        case .unclaimed, .claimedByOther: return false
-        }
+  var canClaim: Bool {
+    switch self {
+    case .unclaimed: true
+    case .claimedByMe, .claimedByOther: false
     }
+  }
+
+  var canRelease: Bool {
+    switch self {
+    case .claimedByMe: true
+    case .unclaimed, .claimedByOther: false
+    }
+  }
 }

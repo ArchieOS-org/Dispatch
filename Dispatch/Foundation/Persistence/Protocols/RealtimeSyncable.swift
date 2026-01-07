@@ -7,28 +7,30 @@
 
 import Foundation
 
+// MARK: - RealtimeSyncable
+
 /// Protocol for models that sync with Supabase.
 /// ConflictStrategy is defined in Enums/ConflictStrategy.swift
 protocol RealtimeSyncable {
-    var syncedAt: Date? { get set }
-    var syncState: EntitySyncState { get set }
-    var lastSyncError: String? { get set }
-    var conflictResolution: ConflictStrategy { get }
+  var syncedAt: Date? { get set }
+  var syncState: EntitySyncState { get set }
+  var lastSyncError: String? { get set }
+  var conflictResolution: ConflictStrategy { get }
 }
 
 extension RealtimeSyncable {
-    /// Default conflict resolution strategy
-    var conflictResolution: ConflictStrategy {
-        .lastWriteWins
-    }
+  /// Default conflict resolution strategy
+  var conflictResolution: ConflictStrategy {
+    .lastWriteWins
+  }
 
-    /// Legacy computed property for backwards compatibility
-    var isDirty: Bool {
-        syncState == .pending
-    }
+  /// Legacy computed property for backwards compatibility
+  var isDirty: Bool {
+    syncState == .pending
+  }
 
-    /// Convenience check for failed sync state
-    var isSyncFailed: Bool {
-        syncState == .failed
-    }
+  /// Convenience check for failed sync state
+  var isSyncFailed: Bool {
+    syncState == .failed
+  }
 }

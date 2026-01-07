@@ -9,6 +9,9 @@
 import SwiftUI
 
 struct DatePill: View {
+
+  // MARK: Internal
+
   let date: Date
 
   var body: some View {
@@ -17,13 +20,16 @@ struct DatePill: View {
     }
   }
 
+  // MARK: Private
+
   private var dateString: String {
     let calendar = Calendar.current
     let startToday = calendar.startOfDay(for: Date())
     let startDate = calendar.startOfDay(for: date)
 
     // If within 6 days, show Day of Week (e.g., "Mon")
-    if let days = calendar.dateComponents([.day], from: startToday, to: startDate).day, days >= 0,
+    if
+      let days = calendar.dateComponents([.day], from: startToday, to: startDate).day, days >= 0,
       days < 7
     {
       let formatter = DateFormatter()
@@ -39,10 +45,10 @@ struct DatePill: View {
 }
 
 #Preview {
-    VStack(spacing: 10) {
-        DatePill(date: Date())
-        DatePill(date: Date().addingTimeInterval(86400))
-        DatePill(date: Date().addingTimeInterval(86400 * 3))
-        DatePill(date: Date().addingTimeInterval(86400 * 10))
-    }
+  VStack(spacing: 10) {
+    DatePill(date: Date())
+    DatePill(date: Date().addingTimeInterval(86400))
+    DatePill(date: Date().addingTimeInterval(86400 * 3))
+    DatePill(date: Date().addingTimeInterval(86400 * 10))
+  }
 }

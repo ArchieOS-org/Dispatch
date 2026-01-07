@@ -8,9 +8,9 @@
 import Foundation
 
 enum ListingType: String, Codable, CaseIterable {
-    case sale
-    case lease
-    case preListing = "pre_listing"
-    case rental
-    case other
+  case sale
+  case lease
+  case preListing = "pre_listing"
+  case rental
+  case other
 }

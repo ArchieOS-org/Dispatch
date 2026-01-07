@@ -8,52 +8,59 @@
 import Foundation
 import Supabase
 
-// MARK: - Supabase Client Singleton
-internal final class SupabaseService {
-    internal static let shared = SupabaseService()
+// MARK: - SupabaseService
 
-    internal let client: SupabaseClient
+final class SupabaseService {
 
-    private init() {
-        #if DEBUG
-        print("[SupabaseService] Initializing Supabase client...")
-        print("[SupabaseService]   URL: \(Secrets.supabaseURL)")
-        print("[SupabaseService]   Anon Key (prefix): \(String(Secrets.supabaseAnonKey.prefix(30)))...")
-        #endif
+  // MARK: Lifecycle
 
-        guard let url = URL(string: Secrets.supabaseURL) else {
-            fatalError("Invalid Supabase URL: \(Secrets.supabaseURL)")
-        }
+  private init() {
+    #if DEBUG
+    print("[SupabaseService] Initializing Supabase client...")
+    print("[SupabaseService]   URL: \(Secrets.supabaseURL)")
+    print("[SupabaseService]   Anon Key (prefix): \(String(Secrets.supabaseAnonKey.prefix(30)))...")
+    #endif
 
-        #if DEBUG
-        print("[SupabaseService]   URL parsed successfully: \(url)")
-        #endif
-
-        self.client = SupabaseClient(
-            supabaseURL: url,
-            supabaseKey: Secrets.supabaseAnonKey,
-            options: SupabaseClientOptions(
-                db: .init(schema: "public"),
-                auth: .init(
-                    flowType: .pkce,
-                    emitLocalSessionAsInitialSession: true
-                ),
-                global: .init(
-                    headers: ["x-app-name": "dispatch-ios"]
-                )
-            )
-        )
-
-        #if DEBUG
-        print("[SupabaseService] ✅ SupabaseClient initialized successfully")
-        print("[SupabaseService]   DB Schema: public")
-        print("[SupabaseService]   Auth Flow: PKCE")
-        print("[SupabaseService]   Custom Headers: x-app-name=dispatch-ios")
-        #endif
+    guard let url = URL(string: Secrets.supabaseURL) else {
+      fatalError("Invalid Supabase URL: \(Secrets.supabaseURL)")
     }
+
+    #if DEBUG
+    print("[SupabaseService]   URL parsed successfully: \(url)")
+    #endif
+
+    client = SupabaseClient(
+      supabaseURL: url,
+      supabaseKey: Secrets.supabaseAnonKey,
+      options: SupabaseClientOptions(
+        db: .init(schema: "public"),
+        auth: .init(
+          flowType: .pkce,
+          emitLocalSessionAsInitialSession: true,
+        ),
+        global: .init(
+          headers: ["x-app-name": "dispatch-ios"]
+        ),
+      ),
+    )
+
+    #if DEBUG
+    print("[SupabaseService] ✅ SupabaseClient initialized successfully")
+    print("[SupabaseService]   DB Schema: public")
+    print("[SupabaseService]   Auth Flow: PKCE")
+    print("[SupabaseService]   Custom Headers: x-app-name=dispatch-ios")
+    #endif
+  }
+
+  // MARK: Internal
+
+  static let shared = SupabaseService()
+
+  let client: SupabaseClient
+
 }
 
-// Convenience accessor
-internal var supabase: SupabaseClient {
-    SupabaseService.shared.client
+/// Convenience accessor
+var supabase: SupabaseClient {
+  SupabaseService.shared.client
 }

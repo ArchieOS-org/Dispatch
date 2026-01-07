@@ -7,16 +7,18 @@
 
 import Foundation
 
-protocol ClaimableProtocol {
-    var claimedBy: UUID? { get set }
-    var claimHistory: [ClaimEvent] { get }
-    var claimedAt: Date? { get set }
+// MARK: - ClaimableProtocol
 
-    var canBeClaimed: Bool { get }
+protocol ClaimableProtocol {
+  var claimedBy: UUID? { get set }
+  var claimHistory: [ClaimEvent] { get }
+  var claimedAt: Date? { get set }
+
+  var canBeClaimed: Bool { get }
 }
 
 extension ClaimableProtocol {
-    var canBeClaimed: Bool {
-        claimedBy == nil
-    }
+  var canBeClaimed: Bool {
+    claimedBy == nil
+  }
 }

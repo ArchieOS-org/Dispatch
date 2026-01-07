@@ -8,9 +8,9 @@
 import Foundation
 
 enum CreationSource: String, Codable, CaseIterable {
-    case dispatch
-    case slack
-    case realtorApp = "realtor_app"
-    case api
-    case `import`
+  case dispatch
+  case slack
+  case realtorApp = "realtor_app"
+  case api
+  case `import`
 }

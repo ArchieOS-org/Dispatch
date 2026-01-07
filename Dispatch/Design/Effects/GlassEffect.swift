@@ -13,10 +13,9 @@ extension View {
   @ViewBuilder
   func glassCircleBackground() -> some View {
     if #available(iOS 26.0, *) {
-      self.glassEffect(.regular.interactive())
+      glassEffect(.regular.interactive())
     } else {
-      self
-        .background(.ultraThinMaterial)
+      background(.ultraThinMaterial)
         .clipShape(Circle())
         .overlay {
           Circle()
@@ -33,18 +32,16 @@ extension View {
   func glassSidebarBackground() -> some View {
     #if os(macOS)
     if #available(macOS 26.0, *) {
-      self
-        .background {
-          Rectangle()
-            .fill(.clear)
-            .glassEffect(.regular)
-        }
+      background {
+        Rectangle()
+          .fill(.clear)
+          .glassEffect(.regular)
+      }
     } else {
-      self
-        .background(.regularMaterial)
+      background(.regularMaterial)
     }
     #else
-    self.background(.regularMaterial)
+    background(.regularMaterial)
     #endif
   }
 }

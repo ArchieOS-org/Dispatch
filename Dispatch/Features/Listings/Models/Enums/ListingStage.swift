@@ -8,39 +8,44 @@
 import Foundation
 
 enum ListingStage: String, Codable, CaseIterable {
-    case pending
-    case workingOn = "working_on"
-    case live
-    case sold
-    case reList = "re_list"
-    case done
+  case pending
+  case workingOn = "working_on"
+  case live
+  case sold
+  case reList = "re_list"
+  case done
 
-    var displayName: String {
-        switch self {
-        case .pending: return "Pending"
-        case .workingOn: return "Working On"
-        case .live: return "Live"
-        case .sold: return "Sold"
-        case .reList: return "Re-List"
-        case .done: return "Done"
-        }
-    }
+  // MARK: Lifecycle
 
-    var sortOrder: Int {
-        switch self {
-        case .pending: return 0
-        case .workingOn: return 1
-        case .live: return 2
-        case .sold: return 3
-        case .reList: return 4
-        case .done: return 5
-        }
-    }
+  /// Fallback decoder - prevents crash on unknown server values
+  init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    let rawValue = try container.decode(String.self)
+    self = ListingStage(rawValue: rawValue) ?? .pending
+  }
 
-    /// Fallback decoder - prevents crash on unknown server values
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        let rawValue = try container.decode(String.self)
-        self = ListingStage(rawValue: rawValue) ?? .pending
+  // MARK: Internal
+
+  var displayName: String {
+    switch self {
+    case .pending: "Pending"
+    case .workingOn: "Working On"
+    case .live: "Live"
+    case .sold: "Sold"
+    case .reList: "Re-List"
+    case .done: "Done"
     }
+  }
+
+  var sortOrder: Int {
+    switch self {
+    case .pending: 0
+    case .workingOn: 1
+    case .live: 2
+    case .sold: 3
+    case .reList: 4
+    case .done: 5
+    }
+  }
+
 }

@@ -9,6 +9,9 @@
 import SwiftUI
 
 struct SidebarMenuRow: View {
+
+  // MARK: Internal
+
   let tab: AppTab
   let count: Int
   let overdueCount: Int
@@ -31,11 +34,13 @@ struct SidebarMenuRow: View {
     .accessibilityLabel(accessibilityLabelText)
   }
 
+  // MARK: Private
+
   @ViewBuilder
   private var trailingContent: some View {
     if tab == .settings {
       EmptyView()
-    } else if tab == .workspace && overdueCount > 0 {
+    } else if tab == .workspace, overdueCount > 0 {
       OverduePill(count: overdueCount)
     } else if count > 0 {
       Text("\(count)")

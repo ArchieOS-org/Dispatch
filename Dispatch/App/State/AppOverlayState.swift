@@ -27,41 +27,44 @@ import SwiftUI
 /// ```
 @MainActor
 final class AppOverlayState: ObservableObject {
-    /// Reasons why the overlay should be hidden
-    enum HideReason: Hashable {
-        case textInput
-        case keyboard
-        case modal
-    }
 
-    // MARK: - Run Mode
-    
-    enum RunMode {
-        case live
-        case preview
-    }
-    
-    let mode: RunMode
-    
-    init(mode: RunMode = .live) {
-        self.mode = mode
-    }
+  // MARK: Lifecycle
 
-    /// Active reasons for hiding the overlay
-    @Published private(set) var activeReasons: Set<HideReason> = []
+  init(mode: RunMode = .live) {
+    self.mode = mode
+  }
 
-    /// Returns true if the overlay should be hidden (any reason is active)
-    var isOverlayHidden: Bool {
-        !activeReasons.isEmpty
-    }
+  // MARK: Internal
 
-    /// Hides the overlay for the given reason
-    func hide(reason: HideReason) {
-        activeReasons.insert(reason)
-    }
+  /// Reasons why the overlay should be hidden
+  enum HideReason: Hashable {
+    case textInput
+    case keyboard
+    case modal
+  }
 
-    /// Shows the overlay by removing the given reason
-    func show(reason: HideReason) {
-        activeReasons.remove(reason)
-    }
+  enum RunMode {
+    case live
+    case preview
+  }
+
+  let mode: RunMode
+
+  /// Active reasons for hiding the overlay
+  @Published private(set) var activeReasons = Set<HideReason>()
+
+  /// Returns true if the overlay should be hidden (any reason is active)
+  var isOverlayHidden: Bool {
+    !activeReasons.isEmpty
+  }
+
+  /// Hides the overlay for the given reason
+  func hide(reason: HideReason) {
+    activeReasons.insert(reason)
+  }
+
+  /// Shows the overlay by removing the given reason
+  func show(reason: HideReason) {
+    activeReasons.remove(reason)
+  }
 }

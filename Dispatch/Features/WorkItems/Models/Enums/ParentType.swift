@@ -8,7 +8,7 @@
 import Foundation
 
 enum ParentType: String, Codable, CaseIterable {
-    case task
-    case activity
-    case listing
+  case task
+  case activity
+  case listing
 }

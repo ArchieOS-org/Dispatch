@@ -6,8 +6,8 @@
 //  Created by Claude on 2025-12-18.
 //
 
-import SwiftUI
 import Combine
+import SwiftUI
 
 /// Manages the presentation state of the global search overlay.
 ///
@@ -15,20 +15,20 @@ import Combine
 /// and consumed by `PullToSearchModifier` to trigger search.
 @MainActor
 final class SearchPresentationManager: ObservableObject {
-    /// Whether the search overlay is currently presented
-    @Published var isSearchPresented = false
+  /// Whether the search overlay is currently presented
+  @Published var isSearchPresented = false
 
-    /// Current search query text
-    @Published var searchText = ""
+  /// Current search query text
+  @Published var searchText = ""
 
-    /// Presents the search overlay
-    func presentSearch() {
-        isSearchPresented = true
-    }
+  /// Presents the search overlay
+  func presentSearch() {
+    isSearchPresented = true
+  }
 
-    /// Dismisses the search overlay and clears text
-    func dismissSearch() {
-        isSearchPresented = false
-        searchText = ""
-    }
+  /// Dismisses the search overlay and clears text
+  func dismissSearch() {
+    isSearchPresented = false
+    searchText = ""
+  }
 }

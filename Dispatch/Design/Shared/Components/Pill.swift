@@ -9,19 +9,24 @@
 import SwiftUI
 
 struct Pill<Content: View>: View {
-  let foregroundColor: Color
-  let backgroundColor: Color
-  @ViewBuilder let content: () -> Content
+
+  // MARK: Lifecycle
 
   init(
     foreground: Color = DS.Colors.Text.secondary,
     background: Color = DS.Colors.Text.tertiary.opacity(0.15),
-    @ViewBuilder content: @escaping () -> Content
+    @ViewBuilder content: @escaping () -> Content,
   ) {
-    self.foregroundColor = foreground
-    self.backgroundColor = background
+    foregroundColor = foreground
+    backgroundColor = background
     self.content = content
   }
+
+  // MARK: Internal
+
+  let foregroundColor: Color
+  let backgroundColor: Color
+  @ViewBuilder let content: () -> Content
 
   var body: some View {
     content()

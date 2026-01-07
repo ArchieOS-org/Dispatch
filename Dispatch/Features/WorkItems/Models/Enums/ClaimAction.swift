@@ -8,6 +8,6 @@
 import Foundation
 
 enum ClaimAction: String, Codable, CaseIterable {
-    case claimed
-    case released
+  case claimed
+  case released
 }

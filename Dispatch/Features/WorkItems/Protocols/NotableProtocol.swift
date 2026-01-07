@@ -8,5 +8,5 @@
 import Foundation
 
 protocol NotableProtocol {
-    var notes: [Note] { get }
+  var notes: [Note] { get }
 }

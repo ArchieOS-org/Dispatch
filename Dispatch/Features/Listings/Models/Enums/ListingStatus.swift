@@ -8,13 +8,13 @@
 import Foundation
 
 enum ListingStatus: String, Codable, CaseIterable {
-    case draft
-    case active
-    case pending
-    case closed
-    case deleted
+  case draft
+  case active
+  case pending
+  case closed
+  case deleted
 
-    var displayName: String {
-        rawValue.capitalized
-    }
+  var displayName: String {
+    rawValue.capitalized
+  }
 }

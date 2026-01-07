@@ -8,8 +8,8 @@
 import Foundation
 
 enum ActivityStatus: String, Codable, CaseIterable {
-    case open
-    case inProgress = "in_progress"
-    case completed
-    case deleted
+  case open
+  case inProgress = "in_progress"
+  case completed
+  case deleted
 }

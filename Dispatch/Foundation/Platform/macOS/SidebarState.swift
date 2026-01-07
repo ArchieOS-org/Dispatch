@@ -14,21 +14,23 @@ import SwiftUI
 /// Uses @AppStorage to remember state across app launches.
 @MainActor
 final class SidebarState: ObservableObject {
-  /// Whether the sidebar is currently visible
-  @AppStorage("sidebarVisible") var isVisible: Bool = true
 
-  /// Current sidebar width (when visible) - default 240pt
-  @AppStorage("sidebarWidth") private var storedWidth: Double = 240
-
-  /// Whether the sidebar is currently being dragged
-  @Published var isDragging: Bool = false
-
-  /// Live width during drag (can go below minWidth for collapse preview)
-  @Published var liveWidth: CGFloat = DS.Spacing.sidebarDefaultWidth
+  // MARK: Lifecycle
 
   init() {
     liveWidth = CGFloat(storedWidth)
   }
+
+  // MARK: Internal
+
+  /// Whether the sidebar is currently visible
+  @AppStorage("sidebarVisible") var isVisible = true
+
+  /// Whether the sidebar is currently being dragged
+  @Published var isDragging = false
+
+  /// Live width during drag (can go below minWidth for collapse preview)
+  @Published var liveWidth: CGFloat = DS.Spacing.sidebarDefaultWidth
 
   /// Current sidebar width as CGFloat
   var width: CGFloat {
@@ -74,6 +76,12 @@ final class SidebarState: ObservableObject {
     guard isVisible else { return }
     isVisible = false
   }
+
+  // MARK: Private
+
+  /// Current sidebar width (when visible) - default 240pt
+  @AppStorage("sidebarWidth") private var storedWidth: Double = 240
+
 }
 #endif
 
@@ -93,7 +101,7 @@ extension Notification.Name {
   static let filterMine = Notification.Name("filterMine")
   static let filterOthers = Notification.Name("filterOthers")
   static let filterUnclaimed = Notification.Name("filterUnclaimed")
-  
+
   /// Posted when a search result is selected from the popover
   static let navigateSearchResult = Notification.Name("navigateSearchResult")
 }

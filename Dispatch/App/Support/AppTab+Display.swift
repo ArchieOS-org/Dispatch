@@ -8,30 +8,32 @@
 
 import SwiftUI
 
-// MARK: - Display Properties (UI Layer)
+// MARK: - AppTab + Identifiable
 
 extension AppTab: Identifiable {
-  var id: String { rawValue }
+  var id: String {
+    rawValue
+  }
 
   var title: String {
     switch self {
-    case .workspace: return "My Workspace"
-    case .properties: return "Properties"
-    case .listings: return "Listings"
-    case .realtors: return "Realtors"
-    case .settings: return "Settings"
-    case .search: return "Search"
+    case .workspace: "My Workspace"
+    case .properties: "Properties"
+    case .listings: "Listings"
+    case .realtors: "Realtors"
+    case .settings: "Settings"
+    case .search: "Search"
     }
   }
 
   var icon: String {
     switch self {
-    case .workspace: return "briefcase"
-    case .properties: return DS.Icons.Entity.property
-    case .listings: return DS.Icons.Entity.listing
-    case .realtors: return DS.Icons.Entity.realtor
-    case .settings: return "gearshape"
-    case .search: return "magnifyingglass"
+    case .workspace: "briefcase"
+    case .properties: DS.Icons.Entity.property
+    case .listings: DS.Icons.Entity.listing
+    case .realtors: DS.Icons.Entity.realtor
+    case .settings: "gearshape"
+    case .search: "magnifyingglass"
     }
   }
 }
@@ -39,17 +41,6 @@ extension AppTab: Identifiable {
 // MARK: - Visibility Rules (Data-Driven)
 
 extension AppTab {
-  var showsInSidebar: Bool {
-    switch self {
-    case .search, .settings: return false
-    default: return true
-    }
-  }
-
-  var showsInMenu: Bool {
-    self != .search
-  }
-
   static var sidebarTabs: [AppTab] {
     allCases.filter(\.showsInSidebar)
   }
@@ -57,4 +48,16 @@ extension AppTab {
   static var menuTabs: [AppTab] {
     allCases.filter(\.showsInMenu)
   }
+
+  var showsInSidebar: Bool {
+    switch self {
+    case .search, .settings: false
+    default: true
+    }
+  }
+
+  var showsInMenu: Bool {
+    self != .search
+  }
+
 }

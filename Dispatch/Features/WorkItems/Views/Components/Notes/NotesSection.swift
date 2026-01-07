@@ -8,7 +8,7 @@
 
 import SwiftUI
 
-// MARK: - Public API
+// MARK: - NotesSection
 
 /// Styled notes section with header, background, composer, and note list.
 /// Jobs-standard: no configuration flags, one canonical appearance.
@@ -28,7 +28,7 @@ struct NotesSection: View {
         notes: notes,
         userLookup: userLookup,
         onSave: onSave,
-        onDelete: onDelete
+        onDelete: onDelete,
       )
     }
     .padding(DS.Spacing.md)
@@ -37,22 +37,18 @@ struct NotesSection: View {
   }
 }
 
+// MARK: - NotesContent
+
 /// Unstyled notes content for custom containers.
 /// Same API, no header/background/padding.
 struct NotesContent: View {
+
+  // MARK: Internal
+
   let notes: [Note]
   let userLookup: (UUID) -> User?
   let onSave: (String) -> Void
   var onDelete: ((Note) -> Void)? = nil
-
-  @State private var noteText = ""
-  @FocusState private var isComposerFocused: Bool
-
-  private var visibleNotes: [Note] {
-    notes
-      .filter { $0.deletedAt == nil }
-      .sorted { $0.createdAt < $1.createdAt }
-  }
 
   var body: some View {
     ZStack {
@@ -74,7 +70,7 @@ struct NotesContent: View {
                 onDelete: onDelete.map { callback in { callback(note) } },
                 onTap: {
                   isComposerFocused = false
-                }
+                },
               )
             }
           }
@@ -92,12 +88,27 @@ struct NotesContent: View {
       }
     }
   }
+
+  // MARK: Private
+
+  @State private var noteText = ""
+  @FocusState private var isComposerFocused: Bool
+
+  private var visibleNotes: [Note] {
+    notes
+      .filter { $0.deletedAt == nil }
+      .sorted { $0.createdAt < $1.createdAt }
+  }
+
 }
 
-// MARK: - Private Subviews
+// MARK: - NoteCard
 
 /// Single note display card with author, content, and optional context menu delete.
 private struct NoteCard: View {
+
+  // MARK: Internal
+
   let note: Note
   let author: User?
   var onDelete: (() -> Void)?
@@ -139,7 +150,7 @@ private struct NoteCard: View {
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Note by \(author?.name ?? "Unknown"): \(note.content)")
     .contextMenu {
-      if let onDelete = onDelete {
+      if let onDelete {
         Button(role: .destructive, action: onDelete) {
           Label("Delete", systemImage: "trash")
         }
@@ -147,7 +158,7 @@ private struct NoteCard: View {
     }
   }
 
-  // MARK: - Compact Timestamp
+  // MARK: Private
 
   /// Returns human-readable relative time: "now", "5m", "2h", "Dec 31", etc.
   private func compactTimestamp(_ date: Date) -> String {
@@ -174,26 +185,26 @@ private struct NoteCard: View {
   }
 }
 
+// MARK: - NoteComposer
+
 /// Always-visible inline composer for creating notes.
 /// - Placeholder: "Add a note…"
 /// - Commit on blur (focus lost) or tap send icon
 /// - Double-commit protection via isCommitting guard
 private struct NoteComposer: View {
+
+  // MARK: Internal
+
   @Binding var text: String
   @FocusState.Binding var isFocused: Bool
+
   var onSave: (String) -> Void
-
-  @State private var isCommitting = false
-
-  private var hasValidInput: Bool {
-    !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-  }
 
   var body: some View {
     HStack(alignment: .top, spacing: DS.Spacing.sm) {
       ZStack(alignment: .topLeading) {
         // Placeholder (visible when empty and not focused)
-        if text.isEmpty && !isFocused {
+        if text.isEmpty, !isFocused {
           Text("Add a note…")
             .font(DS.Typography.body)
             .foregroundColor(DS.Colors.Text.tertiary)
@@ -212,7 +223,7 @@ private struct NoteComposer: View {
       }
 
       // Send button (appears only when valid input + focused)
-      if hasValidInput && isFocused {
+      if hasValidInput, isFocused {
         Button(action: commitNote) {
           Image(systemName: "arrow.up.circle.fill")
             .font(.system(size: 24))
@@ -228,7 +239,7 @@ private struct NoteComposer: View {
     .animation(.easeInOut(duration: 0.15), value: hasValidInput)
     .onChange(of: isFocused) { _, newValue in
       // Commit on blur if there's valid input
-      if !newValue && hasValidInput {
+      if !newValue, hasValidInput {
         commitNote()
       }
     }
@@ -236,7 +247,13 @@ private struct NoteComposer: View {
     .accessibilityLabel("Note input")
   }
 
-  // MARK: - Commit
+  // MARK: Private
+
+  @State private var isCommitting = false
+
+  private var hasValidInput: Bool {
+    !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+  }
 
   private func commitNote() {
     // Double-commit guard
@@ -246,7 +263,7 @@ private struct NoteComposer: View {
     isCommitting = true
     let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
     onSave(content)
-    text = ""  // Clear after save (local-first: insert always succeeds)
+    text = "" // Clear after save (local-first: insert always succeeds)
     isCommitting = false
   }
 }
@@ -258,7 +275,7 @@ private let previewNotes: [Note] = (0..<3).map { i in
     content: "Note \(i + 1): This is sample content for testing.",
     createdBy: UUID(),
     parentType: .task,
-    parentId: UUID()
+    parentId: UUID(),
   )
 }
 
@@ -268,7 +285,7 @@ private let previewNotes: [Note] = (0..<3).map { i in
       notes: previewNotes,
       userLookup: { _ in User(name: "Test User", email: "test@example.com", userType: .admin) },
       onSave: { print("Saved: \($0)") },
-      onDelete: { print("Delete: \($0.id)") }
+      onDelete: { print("Delete: \($0.id)") },
     )
     .padding()
   }
@@ -278,7 +295,7 @@ private let previewNotes: [Note] = (0..<3).map { i in
   NotesSection(
     notes: [],
     userLookup: { _ in nil },
-    onSave: { print("Saved: \($0)") }
+    onSave: { print("Saved: \($0)") },
   )
   .padding()
 }
@@ -291,7 +308,7 @@ private let previewNotes: [Note] = (0..<3).map { i in
       notes: previewNotes.prefix(2).map { $0 },
       userLookup: { _ in User(name: "Jane Doe", email: "jane@example.com", userType: .marketing) },
       onSave: { print("Saved: \($0)") },
-      onDelete: { print("Delete: \($0.id)") }
+      onDelete: { print("Delete: \($0.id)") },
     )
   }
   .padding()

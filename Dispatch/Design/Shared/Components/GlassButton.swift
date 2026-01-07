@@ -11,53 +11,53 @@ import SwiftUI
 /// Uses `glassEffect` on iOS 26+, falls back to `ultraThinMaterial` on earlier versions.
 /// Used for the FAB and similar simple glass buttons.
 struct GlassButton: View {
-    let icon: String
-    let action: () -> Void
-    var isFiltered: Bool = false
+  let icon: String
+  let action: () -> Void
+  var isFiltered = false
 
-    var body: some View {
-        Button(action: action) {
-            ZStack(alignment: .topTrailing) {
-                // Glass background on container, not icon
-                Circle()
-                    .fill(.clear)
-                    .frame(width: 56, height: 56)
-                    .glassCircleBackground()
-                    .overlay {
-                        Image(systemName: icon)
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(.primary)
-                    }
+  var body: some View {
+    Button(action: action) {
+      ZStack(alignment: .topTrailing) {
+        // Glass background on container, not icon
+        Circle()
+          .fill(.clear)
+          .frame(width: 56, height: 56)
+          .glassCircleBackground()
+          .overlay {
+            Image(systemName: icon)
+              .font(.system(size: 24, weight: .semibold))
+              .foregroundStyle(.primary)
+          }
 
-                // Subtle dot indicator when filtered
-                if isFiltered {
-                    Circle()
-                        .fill(.primary.opacity(0.6))
-                        .frame(width: 8, height: 8)
-                        .offset(x: -4, y: 4)
-                }
-            }
+        // Subtle dot indicator when filtered
+        if isFiltered {
+          Circle()
+            .fill(.primary.opacity(0.6))
+            .frame(width: 8, height: 8)
+            .offset(x: -4, y: 4)
         }
-        .buttonStyle(.plain)
+      }
     }
+    .buttonStyle(.plain)
+  }
 }
 
 // MARK: - Previews
 
 #Preview("Glass Button - Default") {
-    ZStack {
-        Color.blue.opacity(0.3)
-            .ignoresSafeArea()
+  ZStack {
+    Color.blue.opacity(0.3)
+      .ignoresSafeArea()
 
-        GlassButton(icon: "plus", action: {})
-    }
+    GlassButton(icon: "plus", action: { })
+  }
 }
 
 #Preview("Glass Button - Filtered") {
-    ZStack {
-        Color.blue.opacity(0.3)
-            .ignoresSafeArea()
+  ZStack {
+    Color.blue.opacity(0.3)
+      .ignoresSafeArea()
 
-        GlassButton(icon: "plus", action: {}, isFiltered: true)
-    }
+    GlassButton(icon: "plus", action: { }, isFiltered: true)
+  }
 }

@@ -8,10 +8,10 @@
 import Foundation
 
 enum ActivityType: String, Codable, CaseIterable {
-    case call
-    case email
-    case meeting
-    case showProperty = "show_property"
-    case followUp = "follow_up"
-    case other
+  case call
+  case email
+  case meeting
+  case showProperty = "show_property"
+  case followUp = "follow_up"
+  case other
 }

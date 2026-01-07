@@ -8,7 +8,7 @@
 import Foundation
 
 enum ConflictStrategy: String, Codable, CaseIterable {
-    case lastWriteWins = "last_write_wins"
-    case serverWins = "server_wins"
-    case manual
+  case lastWriteWins = "last_write_wins"
+  case serverWins = "server_wins"
+  case manual
 }

@@ -12,13 +12,13 @@ import SwiftUI
 /// A 36pt icon-only button with hover state for the macOS bottom toolbar.
 /// Follows Things 3 styling: icon-only, no labels, subtle hover feedback.
 struct ToolbarIconButton: View {
+
+  // MARK: Internal
+
   let icon: String
   let action: () -> Void
   let accessibilityLabel: String
-  var isDestructive: Bool = false
-
-  @State private var isHovering = false
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  var isDestructive = false
 
   var body: some View {
     Button(action: action) {
@@ -27,7 +27,7 @@ struct ToolbarIconButton: View {
         .foregroundStyle(iconColor)
         .frame(
           width: DS.Spacing.bottomToolbarButtonSize,
-          height: DS.Spacing.bottomToolbarButtonSize
+          height: DS.Spacing.bottomToolbarButtonSize,
         )
         .contentShape(Rectangle())
         .background(
@@ -41,16 +41,21 @@ struct ToolbarIconButton: View {
     }
     .animation(
       reduceMotion ? .none : .easeInOut(duration: 0.15),
-      value: isHovering
+      value: isHovering,
     )
     .accessibilityLabel(accessibilityLabel)
   }
 
+  // MARK: Private
+
+  @State private var isHovering = false
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
   private var iconColor: Color {
     if isDestructive {
-      return isHovering ? .red : .red.opacity(0.7)
+      isHovering ? .red : .red.opacity(0.7)
     } else {
-      return isHovering ? .primary : .primary.opacity(0.6)
+      isHovering ? .primary : .primary.opacity(0.6)
     }
   }
 }
@@ -59,19 +64,19 @@ struct ToolbarIconButton: View {
   HStack(spacing: DS.Spacing.sm) {
     ToolbarIconButton(
       icon: "plus",
-      action: {},
-      accessibilityLabel: "New item"
+      action: { },
+      accessibilityLabel: "New item",
     )
     ToolbarIconButton(
       icon: "magnifyingglass",
-      action: {},
-      accessibilityLabel: "Search"
+      action: { },
+      accessibilityLabel: "Search",
     )
     ToolbarIconButton(
       icon: "trash",
-      action: {},
+      action: { },
       accessibilityLabel: "Delete",
-      isDestructive: true
+      isDestructive: true,
     )
   }
   .padding()

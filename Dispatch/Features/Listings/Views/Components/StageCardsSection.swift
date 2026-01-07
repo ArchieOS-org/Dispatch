@@ -11,32 +11,32 @@ import SwiftUI
 /// Single wrapper component for stage cards grid.
 /// Takes pre-computed counts (not listings) to avoid recomputation on every render.
 struct StageCardsSection: View {
-    let stageCounts: [ListingStage: Int]
-    let onSelectStage: (ListingStage) -> Void
+  let stageCounts: [ListingStage: Int]
+  let onSelectStage: (ListingStage) -> Void
 
-    var body: some View {
-        StageCardsGrid(
-            stageCounts: stageCounts,
-            onSelectStage: onSelectStage
-        )
-    }
+  var body: some View {
+    StageCardsGrid(
+      stageCounts: stageCounts,
+      onSelectStage: onSelectStage,
+    )
+  }
 }
 
 // MARK: - Previews
 
 #Preview("Stage Cards Section") {
-    StageCardsSection(
-        stageCounts: [
-            .pending: 5,
-            .workingOn: 3,
-            .live: 12,
-            .sold: 8,
-            .reList: 2,
-            .done: 45
-        ],
-        onSelectStage: { stage in
-            print("Selected: \(stage.displayName)")
-        }
-    )
-    .padding()
+  StageCardsSection(
+    stageCounts: [
+      .pending: 5,
+      .workingOn: 3,
+      .live: 12,
+      .sold: 8,
+      .reList: 2,
+      .done: 45,
+    ],
+    onSelectStage: { stage in
+      print("Selected: \(stage.displayName)")
+    },
+  )
+  .padding()
 }

@@ -9,6 +9,6 @@ import Foundation
 
 /// Represents a user role for audience-based filtering
 enum Role: String, Codable, CaseIterable, Hashable {
-    case admin
-    case marketing
+  case admin
+  case marketing
 }

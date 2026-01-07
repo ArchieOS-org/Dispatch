@@ -8,21 +8,22 @@
 import Foundation
 
 enum Priority: String, Codable, CaseIterable, Comparable {
-    case low
-    case medium
-    case high
-    case urgent
+  case low
+  case medium
+  case high
+  case urgent
 
-    private var rank: Int {
-        switch self {
-        case .low: return 0
-        case .medium: return 1
-        case .high: return 2
-        case .urgent: return 3
-        }
-    }
+  static func <(lhs: Priority, rhs: Priority) -> Bool {
+    lhs.rank < rhs.rank
+  }
 
-    static func < (lhs: Priority, rhs: Priority) -> Bool {
-        lhs.rank < rhs.rank
+  private var rank: Int {
+    switch self {
+    case .low: 0
+    case .medium: 1
+    case .high: 2
+    case .urgent: 3
     }
+  }
+
 }
