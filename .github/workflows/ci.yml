@@ -16,17 +16,20 @@ concurrency:
 jobs:
   build_test:
     name: Build & Test (${{ matrix.platform }})
-    runs-on: macos-15
+    runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: macos
+            runs_on: macos-15
             destination: platform=macOS
           - platform: iphone
+            runs_on: macos-14
             device_preferred: iPhone 15
             device_fallback: iPhone
           - platform: ipad
+            runs_on: macos-14
             device_preferred: iPad (10th generation)
             device_fallback: iPad
 
@@ -55,6 +58,16 @@ jobs:
           xcodebuild -list -project "$PROJECT"
           xcrun simctl list runtimes
           xcrun simctl list devices available
+
+      - name: Ensure iOS Simulator platform present
+        if: matrix.platform != 'macos'
+        run: |
+          SIM_PATH="$(xcode-select -p)/Platforms/iPhoneSimulator.platform"
+          if [ ! -d "$SIM_PATH" ]; then
+            echo "Missing iPhoneSimulator.platform at $SIM_PATH"
+            exit 1
+          fi
+          ls "$SIM_PATH" >/dev/null
 
       - name: Validate scheme
         run: |

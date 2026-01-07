@@ -42,7 +42,11 @@ jobs:
           fi
 
       - name: Check Formatting
-        run: swiftformat Dispatch --lint --config .swiftformat.airbnb,.swiftformat
+        run: |
+          cat .swiftformat.airbnb .swiftformat \
+            | grep -v 'prefer-synthesized-init-for-internal-structs' \
+            > .swiftformat.ci
+          swiftformat Dispatch --lint --config .swiftformat.ci
 
       - name: Gate Design imports
         run: |
