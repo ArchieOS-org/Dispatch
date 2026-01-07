@@ -76,7 +76,7 @@ jobs:
           fi
 
       - name: Check Formatting
-        run: swiftformat Dispatch --lint --config .swiftformat.airbnb
+        run: swiftformat Dispatch --lint --config .swiftformat.airbnb,.swiftformat
 
       - name: Gate Design imports
         run: |
