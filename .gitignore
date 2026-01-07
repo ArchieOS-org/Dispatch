@@ -28,6 +28,7 @@ Carthage/Build/
 
 # Secrets - DO NOT COMMIT
 Dispatch/Configuration/Secrets.swift
+Dispatch/App/Configuration/Secrets.swift
 
 # macOS
 .DS_Store
