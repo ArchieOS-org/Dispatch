@@ -427,7 +427,6 @@ struct ContentView: View {
                         }
                     )
                 }
-                .listRowInsets(EdgeInsets(top: DS.Spacing.sm, leading: DS.Spacing.md, bottom: DS.Spacing.sm, trailing: DS.Spacing.md))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
 
