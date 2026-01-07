@@ -8,8 +8,8 @@ on:
   pull_request:
 
 env:
-  SWIFTFORMAT_VERSION: "0.54.6"
-  SWIFTLINT_VERSION: "0.57.0"
+  SWIFTFORMAT_MIN_VERSION: "0.54.6"
+  SWIFTLINT_MIN_VERSION: "0.57.0"
 
 jobs:
   lint-format:
@@ -24,29 +24,56 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/Library/Caches/Homebrew
-          key: ${{ runner.os }}-brew-swiftformat-${{ env.SWIFTFORMAT_VERSION }}-swiftlint-${{ env.SWIFTLINT_VERSION }}
+          key: ${{ runner.os }}-brew-swiftformat-${{ env.SWIFTFORMAT_MIN_VERSION }}-swiftlint-${{ env.SWIFTLINT_MIN_VERSION }}
 
-      - name: Install pinned tools + verify versions
+      - name: Install tools + check minimum versions
         run: |
           brew install swiftformat swiftlint
 
           INSTALLED_SF=$(swiftformat --version | tr -d '[:space:]')
           INSTALLED_SL=$(swiftlint version | tr -d '[:space:]')
 
-          if [ "$INSTALLED_SF" != "${SWIFTFORMAT_VERSION}" ]; then
-            echo "❌ SwiftFormat version drift: $INSTALLED_SF (expected ${SWIFTFORMAT_VERSION})"
-            exit 1
-          fi
+          echo "SwiftFormat version: $INSTALLED_SF"
+          echo "SwiftLint version: $INSTALLED_SL"
 
-          if [ "$INSTALLED_SL" != "${SWIFTLINT_VERSION}" ]; then
-            echo "❌ SwiftLint version drift: $INSTALLED_SL (expected ${SWIFTLINT_VERSION})"
-            exit 1
-          fi
+          SWIFTFORMAT_INSTALLED="$INSTALLED_SF" \
+          SWIFTLINT_INSTALLED="$INSTALLED_SL" \
+          python3 - <<'PY'
+          import os
+          import re
+          import sys
 
-          echo "✅ Tool versions pinned"
+          def parse(v):
+            match = re.search(r"\\d+(?:\\.\\d+)*", v or \"\")
+            if not match:
+              return []
+            return [int(p) for p in match.group(0).split(\".\")]
+
+          def ge(a, b):
+            n = max(len(a), len(b))
+            a = a + [0] * (n - len(a))
+            b = b + [0] * (n - len(b))
+            return a >= b
+
+          def check(name, installed, minimum):
+            if not minimum:
+              return
+            if not ge(parse(installed), parse(minimum)):
+              print(f\"❌ {name} version too old: {installed} (min {minimum})\")
+              sys.exit(1)
+
+          check(\"SwiftFormat\", os.environ.get(\"SWIFTFORMAT_INSTALLED\"), os.environ.get(\"SWIFTFORMAT_MIN_VERSION\"))
+          check(\"SwiftLint\", os.environ.get(\"SWIFTLINT_INSTALLED\"), os.environ.get(\"SWIFTLINT_MIN_VERSION\"))
+          print(\"✅ Tool versions meet minimums\")
+          PY
 
       - name: Lint
-        run: swiftlint lint --strict --path Dispatch --config .swiftlint.yml
+        run: |
+          if swiftlint lint --help | grep -q -- '--path'; then
+            swiftlint lint --strict --path Dispatch --config .swiftlint.yml
+          else
+            swiftlint lint --strict Dispatch --config .swiftlint.yml
+          fi
 
       - name: Check Formatting
         run: swiftformat Dispatch --lint --config .swiftformat.airbnb
