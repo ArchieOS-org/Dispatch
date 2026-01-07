@@ -1,2 +1,3 @@
 # SwiftFormat overrides for Dispatch.
-# Intentionally empty: uses Airbnb defaults from .swiftformat.airbnb.
+# Keep Airbnb defaults but exclude untouchable paths.
+--exclude Dispatch/Views/Deprecated,Dispatch/Assets.xcassets
