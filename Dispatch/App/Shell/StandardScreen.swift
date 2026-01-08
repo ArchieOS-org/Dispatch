@@ -7,6 +7,27 @@
 
 import SwiftUI
 
+// MARK: - StandardScreen Scroll Mode Environment
+
+/// Scroll mode for contract enforcement in child components.
+/// Used by StandardGroupedList to verify correct usage context.
+enum StandardScreenScrollMode {
+  case automatic // StandardScreen owns ScrollView
+  case disabled // No ScrollView, child may own scrolling
+}
+
+private struct StandardScreenScrollModeKey: EnvironmentKey {
+  static let defaultValue: StandardScreenScrollMode? = nil
+}
+
+extension EnvironmentValues {
+  /// The scroll mode set by StandardScreen. Nil if outside StandardScreen.
+  var standardScreenScrollMode: StandardScreenScrollMode? {
+    get { self[StandardScreenScrollModeKey.self] }
+    set { self[StandardScreenScrollModeKey.self] = newValue }
+  }
+}
+
 // MARK: - StandardScreen
 
 /// The Single Layout Boss.
@@ -123,6 +144,11 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
         .padding(.horizontal, horizontalPadding)
     }
     .frame(maxWidth: .infinity, alignment: .top)
+    // Expose scroll mode to child components for contract enforcement
+    .environment(
+      \.standardScreenScrollMode,
+      scroll == .automatic ? .automatic : .disabled
+    )
     #if os(macOS)
       .navigationTitle("") // Hide system title on Mac in favor of our custom header
     #endif

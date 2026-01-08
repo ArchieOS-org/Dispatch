@@ -70,23 +70,29 @@ struct StagedListingsView: View {
   let stage: ListingStage
 
   var body: some View {
-    StandardScreen(title: stage.displayName, layout: .column, scroll: .disabled) {
-      StandardList(groupedByOwner) { group in
-        Section(group.owner?.name ?? "Unknown Owner") {
-          ForEach(group.listings) { listing in
-            ListRowLink(value: listing) {
-              StagedListingRow(listing: listing)
-            }
-          }
-        }
-      } emptyContent: {
+    StandardScreen(title: stage.displayName, layout: .column, scroll: .automatic) {
+      if groupedByOwner.isEmpty {
+        // Caller handles empty state
         ContentUnavailableView {
           Label("No \(stage.displayName) Listings", systemImage: stage.icon)
         } description: {
           Text("Listings in this stage will appear here")
         }
+      } else {
+        StandardGroupedList(
+          groupedByOwner,
+          items: { $0.listings },
+          header: { group in
+            SectionHeader(group.owner?.name ?? "Unknown Owner")
+          },
+          row: { _, listing in
+            ListRowLink(value: listing) {
+              StagedListingRow(listing: listing)
+            }
+          }
+        )
+        .pullToSearch() // Required: sensor is internal, modifier enables mechanism
       }
-      .pullToSearch()
     }
   }
 

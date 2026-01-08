@@ -128,25 +128,29 @@ struct ListingListView: View {
   }
 
   private var mainScreen: some View {
-    StandardScreen(title: "Listings", layout: .column, scroll: .disabled) {
-      // Content
-      StandardList(groupedByOwner) { group in
-        Section(group.owner?.name ?? "Unknown Owner") {
-          ForEach(group.listings) { listing in
-            ListRowLink(value: listing) {
-              ListingRow(listing: listing, owner: group.owner)
-            }
-          }
-        }
-      } emptyContent: {
+    StandardScreen(title: "Listings", layout: .column, scroll: .automatic) {
+      if groupedByOwner.isEmpty {
+        // Caller handles empty state
         ContentUnavailableView {
           Label("No Listings", systemImage: DS.Icons.Entity.listing)
         } description: {
           Text("Listings will appear here")
         }
+      } else {
+        StandardGroupedList(
+          groupedByOwner,
+          items: { $0.listings },
+          header: { group in
+            SectionHeader(group.owner?.name ?? "Unknown Owner")
+          },
+          row: { group, listing in
+            ListRowLink(value: listing) {
+              ListingRow(listing: listing, owner: group.owner)
+            }
+          }
+        )
+        .pullToSearch() // Required: sensor is internal, modifier enables mechanism
       }
-      .pullToSearch() // Apply search to the list context
-
     } toolbarContent: {
       ToolbarItem(placement: .automatic) {
         EmptyView()
