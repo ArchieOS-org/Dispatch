@@ -25,11 +25,11 @@ jobs:
             runs_on: macos-15
             destination: platform=macOS
           - platform: iphone
-            runs_on: macos-14
+            runs_on: macos-15
             device_preferred: iPhone 15
             device_fallback: iPhone
           - platform: ipad
-            runs_on: macos-14
+            runs_on: macos-15
             device_preferred: iPad (10th generation)
             device_fallback: iPad
 
@@ -45,10 +45,39 @@ jobs:
 
       - name: Select Xcode
         run: |
-          if [ -d /Applications/Xcode_16.1.app ]; then
-            sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            # macOS: use default Xcode (avoid accidentally selecting beta)
+            echo "Using default Xcode for macOS"
+            xcodebuild -version
           else
-            sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+            # iOS/iPad: find Xcode with iphonesimulator SDK
+            echo "=== Available Xcode installations ==="
+            ls -la /Applications | grep Xcode || true
+
+            SELECTED=""
+            for xcode in /Applications/Xcode*.app; do
+              if [ -d "$xcode" ]; then
+                echo "Checking $xcode..."
+                SDK_CHECK=$("$xcode/Contents/Developer/usr/bin/xcodebuild" -showsdks 2>/dev/null || true)
+                if echo "$SDK_CHECK" | grep -q "iphonesimulator"; then
+                  echo "  -> Has iphonesimulator SDK"
+                  SELECTED="$xcode"
+                  break
+                else
+                  echo "  -> No iphonesimulator SDK"
+                fi
+              fi
+            done
+
+            if [ -z "$SELECTED" ]; then
+              echo "::error::No Xcode with iOS Simulator SDK found"
+              exit 1
+            fi
+
+            echo "Selected: $SELECTED"
+            sudo xcode-select -s "$SELECTED/Contents/Developer"
+            xcodebuild -version
+            xcodebuild -showsdks | grep -E "(SDK|simulator)" || true
           fi
 
       - name: Diagnostics
@@ -198,6 +227,13 @@ jobs:
       - name: Build & Test
         run: |
           set -euo pipefail
+
+          SKIP_ARGS=""
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            # Skip iOS-only UI tests on macOS
+            SKIP_ARGS="-skip-testing:DispatchUITests"
+          fi
+
           xcodebuild test \
             -project "$PROJECT" \
             -scheme "$SCHEME" \
@@ -205,6 +241,7 @@ jobs:
             -configuration Debug \
             -derivedDataPath "$DERIVED_DATA" \
             -resultBundlePath "$RESULT_BUNDLE" \
+            $SKIP_ARGS \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
