@@ -409,7 +409,9 @@ struct ListingDTOTests {
             mlsNumber: "V9876543",
             listingType: "lease",
             status: "active",
+            stage: nil,
             ownedBy: ownedBy,
+            propertyId: nil,
             createdVia: "dispatch",
             sourceSlackMessages: nil,
             activatedAt: nil,
@@ -513,7 +515,9 @@ struct NoteDTOTests {
             parentId: parentId,
             editedAt: nil,
             editedBy: nil,
-            createdAt: Date()
+            createdAt: Date(),
+            updatedAt: nil,
+            deletedAt: nil
         )
         
         let model = dto.toModel()
