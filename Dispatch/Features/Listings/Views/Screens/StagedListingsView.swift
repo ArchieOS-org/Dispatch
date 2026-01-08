@@ -23,6 +23,8 @@ private struct StagedListingRow: View {
       Spacer(minLength: 0)
     }
     .padding(.vertical, DS.Spacing.listRowPadding)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .contentShape(Rectangle())
   }
 
   // MARK: Private
