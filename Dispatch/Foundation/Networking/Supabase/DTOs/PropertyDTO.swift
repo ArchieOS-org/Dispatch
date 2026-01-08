@@ -46,7 +46,12 @@ struct PropertyDTO: Codable, Sendable {
     if let pt = PropertyType(rawValue: propertyType) {
       resolvedPropertyType = pt
     } else {
-      debugLog.log("⚠️ Invalid propertyType '\(propertyType)' for Property \(id), defaulting to .residential", category: .sync)
+      #if DEBUG
+      let propertyTypeMessage = "⚠️ Invalid propertyType '\(propertyType)' for Property \(id), defaulting to .residential"
+      Task { @MainActor in
+        debugLog.log(propertyTypeMessage, category: .sync)
+      }
+      #endif
       resolvedPropertyType = .residential
     }
 
@@ -55,7 +60,12 @@ struct PropertyDTO: Codable, Sendable {
     if let c = CreationSource(rawValue: createdVia) {
       resolvedCreatedVia = c
     } else {
-      debugLog.log("⚠️ Invalid createdVia '\(createdVia)' for Property \(id), defaulting to .dispatch", category: .sync)
+      #if DEBUG
+      let createdViaMessage = "⚠️ Invalid createdVia '\(createdVia)' for Property \(id), defaulting to .dispatch"
+      Task { @MainActor in
+        debugLog.log(createdViaMessage, category: .sync)
+      }
+      #endif
       resolvedCreatedVia = .dispatch
     }
 

@@ -50,11 +50,21 @@ import SwiftUI
 extension View {
   @ViewBuilder
   fileprivate func hideDisclosureIndicator() -> some View {
+    #if os(iOS)
     if #available(iOS 17.0, *) {
       navigationLinkIndicatorVisibility(.hidden)
     } else {
       self
     }
+    #elseif os(macOS)
+    if #available(macOS 14.0, *) {
+      navigationLinkIndicatorVisibility(.hidden)
+    } else {
+      self
+    }
+    #else
+    self
+    #endif
   }
 }
 

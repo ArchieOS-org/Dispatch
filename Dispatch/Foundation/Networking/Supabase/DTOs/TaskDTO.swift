@@ -113,7 +113,12 @@ struct TaskDTO: Codable, Sendable {
     if let p = Priority(rawValue: priority) {
       resolvedPriority = p
     } else {
-      debugLog.log("⚠️ Invalid priority '\(priority)' for Task \(id), defaulting to .medium", category: .sync)
+      #if DEBUG
+      let priorityMessage = "⚠️ Invalid priority '\(priority)' for Task \(id), defaulting to .medium"
+      Task { @MainActor in
+        debugLog.log(priorityMessage, category: .sync)
+      }
+      #endif
       resolvedPriority = .medium
     }
 
@@ -121,7 +126,12 @@ struct TaskDTO: Codable, Sendable {
     if let s = TaskStatus(rawValue: status) {
       resolvedStatus = s
     } else {
-      debugLog.log("⚠️ Invalid status '\(status)' for Task \(id), defaulting to .open", category: .sync)
+      #if DEBUG
+      let statusMessage = "⚠️ Invalid status '\(status)' for Task \(id), defaulting to .open"
+      Task { @MainActor in
+        debugLog.log(statusMessage, category: .sync)
+      }
+      #endif
       resolvedStatus = .open
     }
 
@@ -129,7 +139,12 @@ struct TaskDTO: Codable, Sendable {
     if let c = CreationSource(rawValue: createdVia) {
       resolvedCreatedVia = c
     } else {
-      debugLog.log("⚠️ Invalid createdVia '\(createdVia)' for Task \(id), defaulting to .dispatch", category: .sync)
+      #if DEBUG
+      let createdViaMessage = "⚠️ Invalid createdVia '\(createdVia)' for Task \(id), defaulting to .dispatch"
+      Task { @MainActor in
+        debugLog.log(createdViaMessage, category: .sync)
+      }
+      #endif
       resolvedCreatedVia = .dispatch
     }
 

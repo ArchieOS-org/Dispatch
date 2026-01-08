@@ -29,7 +29,12 @@ struct SubtaskDTO: Codable, Sendable {
     if let type = ParentType(rawValue: parentType) {
       resolvedParentType = type
     } else {
-      debugLog.log("⚠️ Invalid parentType '\(parentType)' for Subtask \(id), defaulting to .task", category: .sync)
+      #if DEBUG
+      let parentTypeMessage = "⚠️ Invalid parentType '\(parentType)' for Subtask \(id), defaulting to .task"
+      Task { @MainActor in
+        debugLog.log(parentTypeMessage, category: .sync)
+      }
+      #endif
       resolvedParentType = .task
     }
 

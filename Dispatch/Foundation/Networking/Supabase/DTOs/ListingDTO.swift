@@ -61,7 +61,12 @@ struct ListingDTO: Codable, Sendable {
     if let lt = ListingType(rawValue: listingType) {
       resolvedListingType = lt
     } else {
-      debugLog.log("⚠️ Invalid listingType '\(listingType)' for Listing \(id), defaulting to .sale", category: .sync)
+      #if DEBUG
+      let listingTypeMessage = "⚠️ Invalid listingType '\(listingType)' for Listing \(id), defaulting to .sale"
+      Task { @MainActor in
+        debugLog.log(listingTypeMessage, category: .sync)
+      }
+      #endif
       resolvedListingType = .sale
     }
 
@@ -69,7 +74,12 @@ struct ListingDTO: Codable, Sendable {
     if let s = ListingStatus(rawValue: status) {
       resolvedStatus = s
     } else {
-      debugLog.log("⚠️ Invalid status '\(status)' for Listing \(id), defaulting to .draft", category: .sync)
+      #if DEBUG
+      let statusMessage = "⚠️ Invalid status '\(status)' for Listing \(id), defaulting to .draft"
+      Task { @MainActor in
+        debugLog.log(statusMessage, category: .sync)
+      }
+      #endif
       resolvedStatus = .draft
     }
 
@@ -77,7 +87,12 @@ struct ListingDTO: Codable, Sendable {
     if let c = CreationSource(rawValue: createdVia) {
       resolvedCreatedVia = c
     } else {
-      debugLog.log("⚠️ Invalid createdVia '\(createdVia)' for Listing \(id), defaulting to .dispatch", category: .sync)
+      #if DEBUG
+      let createdViaMessage = "⚠️ Invalid createdVia '\(createdVia)' for Listing \(id), defaulting to .dispatch"
+      Task { @MainActor in
+        debugLog.log(createdViaMessage, category: .sync)
+      }
+      #endif
       resolvedCreatedVia = .dispatch
     }
 
@@ -87,7 +102,12 @@ struct ListingDTO: Codable, Sendable {
       resolvedStage = s
     } else {
       if let stageValue = stage {
-        debugLog.log("⚠️ Invalid stage '\(stageValue)' for Listing \(id), defaulting to .pending", category: .sync)
+        #if DEBUG
+        let stageMessage = "⚠️ Invalid stage '\(stageValue)' for Listing \(id), defaulting to .pending"
+        Task { @MainActor in
+          debugLog.log(stageMessage, category: .sync)
+        }
+        #endif
       }
       resolvedStage = .pending
     }

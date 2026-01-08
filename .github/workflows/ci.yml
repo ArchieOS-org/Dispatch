@@ -43,6 +43,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Generate Secrets.swift for CI
+        run: |
+          set -euo pipefail
+          mkdir -p Dispatch/App/Configuration
+
+          if [ -f Dispatch/App/Configuration/Secrets.swift.example ]; then
+            cp Dispatch/App/Configuration/Secrets.swift.example Dispatch/App/Configuration/Secrets.swift
+          else
+            cat > Dispatch/App/Configuration/Secrets.swift << 'EOF'
+          //
+          //  Secrets.swift (CI-generated)
+          //
+
+          import Foundation
+
+          enum Secrets {
+            static let supabaseURL = "https://ci-placeholder.supabase.co"
+            static let supabaseAnonKey = "ci-placeholder-key"
+          }
+          EOF
+          fi
+
       - name: Select Xcode
         run: |
           xcodebuild -version

@@ -114,7 +114,7 @@ struct ListingListView: View {
     return groups.sorted { (a: ListingGroup, b: ListingGroup) -> Bool in
       let nameA = a.owner?.name ?? "~"
       let nameB = b.owner?.name ?? "~"
-      nameA < nameB
+      return nameA < nameB
     }
   }
 
