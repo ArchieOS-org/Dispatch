@@ -295,3 +295,165 @@ extension User {
     User(id: UUID(), name: "Me", email: "me@dispatch.com", userType: .admin)
   }
 }
+
+// MARK: - Previews
+
+#Preview("My Workspace - With Items") {
+  PreviewShell(
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }(),
+    setup: { context in
+      // Seed standard data (Alice as owner, Bob as claimer)
+      PreviewDataFactory.seed(context)
+
+      // Add more tasks claimed by Bob for variety
+      let listing = try? context.fetch(FetchDescriptor<Listing>()).first
+
+      let taskUrgent = TaskItem(
+        title: "Fix Broken Window",
+        status: .open,
+        declaredBy: PreviewDataFactory.aliceID,
+        claimedBy: PreviewDataFactory.bobID,
+        listingId: listing?.id
+      )
+      taskUrgent.dueDate = Calendar.current.date(byAdding: .day, value: -2, to: Date())
+      taskUrgent.syncState = .synced
+      listing?.tasks.append(taskUrgent)
+
+      let activityScheduled = Activity(
+        title: "Schedule Inspection",
+        type: .call,
+        declaredBy: PreviewDataFactory.aliceID,
+        claimedBy: PreviewDataFactory.bobID,
+        listingId: listing?.id
+      )
+      activityScheduled.dueDate = Calendar.current.date(byAdding: .day, value: 1, to: Date())
+      activityScheduled.syncState = .synced
+      listing?.activities.append(activityScheduled)
+    }
+  ) { _ in
+    MyWorkspaceView()
+      .environmentObject(WorkItemActions(
+        currentUserId: PreviewDataFactory.bobID,
+        userLookup: { _ in nil }
+      ))
+  }
+}
+
+#Preview("My Workspace - Empty") {
+  PreviewShell(
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }()
+  ) { _ in
+    MyWorkspaceView()
+      .environmentObject(WorkItemActions(
+        currentUserId: PreviewDataFactory.bobID,
+        userLookup: { _ in nil }
+      ))
+  }
+}
+
+#Preview("My Workspace - Tasks Only Filter") {
+  PreviewShell(
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }(),
+    setup: { context in
+      PreviewDataFactory.seed(context)
+    }
+  ) { _ in
+    MyWorkspaceView()
+      .environmentObject(WorkItemActions(
+        currentUserId: PreviewDataFactory.bobID,
+        userLookup: { _ in nil }
+      ))
+  }
+}
+
+#Preview("Listing Section - Expanded") {
+  PreviewShell(
+    setup: { context in
+      PreviewDataFactory.seed(context)
+    }
+  ) { context in
+    let listing = try? context.fetch(FetchDescriptor<Listing>()).first
+
+    let group = WorkspaceGroup(
+      id: listing?.id ?? UUID(),
+      listing: listing,
+      items: [
+        .task(TaskItem(
+          title: "Sample Task 1",
+          status: .open,
+          declaredBy: PreviewDataFactory.aliceID,
+          listingId: listing?.id
+        )),
+        .task(TaskItem(
+          title: "Sample Task 2 - Overdue",
+          status: .open,
+          declaredBy: PreviewDataFactory.aliceID,
+          listingId: listing?.id
+        )),
+        .activity(Activity(
+          title: "Follow Up Call",
+          type: .call,
+          declaredBy: PreviewDataFactory.aliceID,
+          listingId: listing?.id
+        ))
+      ]
+    )
+
+    NavigationStack {
+      List {
+        ListingWorkspaceSection(group: group)
+      }
+      .listStyle(.plain)
+    }
+    .environmentObject(WorkItemActions(
+      currentUserId: PreviewDataFactory.bobID,
+      userLookup: { _ in nil }
+    ))
+  }
+}
+
+#Preview("Listing Section - General/Unassigned") {
+  PreviewShell { _ in
+    let group = WorkspaceGroup(
+      id: UUID(),
+      listing: nil,
+      items: [
+        .task(TaskItem(
+          title: "General Task - No Listing",
+          status: .open,
+          declaredBy: PreviewDataFactory.aliceID,
+          listingId: nil
+        )),
+        .activity(Activity(
+          title: "Team Meeting",
+          type: .meeting,
+          declaredBy: PreviewDataFactory.aliceID,
+          listingId: nil
+        ))
+      ]
+    )
+
+    NavigationStack {
+      List {
+        ListingWorkspaceSection(group: group)
+      }
+      .listStyle(.plain)
+    }
+    .environmentObject(WorkItemActions(
+      currentUserId: PreviewDataFactory.bobID,
+      userLookup: { _ in nil }
+    ))
+  }
+}
