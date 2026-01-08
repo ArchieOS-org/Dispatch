@@ -78,11 +78,6 @@ struct WorkItemRow: View {
         onToggle: onComplete,
       )
 
-      // Date Pill (Left - Normal)
-      if let date = item.dueDate, !hideDueDate, !isOverdue {
-        DatePill(date: date)
-      }
-
       // Title
       Text(item.title)
         .font(DS.Typography.body)
@@ -101,14 +96,20 @@ struct WorkItemRow: View {
 
       // Right side items
       HStack(spacing: DS.Spacing.sm) {
-        // Overdue Flag (Right)
-        if item.dueDate != nil, !hideDueDate, isOverdue {
-          HStack(spacing: 4) {
-            Image(systemName: "flag.fill")
-            Text(overdueText)
+        // Due Date (Right) - normal or overdue
+        if let date = item.dueDate, !hideDueDate {
+          if isOverdue {
+            // Overdue: flag with date
+            HStack(spacing: 4) {
+              Image(systemName: "flag.fill")
+              Text(overdueText)
+            }
+            .font(DS.Typography.caption)
+            .foregroundStyle(.red)
+          } else {
+            // Normal: date pill
+            DatePill(date: date)
           }
-          .font(DS.Typography.caption)
-          .foregroundStyle(.red)
         }
 
         // Actions / Status - omit entirely for claimedByOther
