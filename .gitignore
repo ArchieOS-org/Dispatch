@@ -29,6 +29,7 @@ Carthage/Build/
 # Secrets - DO NOT COMMIT
 Dispatch/Configuration/Secrets.swift
 Dispatch/App/Configuration/Secrets.swift
+/Secrets.swift
 
 # macOS
 .DS_Store
@@ -40,6 +41,14 @@ Dispatch/App/Configuration/Secrets.swift
 *.swp
 *.swo
 *~
+.vscode/
+
+# Build server (SourceKit-LSP)
+buildServer.json
+
+# Conductor (local workspace)
+conductor.json
+conductor-setup.sh
 
 # fastlane
 fastlane/report.xml
