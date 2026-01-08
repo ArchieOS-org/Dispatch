@@ -133,10 +133,9 @@ struct ListingListView: View {
       StandardList(groupedByOwner) { group in
         Section(group.owner?.name ?? "Unknown Owner") {
           ForEach(group.listings) { listing in
-            NavigationLink(value: listing) {
+            ListRowLink(value: listing) {
               ListingRow(listing: listing, owner: group.owner)
             }
-            .buttonStyle(.plain)
           }
         }
       } emptyContent: {

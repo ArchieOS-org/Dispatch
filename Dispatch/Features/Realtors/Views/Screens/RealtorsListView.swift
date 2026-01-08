@@ -39,10 +39,9 @@ struct RealtorsListView: View {
   private var content: some View {
     StandardScreen(title: "Realtors", layout: .column, scroll: .disabled) {
       StandardList(activeRealtorList) { user in
-        NavigationLink(value: user) {
+        ListRowLink(value: user) {
           RealtorRow(user: user)
         }
-        .buttonStyle(.plain)
       }
     } toolbarContent: {
       ToolbarItem(placement: .primaryAction) {
@@ -96,10 +95,6 @@ private struct RealtorRow: View {
       }
 
       Spacer()
-
-      Image(systemName: DS.Icons.Navigation.forward)
-        .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(DS.Colors.Text.tertiary)
     }
     .padding(.vertical, DS.Spacing.listRowPadding)
     .contentShape(Rectangle())

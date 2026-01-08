@@ -31,7 +31,7 @@ struct PropertiesListView: View {
       StandardList(groupedByOwner) { group in
         Section(group.owner?.name ?? "Unknown Owner") {
           ForEach(group.properties) { property in
-            NavigationLink(value: property) {
+            ListRowLink(value: property) {
               PropertyRow(property: property, owner: group.owner)
             }
           }

@@ -47,15 +47,6 @@ private struct StagedListingRow: View {
 import SwiftData
 import SwiftUI
 
-extension View {
-  @ViewBuilder
-  fileprivate func hideDisclosureIndicator() -> some View {
-    // navigationLinkIndicatorVisibility is not available on all CI SDKs.
-    // Keep this as a no-op for maximum toolchain compatibility.
-    self
-  }
-}
-
 // MARK: - ListingGroup
 
 /// A group of listings belonging to a single owner (reused pattern)
@@ -83,18 +74,9 @@ struct StagedListingsView: View {
       StandardList(groupedByOwner) { group in
         Section(group.owner?.name ?? "Unknown Owner") {
           ForEach(group.listings) { listing in
-            ZStack {
+            ListRowLink(value: listing) {
               StagedListingRow(listing: listing)
-
-              // Invisible link overlay so the row is tappable without showing a disclosure indicator
-              NavigationLink(value: listing) {
-                Color.clear
-              }
-              .hideDisclosureIndicator()
-              .buttonStyle(.plain)
-              .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .contentShape(Rectangle())
           }
         }
       } emptyContent: {

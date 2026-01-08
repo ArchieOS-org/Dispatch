@@ -110,9 +110,6 @@ extension DS {
       /// Back arrow
       static let back = "chevron.left"
 
-      /// Forward arrow
-      static let forward = "chevron.right"
-
       /// Up arrow
       static let up = "chevron.up"
 

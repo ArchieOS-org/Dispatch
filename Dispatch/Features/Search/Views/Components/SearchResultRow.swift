@@ -52,11 +52,6 @@ struct SearchResultRow: View {
           .background(DS.Colors.Background.tertiary)
           .cornerRadius(4)
       }
-
-      // Chevron
-      Image(systemName: "chevron.right")
-        .font(.caption)
-        .foregroundColor(DS.Colors.Text.quaternary)
     }
     .padding(.horizontal, DS.Spacing.lg)
     .padding(.vertical, DS.Spacing.md)

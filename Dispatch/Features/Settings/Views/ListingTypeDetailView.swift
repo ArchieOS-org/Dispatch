@@ -158,10 +158,6 @@ private struct ActivityTemplateRow: View {
       }
 
       Spacer()
-
-      Image(systemName: DS.Icons.Navigation.forward)
-        .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(DS.Colors.Text.tertiary)
     }
     .padding(.vertical, DS.Spacing.listRowPadding)
     .contentShape(Rectangle())

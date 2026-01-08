@@ -19,7 +19,7 @@ struct ListingTypeListView: View {
   var body: some View {
     StandardScreen(title: "Listing Types", layout: .column, scroll: .disabled) {
       StandardList(visibleTypes) { listingType in
-        NavigationLink(value: listingType) {
+        ListRowLink(value: listingType) {
           ListingTypeRow(listingType: listingType)
         }
       } emptyContent: {
@@ -116,10 +116,6 @@ private struct ListingTypeRow: View {
       }
 
       Spacer()
-
-      Image(systemName: DS.Icons.Navigation.forward)
-        .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(DS.Colors.Text.tertiary)
     }
     .padding(.vertical, DS.Spacing.md)
     .contentShape(Rectangle())

@@ -167,8 +167,6 @@ private struct StandardScreenPreviewContent: View {
               .font(DS.Typography.body)
               .foregroundColor(DS.Colors.Text.primary)
             Spacer()
-            Image(systemName: "chevron.right")
-              .foregroundColor(DS.Colors.Text.tertiary)
           }
           if i != 59 { Divider() }
         }

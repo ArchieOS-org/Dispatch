@@ -29,7 +29,7 @@ struct MenuPageView: View {
 
       // MARK: - Menu Sections
       ForEach(AppTab.menuTabs) { tab in
-        NavigationLink(value: tab) {
+        ListRowLink(value: tab) {
           SidebarMenuRow(
             tab: tab,
             itemCount: count(for: tab),

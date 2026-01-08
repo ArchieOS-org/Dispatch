@@ -219,10 +219,6 @@ private struct PropertyListingRow: View {
         .padding(.vertical, DS.Spacing.xxs)
         .background(listing.stage.color.opacity(0.15))
         .clipShape(Capsule())
-
-      Image(systemName: "chevron.right")
-        .font(.caption)
-        .foregroundColor(DS.Colors.Text.tertiary)
     }
     .contentShape(Rectangle())
   }
