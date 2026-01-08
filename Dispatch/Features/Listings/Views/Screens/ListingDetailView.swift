@@ -190,14 +190,7 @@ struct ListingDetailView: View {
 
         HStack {
           if let owner {
-            Text(owner.name)
-              .font(DS.Typography.bodySecondary)
-              .foregroundColor(DS.Colors.Text.primary)
-              .padding(.leading, DS.Spacing.md)
-              .padding(.trailing, DS.Spacing.md)
-              .padding(.vertical, DS.Spacing.xs)
-              .background(DS.Colors.success.opacity(0.15))
-              .clipShape(Capsule())
+            RealtorPill(user: owner)
           }
 
           Spacer()
@@ -248,7 +241,7 @@ struct ListingDetailView: View {
       } else {
         VStack(spacing: 0) {
           ForEach(filteredTasks) { task in
-            NavigationLink(value: WorkItemRef.task(task)) {
+            NavigationLink(value: AppRoute.workItem(.task(task))) {
               WorkItemRow(
                 item: .task(task),
                 claimState: WorkItem.task(task).claimState(
@@ -321,7 +314,7 @@ struct ListingDetailView: View {
   private func activitiesContent(_ activities: [Activity]) -> some View {
     VStack(spacing: 0) {
       ForEach(activities) { activity in
-        NavigationLink(value: WorkItemRef.activity(activity)) {
+        NavigationLink(value: AppRoute.workItem(.activity(activity))) {
           WorkItemRow(
             item: .activity(activity),
             claimState: WorkItem.activity(activity).claimState(

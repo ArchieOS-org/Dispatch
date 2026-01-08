@@ -67,6 +67,11 @@ struct ContentView: View {
   #if os(macOS)
   /// Global Quick Find (Popover) State managed by AppState.overlayState
   @State private var quickFindText = ""
+  /// Local sidebar selection synced via .onChange (avoids mutation during render)
+  @State private var sidebarSelection: AppTab? = nil
+  #else
+  /// Local sidebar selection synced via .onChange (avoids mutation during render)
+  @State private var sidebarSelection: AppTab? = nil
   #endif
   // searchManager migrated to AppState
   // @StateObject private var searchManager = SearchPresentationManager()
@@ -146,7 +151,7 @@ struct ContentView: View {
     .onChange(of: currentUserId) { _, _ in updateWorkItemActions() }
     .onChange(of: userCache) { _, _ in updateWorkItemActions() }
     .onChange(of: appState.router.selectedTab) { _, _ in updateLensState() }
-    .onChange(of: appState.router.pathMain.count) { _, _ in updateLensState() }
+    .onChange(of: appState.router.path.count) { _, _ in updateLensState() }
   }
 
   @ViewBuilder
@@ -179,7 +184,7 @@ struct ContentView: View {
   /// Things 3-style menu page navigation for iPhone with pull-down search
   private var menuNavigation: some View {
     ZStack {
-      NavigationStack(path: $appState.router.pathMain) {
+      NavigationStack(path: $appState.router.path) {
         MenuPageView()
           .appDestinations()
       }
@@ -263,13 +268,6 @@ struct ContentView: View {
 
   // MARK: - macOS Sidebar Helpers
 
-  private var sidebarSelection: Binding<AppTab?> {
-    Binding(
-      get: { appState.router.selectedTab },
-      set: { if let tab = $0 { appState.dispatch(.selectTab(tab)) } },
-    )
-  }
-
   private func sidebarCount(for tab: AppTab) -> Int {
     switch tab {
     case .workspace: openTasks.count + openActivities.count
@@ -289,13 +287,13 @@ struct ContentView: View {
   /// macOS: Things 3-style resizable sidebar with native selection
   private var sidebarNavigation: some View {
     ResizableSidebar {
-      List(selection: sidebarSelection) {
+      List(selection: $sidebarSelection) {
         // Stage Cards Section
         Section {
           StageCardsSection(
             stageCounts: stageCounts,
             onSelectStage: { stage in
-              appState.router.pathMain.append(Route.stagedListings(stage))
+              appState.router.path.append(.stagedListings(stage))
             },
           )
         }
@@ -321,8 +319,18 @@ struct ContentView: View {
         )
       }
       .listStyle(.sidebar)
+      .onAppear {
+        sidebarSelection = appState.router.selectedTab
+      }
+      .onChange(of: sidebarSelection) { _, newValue in
+        guard let tab = newValue, tab != appState.router.selectedTab else { return }
+        appState.dispatch(.selectTab(tab))
+      }
+      .onChange(of: appState.router.selectedTab) { _, newValue in
+        sidebarSelection = newValue
+      }
     } content: {
-      NavigationStack(path: $appState.router.pathMain) {
+      NavigationStack(path: $appState.router.path) {
         Group {
           switch selectedTab {
           case .properties:
@@ -377,13 +385,13 @@ struct ContentView: View {
   private var sidebarNavigation: some View {
     ZStack {
       NavigationSplitView {
-        List(selection: sidebarSelection) {
+        List(selection: $sidebarSelection) {
           // Stage Cards Section
           Section {
             StageCardsSection(
               stageCounts: stageCounts,
               onSelectStage: { stage in
-                appState.router.pathMain.append(Route.stagedListings(stage))
+                appState.router.path.append(.stagedListings(stage))
               },
             )
           }
@@ -402,9 +410,19 @@ struct ContentView: View {
         }
         .listStyle(.sidebar)
         .navigationTitle("Dispatch")
+        .onAppear {
+          sidebarSelection = appState.router.selectedTab
+        }
+        .onChange(of: sidebarSelection) { _, newValue in
+          guard let tab = newValue, tab != appState.router.selectedTab else { return }
+          appState.dispatch(.selectTab(tab))
+        }
+        .onChange(of: appState.router.selectedTab) { _, newValue in
+          sidebarSelection = newValue
+        }
       } detail: {
         // iPad: Unconditional Stack (One Boss Rule)
-        NavigationStack(path: $appState.router.pathMain) {
+        NavigationStack(path: $appState.router.path) {
           Group {
             switch selectedTab {
             case .properties:
@@ -458,13 +476,6 @@ struct ContentView: View {
 
   #if os(iOS) || os(visionOS)
   // MARK: - iPad Sidebar Helpers
-
-  private var sidebarSelection: Binding<AppTab?> {
-    Binding(
-      get: { appState.router.selectedTab },
-      set: { if let tab = $0 { appState.dispatch(.selectTab(tab)) } },
-    )
-  }
 
   private func sidebarCount(for tab: AppTab) -> Int {
     switch tab {
@@ -621,10 +632,10 @@ struct ContentView: View {
     case .task(let task):
       // Convert to Destination
       appState.dispatch(.selectTab(.workspace))
-      appState.dispatch(.navigate(.workItem(task.id)))
+      appState.dispatch(.navigate(.workItem(.task(task))))
     case .activity(let activity):
       appState.dispatch(.selectTab(.workspace))
-      appState.dispatch(.navigate(.workItem(activity.id)))
+      appState.dispatch(.navigate(.workItem(.activity(activity))))
     case .listing(let listing):
       appState.dispatch(.selectTab(.listings))
       appState.dispatch(.navigate(.listing(listing.id)))
@@ -782,7 +793,7 @@ struct ContentView: View {
   /// Eliminates the need for .onAppear hacks in views.
   private func updateLensState() {
     let tab = appState.router.selectedTab
-    let pathDepth = appState.router.pathMain.count
+    let pathDepth = appState.router.path.count
 
     // iPhone Root Logic: If compact and at root, we are at Menu
     #if os(iOS)

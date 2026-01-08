@@ -39,7 +39,7 @@ struct RealtorsListView: View {
   private var content: some View {
     StandardScreen(title: "Realtors", layout: .column, scroll: .disabled) {
       StandardList(activeRealtorList) { user in
-        ListRowLink(value: user) {
+        ListRowLink(value: AppRoute.realtor(user.id)) {
           RealtorRow(user: user)
         }
       }

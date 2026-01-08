@@ -86,7 +86,7 @@ struct StagedListingsView: View {
             SectionHeader(group.owner?.name ?? "Unknown Owner")
           },
           row: { _, listing in
-            ListRowLink(value: listing) {
+            ListRowLink(value: AppRoute.listing(listing.id)) {
               StagedListingRow(listing: listing)
             }
           }

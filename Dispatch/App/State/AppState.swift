@@ -95,8 +95,8 @@ final class AppState: ObservableObject {
     Self.logger.debug("Dispatching command: \(String(describing: command))")
 
     switch command {
-    case .navigate(let destination):
-      router.navigate(to: destination)
+    case .navigate(let route):
+      router.navigate(to: route)
 
     case .popToRoot:
       router.popToRoot()

@@ -211,7 +211,7 @@ struct ListingWorkspaceSection: View {
 
         // ZONE 2: Listing Info - naturally starts at 24pt line (aligned with checkboxes)
         if let listing = group.listing {
-          NavigationLink(value: listing) {
+          NavigationLink(value: AppRoute.listing(listing.id)) {
             HStack(spacing: 12) {
               Text(listing.address)
                 .font(DS.Typography.headline)
@@ -248,7 +248,7 @@ struct ListingWorkspaceSection: View {
       if isExpanded {
         VStack(spacing: 0) {
           ForEach(group.items) { item in
-            NavigationLink(value: WorkItemRef.from(item)) {
+            NavigationLink(value: AppRoute.workItem(WorkItemRef.from(item))) {
               WorkItemRow(
                 item: item,
                 claimState: .claimedByMe(user: User.mockCurrentUser), // Contextually implied "Me"

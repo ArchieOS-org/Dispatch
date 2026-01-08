@@ -13,6 +13,9 @@ struct DispatchApp: App {
 
   // MARK: Lifecycle
 
+  /// Check if running in UI test mode via launch argument
+  static let isUITesting = ProcessInfo.processInfo.arguments.contains("--uitesting")
+
   init() {
     SyncManager.shared.configure(with: sharedModelContainer)
   }
@@ -34,14 +37,21 @@ struct DispatchApp: App {
     ])
     let modelConfiguration = ModelConfiguration(
       schema: schema,
-      isStoredInMemoryOnly: false,
+      isStoredInMemoryOnly: isUITesting,
     )
 
     do {
-      return try ModelContainer(
+      let container = try ModelContainer(
         for: schema,
         configurations: [modelConfiguration],
       )
+
+      // Seed test data when running UI tests
+      if isUITesting {
+        UITestSeeder.seedIfNeeded(container: container)
+      }
+
+      return container
     } catch {
       fatalError("Could not create ModelContainer: \(error)")
     }

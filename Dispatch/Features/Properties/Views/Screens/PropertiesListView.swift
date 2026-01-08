@@ -43,7 +43,7 @@ struct PropertiesListView: View {
             SectionHeader(group.owner?.name ?? "Unknown Owner")
           },
           row: { group, property in
-            ListRowLink(value: property) {
+            ListRowLink(value: AppRoute.property(property.id)) {
               PropertyRow(property: property, owner: group.owner)
             }
           }

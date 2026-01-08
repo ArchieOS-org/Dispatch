@@ -144,7 +144,7 @@ struct ListingListView: View {
             SectionHeader(group.owner?.name ?? "Unknown Owner")
           },
           row: { group, listing in
-            ListRowLink(value: listing) {
+            ListRowLink(value: AppRoute.listing(listing.id)) {
               ListingRow(listing: listing, owner: group.owner)
             }
           }

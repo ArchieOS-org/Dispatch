@@ -13,7 +13,7 @@ import Foundation
 /// Replaces stringly-typed NotificationCenter posts.
 enum AppCommand: Equatable {
   // MARK: - Navigation
-  case navigate(Destination)
+  case navigate(AppRoute)
   case popToRoot
   case selectTab(AppTab)
 
@@ -30,14 +30,4 @@ enum AppCommand: Equatable {
 
   // MARK: - Debug
   case debugSimulateCrash
-}
-
-// MARK: - Destination
-
-/// Destination for navigation commands
-enum Destination: Hashable {
-  case listing(UUID) // ID of listing
-  case workItem(UUID) // ID of work item (Task/Activity)
-  case userProfile(UUID)
-  // Add others as needed
 }

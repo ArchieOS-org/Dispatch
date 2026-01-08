@@ -86,13 +86,7 @@ struct PropertyDetailView: View {
       // Owner and property type
       HStack {
         if let owner {
-          Text(owner.name)
-            .font(DS.Typography.bodySecondary)
-            .foregroundColor(DS.Colors.Text.primary)
-            .padding(.horizontal, DS.Spacing.md)
-            .padding(.vertical, DS.Spacing.xs)
-            .background(DS.Colors.success.opacity(0.15))
-            .clipShape(Capsule())
+          RealtorPill(user: owner)
         }
 
         Spacer()
@@ -146,7 +140,7 @@ struct PropertyDetailView: View {
       } else {
         VStack(spacing: 0) {
           ForEach(sortedListings) { listing in
-            NavigationLink(value: listing) {
+            NavigationLink(value: AppRoute.listing(listing.id)) {
               PropertyListingRow(listing: listing)
                 .padding(.vertical, DS.Spacing.xs)
             }

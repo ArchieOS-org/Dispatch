@@ -19,7 +19,7 @@ struct MenuPageView: View {
         StageCardsSection(
           stageCounts: stageCounts,
           onSelectStage: { stage in
-            appState.router.pathMain.append(Route.stagedListings(stage))
+            appState.router.path.append(.stagedListings(stage))
           },
         )
       }
@@ -27,15 +27,18 @@ struct MenuPageView: View {
       .listRowBackground(DS.Colors.Background.primary)
       .listRowSeparator(.hidden)
 
-      // MARK: - Menu Sections
+      // MARK: - Menu Sections (Tab Switches)
       ForEach(AppTab.menuTabs) { tab in
-        ListRowLink(value: tab) {
+        Button {
+          appState.dispatch(.selectTab(tab))
+        } label: {
           SidebarMenuRow(
             tab: tab,
             itemCount: count(for: tab),
             overdueCount: tab == .workspace ? overdueCount : 0
           )
         }
+        .buttonStyle(.plain)
         .listRowInsets(EdgeInsets(top: 0, leading: DS.Spacing.lg, bottom: 0, trailing: DS.Spacing.lg))
         .listRowBackground(DS.Colors.Background.primary)
         .listRowSeparator(.hidden)

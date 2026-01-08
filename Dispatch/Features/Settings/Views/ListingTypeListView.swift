@@ -19,7 +19,7 @@ struct ListingTypeListView: View {
   var body: some View {
     StandardScreen(title: "Listing Types", layout: .column, scroll: .disabled) {
       StandardList(visibleTypes) { listingType in
-        ListRowLink(value: listingType) {
+        ListRowLink(value: AppRoute.listingType(listingType.id)) {
           ListingTypeRow(listingType: listingType)
         }
       } emptyContent: {

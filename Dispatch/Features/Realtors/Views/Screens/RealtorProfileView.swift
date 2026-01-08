@@ -78,7 +78,7 @@ struct RealtorProfileView: View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
           sectionHeader("Properties (\(userProperties.count))")
           ForEach(userProperties) { property in
-            NavigationLink(value: property) {
+            NavigationLink(value: AppRoute.property(property.id)) {
               PropertyRowView(property: property)
             }
             .buttonStyle(.plain)
@@ -91,7 +91,7 @@ struct RealtorProfileView: View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
           sectionHeader("Active Listings (\(userListings.count))")
           ForEach(userListings) { listing in
-            NavigationLink(value: listing) {
+            NavigationLink(value: AppRoute.listing(listing.id)) {
               ListingRowView(listing: listing)
             }
             .buttonStyle(.plain)
@@ -104,7 +104,7 @@ struct RealtorProfileView: View {
         VStack(alignment: .leading, spacing: 0) {
           sectionHeader("Recent Activity")
           ForEach(recentActivity) { item in
-            NavigationLink(value: WorkItemRef.from(item)) {
+            NavigationLink(value: AppRoute.workItem(WorkItemRef.from(item))) {
               WorkItemRow(
                 item: item,
                 claimState: item.claimState(currentUserId: actions.currentUserId, userLookup: actions.userLookup),

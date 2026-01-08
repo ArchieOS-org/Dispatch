@@ -17,7 +17,7 @@ struct SettingsView: View {
   var body: some View {
     StandardScreen(title: "Settings", layout: .column, scroll: .disabled) {
       StandardList([SettingsSection.listingTypes]) { section in
-        ListRowLink(value: section) {
+        ListRowLink(value: AppRoute.settings(section)) {
           SettingsRow(section: section)
         }
       }
