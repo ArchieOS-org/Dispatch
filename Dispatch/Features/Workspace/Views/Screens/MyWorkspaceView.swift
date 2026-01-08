@@ -189,29 +189,27 @@ struct ListingWorkspaceSection: View {
     VStack(spacing: 0) {
       // Header - Split into two distinct tap zones
       HStack(spacing: 0) {
-        // ZONE 1: Chevron - Expand/Collapse toggle (wider zone for miss tolerance)
+        // ZONE 1: Chevron - 44pt hit target, shifted left into gutter
         Button {
           withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
             isExpanded.toggle()
           }
         } label: {
-          HStack(spacing: 0) {
-            Image(systemName: "chevron.right")
-              .font(.system(size: 14, weight: .bold))
-              .foregroundStyle(DS.Colors.Text.tertiary)
-              .rotationEffect(.degrees(isExpanded ? 90 : 0))
-            Spacer()
-          }
-          .frame(width: 56, height: 44) // 56pt width absorbs near-misses
-          .contentShape(Rectangle())
+          Image(systemName: "chevron.right")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(DS.Colors.Text.tertiary)
+            .rotationEffect(.degrees(isExpanded ? 90 : 0))
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .padding(.leading, -20) // Shift 20pt left into the 24pt gutter (44 - 24 = 20)
         #if os(iOS)
         .sensoryFeedback(.impact(flexibility: .soft), trigger: isExpanded)
         #endif
         .accessibilityLabel(chevronAccessibilityLabel)
 
-        // ZONE 2: Listing Info - Navigation to detail
+        // ZONE 2: Listing Info - naturally starts at 24pt line (aligned with checkboxes)
         if let listing = group.listing {
           NavigationLink(value: listing) {
             HStack(spacing: 12) {
@@ -224,7 +222,6 @@ struct ListingWorkspaceSection: View {
 
               ProgressCircle(progress: listing.progress, size: 18)
             }
-            .padding(.leading, 6) // Subtle spacing telegraphs separation
             .frame(maxWidth: .infinity)
             .frame(minHeight: 44)
             .contentShape(Rectangle())
@@ -233,19 +230,19 @@ struct ListingWorkspaceSection: View {
           .accessibilityLabel(listing.address)
           .accessibilityHint("Opens listing details")
         } else {
-          // General/Unassigned - chevron works, row does nothing (consistent)
+          // General/Unassigned
           HStack(spacing: 12) {
             Text("General / Unassigned")
               .font(DS.Typography.headline)
               .foregroundStyle(DS.Colors.Text.primary)
             Spacer()
           }
-          .padding(.leading, 6)
           .frame(maxWidth: .infinity)
           .frame(minHeight: 44)
           .accessibilityHint("No listing details")
         }
       }
+      .padding(.leading, DS.Spacing.workItemRowIndent) // Same 24pt indent as work items
 
       // Items
       if isExpanded {
