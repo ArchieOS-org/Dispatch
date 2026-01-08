@@ -74,7 +74,14 @@ struct ClaimEventDTO: Codable, Sendable {
     if let type = ParentType(rawValue: parentType) {
       resolvedParentType = type
     } else {
-      debugLog.log("⚠️ Invalid parentType '\(parentType)' for ClaimEvent \(id), defaulting to .task", category: .sync)
+      #if DEBUG
+      Task { @MainActor in
+        debugLog.log(
+          "⚠️ Invalid parentType '\(parentType)' for ClaimEvent \(id), defaulting to .task",
+          category: .sync
+        )
+      }
+      #endif
       resolvedParentType = .task
     }
 
@@ -82,7 +89,14 @@ struct ClaimEventDTO: Codable, Sendable {
     if let act = ClaimAction(rawValue: action) {
       resolvedAction = act
     } else {
-      debugLog.log("⚠️ Invalid action '\(action)' for ClaimEvent \(id), defaulting to .claimed", category: .sync)
+      #if DEBUG
+      Task { @MainActor in
+        debugLog.log(
+          "⚠️ Invalid action '\(action)' for ClaimEvent \(id), defaulting to .claimed",
+          category: .sync
+        )
+      }
+      #endif
       resolvedAction = .claimed
     }
 
