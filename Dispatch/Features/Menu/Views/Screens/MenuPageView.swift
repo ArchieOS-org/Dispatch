@@ -27,10 +27,10 @@ struct MenuPageView: View {
       .listRowBackground(DS.Colors.Background.primary)
       .listRowSeparator(.hidden)
 
-      // MARK: - Menu Sections (Tab Switches)
+      // MARK: - Menu Sections (Push Navigation)
       ForEach(AppTab.menuTabs) { tab in
         Button {
-          appState.dispatch(.selectTab(tab))
+          appState.router.path.append(route(for: tab))
         } label: {
           SidebarMenuRow(
             tab: tab,
@@ -105,6 +105,18 @@ struct MenuPageView: View {
     case .listings: activeListings.count
     case .realtors: activeRealtors.count
     case .settings, .search: 0
+    }
+  }
+
+  /// Maps menu tabs to navigation routes for push navigation
+  private func route(for tab: AppTab) -> AppRoute {
+    switch tab {
+    case .workspace: .workspace
+    case .properties: .propertiesList
+    case .listings: .listingsList
+    case .realtors: .realtorsList
+    case .settings: .settingsRoot
+    case .search: .workspace // Search is overlay, shouldn't be pushed
     }
   }
 

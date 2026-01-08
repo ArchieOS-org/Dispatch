@@ -29,6 +29,8 @@ struct SidebarMenuRow: View {
         .symbolRenderingMode(.hierarchical)
         .font(.system(size: 16, weight: .medium))
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .contentShape(Rectangle())
     .tag(tab)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabelText)

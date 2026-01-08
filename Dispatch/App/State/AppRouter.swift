@@ -29,7 +29,14 @@ enum AppRoute: Hashable, Sendable {
   case workItem(WorkItemRef)
   case settings(SettingsSection)
   case stagedListings(ListingStage)
-  // NOTE: No .tab case - tabs use TabView(selection:), not NavigationLink
+
+  // Tab destinations (for iPhone push navigation from menu)
+  // On iPad/Mac these are shown via sidebar selection, but iPhone needs to push them
+  case workspace
+  case propertiesList
+  case listingsList
+  case realtorsList
+  case settingsRoot
 }
 
 // MARK: - AppRouter

@@ -28,10 +28,6 @@ struct AppDestinationsModifier: ViewModifier {
       .navigationDestination(for: AppRoute.self) { route in
         routeDestination(for: route)
       }
-      // MARK: - iPhone Menu Navigation (AppTab for menu cards)
-      .navigationDestination(for: AppTab.self) { tab in
-        menuDestination(for: tab)
-      }
       // PROBE: Signal that registry is active
       .environment(\.destinationsAttached, true)
   }
@@ -73,24 +69,18 @@ struct AppDestinationsModifier: ViewModifier {
       settingsDestination(for: section)
     case .stagedListings(let stage):
       StagedListingsView(stage: stage)
-    }
-  }
 
-  @ViewBuilder
-  private func menuDestination(for tab: AppTab) -> some View {
-    switch tab {
+    // Tab destinations (iPhone push navigation from menu)
     case .workspace:
       MyWorkspaceView()
-    case .properties:
+    case .propertiesList:
       PropertiesListView()
-    case .listings:
+    case .listingsList:
       ListingListView()
-    case .realtors:
+    case .realtorsList:
       RealtorsListView()
-    case .settings:
+    case .settingsRoot:
       SettingsView()
-    case .search:
-      EmptyView() // Search is overlay, not push destination
     }
   }
 
