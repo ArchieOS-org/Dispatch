@@ -53,8 +53,8 @@ final class SyncRelationshipTests: XCTestCase {
             id: listingId,
             address: "123 Main St",
             city: nil, province: nil, postalCode: nil, country: nil, price: nil, mlsNumber: nil,
-            listingType: "sale", status: "active",
-            ownedBy: userId, // Points to user
+            listingType: "sale", status: "active", stage: nil,
+            ownedBy: userId, propertyId: nil, // Points to user
             createdVia: "dispatch", sourceSlackMessages: nil,
             activatedAt: nil, pendingAt: nil, closedAt: nil, deletedAt: nil, dueDate: nil,
             createdAt: Date(), updatedAt: Date()
