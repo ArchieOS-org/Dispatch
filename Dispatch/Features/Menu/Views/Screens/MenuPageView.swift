@@ -32,8 +32,8 @@ struct MenuPageView: View {
         NavigationLink(value: tab) {
           SidebarMenuRow(
             tab: tab,
-            count: count(for: tab),
-            overdueCount: tab == .workspace ? overdueCount : 0,
+            itemCount: count(for: tab),
+            overdueCount: tab == .workspace ? overdueCount : 0
           )
         }
         .listRowInsets(EdgeInsets(top: 0, leading: DS.Spacing.lg, bottom: 0, trailing: DS.Spacing.lg))

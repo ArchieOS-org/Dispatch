@@ -32,7 +32,7 @@ struct StageCardsSection: View {
       .live: 12,
       .sold: 8,
       .reList: 2,
-      .done: 45,
+      .done: 45
     ],
     onSelectStage: { _ in },
   )

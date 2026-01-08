@@ -63,7 +63,7 @@ struct StageCard: View {
       .padding(DS.Spacing.StageCards.cardPadding)
       .frame(maxWidth: .infinity, alignment: .leading)
       .frame(minHeight: DS.Spacing.StageCards.cardMinHeight)
-      .background(DS.Colors.Fill.stageCard(stage))
+      .background(stage.cardFillColor)
       .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusCard, style: .continuous))
       .contentShape(Rectangle())
     }
@@ -76,11 +76,11 @@ struct StageCard: View {
   // MARK: Private
 
   private var stageColor: Color {
-    DS.Colors.Stage.color(for: stage)
+    stage.color
   }
 
   private var stageIcon: String {
-    DS.Icons.Stage.icon(for: stage)
+    stage.icon
   }
 
   private var shouldHideCount: Bool {
@@ -112,12 +112,12 @@ struct StageCard: View {
   LazyVGrid(
     columns: [
       GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing),
-      GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing),
+      GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing)
     ],
     spacing: DS.Spacing.StageCards.gridSpacing,
   ) {
     ForEach(ListingStage.allCases.sorted(by: { $0.sortOrder < $1.sortOrder }), id: \.self) { stage in
-      StageCard(stage: stage, count: stage == .done ? 45 : Int.random(in: 0...15)) { }
+      StageCard(stage: stage, count: stage == .done ? 45 : Int.random(in: 0 ... 15)) { }
     }
   }
   .padding()
@@ -127,7 +127,7 @@ struct StageCard: View {
   LazyVGrid(
     columns: [
       GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing),
-      GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing),
+      GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing)
     ],
     spacing: DS.Spacing.StageCards.gridSpacing,
   ) {

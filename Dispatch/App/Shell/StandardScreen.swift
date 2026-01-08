@@ -161,7 +161,7 @@ private struct StandardScreenPreviewContent: View {
       Divider()
 
       VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-        ForEach(0..<60) { i in
+        ForEach(0 ..< 60) { i in
           HStack {
             Text("Row \(i + 1)")
               .font(DS.Typography.body)

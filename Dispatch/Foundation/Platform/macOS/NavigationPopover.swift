@@ -114,7 +114,7 @@ struct NavigationPopover: View {
           .navigation(title: "Inbox", icon: "tray", tab: .workspace, badgeCount: inboxCount),
           .navigation(title: "Today", icon: "star.fill", tab: .workspace, badgeCount: todayCount),
           .navigation(title: "Listings", icon: "building.2", tab: .listings, badgeCount: nil),
-          .navigation(title: "Realtors", icon: DS.Icons.Entity.realtor, tab: .realtors, badgeCount: nil),
+          .navigation(title: "Realtors", icon: DS.Icons.Entity.realtor, tab: .realtors, badgeCount: nil)
         ]
 
         ForEach(items) { item in

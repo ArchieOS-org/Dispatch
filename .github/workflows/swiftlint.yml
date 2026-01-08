@@ -1,15 +1,11 @@
-# SwiftLint + SwiftFormat Workflow
-# Runs linting, formatting checks, and design import gating
+# Lint & Format Workflow
+# Uses pinned tool versions identical to local CI Mirror
 
 name: Lint & Format
 
 on:
   push:
   pull_request:
-
-env:
-  SWIFTFORMAT_MIN_VERSION: "0.54.6"
-  SWIFTLINT_MIN_VERSION: "0.57.0"
 
 jobs:
   lint-format:
@@ -20,52 +16,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache Homebrew
+      - name: Cache Tools
         uses: actions/cache@v4
         with:
-          path: ~/Library/Caches/Homebrew
-          key: ${{ runner.os }}-brew-swiftformat-${{ env.SWIFTFORMAT_MIN_VERSION }}-swiftlint-${{ env.SWIFTLINT_MIN_VERSION }}
+          path: tools
+          key: tools-v1-${{ hashFiles('scripts/install_tools.sh', 'tools/checksums.txt') }}
 
-      - name: Install tools + print versions
+      - name: Install Tools
+        run: ./scripts/install_tools.sh
+
+      - name: Diagnostics
         run: |
-          brew install swiftformat swiftlint
+          echo "SwiftFormat: $(./tools/swiftformat --version)"
+          echo "SwiftLint: $(./tools/swiftlint version)"
 
-          swiftformat --version
-          swiftlint version
-
-      - name: Lint
+      - name: Validate SwiftFormat Config
         run: |
-          if swiftlint lint --help | grep -q -- '--path'; then
-            swiftlint lint --strict --path Dispatch --config .swiftlint.yml
-          else
-            swiftlint lint --strict Dispatch --config .swiftlint.yml
+          ./tools/swiftformat --lint --config .swiftformat.ci --dryrun Dispatch 2>&1 | tee /tmp/sf-validate.log
+          if grep -qiE "unknown (rule|option)" /tmp/sf-validate.log; then
+            echo "Error: .swiftformat.ci contains unsupported rules"
+            exit 1
           fi
 
-      - name: Check Formatting
-        run: |
-          echo "SwiftFormat binary: $(which swiftformat)"
-          swiftformat --version
+      - name: SwiftLint
+        run: ./tools/swiftlint lint --strict Dispatch --config .swiftlint.yml
 
-          cat .swiftformat.airbnb .swiftformat \
-            | grep -vE 'prefer-synthesized-init-for-internal-structs|wrapFunctionBodies|wrapPropertyBodies|testSuiteAccessControl|validateTestCases|simplifyGenericConstraints' \
-            > .swiftformat.ci
+      - name: SwiftFormat
+        run: ./tools/swiftformat Dispatch --lint --config .swiftformat.ci
 
-          swiftformat Dispatch --lint --config .swiftformat.ci || {
-            echo "---- .swiftformat.ci ----"
-            sed -n '1,220p' .swiftformat.ci
-            exit 1
-          }
-
-      - name: Gate Design imports
+      - name: Design Gate
         run: |
           DOMAIN_TYPES='\b(User|Priority|Role|ClaimState|AppState|Listing|TaskItem|Activity|WorkItem)\b'
           FORBIDDEN_IMPORTS='^import\s+(Features|SharedUI)\b'
-
           VIOLATIONS=$(grep -rEn --include="*.swift" -E "(${FORBIDDEN_IMPORTS}|${DOMAIN_TYPES})" Dispatch/Design || true)
-
           if [ -n "$VIOLATIONS" ]; then
-            echo "❌ Design/ contains domain imports or types:"
+            echo "Error: Design/ contains domain imports or types:"
             echo "$VIOLATIONS"
             exit 1
           fi
-          echo "✅ Design/ is clean of domain dependencies"
+          echo "Design/ is clean"

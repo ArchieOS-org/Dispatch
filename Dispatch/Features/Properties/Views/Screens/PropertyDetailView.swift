@@ -59,7 +59,7 @@ struct PropertyDetailView: View {
       },
       OverflowMenu.Action(id: "delete", title: "Delete Property", icon: DS.Icons.Action.delete, role: .destructive) {
         showDeleteAlert = true
-      },
+      }
     ]
   }
 
@@ -196,7 +196,7 @@ private struct PropertyListingRow: View {
     HStack(spacing: DS.Spacing.md) {
       // Stage indicator
       Circle()
-        .fill(DS.Colors.Stage.color(for: listing.stage))
+        .fill(listing.stage.color)
         .frame(width: 10, height: 10)
 
       VStack(alignment: .leading, spacing: 2) {
@@ -214,10 +214,10 @@ private struct PropertyListingRow: View {
       // Stage pill
       Text(listing.stage.displayName)
         .font(DS.Typography.caption)
-        .foregroundColor(DS.Colors.Stage.color(for: listing.stage))
+        .foregroundColor(listing.stage.color)
         .padding(.horizontal, DS.Spacing.sm)
         .padding(.vertical, DS.Spacing.xxs)
-        .background(DS.Colors.Stage.color(for: listing.stage).opacity(0.15))
+        .background(listing.stage.color.opacity(0.15))
         .clipShape(Capsule())
 
       Image(systemName: "chevron.right")

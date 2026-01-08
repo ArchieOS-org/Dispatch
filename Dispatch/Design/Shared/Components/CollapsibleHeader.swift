@@ -156,11 +156,13 @@ struct CollapsibleHeaderScrollView<Header: View, Content: View>: View {
       title: "Work Item Title",
       scrollOffset: offset,
     ) {
-      PriorityDot(priority: .high)
+      Circle()
+        .fill(DS.Colors.PriorityColors.high)
+        .frame(width: DS.Spacing.priorityDotSize, height: DS.Spacing.priorityDotSize)
     }
   } content: {
     VStack(spacing: DS.Spacing.md) {
-      ForEach(0..<20, id: \.self) { index in
+      ForEach(0 ..< 20, id: \.self) { index in
         Text("Content row \(index + 1)")
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding()

@@ -123,7 +123,7 @@ struct SubtasksList: View {
     Subtask(title: "Research the topic", completed: true, parentType: .task, parentId: UUID()),
     Subtask(title: "Write the first draft", completed: true, parentType: .task, parentId: UUID()),
     Subtask(title: "Review and edit", parentType: .task, parentId: UUID()),
-    Subtask(title: "Final submission", parentType: .task, parentId: UUID()),
+    Subtask(title: "Final submission", parentType: .task, parentId: UUID())
   ]
 
   return ScrollView {
@@ -152,7 +152,7 @@ struct SubtasksList: View {
           Subtask(title: "Research the topic", completed: true, parentType: .task, parentId: UUID()),
           Subtask(title: "Write the first draft", completed: true, parentType: .task, parentId: UUID()),
           Subtask(title: "Review and edit", completed: true, parentType: .task, parentId: UUID()),
-          Subtask(title: "Final submission", completed: true, parentType: .task, parentId: UUID()),
+          Subtask(title: "Final submission", completed: true, parentType: .task, parentId: UUID())
         ],
         onToggle: { _ in },
       )

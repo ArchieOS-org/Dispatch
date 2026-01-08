@@ -40,8 +40,8 @@ enum AudienceLens: String, CaseIterable {
   var icon: String {
     switch self {
     case .all: DS.Icons.Navigation.filter
-    case .admin: DS.Icons.Role.admin
-    case .marketing: DS.Icons.Role.marketing
+    case .admin: DS.Icons.RoleIcons.admin
+    case .marketing: DS.Icons.RoleIcons.marketing
     }
   }
 

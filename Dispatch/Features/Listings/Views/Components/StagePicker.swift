@@ -53,7 +53,7 @@ struct StagePicker: View {
   @ViewBuilder
   private func stageButton(for stageOption: ListingStage) -> some View {
     let isSelected = stage == stageOption
-    let stageColor = DS.Colors.Stage.color(for: stageOption)
+    let stageColor = stageOption.color
 
     Button {
       withAnimation(.snappy(duration: 0.2)) {
@@ -62,7 +62,7 @@ struct StagePicker: View {
       }
     } label: {
       HStack(spacing: DS.Spacing.xs) {
-        Image(systemName: DS.Icons.Stage.icon(for: stageOption))
+        Image(systemName: stageOption.icon)
           .font(.system(size: 12, weight: .medium))
         Text(stageOption.displayName)
           .font(DS.Typography.caption)

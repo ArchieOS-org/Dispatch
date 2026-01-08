@@ -40,7 +40,7 @@ final class PreviewContext: ObservableObject {
       Note.self,
       ClaimEvent.self,
       ListingTypeDefinition.self,
-      ActivityTemplate.self,
+      ActivityTemplate.self
     ])
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     do {

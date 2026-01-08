@@ -132,7 +132,7 @@ struct WorkItemDetailView: View {
             PriorityDot(priority: item.priority)
             Text(item.priority.rawValue.capitalized)
               .font(DS.Typography.body)
-              .foregroundColor(DS.Colors.PriorityColors.color(for: item.priority))
+              .foregroundColor(item.priority.color)
           }
         }
 

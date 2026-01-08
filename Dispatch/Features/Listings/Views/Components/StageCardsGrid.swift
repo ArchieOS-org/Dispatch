@@ -31,7 +31,7 @@ struct StageCardsGrid: View {
 
   private let columns = [
     GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing),
-    GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing),
+    GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing)
   ]
 
 }
@@ -46,7 +46,7 @@ struct StageCardsGrid: View {
       .live: 12,
       .sold: 8,
       .reList: 2,
-      .done: 45,
+      .done: 45
     ],
     onSelectStage: { _ in },
   )

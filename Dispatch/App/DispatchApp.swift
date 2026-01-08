@@ -30,7 +30,7 @@ struct DispatchApp: App {
       StatusChange.self,
       ClaimEvent.self,
       ListingTypeDefinition.self,
-      ActivityTemplate.self,
+      ActivityTemplate.self
     ])
     let modelConfiguration = ModelConfiguration(
       schema: schema,

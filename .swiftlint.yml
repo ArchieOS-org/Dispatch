@@ -11,7 +11,6 @@ included:
 excluded:
   - Dispatch.xcodeproj
   - DispatchUITests
-  - Dispatch/Views/Deprecated
   - Dispatch/Assets.xcassets
   - .build
   - DerivedData

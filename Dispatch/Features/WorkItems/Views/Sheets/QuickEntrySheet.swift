@@ -117,7 +117,7 @@ struct QuickEntrySheet: View {
             ForEach(Priority.allCases, id: \.self) { priority in
               HStack {
                 Circle()
-                  .fill(DS.Colors.PriorityColors.color(for: priority))
+                  .fill(priority.color)
                   .frame(width: DS.Spacing.priorityDotSize, height: DS.Spacing.priorityDotSize)
                 Text(priority.rawValue.capitalized)
               }

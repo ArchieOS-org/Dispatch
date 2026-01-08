@@ -118,7 +118,7 @@ struct ListingDetailView: View {
       },
       OverflowMenu.Action(id: "delete", title: "Delete Listing", icon: DS.Icons.Action.delete, role: .destructive) {
         showDeleteListingAlert = true
-      },
+      }
     ]
   }
 

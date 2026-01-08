@@ -28,16 +28,6 @@ extension DS {
 
       /// Offline state
       static let offline = "icloud.slash"
-
-      /// Returns the appropriate icon for a sync status
-      static func icon(for status: SyncStatus) -> String {
-        switch status {
-        case .idle: idle
-        case .syncing: syncing
-        case .ok: ok
-        case .error: error
-        }
-      }
     }
 
     /// Icons for task and activity status states
@@ -53,26 +43,6 @@ extension DS {
 
       /// Deleted task
       static let deleted = "trash.circle"
-
-      /// Returns the appropriate icon for a task status
-      static func icon(for status: TaskStatus) -> String {
-        switch status {
-        case .open: open
-        case .inProgress: inProgress
-        case .completed: completed
-        case .deleted: deleted
-        }
-      }
-
-      /// Returns the appropriate icon for an activity status
-      static func icon(for status: ActivityStatus) -> String {
-        switch status {
-        case .open: open
-        case .inProgress: inProgress
-        case .completed: completed
-        case .deleted: deleted
-        }
-      }
     }
 
     /// Icons for work item claim states
@@ -88,15 +58,6 @@ extension DS {
 
       /// Release claim action
       static let release = "person.badge.minus"
-
-      /// Returns the appropriate icon for a claim state
-      static func icon(for state: ClaimState) -> String {
-        switch state {
-        case .unclaimed: unclaimed
-        case .claimedByMe: claimed
-        case .claimedByOther: claimedByOther
-        }
-      }
     }
 
     /// Icons for common user actions
@@ -179,40 +140,40 @@ extension DS {
 
     /// Icons representing different entity types
     enum Entity {
-      /// Task entity
+      /// Task item
       static let task = "checkmark.square"
 
-      /// Task entity filled
+      /// Task item filled
       static let taskFill = "checkmark.square.fill"
 
-      /// Activity entity
+      /// Calendar event
       static let activity = "calendar"
 
-      /// Activity entity filled
+      /// Calendar event filled
       static let activityFill = "calendar.circle.fill"
 
-      /// Listing/Property entity
+      /// Property/house icon
       static let listing = "house"
 
-      /// Listing entity filled
+      /// Property/house icon filled
       static let listingFill = "house.fill"
 
-      /// Property entity
+      /// Map pin location
       static let property = "mappin.and.ellipse"
 
-      /// Property entity filled
+      /// Map pin location filled
       static let propertyFill = "mappin.and.ellipse.fill"
 
-      /// Note entity
+      /// Note item
       static let note = "note.text"
 
-      /// Subtask entity
+      /// Subtask item
       static let subtask = "checklist"
 
-      /// User entity
+      /// Person icon
       static let user = "person.circle"
 
-      /// User entity filled
+      /// Person icon filled
       static let userFill = "person.circle.fill"
 
       /// Team/Group
@@ -221,7 +182,7 @@ extension DS {
       /// Team filled
       static let teamFill = "person.2.fill"
 
-      /// Realtor entity
+      /// Real estate agent
       static let realtor = "person.text.rectangle"
     }
 
@@ -289,21 +250,21 @@ extension DS {
     }
 
     /// Icons for user roles/audiences
-    enum Role {
-      /// Admin role
+    enum RoleIcons {
+      /// Admin indicator
       static let admin = "a.circle"
 
-      /// Admin role filled
+      /// Admin indicator filled
       static let adminFill = "a.circle.fill"
 
-      /// Marketing role
+      /// Marketing indicator
       static let marketing = "m.circle"
 
-      /// Marketing role filled
+      /// Marketing indicator filled
       static let marketingFill = "m.circle.fill"
     }
 
-    /// Icons for listing lifecycle stages
+    /// Icons for lifecycle stages
     enum Stage {
       static let pending = "clock"
       static let workingOn = "hammer"
@@ -311,18 +272,6 @@ extension DS {
       static let sold = "dollarsign.circle"
       static let reList = "arrow.clockwise"
       static let done = "checkmark.circle"
-
-      /// Returns the appropriate icon for a listing stage
-      static func icon(for stage: ListingStage) -> String {
-        switch stage {
-        case .pending: pending
-        case .workingOn: workingOn
-        case .live: live
-        case .sold: sold
-        case .reList: reList
-        case .done: done
-        }
-      }
     }
 
     /// Icons for time and date related elements

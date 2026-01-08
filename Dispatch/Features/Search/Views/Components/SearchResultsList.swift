@@ -102,7 +102,7 @@ struct SearchResultsList: View {
         let navigationItems: [SearchResult] = [
           .navigation(title: "My Workspace", icon: "briefcase", tab: .workspace),
           .navigation(title: "Realtors", icon: DS.Icons.Entity.realtor, tab: .realtors),
-          .navigation(title: "Listings", icon: DS.Icons.Entity.listing, tab: .listings),
+          .navigation(title: "Listings", icon: DS.Icons.Entity.listing, tab: .listings)
         ]
 
         ForEach(navigationItems) { result in
@@ -169,7 +169,7 @@ struct SearchResultsList: View {
       dueDate: nil,
       priority: .medium,
       declaredBy: UUID(),
-    ),
+    )
   ]
 
   let activities = [

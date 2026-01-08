@@ -270,7 +270,7 @@ private struct NoteComposer: View {
 
 // MARK: - Previews
 
-private let previewNotes: [Note] = (0..<3).map { i in
+private let previewNotes: [Note] = (0 ..< 3).map { i in
   Note(
     content: "Note \(i + 1): This is sample content for testing.",
     createdBy: UUID(),

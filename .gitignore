@@ -60,3 +60,13 @@ fastlane/test_output
 build.log
 build_output.txt
 *.log
+
+# CI Mirror artifacts
+artifacts/
+
+# Tool binaries (downloaded by install_tools.sh)
+tools/swiftformat
+tools/swiftlint
+
+# Build artifacts (all variants)
+DerivedData*/

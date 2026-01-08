@@ -110,7 +110,7 @@ final class AppCompatManager: ObservableObject {
       let result: AppCompatResult = try await supabase
         .rpc("check_version_compat", params: [
           "p_platform": platform,
-          "p_client_version": appVersion,
+          "p_client_version": appVersion
         ])
         .execute()
         .value

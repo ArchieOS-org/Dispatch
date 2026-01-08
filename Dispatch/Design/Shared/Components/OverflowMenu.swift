@@ -99,13 +99,13 @@ struct OverflowMenu: View {
 #Preview("Overflow Menu - Standard") {
   VStack(spacing: DS.Spacing.xl) {
     HStack {
-      Text("Listing Title")
+      Text("Item Title")
         .font(DS.Typography.headline)
       Spacer()
       OverflowMenu(actions: [
         OverflowMenu.Action(id: "edit", title: "Edit", icon: DS.Icons.Action.edit) { },
         OverflowMenu.Action(id: "share", title: "Share", icon: DS.Icons.Action.share) { },
-        OverflowMenu.Action(id: "delete", title: "Delete", icon: DS.Icons.Action.delete, role: .destructive) { },
+        OverflowMenu.Action(id: "delete", title: "Delete", icon: DS.Icons.Action.delete, role: .destructive) { }
       ])
     }
     .padding()

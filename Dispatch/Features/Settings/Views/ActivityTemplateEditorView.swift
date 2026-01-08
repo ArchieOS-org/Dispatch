@@ -39,7 +39,7 @@ struct ActivityTemplateEditorView: View {
           TextField("Title *", text: $title)
 
           TextField("Description", text: $templateDescription, axis: .vertical)
-            .lineLimit(3...6)
+            .lineLimit(3 ... 6)
         }
 
         // Audience Section - Chips Only

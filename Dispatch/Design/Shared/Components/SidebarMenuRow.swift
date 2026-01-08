@@ -13,7 +13,7 @@ struct SidebarMenuRow: View {
   // MARK: Internal
 
   let tab: AppTab
-  let count: Int
+  let itemCount: Int
   let overdueCount: Int
 
   var body: some View {
@@ -42,8 +42,8 @@ struct SidebarMenuRow: View {
       EmptyView()
     } else if tab == .workspace, overdueCount > 0 {
       OverduePill(count: overdueCount)
-    } else if count > 0 {
-      Text("\(count)")
+    } else if itemCount > 0 {
+      Text("\(itemCount)")
         .font(DS.Typography.caption)
         .foregroundStyle(.secondary)
     }
@@ -51,7 +51,7 @@ struct SidebarMenuRow: View {
 
   private var accessibilityLabelText: String {
     var label = tab.title
-    if count > 0 { label += ", \(count) open" }
+    if itemCount > 0 { label += ", \(itemCount) open" }
     if overdueCount > 0 { label += ", \(overdueCount) overdue" }
     return label
   }

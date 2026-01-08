@@ -15,7 +15,7 @@ struct PriorityDot: View {
 
   var body: some View {
     Circle()
-      .fill(DS.Colors.PriorityColors.color(for: priority))
+      .fill(priority.color)
       .frame(width: DS.Spacing.priorityDotSize, height: DS.Spacing.priorityDotSize)
       .accessibilityLabel("\(priority.rawValue) priority")
   }

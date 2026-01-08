@@ -99,7 +99,7 @@ struct UserAvatar: View {
       .pink,
       .teal,
       .indigo,
-      .cyan,
+      .cyan
     ]
     let index = abs(user.id.hashValue) % colors.count
     return colors[index]

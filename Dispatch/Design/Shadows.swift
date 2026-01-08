@@ -61,7 +61,7 @@ extension DS {
         gradient: Gradient(colors: [
           Color.black.opacity(0.15),
           Color.black.opacity(0.05),
-          Color.clear,
+          Color.clear
         ]),
         startPoint: .top,
         endPoint: .bottom,
@@ -74,7 +74,7 @@ extension DS {
         gradient: Gradient(colors: [
           Color.clear,
           Color.black.opacity(0.05),
-          Color.black.opacity(0.15),
+          Color.black.opacity(0.15)
         ]),
         startPoint: .top,
         endPoint: .bottom,

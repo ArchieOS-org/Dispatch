@@ -111,7 +111,7 @@ struct StagedListingsView: View {
         }
       } emptyContent: {
         ContentUnavailableView {
-          Label("No \(stage.displayName) Listings", systemImage: DS.Icons.Stage.icon(for: stage))
+          Label("No \(stage.displayName) Listings", systemImage: stage.icon)
         } description: {
           Text("Listings in this stage will appear here")
         }

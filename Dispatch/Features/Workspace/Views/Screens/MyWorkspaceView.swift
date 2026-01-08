@@ -160,7 +160,7 @@ struct MyWorkspaceView: View {
     var sortedGroups = groups.values.sorted { ($0.listing?.address ?? "") < ($1.listing?.address ?? "") }
 
     // Sort items within groups by due date
-    for i in 0..<sortedGroups.count {
+    for i in 0 ..< sortedGroups.count {
       sortedGroups[i].items.sort { ($0.dueDate ?? Date.distantFuture) < ($1.dueDate ?? Date.distantFuture) }
     }
 

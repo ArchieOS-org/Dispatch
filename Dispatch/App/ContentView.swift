@@ -306,8 +306,8 @@ struct ContentView: View {
         ForEach(AppTab.sidebarTabs) { tab in
           SidebarMenuRow(
             tab: tab,
-            count: sidebarCount(for: tab),
-            overdueCount: tab == .workspace ? sidebarOverdueCount : 0,
+            itemCount: sidebarCount(for: tab),
+            overdueCount: tab == .workspace ? sidebarOverdueCount : 0
           )
         }
 
@@ -316,8 +316,8 @@ struct ContentView: View {
 
         SidebarMenuRow(
           tab: .settings,
-          count: 0,
-          overdueCount: 0,
+          itemCount: 0,
+          overdueCount: 0
         )
       }
       .listStyle(.sidebar)
@@ -394,8 +394,8 @@ struct ContentView: View {
         ForEach(AppTab.sidebarTabs) { tab in
           SidebarMenuRow(
             tab: tab,
-            count: sidebarCount(for: tab),
-            overdueCount: tab == .workspace ? sidebarOverdueCount : 0,
+            itemCount: sidebarCount(for: tab),
+            overdueCount: tab == .workspace ? sidebarOverdueCount : 0
           )
         }
       }

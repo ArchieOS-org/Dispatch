@@ -116,21 +116,21 @@ enum WorkItem: Identifiable {
 
   var statusColor: Color {
     if isCompleted {
-      DS.Colors.Status.color(for: TaskStatus.completed)
+      TaskStatus.completed.color
     } else if isDeleted {
-      DS.Colors.Status.color(for: TaskStatus.deleted)
+      TaskStatus.deleted.color
     } else {
-      DS.Colors.Status.color(for: TaskStatus.open)
+      TaskStatus.open.color
     }
   }
 
   var statusIcon: String {
     if isCompleted {
-      DS.Icons.StatusIcons.icon(for: TaskStatus.completed)
+      TaskStatus.completed.icon
     } else if isDeleted {
-      DS.Icons.StatusIcons.icon(for: TaskStatus.deleted)
+      TaskStatus.deleted.icon
     } else {
-      DS.Icons.StatusIcons.icon(for: TaskStatus.open)
+      TaskStatus.open.icon
     }
   }
 

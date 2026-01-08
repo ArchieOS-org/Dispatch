@@ -26,16 +26,6 @@ extension DS {
       static let medium = Color.blue
       static let high = Color.orange
       static let urgent = Color.red
-
-      /// Returns the appropriate color for a priority level
-      static func color(for priority: Priority) -> Color {
-        switch priority {
-        case .low: low
-        case .medium: medium
-        case .high: high
-        case .urgent: urgent
-        }
-      }
     }
 
     /// Colors for task and activity status states
@@ -44,26 +34,6 @@ extension DS {
       static let inProgress = Color.orange
       static let completed = Color.green
       static let deleted = Color.gray.opacity(0.5)
-
-      /// Returns the appropriate color for a task status
-      static func color(for status: TaskStatus) -> Color {
-        switch status {
-        case .open: open
-        case .inProgress: inProgress
-        case .completed: completed
-        case .deleted: deleted
-        }
-      }
-
-      /// Returns the appropriate color for an activity status
-      static func color(for status: ActivityStatus) -> Color {
-        switch status {
-        case .open: open
-        case .inProgress: inProgress
-        case .completed: completed
-        case .deleted: deleted
-        }
-      }
     }
 
     /// Colors for sync state indicators
@@ -72,16 +42,6 @@ extension DS {
       static let syncing = Color.blue
       static let idle = Color.gray
       static let error = Color.red
-
-      /// Returns the appropriate color for a sync status
-      static func color(for status: SyncStatus) -> Color {
-        switch status {
-        case .idle: idle
-        case .syncing: syncing
-        case .ok: ok
-        case .error: error
-        }
-      }
     }
 
     /// Colors for work item claim states
@@ -89,15 +49,6 @@ extension DS {
       static let unclaimed = Color.gray
       static let claimedByMe = Color.green
       static let claimedByOther = Color.orange
-
-      /// Returns the appropriate color for a claim state
-      static func color(for state: ClaimState) -> Color {
-        switch state {
-        case .unclaimed: unclaimed
-        case .claimedByMe: claimedByMe
-        case .claimedByOther: claimedByOther
-        }
-      }
     }
 
     /// Semantic background colors that adapt to light/dark mode
@@ -212,14 +163,6 @@ extension DS {
       static let marketing = Color.orange
       /// Neutral gray for "all" view (unused if no ring for All)
       static let all = Color.gray
-
-      /// Returns the appropriate color for a role
-      static func color(for role: Role) -> Color {
-        switch role {
-        case .admin: admin
-        case .marketing: marketing
-        }
-      }
     }
 
     /// Colors for listing lifecycle stages
@@ -230,29 +173,6 @@ extension DS {
       static let sold = Color.blue
       static let reList = Color.purple
       static let done = Color.gray.opacity(0.6)
-
-      /// Returns the appropriate color for a listing stage
-      static func color(for stage: ListingStage) -> Color {
-        switch stage {
-        case .pending: pending
-        case .workingOn: workingOn
-        case .live: live
-        case .sold: sold
-        case .reList: reList
-        case .done: done
-        }
-      }
-    }
-
-    /// Semantic fill colors for card backgrounds.
-    /// These adapt to light/dark mode and increased contrast settings.
-    enum Fill {
-      /// Background fill for stage cards.
-      /// Uses the stage color at 12% opacity for a subtle tinted background.
-      /// Tested for contrast in light mode, dark mode, and increased contrast.
-      static func stageCard(_ stage: ListingStage) -> Color {
-        Stage.color(for: stage).opacity(0.12)
-      }
     }
 
     /// Colors for main navigation sections

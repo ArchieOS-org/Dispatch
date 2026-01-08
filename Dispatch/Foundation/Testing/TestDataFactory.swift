@@ -65,14 +65,14 @@ enum TestDataFactory {
       "Schedule home inspection",
       "Prepare condition waiver",
       "Request mortgage approval letter",
-      "Coordinate key exchange",
+      "Coordinate key exchange"
     ]
     let descriptions = [
       "Contact Stewart Title for property search",
       "Book with certified inspector - 3 hour window needed",
       "Draft waiver documents for buyer signature",
       "Follow up with TD Bank mortgage specialist",
-      "Arrange handover at closing - confirm lockbox code",
+      "Arrange handover at closing - confirm lockbox code"
     ]
 
     let titleIndex = (index - 1) % titles.count
@@ -115,14 +115,14 @@ enum TestDataFactory {
       "Open house preparation",
       "Client consultation call",
       "Offer presentation meeting",
-      "Final walkthrough inspection",
+      "Final walkthrough inspection"
     ]
     let descriptions = [
       "Show property to Smith family - interested in 2BR units",
       "Set up signage, prepare feature sheets, arrange refreshments",
       "Discuss pricing strategy and market conditions",
       "Present competing offers to seller",
-      "Pre-closing inspection with buyers",
+      "Pre-closing inspection with buyers"
     ]
     let types: [ActivityType] = [.showProperty, .other, .call, .meeting, .followUp]
     let durations: [Int] = [60, 180, 30, 90, 45] // minutes
@@ -166,7 +166,7 @@ enum TestDataFactory {
       ("456 Bloor Street East", "Toronto", "M4W 1H1"),
       ("789 Yonge Street", "Toronto", "M4Y 1Z2"),
       ("321 King Street West", "Toronto", "M5V 1J5"),
-      ("654 Bay Street", "Toronto", "M5G 2K4"),
+      ("654 Bay Street", "Toronto", "M5G 2K4")
     ]
     let prices: [Decimal] = [899_000, 1_250_000, 675_000, 2_100_000, 549_000]
     let mlsNumbers = ["W1234567", "E2345678", "C3456789", "W4567890", "C5678901"]
@@ -212,7 +212,7 @@ enum TestDataFactory {
     activitiesPerListing: Int = 2,
   ) {
     // Create users (first is realtor, rest are staff)
-    for i in 1...userCount {
+    for i in 1 ... userCount {
       createTestUser(context: context, index: i, isStaff: i > 1)
     }
 
@@ -220,15 +220,15 @@ enum TestDataFactory {
     var taskIndex = 1
     var activityIndex = 1
 
-    for i in 1...listingCount {
+    for i in 1 ... listingCount {
       let listing = createTestListing(context: context, index: i)
 
-      for _ in 1...tasksPerListing {
+      for _ in 1 ... tasksPerListing {
         createTestTask(context: context, index: taskIndex, listingId: listing.id)
         taskIndex += 1
       }
 
-      for _ in 1...activitiesPerListing {
+      for _ in 1 ... activitiesPerListing {
         createTestActivity(context: context, index: activityIndex, listingId: listing.id)
         activityIndex += 1
       }

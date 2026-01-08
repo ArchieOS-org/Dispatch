@@ -473,7 +473,7 @@ private struct ListingListPreviewContainer: View {
       Note.self,
       Subtask.self,
       StatusChange.self,
-      ClaimEvent.self,
+      ClaimEvent.self
     ], inMemory: true)
     .environmentObject(SyncManager(mode: .preview))
     .environmentObject(LensState())
