@@ -32,6 +32,7 @@ struct WorkItemRow: View {
   // New property
   var hideDueDate = false
   var hideUserTag = false
+  var hideClaimButton = false
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -125,7 +126,7 @@ struct WorkItemRow: View {
           )
         } else if case .claimedByOther = claimState {
           // Nothing - truly omit, no branch renders anything
-        } else {
+        } else if !hideClaimButton {
           // .unclaimed or .claimedByMe
           ClaimButton(
             claimState: claimState,

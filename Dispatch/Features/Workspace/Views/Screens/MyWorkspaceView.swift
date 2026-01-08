@@ -235,6 +235,7 @@ struct ListingWorkspaceSection: View {
                 onRelease: { actions.onRelease(item) },
                 onRetrySync: { },
                 hideUserTag: true,
+                hideClaimButton: true,
               )
               .workItemRowStyle()
             }
