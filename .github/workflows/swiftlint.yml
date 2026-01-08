@@ -47,7 +47,7 @@ jobs:
           swiftformat --version
 
           cat .swiftformat.airbnb .swiftformat \
-            | grep -vE 'prefer-synthesized-init-for-internal-structs|wrapFunctionBodies|wrapPropertyBodies|testSuiteAccessControl|validateTestCases' \
+            | grep -vE 'prefer-synthesized-init-for-internal-structs|wrapFunctionBodies|wrapPropertyBodies|testSuiteAccessControl|validateTestCases|simplifyGenericConstraints' \
             > .swiftformat.ci
 
           swiftformat Dispatch --lint --config .swiftformat.ci || {

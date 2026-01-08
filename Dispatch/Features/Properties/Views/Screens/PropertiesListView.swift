@@ -84,7 +84,7 @@ struct PropertiesListView: View {
     return groups.sorted { (a: PropertyGroup, b: PropertyGroup) -> Bool in
       let nameA = a.owner?.name ?? "~"
       let nameB = b.owner?.name ?? "~"
-      nameA < nameB
+      return nameA < nameB
     }
   }
 

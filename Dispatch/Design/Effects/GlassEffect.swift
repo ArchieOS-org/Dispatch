@@ -12,17 +12,26 @@ extension View {
   /// Explicitly circular - use for round buttons only.
   @ViewBuilder
   func glassCircleBackground() -> some View {
-    if #available(iOS 26.0, *) {
+    #if compiler(>=6.1)
+    if #available(iOS 26.0, macOS 26.0, *) {
       glassEffect(.regular.interactive())
     } else {
-      background(.ultraThinMaterial)
-        .clipShape(Circle())
-        .overlay {
-          Circle()
-            .strokeBorder(.white.opacity(0.2), lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+      glassCircleFallback()
     }
+    #else
+    glassCircleFallback()
+    #endif
+  }
+
+  @ViewBuilder
+  private func glassCircleFallback() -> some View {
+    background(.ultraThinMaterial)
+      .clipShape(Circle())
+      .overlay {
+        Circle()
+          .strokeBorder(.white.opacity(0.2), lineWidth: 1)
+      }
+      .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
   }
 
   /// Applies a glass effect background for sidebars and panels on macOS 26+.
@@ -31,15 +40,19 @@ extension View {
   @ViewBuilder
   func glassSidebarBackground() -> some View {
     #if os(macOS)
-    if #available(macOS 26.0, *) {
-      background {
-        Rectangle()
-          .fill(.clear)
-          .glassEffect(.regular)
+      #if compiler(>=6.1)
+      if #available(macOS 26.0, *) {
+        background {
+          Rectangle()
+            .fill(.clear)
+            .glassEffect(.regular)
+        }
+      } else {
+        background(.regularMaterial)
       }
-    } else {
+      #else
       background(.regularMaterial)
-    }
+      #endif
     #else
     background(.regularMaterial)
     #endif
