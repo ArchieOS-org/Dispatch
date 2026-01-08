@@ -148,6 +148,42 @@ jobs:
             sys.exit(1)
           PY
 
+      - name: Select scheme for platform
+        run: |
+          set -euo pipefail
+
+          # Prefer platform-specific schemes if they exist
+          CANDIDATES=("Dispatch-iOS" "Dispatch iOS" "Dispatch")
+
+          pick_scheme() {
+            local want="$1" # "iOS Simulator" or "macOS"
+            for s in "${CANDIDATES[@]}"; do
+              if xcodebuild -showdestinations -project "$PROJECT" -scheme "$s" 2>/dev/null | grep -q "$want"; then
+                echo "$s"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            SCHEME="$(pick_scheme "platform:macOS")"
+          else
+            SCHEME="$(pick_scheme "platform:iOS Simulator")"
+          fi
+
+          if [ -z "${SCHEME:-}" ]; then
+            echo "::error::No scheme found exposing required destinations for ${{ matrix.platform }}"
+            echo "Schemes:"
+            xcodebuild -list -project "$PROJECT" || true
+            echo "Destinations for default scheme (Dispatch):"
+            xcodebuild -showdestinations -project "$PROJECT" -scheme "Dispatch" || true
+            exit 1
+          fi
+
+          echo "Using scheme: $SCHEME"
+          echo "SCHEME=$SCHEME" >> "$GITHUB_ENV"
+
       - name: Set destination (macOS)
         if: matrix.platform == 'macos'
         run: echo "DESTINATION=${{ matrix.destination }}" >> "$GITHUB_ENV"

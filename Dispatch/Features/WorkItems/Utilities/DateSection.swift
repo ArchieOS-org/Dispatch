@@ -72,7 +72,7 @@ enum DateSection: String, CaseIterable, Identifiable {
   /// - Returns: Array of tuples containing section and its items, in section order
   static func sortedSections(from items: [WorkItem], referenceDate: Date = Date()) -> [(
     section: DateSection,
-    items: [WorkItem],
+    items: [WorkItem]
   )] {
     let grouped = group(items, referenceDate: referenceDate)
     return DateSection.allCases.compactMap { section in
