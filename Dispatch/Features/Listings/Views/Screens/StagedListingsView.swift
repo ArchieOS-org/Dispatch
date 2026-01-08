@@ -50,21 +50,9 @@ import SwiftUI
 extension View {
   @ViewBuilder
   fileprivate func hideDisclosureIndicator() -> some View {
-    #if os(iOS)
-    if #available(iOS 17.0, *) {
-      navigationLinkIndicatorVisibility(.hidden)
-    } else {
-      self
-    }
-    #elseif os(macOS)
-    if #available(macOS 14.0, *) {
-      navigationLinkIndicatorVisibility(.hidden)
-    } else {
-      self
-    }
-    #else
+    // navigationLinkIndicatorVisibility is not available on all CI SDKs.
+    // Keep this as a no-op for maximum toolchain compatibility.
     self
-    #endif
   }
 }
 
@@ -164,6 +152,7 @@ struct StagedListingsView: View {
 // MARK: - StagedListingsPreviewData
 
 private enum StagedListingsPreviewData {
+  @MainActor
   static func seededContainer() -> ModelContainer {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: Listing.self, User.self, configurations: config)

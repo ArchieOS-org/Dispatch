@@ -15,15 +15,9 @@ extension View {
   /// Explicitly circular - use for round buttons only.
   @ViewBuilder
   func glassCircleBackground() -> some View {
-    #if compiler(>=6.1)
-    if #available(iOS 26.0, macOS 26.0, *) {
-      glassEffect(.regular.interactive())
-    } else {
-      glassCircleFallback()
-    }
-    #else
+    // glassEffect is not available on all CI SDKs.
+    // Use material fallback until the API exists in stable toolchains everywhere.
     glassCircleFallback()
-    #endif
   }
 
   /// Applies a glass effect background for sidebars and panels on macOS 26+.
@@ -31,23 +25,9 @@ extension View {
   /// Use .regular (not .interactive) for static sidebars - less visual noise.
   @ViewBuilder
   func glassSidebarBackground() -> some View {
-    #if os(macOS)
-    #if compiler(>=6.1)
-    if #available(macOS 26.0, *) {
-      background {
-        Rectangle()
-          .fill(.clear)
-          .glassEffect(.regular)
-      }
-    } else {
-      background(.regularMaterial)
-    }
-    #else
+    // glassEffect is not available on all CI SDKs.
+    // Use material fallback for now.
     background(.regularMaterial)
-    #endif
-    #else
-    background(.regularMaterial)
-    #endif
   }
 
   // MARK: Private
