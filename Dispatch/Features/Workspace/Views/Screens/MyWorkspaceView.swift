@@ -187,38 +187,65 @@ struct ListingWorkspaceSection: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      // Header
-      Button {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-          isExpanded.toggle()
-        }
-      } label: {
-        HStack(spacing: 12) {
-          // Chevron
-          Image(systemName: "chevron.right")
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(DS.Colors.Text.tertiary)
-            .rotationEffect(.degrees(isExpanded ? 90 : 0))
-
-          if let listing = group.listing {
-            Text(listing.address)
-              .font(DS.Typography.headline)
-              .foregroundStyle(DS.Colors.Text.primary)
-
+      // Header - Split into two distinct tap zones
+      HStack(spacing: 0) {
+        // ZONE 1: Chevron - Expand/Collapse toggle (wider zone for miss tolerance)
+        Button {
+          withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            isExpanded.toggle()
+          }
+        } label: {
+          HStack(spacing: 0) {
+            Image(systemName: "chevron.right")
+              .font(.system(size: 14, weight: .bold))
+              .foregroundStyle(DS.Colors.Text.tertiary)
+              .rotationEffect(.degrees(isExpanded ? 90 : 0))
             Spacer()
+          }
+          .frame(width: 56, height: 44) // 56pt width absorbs near-misses
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        #if os(iOS)
+        .sensoryFeedback(.impact(flexibility: .soft), trigger: isExpanded)
+        #endif
+        .accessibilityLabel(chevronAccessibilityLabel)
 
-            ProgressCircle(progress: listing.progress, size: 18)
-          } else {
+        // ZONE 2: Listing Info - Navigation to detail
+        if let listing = group.listing {
+          NavigationLink(value: listing) {
+            HStack(spacing: 12) {
+              Text(listing.address)
+                .font(DS.Typography.headline)
+                .foregroundStyle(DS.Colors.Text.primary)
+                .lineLimit(1)
+
+              Spacer()
+
+              ProgressCircle(progress: listing.progress, size: 18)
+            }
+            .padding(.leading, 6) // Subtle spacing telegraphs separation
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel(listing.address)
+          .accessibilityHint("Opens listing details")
+        } else {
+          // General/Unassigned - chevron works, row does nothing (consistent)
+          HStack(spacing: 12) {
             Text("General / Unassigned")
               .font(DS.Typography.headline)
               .foregroundStyle(DS.Colors.Text.primary)
             Spacer()
           }
+          .padding(.leading, 6)
+          .frame(maxWidth: .infinity)
+          .frame(minHeight: 44)
+          .accessibilityHint("No listing details")
         }
-        .padding(.vertical, 8)
-        .contentShape(Rectangle())
       }
-      .buttonStyle(.plain)
 
       // Items
       if isExpanded {
@@ -235,7 +262,7 @@ struct ListingWorkspaceSection: View {
                 onRelease: { actions.onRelease(item) },
                 onRetrySync: { },
                 hideUserTag: true,
-                hideClaimButton: true,
+                hideClaimButton: true
               )
               .workItemRowStyle()
             }
@@ -251,6 +278,14 @@ struct ListingWorkspaceSection: View {
 
   @State private var isExpanded = true
   @EnvironmentObject private var actions: WorkItemActions
+
+  /// Contextual accessibility label includes address for VoiceOver users
+  private var chevronAccessibilityLabel: String {
+    if let listing = group.listing {
+      return isExpanded ? "Collapse \(listing.address)" : "Expand \(listing.address)"
+    }
+    return isExpanded ? "Collapse general items" : "Expand general items"
+  }
 
 }
 

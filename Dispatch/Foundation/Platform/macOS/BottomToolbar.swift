@@ -81,17 +81,8 @@ struct BottomToolbar: View {
     // Left group
     HStack(spacing: 0) {
       if let audienceBinding = audience {
-        AudienceFilterButton(
-          lens: audienceBinding.wrappedValue,
-          action: {
-            withAnimation(.snappy(duration: 0.2)) {
-              audienceBinding.wrappedValue = audienceBinding.wrappedValue.next
-            }
-          },
-        )
-        .padding(.trailing, DS.Spacing.md)
-        .transition(.opacity)
-        .id(audienceBinding.wrappedValue) // Force redraw to fix Toolbar cache issue
+        FilterMenu(audience: audienceBinding)
+          .padding(.trailing, DS.Spacing.md)
       }
 
       if let onNew {

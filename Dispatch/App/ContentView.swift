@@ -373,63 +373,86 @@ struct ContentView: View {
     }
   }
   #else
-  /// iPad: Standard NavigationSplitView sidebar with native selection
+  /// iPad: Standard NavigationSplitView sidebar with FAB overlay + toolbar FilterMenu
   private var sidebarNavigation: some View {
-    NavigationSplitView {
-      List(selection: sidebarSelection) {
-        // Stage Cards Section
-        Section {
-          StageCardsSection(
-            stageCounts: stageCounts,
-            onSelectStage: { stage in
-              appState.router.pathMain.append(Route.stagedListings(stage))
-            },
-          )
-        }
-        .listRowInsets(EdgeInsets(top: DS.Spacing.sm, leading: DS.Spacing.md, bottom: DS.Spacing.sm, trailing: DS.Spacing.md))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
-
-        // Menu Sections (visibility controlled by data)
-        ForEach(AppTab.sidebarTabs) { tab in
-          SidebarMenuRow(
-            tab: tab,
-            itemCount: sidebarCount(for: tab),
-            overdueCount: tab == .workspace ? sidebarOverdueCount : 0
-          )
-        }
-      }
-      .listStyle(.sidebar)
-      .navigationTitle("Dispatch")
-    } detail: {
-      // iPad: Unconditional Stack (One Boss Rule)
-      NavigationStack(path: $appState.router.pathMain) {
-        Group {
-          switch selectedTab {
-          case .properties:
-            PropertiesListView()
-          case .listings:
-            ListingListView()
-          case .realtors:
-            RealtorsListView()
-          case .settings:
-            SettingsView()
-          case .workspace, .search:
-            MyWorkspaceView()
+    ZStack {
+      NavigationSplitView {
+        List(selection: sidebarSelection) {
+          // Stage Cards Section
+          Section {
+            StageCardsSection(
+              stageCounts: stageCounts,
+              onSelectStage: { stage in
+                appState.router.pathMain.append(Route.stagedListings(stage))
+              },
+            )
           }
-        }
-        .appDestinations() // Registry Attached!
-        .toolbar {
-          ToolbarItem(placement: .primaryAction) {
-            AudienceFilterButton(
-              lens: appState.lensState.audience,
-              action: appState.lensState.cycleAudience,
+          .listRowInsets(EdgeInsets(top: DS.Spacing.sm, leading: DS.Spacing.md, bottom: DS.Spacing.sm, trailing: DS.Spacing.md))
+          .listRowBackground(Color.clear)
+          .listRowSeparator(.hidden)
+
+          // Menu Sections (visibility controlled by data)
+          ForEach(AppTab.sidebarTabs) { tab in
+            SidebarMenuRow(
+              tab: tab,
+              itemCount: sidebarCount(for: tab),
+              overdueCount: tab == .workspace ? sidebarOverdueCount : 0
             )
           }
         }
+        .listStyle(.sidebar)
+        .navigationTitle("Dispatch")
+      } detail: {
+        // iPad: Unconditional Stack (One Boss Rule)
+        NavigationStack(path: $appState.router.pathMain) {
+          Group {
+            switch selectedTab {
+            case .properties:
+              PropertiesListView()
+            case .listings:
+              ListingListView()
+            case .realtors:
+              RealtorsListView()
+            case .settings:
+              SettingsView()
+            case .workspace, .search:
+              MyWorkspaceView()
+            }
+          }
+          .appDestinations() // Registry Attached!
+          .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+              if appState.lensState.showFilterButton {
+                FilterMenu(audience: $appState.lensState.audience)
+              }
+            }
+          }
+        }
+      }
+      .navigationSplitViewStyle(.balanced)
+
+      // FAB overlay for iPad (filter is in toolbar, not floating)
+      iPadFABOverlay
+    }
+  }
+
+  /// iPad floating FAB overlay with proper safe area handling
+  @ViewBuilder
+  private var iPadFABOverlay: some View {
+    if appState.overlayState == .none {
+      // ZStack so spacer doesn't block FAB taps
+      ZStack(alignment: .bottomTrailing) {
+        // Spacer layer - pass through all touches
+        Color.clear.allowsHitTesting(false)
+
+        // FAB - receives taps normally
+        FloatingActionButton {
+          appState.sheetState = .quickEntry(type: nil)
+        }
+        .padding(.trailing, DS.Spacing.floatingButtonMargin)
+        .safeAreaPadding(.bottom, DS.Spacing.floatingButtonBottomInset)
       }
     }
-    .navigationSplitViewStyle(.balanced)
   }
   #endif
 

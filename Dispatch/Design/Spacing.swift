@@ -191,5 +191,27 @@ extension DS {
     /// Bottom toolbar horizontal padding
     static let bottomToolbarPadding: CGFloat = 12
 
+    // MARK: - Floating Buttons
+
+    /// Standard floating button size (44pt - Apple HIG minimum touch target)
+    static let floatingButtonSize: CGFloat = 44
+
+    /// Large floating button size for primary FAB (56pt)
+    static let floatingButtonSizeLarge: CGFloat = 56
+
+    /// Horizontal margin from screen edge to button edge
+    /// For 56pt buttons: button CENTER is 48pt from screen edge
+    static let floatingButtonMargin: CGFloat = 20
+
+    /// Vertical inset from safe area bottom to button edge
+    /// For 56pt buttons: button CENTER is 44pt above safe area (lower, Things 3-style)
+    static let floatingButtonBottomInset: CGFloat = 16
+
+    /// Icon size within standard floating buttons (44pt)
+    static let floatingButtonIconSize: CGFloat = 20
+
+    /// Icon size within large floating buttons (56pt)
+    static let floatingButtonIconSizeLarge: CGFloat = 24
+
   }
 }
