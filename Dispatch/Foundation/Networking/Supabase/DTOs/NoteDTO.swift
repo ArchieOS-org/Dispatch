@@ -11,6 +11,30 @@ struct NoteDTO: Codable, Sendable {
 
   // MARK: Lifecycle
 
+  init(
+    id: UUID,
+    content: String,
+    createdBy: UUID,
+    parentType: String,
+    parentId: UUID,
+    editedAt: Date?,
+    editedBy: UUID?,
+    createdAt: Date,
+    updatedAt: Date?,
+    deletedAt: Date?
+  ) {
+    self.id = id
+    self.content = content
+    self.createdBy = createdBy
+    self.parentType = parentType
+    self.parentId = parentId
+    self.editedAt = editedAt
+    self.editedBy = editedBy
+    self.createdAt = createdAt
+    self.updatedAt = updatedAt
+    self.deletedAt = deletedAt
+  }
+
   init(from model: Note) {
     id = model.id
     content = model.content
