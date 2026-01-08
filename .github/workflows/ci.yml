@@ -1,7 +1,7 @@
-# Dispatch iOS CI Workflow
-# Builds and tests the iOS app on pull requests and pushes to main
+# Dispatch CI Workflow
+# Builds and tests macOS + iOS + iPadOS
 
-name: iOS CI
+name: CI
 
 on:
   push:
@@ -14,27 +14,237 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Build and Test
-    runs-on: macos-15
+  build_test:
+    name: Build & Test (${{ matrix.platform }})
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos
+            runs_on: macos-15
+            destination: platform=macOS
+          - platform: iphone
+            runs_on: macos-15
+            device_preferred: iPhone 15
+            device_fallback: iPhone
+          - platform: ipad
+            runs_on: macos-15
+            device_preferred: iPad (10th generation)
+            device_fallback: iPad
 
     env:
-      SCHEME: Dispatch
       PROJECT: Dispatch.xcodeproj
-      DESTINATION: platform=iOS Simulator,name=iPhone 16,OS=18.1
+      SCHEME: Dispatch
+      DERIVED_DATA: DerivedData-${{ matrix.platform }}
+      RESULT_BUNDLE: TestResults-${{ matrix.platform }}.xcresult
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Generate Secrets.swift for CI
+        run: |
+          set -euo pipefail
+          mkdir -p Dispatch/App/Configuration
+
+          if [ -f Dispatch/App/Configuration/Secrets.swift.example ]; then
+            cp Dispatch/App/Configuration/Secrets.swift.example Dispatch/App/Configuration/Secrets.swift
+          else
+            cat > Dispatch/App/Configuration/Secrets.swift << 'EOF'
+          //
+          //  Secrets.swift (CI-generated)
+          //
+
+          import Foundation
+
+          enum Secrets {
+            static let supabaseURL = "https://ci-placeholder.supabase.co"
+            static let supabaseAnonKey = "ci-placeholder-key"
+          }
+          EOF
+          fi
+
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks | grep -E "(SDK|simulator)" || true
 
-      - name: List available simulators
-        run: xcrun simctl list devices available
+      - name: Diagnose schemes and destinations
+        run: |
+          set -euo pipefail
+          echo "== Schemes =="
+          xcodebuild -list -project "$PROJECT" || true
 
-      - name: Show Xcode version
-        run: xcodebuild -version
+          # Surface destinations for each scheme
+          for s in $(xcodebuild -list -project "$PROJECT" 2>/dev/null | awk '/Schemes:/,0 {print $1}' | tail -n +2); do
+            echo "== Destinations for scheme: $s =="
+            xcodebuild -showdestinations -project "$PROJECT" -scheme "$s" 2>/dev/null || true
+          done
+
+      - name: Diagnostics
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+          xcodebuild -list -project "$PROJECT"
+          xcrun simctl list runtimes
+          xcrun simctl list devices available
+
+      - name: Ensure iOS Simulator platform present
+        if: matrix.platform != 'macos'
+        run: |
+          SIM_PATH="$(xcode-select -p)/Platforms/iPhoneSimulator.platform"
+          if [ ! -d "$SIM_PATH" ]; then
+            echo "Missing iPhoneSimulator.platform at $SIM_PATH"
+            exit 1
+          fi
+          ls "$SIM_PATH" >/dev/null
+
+      - name: Validate scheme
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+          import sys
+
+          project = os.environ["PROJECT"]
+          scheme = os.environ["SCHEME"]
+          output = subprocess.check_output(["xcodebuild", "-list", "-project", project], text=True)
+
+          schemes = []
+          capture = False
+          for line in output.splitlines():
+            stripped = line.strip()
+            if stripped == "Schemes:":
+              capture = True
+              continue
+            if capture:
+              if not stripped:
+                continue
+              if line.startswith("    ") or line.startswith("\t"):
+                schemes.append(stripped)
+                continue
+              break
+
+          if scheme not in schemes:
+            available = ", ".join(schemes) if schemes else "none"
+            print(f"Scheme '{scheme}' not found. Available schemes: {available}")
+            sys.exit(1)
+
+          print(f"Using scheme: {scheme}")
+          PY
+
+      - name: Ensure iOS runtime available
+        if: matrix.platform != 'macos'
+        run: |
+          python3 - <<'PY'
+          import json
+          import subprocess
+          import sys
+
+          data = subprocess.check_output(["xcrun", "simctl", "list", "runtimes", "-j"]).decode()
+          runtimes = json.loads(data).get("runtimes", [])
+          ios = [r for r in runtimes if r.get("isAvailable") and "iOS" in r.get("name", "")]
+          if not ios:
+            print("No available iOS runtimes found on this runner.")
+            sys.exit(1)
+          PY
+
+      - name: Select scheme for platform
+        run: |
+          set -euo pipefail
+
+          # Prefer platform-specific schemes if they exist
+          CANDIDATES=("Dispatch-iOS" "Dispatch iOS" "Dispatch")
+
+          pick_scheme() {
+            local want="$1" # "iOS Simulator" or "macOS"
+            for s in "${CANDIDATES[@]}"; do
+              if xcodebuild -showdestinations -project "$PROJECT" -scheme "$s" 2>/dev/null | grep -q "$want"; then
+                echo "$s"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            SCHEME="$(pick_scheme "platform:macOS")"
+          else
+            SCHEME="$(pick_scheme "platform:iOS Simulator")"
+          fi
+
+          if [ -z "${SCHEME:-}" ]; then
+            echo "::error::No scheme found exposing required destinations for ${{ matrix.platform }}"
+            echo "Schemes:"
+            xcodebuild -list -project "$PROJECT" || true
+            echo "Destinations for default scheme (Dispatch):"
+            xcodebuild -showdestinations -project "$PROJECT" -scheme "Dispatch" || true
+            exit 1
+          fi
+
+          echo "Using scheme: $SCHEME"
+          echo "SCHEME=$SCHEME" >> "$GITHUB_ENV"
+
+      - name: Set destination (macOS)
+        if: matrix.platform == 'macos'
+        run: echo "DESTINATION=${{ matrix.destination }}" >> "$GITHUB_ENV"
+
+      - name: Select simulator destination
+        if: matrix.platform != 'macos'
+        env:
+          DEVICE_PREFERRED: ${{ matrix.device_preferred }}
+          DEVICE_FALLBACK: ${{ matrix.device_fallback }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+
+          preferred = os.environ["DEVICE_PREFERRED"]
+          fallback = os.environ["DEVICE_FALLBACK"]
+
+          runtimes = json.loads(
+            subprocess.check_output(["xcrun", "simctl", "list", "runtimes", "-j"]).decode()
+          ).get("runtimes", [])
+          ios_runtime_ids = {
+            r["identifier"] for r in runtimes if r.get("isAvailable") and "iOS" in r.get("name", "")
+          }
+          if not ios_runtime_ids:
+            print("No available iOS runtimes found on this runner.")
+            sys.exit(1)
+
+          devices_by_runtime = json.loads(
+            subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"]).decode()
+          ).get("devices", {})
+
+          available = []
+          for runtime_id, devices in devices_by_runtime.items():
+            if runtime_id not in ios_runtime_ids:
+              continue
+            for device in devices:
+              if device.get("isAvailable"):
+                available.append(device)
+
+          def pick(prefix):
+            for device in available:
+              if device.get("name", "").startswith(prefix):
+                return device
+            return None
+
+          device = pick(preferred) or pick(fallback)
+          if not device:
+            print(f"No available simulator found for '{preferred}' or fallback '{fallback}'.")
+            print("Available devices:")
+            for d in available:
+              print(f"- {d.get('name')} ({d.get('udid')})")
+            sys.exit(1)
+
+          print(f"Selected simulator: {device['name']} ({device['udid']})")
+          with open(os.environ["GITHUB_ENV"], "a") as env_file:
+            env_file.write(f"DESTINATION=id={device['udid']}\n")
+          PY
 
       - name: Cache Swift Package Manager
         uses: actions/cache@v4
@@ -52,32 +262,33 @@ jobs:
             -project "$PROJECT" \
             -scheme "$SCHEME"
 
-      - name: Build
+      - name: Build & Test
         run: |
-          xcodebuild build-for-testing \
+          set -euo pipefail
+
+          SKIP_ARGS=""
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            # Skip iOS-only UI tests on macOS
+            SKIP_ARGS="-skip-testing:DispatchUITests"
+          fi
+
+          xcodebuild test \
             -project "$PROJECT" \
             -scheme "$SCHEME" \
             -destination "$DESTINATION" \
             -configuration Debug \
+            -derivedDataPath "$DERIVED_DATA" \
+            -resultBundlePath "$RESULT_BUNDLE" \
+            $SKIP_ARGS \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            | xcpretty --color && exit ${PIPESTATUS[0]}
-
-      - name: Test
-        run: |
-          xcodebuild test-without-building \
-            -project "$PROJECT" \
-            -scheme "$SCHEME" \
-            -destination "$DESTINATION" \
-            -configuration Debug \
-            -resultBundlePath TestResults.xcresult \
-            | xcpretty --color && exit ${PIPESTATUS[0]}
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Upload Test Results
+        if: always()
         uses: actions/upload-artifact@v4
-        if: failure()
         with:
-          name: test-results
-          path: TestResults.xcresult
+          name: TestResults-${{ matrix.platform }}
+          path: ${{ env.RESULT_BUNDLE }}
+          if-no-files-found: warn
           retention-days: 7

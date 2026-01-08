@@ -1,0 +1,3 @@
+# SwiftFormat overrides for Dispatch.
+# Keep Airbnb defaults but exclude untouchable paths.
+--exclude **/Assets.xcassets/**

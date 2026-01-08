@@ -9,6 +9,8 @@
 //  3. Full Lifecycle Execution (Reliability)
 //
 
+// swiftlint:disable force_unwrapping
+
 import XCTest
 import SwiftUI
 import SwiftData

@@ -14,6 +14,8 @@
 //  - Exec User: id = 00000000-0000-0000-0000-000000000003 (exec@example.com, user_type = 'exec')
 //
 
+// swiftlint:disable force_unwrapping
+
 import Testing
 import Foundation
 @testable import DispatchApp

@@ -1,5 +1,7 @@
 # SwiftLint Configuration for Dispatch
 
+parent_config: .swiftlint.airbnb.yml
+
 # Paths to include
 included:
   - Dispatch
@@ -9,6 +11,7 @@ included:
 excluded:
   - Dispatch.xcodeproj
   - DispatchUITests
+  - Dispatch/Assets.xcassets
   - .build
   - DerivedData
 

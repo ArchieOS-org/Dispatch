@@ -7,6 +7,8 @@
 //  Created by Test Generation on 2025-12-08.
 //
 
+// swiftlint:disable force_unwrapping
+
 import Testing
 import Foundation
 @testable import DispatchApp
@@ -146,7 +148,7 @@ struct TaskDTOTests {
         )
         
         let model = dto.toModel()
-        #expect(model.taskDescription == "")
+        #expect(model.taskDescription.isEmpty)
     }
     
     @Test("TaskDTO handles invalid priority gracefully")
@@ -407,7 +409,9 @@ struct ListingDTOTests {
             mlsNumber: "V9876543",
             listingType: "lease",
             status: "active",
+            stage: nil,
             ownedBy: ownedBy,
+            propertyId: nil,
             createdVia: "dispatch",
             sourceSlackMessages: nil,
             activatedAt: nil,
@@ -511,7 +515,9 @@ struct NoteDTOTests {
             parentId: parentId,
             editedAt: nil,
             editedBy: nil,
-            createdAt: Date()
+            createdAt: Date(),
+            updatedAt: nil,
+            deletedAt: nil
         )
         
         let model = dto.toModel()

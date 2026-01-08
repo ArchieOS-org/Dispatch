@@ -6,11 +6,14 @@
 //  Ensures that bursts of requests result in minimal actual sync executions.
 //
 
+import OSLog
 import XCTest
 @testable import DispatchApp
 
 @MainActor
 final class SyncCoalescingTests: XCTestCase {
+
+    private static let logger = Logger(subsystem: "Dispatch", category: "SyncCoalescingTests")
     
     func testBurstCoalescing() async throws {
         // 1. Setup isolated manager in logic-only mode
@@ -25,7 +28,7 @@ final class SyncCoalescingTests: XCTestCase {
         // 2. Trigger Burst
         // Fire 100 requests rapidly without yielding
         let burstCount = 100
-        print("Firing \(burstCount) sync requests...")
+        Self.logger.info("Firing \(burstCount) sync requests...")
         
         // Capture start runId
         // syncRunId is internal, reachable via @testable
@@ -44,7 +47,7 @@ final class SyncCoalescingTests: XCTestCase {
         let endRunId = manager.syncRunId
         let delta = endRunId - startRunId
         
-        print("Syncs executed: \(delta) (from \(burstCount) requests)")
+        Self.logger.info("Syncs executed: \(delta) (from \(burstCount) requests)")
         
         // Verification:
         // - Must be > 0 (it ran)

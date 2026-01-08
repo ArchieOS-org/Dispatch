@@ -1,24 +1,57 @@
-# SwiftLint Code Quality Workflow
-# Runs SwiftLint on pull requests to enforce code style
+# Lint & Format Workflow
+# Uses pinned tool versions identical to local CI Mirror
 
-name: SwiftLint
+name: Lint & Format
 
 on:
+  push:
   pull_request:
-    paths:
-      - '**/*.swift'
 
 jobs:
-  swiftlint:
-    name: SwiftLint
+  lint-format:
+    name: Lint & Format
     runs-on: macos-14
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install SwiftLint
-        run: brew install swiftlint
+      - name: Cache Tools
+        uses: actions/cache@v4
+        with:
+          path: tools
+          key: tools-v1-${{ hashFiles('scripts/install_tools.sh', 'tools/checksums.txt') }}
 
-      - name: Run SwiftLint
-        run: swiftlint lint --reporter github-actions-logging
+      - name: Install Tools
+        run: ./scripts/install_tools.sh
+
+      - name: Diagnostics
+        run: |
+          echo "SwiftFormat: $(./tools/swiftformat --version)"
+          echo "SwiftLint: $(./tools/swiftlint version)"
+
+      - name: Validate SwiftFormat Config
+        run: |
+          ./tools/swiftformat --lint --config .swiftformat.ci --dryrun Dispatch 2>&1 | tee /tmp/sf-validate.log
+          if grep -qiE "unknown (rule|option)" /tmp/sf-validate.log; then
+            echo "Error: .swiftformat.ci contains unsupported rules"
+            exit 1
+          fi
+
+      - name: SwiftLint
+        run: ./tools/swiftlint lint --strict Dispatch --config .swiftlint.yml
+
+      - name: SwiftFormat
+        run: ./tools/swiftformat Dispatch --lint --config .swiftformat.ci
+
+      - name: Design Gate
+        run: |
+          DOMAIN_TYPES='\b(User|Priority|Role|ClaimState|AppState|Listing|TaskItem|Activity|WorkItem)\b'
+          FORBIDDEN_IMPORTS='^import\s+(Features|SharedUI)\b'
+          VIOLATIONS=$(grep -rEn --include="*.swift" -E "(${FORBIDDEN_IMPORTS}|${DOMAIN_TYPES})" Dispatch/Design || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "Error: Design/ contains domain imports or types:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "Design/ is clean"
