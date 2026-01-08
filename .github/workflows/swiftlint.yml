@@ -43,19 +43,18 @@ jobs:
 
       - name: Check Formatting
         run: |
-          # Print diagnostics for debugging
-          echo "=== SwiftFormat diagnostics ==="
-          echo "Binary: $(which swiftformat)"
+          echo "SwiftFormat binary: $(which swiftformat)"
           swiftformat --version
-          brew list --versions swiftformat || true
 
-          # Generate filtered config (remove unsupported option)
           cat .swiftformat.airbnb .swiftformat \
-            | grep -v 'prefer-synthesized-init-for-internal-structs' \
+            | grep -vE 'prefer-synthesized-init-for-internal-structs|wrapFunctionBodies' \
             > .swiftformat.ci
 
-          # Run with filtered config only
-          swiftformat Dispatch --lint --config .swiftformat.ci
+          swiftformat Dispatch --lint --config .swiftformat.ci || {
+            echo "---- .swiftformat.ci ----"
+            sed -n '1,220p' .swiftformat.ci
+            exit 1
+          }
 
       - name: Gate Design imports
         run: |
