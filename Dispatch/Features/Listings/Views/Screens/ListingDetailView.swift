@@ -259,7 +259,7 @@ struct ListingDetailView: View {
                 onRelease: { unclaimTask(task) },
                 hideDueDate: true,
               )
-              .padding(.vertical, DS.Spacing.xs)
+              .workItemRowStyle()
             }
             .buttonStyle(.plain)
           }
@@ -333,7 +333,7 @@ struct ListingDetailView: View {
             onRelease: { unclaimActivity(activity) },
             hideDueDate: true,
           )
-          .padding(.vertical, DS.Spacing.xs)
+          .workItemRowStyle()
         }
         .buttonStyle(.plain)
       }

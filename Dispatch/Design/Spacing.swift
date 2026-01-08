@@ -83,6 +83,9 @@ extension DS {
     /// Vertical padding for list row components (compact design)
     static let listRowPadding: CGFloat = 8
 
+    /// Leading indentation for work item rows in list contexts
+    static let workItemRowIndent: CGFloat = 24
+
     /// Fixed height for the notes stack container (shows ~3 notes partially)
     static let notesStackHeight: CGFloat = 140
 

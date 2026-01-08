@@ -236,7 +236,7 @@ struct ListingWorkspaceSection: View {
                 onRetrySync: { },
                 hideUserTag: true,
               )
-              .padding(.leading, 24)
+              .workItemRowStyle()
             }
             .buttonStyle(.plain)
           }

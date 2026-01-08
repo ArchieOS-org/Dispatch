@@ -101,7 +101,7 @@ struct RealtorProfileView: View {
 
       // Recent Activity Section
       if !recentActivity.isEmpty {
-        VStack(alignment: .leading, spacing: DS.Spacing.md) {
+        VStack(alignment: .leading, spacing: 0) {
           sectionHeader("Recent Activity")
           ForEach(recentActivity) { item in
             NavigationLink(value: WorkItemRef.from(item)) {
@@ -114,6 +114,7 @@ struct RealtorProfileView: View {
                 onClaim: { actions.onClaim(item) },
                 onRelease: { actions.onRelease(item) },
               )
+              .workItemRowStyle()
             }
             .buttonStyle(.plain)
           }
