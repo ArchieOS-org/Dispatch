@@ -24,7 +24,7 @@ final class User {
     avatarHash: String? = nil,
     userType: UserType,
     createdAt: Date = Date(),
-    updatedAt: Date = Date(),
+    updatedAt: Date = Date()
   ) {
     self.id = id
     self.authId = authId

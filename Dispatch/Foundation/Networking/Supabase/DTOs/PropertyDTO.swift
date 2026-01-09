@@ -81,7 +81,7 @@ struct PropertyDTO: Codable, Sendable {
       ownedBy: ownedBy,
       createdVia: resolvedCreatedVia,
       createdAt: createdAt,
-      updatedAt: updatedAt,
+      updatedAt: updatedAt
     )
   }
 }

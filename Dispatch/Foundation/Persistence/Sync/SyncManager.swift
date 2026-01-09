@@ -919,7 +919,7 @@ final class SyncManager: ObservableObject {
   @inline(__always)
   private func isLocalAuthoritative(
     _ model: some RealtimeSyncable,
-    inFlight: Bool,
+    inFlight: Bool
   ) -> Bool {
     model.syncState == .pending || model.syncState == .failed || inFlight
   }
@@ -1408,7 +1408,7 @@ final class SyncManager: ObservableObject {
       if isLocalAuthoritative(existing, inFlight: false) {
         debugLog.log(
           "[SyncDown] Skip update for property \(dto.id) — local-authoritative (state=\(existing.syncState))",
-          category: .sync,
+          category: .sync
         )
         return
       }
@@ -1488,7 +1488,7 @@ final class SyncManager: ObservableObject {
       if isLocalAuthoritative(existing, inFlight: false) {
         debugLog.log(
           "[SyncDown] Skip update for listing \(dto.id) — local-authoritative (state=\(existing.syncState))",
-          category: .sync,
+          category: .sync
         )
         return
       }
@@ -1559,7 +1559,7 @@ final class SyncManager: ObservableObject {
       if isLocalAuthoritative(existing, inFlight: inFlightTaskIds.contains(existing.id)) {
         debugLog.log(
           "[SyncDown] Skip update for task \(dto.id) — local-authoritative (state=\(existing.syncState))",
-          category: .sync,
+          category: .sync
         )
         return
       }
@@ -1648,7 +1648,7 @@ final class SyncManager: ObservableObject {
       if isLocalAuthoritative(existing, inFlight: inFlightActivityIds.contains(existing.id)) {
         debugLog.log(
           "[SyncDown] Skip update for activity \(dto.id) — local-authoritative (state=\(existing.syncState))",
-          category: .sync,
+          category: .sync
         )
         return
       }
@@ -1957,7 +1957,7 @@ final class SyncManager: ObservableObject {
   private func upsertActivityTemplate(
     dto: ActivityTemplateDTO,
     context: ModelContext,
-    localTypes: [ListingTypeDefinition],
+    localTypes: [ListingTypeDefinition]
   ) throws {
     let descriptor = FetchDescriptor<ActivityTemplate>(predicate: #Predicate { $0.id == dto.id })
     let existing = try context.fetch(descriptor).first
@@ -2011,7 +2011,7 @@ final class SyncManager: ObservableObject {
 
     debugLog.log(
       "Sync order: Users → Properties → Listings → Tasks → Activities → ClaimEvents (FK dependencies)",
-      category: .sync,
+      category: .sync
     )
 
     // Sync in FK dependency order: Users first (owners), then Properties, then Listings, then Tasks/Activities
@@ -2081,7 +2081,7 @@ final class SyncManager: ObservableObject {
       operation: "PENDING",
       table: "users",
       count: pendingUsers.count,
-      details: "of \(allUsers.count) total",
+      details: "of \(allUsers.count) total"
     )
 
     guard !pendingUsers.isEmpty else {
@@ -2192,8 +2192,8 @@ final class SyncManager: ObservableObject {
         options: FileOptions(
           cacheControl: "3600",
           contentType: "image/jpeg",
-          upsert: true,
-        ),
+          upsert: true
+        )
       )
   }
 
@@ -2208,14 +2208,14 @@ final class SyncManager: ObservableObject {
       operation: "PENDING",
       table: "tasks",
       count: pendingTasks.count,
-      details: "of \(allTasks.count) total",
+      details: "of \(allTasks.count) total"
     )
 
     // Debug: log claimedBy value for each pending task
     for task in pendingTasks {
       debugLog.log(
         "  📋 Pending task \(task.id): claimedBy=\(task.claimedBy?.uuidString ?? "nil"), title=\(task.title)",
-        category: .sync,
+        category: .sync
       )
     }
 
@@ -2234,7 +2234,7 @@ final class SyncManager: ObservableObject {
         let dto = TaskDTO(from: task)
         debugLog.log(
           "  📤 Preparing DTO for task \(task.id): claimedBy=\(dto.claimedBy?.uuidString ?? "nil"), syncState=\(task.syncState)",
-          category: .sync,
+          category: .sync
         )
         return dto
       }
@@ -2282,7 +2282,7 @@ final class SyncManager: ObservableObject {
       operation: "PENDING",
       table: "activities",
       count: pendingActivities.count,
-      details: "of \(allActivities.count) total",
+      details: "of \(allActivities.count) total"
     )
 
     guard !pendingActivities.isEmpty else {
@@ -2339,7 +2339,7 @@ final class SyncManager: ObservableObject {
       operation: "PENDING",
       table: "notes",
       count: pendingNotes.count,
-      details: "of \(allNotes.count) total",
+      details: "of \(allNotes.count) total"
     )
 
     guard !pendingNotes.isEmpty else { return }
@@ -2391,7 +2391,7 @@ final class SyncManager: ObservableObject {
       operation: "PENDING",
       table: "properties",
       count: pendingProperties.count,
-      details: "of \(allProperties.count) total",
+      details: "of \(allProperties.count) total"
     )
 
     guard !pendingProperties.isEmpty else {
@@ -2445,7 +2445,7 @@ final class SyncManager: ObservableObject {
       operation: "PENDING",
       table: "listings",
       count: pendingListings.count,
-      details: "of \(allListings.count) total",
+      details: "of \(allListings.count) total"
     )
 
     guard !pendingListings.isEmpty else {
@@ -2499,7 +2499,7 @@ final class SyncManager: ObservableObject {
       operation: "PENDING",
       table: "claim_events",
       count: pendingClaimEvents.count,
-      details: "of \(allClaimEvents.count) total",
+      details: "of \(allClaimEvents.count) total"
     )
 
     guard !pendingClaimEvents.isEmpty else {
@@ -2553,7 +2553,7 @@ final class SyncManager: ObservableObject {
       operation: "PENDING",
       table: "listing_types",
       count: pendingTypes.count,
-      details: "of \(allTypes.count) total",
+      details: "of \(allTypes.count) total"
     )
 
     guard !pendingTypes.isEmpty else {
@@ -2606,7 +2606,7 @@ final class SyncManager: ObservableObject {
       operation: "PENDING",
       table: "activity_templates",
       count: pendingTemplates.count,
-      details: "of \(allTemplates.count) total",
+      details: "of \(allTemplates.count) total"
     )
 
     guard !pendingTemplates.isEmpty else {
@@ -2795,7 +2795,7 @@ final class SyncManager: ObservableObject {
       guard let innerPayload = event["payload"]?.objectValue else {
         debugLog.log(
           "Missing or invalid 'payload' field in broadcast event - keys: \(event.keys.joined(separator: ", "))",
-          category: .event,
+          category: .event
         )
         return
       }
@@ -2807,7 +2807,7 @@ final class SyncManager: ObservableObject {
       else {
         debugLog.log(
           "Failed to decode broadcast payload - inner keys: \(innerPayload.keys.joined(separator: ", "))",
-          category: .event,
+          category: .event
         )
         return
       }

@@ -86,13 +86,7 @@ struct PropertyDetailView: View {
       // Owner and property type
       HStack {
         if let owner {
-          Text(owner.name)
-            .font(DS.Typography.bodySecondary)
-            .foregroundColor(DS.Colors.Text.primary)
-            .padding(.horizontal, DS.Spacing.md)
-            .padding(.vertical, DS.Spacing.xs)
-            .background(DS.Colors.success.opacity(0.15))
-            .clipShape(Capsule())
+          RealtorPill(realtorID: owner.id, realtorName: owner.name)
         }
 
         Spacer()
@@ -141,12 +135,12 @@ struct PropertyDetailView: View {
         emptyStateView(
           icon: DS.Icons.Entity.listing,
           title: "No Listings",
-          message: "Listings for this property will appear here",
+          message: "Listings for this property will appear here"
         )
       } else {
         VStack(spacing: 0) {
           ForEach(sortedListings) { listing in
-            NavigationLink(value: listing) {
+            NavigationLink(value: AppRoute.listing(listing.id)) {
               PropertyListingRow(listing: listing)
                 .padding(.vertical, DS.Spacing.xs)
             }
@@ -159,13 +153,6 @@ struct PropertyDetailView: View {
         }
       }
     }
-  }
-
-  private func deleteProperty() {
-    property.deletedAt = Date()
-    property.markPending()
-    syncManager.requestSync()
-    dismiss()
   }
 
   private func emptyStateView(icon: String, title: String, message: String) -> some View {
@@ -182,6 +169,14 @@ struct PropertyDetailView: View {
     }
     .padding(.vertical, DS.Spacing.xl)
   }
+
+  private func deleteProperty() {
+    property.deletedAt = Date()
+    property.markPending()
+    syncManager.requestSync()
+    dismiss()
+  }
+
 }
 
 // MARK: - PropertyListingRow
@@ -219,10 +214,6 @@ private struct PropertyListingRow: View {
         .padding(.vertical, DS.Spacing.xxs)
         .background(listing.stage.color.opacity(0.15))
         .clipShape(Capsule())
-
-      Image(systemName: "chevron.right")
-        .font(.caption)
-        .foregroundColor(DS.Colors.Text.tertiary)
     }
     .contentShape(Rectangle())
   }
@@ -246,9 +237,9 @@ private struct PropertyListingRow: View {
       city: "Toronto",
       province: "ON",
       postalCode: "M5V 1A1",
-      ownedBy: UUID(),
+      ownedBy: UUID()
     ),
-    userLookup: { _ in User(name: "John Smith", email: "john@example.com", userType: .realtor) },
+    userLookup: { _ in User(name: "John Smith", email: "john@example.com", userType: .realtor) }
   )
   .modelContainer(for: [Property.self, Listing.self, User.self], inMemory: true)
   .environmentObject(SyncManager(mode: .preview))

@@ -16,7 +16,7 @@ struct StagePicker: View {
   init(
     stage: Binding<ListingStage>,
     horizontalInset: CGFloat = DS.Spacing.md,
-    onChange: ((ListingStage) -> Void)? = nil,
+    onChange: ((ListingStage) -> Void)? = nil
   ) {
     _stage = stage
     self.horizontalInset = horizontalInset

@@ -52,6 +52,28 @@ struct ClaimButton: View {
 
   @State private var showReleaseConfirmation = false
 
+  private var accessibilityLabel: String {
+    switch claimState {
+    case .unclaimed:
+      "Unclaimed item"
+    case .claimedByMe:
+      "Claimed by you"
+    case .claimedByOther(let user):
+      "Claimed by \(user.name)"
+    }
+  }
+
+  private var accessibilityHint: String {
+    switch claimState {
+    case .unclaimed:
+      "Double tap to claim this item"
+    case .claimedByMe:
+      "Double tap to release this item"
+    case .claimedByOther:
+      "This item is not available to claim"
+    }
+  }
+
   @ViewBuilder
   private var fullStyleBody: some View {
     switch claimState {
@@ -72,7 +94,7 @@ struct ClaimButton: View {
       .confirmationDialog(
         "Release this item?",
         isPresented: $showReleaseConfirmation,
-        titleVisibility: .visible,
+        titleVisibility: .visible
       ) {
         Button("Release", role: .destructive, action: onRelease)
         Button("Cancel", role: .cancel) { }
@@ -118,27 +140,6 @@ struct ClaimButton: View {
     }
   }
 
-  private var accessibilityLabel: String {
-    switch claimState {
-    case .unclaimed:
-      "Unclaimed item"
-    case .claimedByMe:
-      "Claimed by you"
-    case .claimedByOther(let user):
-      "Claimed by \(user.name)"
-    }
-  }
-
-  private var accessibilityHint: String {
-    switch claimState {
-    case .unclaimed:
-      "Double tap to claim this item"
-    case .claimedByMe:
-      "Double tap to release this item"
-    case .claimedByOther:
-      "This item is not available to claim"
-    }
-  }
 }
 
 // MARK: - Preview
@@ -155,7 +156,7 @@ struct ClaimButton: View {
       ClaimButton(claimState: .claimedByMe(user: User(
         name: "Current User",
         email: "me@example.com",
-        userType: .admin,
+        userType: .admin
       )))
     }
 
@@ -164,7 +165,7 @@ struct ClaimButton: View {
       ClaimButton(claimState: .claimedByOther(user: User(
         name: "Jane Smith",
         email: "jane@example.com",
-        userType: .admin,
+        userType: .admin
       )))
     }
   }
@@ -184,9 +185,9 @@ struct ClaimButton: View {
         claimState: .claimedByMe(user: User(
           name: "Current User",
           email: "me@example.com",
-          userType: .admin,
+          userType: .admin
         )),
-        style: .compact,
+        style: .compact
       )
     }
 
@@ -196,9 +197,9 @@ struct ClaimButton: View {
         claimState: .claimedByOther(user: User(
           name: "Jane Smith",
           email: "jane@example.com",
-          userType: .admin,
+          userType: .admin
         )),
-        style: .compact,
+        style: .compact
       )
     }
   }

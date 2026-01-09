@@ -44,7 +44,7 @@ struct SubtaskDTO: Codable, Sendable {
       completed: completed,
       parentType: resolvedParentType,
       parentId: parentId,
-      createdAt: createdAt,
+      createdAt: createdAt
     )
   }
 }

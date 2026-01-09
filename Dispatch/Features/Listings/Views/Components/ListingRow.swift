@@ -119,9 +119,9 @@ struct ListingRow: View {
         postalCode: "M5V 1A1",
         price: 899000,
         status: .active,
-        ownedBy: sampleUser.id,
+        ownedBy: sampleUser.id
       ),
-      owner: sampleUser,
+      owner: sampleUser
     )
 
     ListingRow(
@@ -130,18 +130,18 @@ struct ListingRow: View {
         city: "Vancouver",
         province: "BC",
         status: .pending,
-        ownedBy: sampleUser.id,
+        ownedBy: sampleUser.id
       ),
-      owner: sampleUser,
+      owner: sampleUser
     )
 
     ListingRow(
       listing: Listing(
         address: "789 Maple Road",
         status: .draft,
-        ownedBy: UUID(),
+        ownedBy: UUID()
       ),
-      owner: nil,
+      owner: nil
     )
   }
   .listStyle(.plain)

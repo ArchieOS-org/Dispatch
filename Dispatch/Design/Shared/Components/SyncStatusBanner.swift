@@ -41,7 +41,7 @@ struct SyncStatusBanner: View {
   VStack {
     SyncStatusBanner(
       message: "Sync failed. Some changes may not be saved.",
-      onRetry: { },
+      onRetry: { }
     )
 
     Spacer()

@@ -30,7 +30,7 @@ struct EditRealtorSheet: View {
       StandardScreen(
         title: userToEdit == nil ? "New Realtor" : "Edit Realtor",
         layout: .column,
-        scroll: .disabled,
+        scroll: .disabled
       ) {
         Form {
           Section {
@@ -119,7 +119,7 @@ struct EditRealtorSheet: View {
         name: name,
         email: email,
         avatar: avatarData,
-        userType: .realtor,
+        userType: .realtor
       )
       modelContext.insert(newUser)
 

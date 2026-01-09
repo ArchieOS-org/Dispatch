@@ -17,7 +17,7 @@ struct SettingsView: View {
   var body: some View {
     StandardScreen(title: "Settings", layout: .column, scroll: .disabled) {
       StandardList([SettingsSection.listingTypes]) { section in
-        NavigationLink(value: section) {
+        ListRowLink(value: AppRoute.settings(section)) {
           SettingsRow(section: section)
         }
       }
@@ -86,10 +86,6 @@ private struct SettingsRow: View {
       }
 
       Spacer()
-
-      Image(systemName: DS.Icons.Navigation.forward)
-        .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(DS.Colors.Text.tertiary)
     }
     .padding(.vertical, DS.Spacing.md)
     .contentShape(Rectangle())

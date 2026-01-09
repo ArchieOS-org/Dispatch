@@ -27,24 +27,29 @@ struct PropertiesListView: View {
   // MARK: Internal
 
   var body: some View {
-    StandardScreen(title: "Properties", layout: .column, scroll: .disabled) {
-      StandardList(groupedByOwner) { group in
-        Section(group.owner?.name ?? "Unknown Owner") {
-          ForEach(group.properties) { property in
-            NavigationLink(value: property) {
-              PropertyRow(property: property, owner: group.owner)
-            }
-          }
-        }
-      } emptyContent: {
+    StandardScreen(title: "Properties", layout: .column, scroll: .automatic) {
+      if groupedByOwner.isEmpty {
+        // Caller handles empty state
         ContentUnavailableView {
           Label("No Properties", systemImage: DS.Icons.Entity.property)
         } description: {
           Text("Properties will appear here")
         }
+      } else {
+        StandardGroupedList(
+          groupedByOwner,
+          items: { $0.properties },
+          header: { group in
+            SectionHeader(group.owner?.name ?? "Unknown Owner")
+          },
+          row: { group, property in
+            ListRowLink(value: AppRoute.property(property.id)) {
+              PropertyRow(property: property, owner: group.owner)
+            }
+          }
+        )
+        .pullToSearch() // Required: sensor is internal, modifier enables mechanism
       }
-      .pullToSearch()
-
     } toolbarContent: {
       ToolbarItem(placement: .automatic) {
         EmptyView()

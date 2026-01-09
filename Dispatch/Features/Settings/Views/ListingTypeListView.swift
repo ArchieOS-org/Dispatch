@@ -19,7 +19,7 @@ struct ListingTypeListView: View {
   var body: some View {
     StandardScreen(title: "Listing Types", layout: .column, scroll: .disabled) {
       StandardList(visibleTypes) { listingType in
-        NavigationLink(value: listingType) {
+        ListRowLink(value: AppRoute.listingType(listingType.id)) {
           ListingTypeRow(listingType: listingType)
         }
       } emptyContent: {
@@ -116,10 +116,6 @@ private struct ListingTypeRow: View {
       }
 
       Spacer()
-
-      Image(systemName: DS.Icons.Navigation.forward)
-        .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(DS.Colors.Text.tertiary)
     }
     .padding(.vertical, DS.Spacing.md)
     .contentShape(Rectangle())
@@ -173,7 +169,7 @@ private struct ListingTypeEditorSheet: View {
     let listingType = ListingTypeDefinition(
       name: name.trimmingCharacters(in: .whitespacesAndNewlines),
       isSystem: false,
-      ownedBy: currentUserId,
+      ownedBy: currentUserId
     )
     modelContext.insert(listingType)
     listingType.markPending()
@@ -191,7 +187,7 @@ private struct ListingTypeEditorSheet: View {
       id: UUID(),
       name: "Sale",
       isSystem: true,
-      position: 0,
+      position: 0
     )
     context.insert(saleType)
 
@@ -199,7 +195,7 @@ private struct ListingTypeEditorSheet: View {
       id: UUID(),
       name: "Lease",
       isSystem: true,
-      position: 1,
+      position: 1
     )
     context.insert(leaseType)
   } content: { _ in

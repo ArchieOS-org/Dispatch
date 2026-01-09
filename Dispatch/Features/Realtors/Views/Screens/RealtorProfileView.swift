@@ -78,7 +78,7 @@ struct RealtorProfileView: View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
           sectionHeader("Properties (\(userProperties.count))")
           ForEach(userProperties) { property in
-            NavigationLink(value: property) {
+            NavigationLink(value: AppRoute.property(property.id)) {
               PropertyRowView(property: property)
             }
             .buttonStyle(.plain)
@@ -91,7 +91,7 @@ struct RealtorProfileView: View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
           sectionHeader("Active Listings (\(userListings.count))")
           ForEach(userListings) { listing in
-            NavigationLink(value: listing) {
+            NavigationLink(value: AppRoute.listing(listing.id)) {
               ListingRowView(listing: listing)
             }
             .buttonStyle(.plain)
@@ -101,10 +101,10 @@ struct RealtorProfileView: View {
 
       // Recent Activity Section
       if !recentActivity.isEmpty {
-        VStack(alignment: .leading, spacing: DS.Spacing.md) {
+        VStack(alignment: .leading, spacing: 0) {
           sectionHeader("Recent Activity")
           ForEach(recentActivity) { item in
-            NavigationLink(value: WorkItemRef.from(item)) {
+            NavigationLink(value: AppRoute.workItem(WorkItemRef.from(item))) {
               WorkItemRow(
                 item: item,
                 claimState: item.claimState(currentUserId: actions.currentUserId, userLookup: actions.userLookup),
@@ -112,7 +112,7 @@ struct RealtorProfileView: View {
                 onEdit: { },
                 onDelete: { },
                 onClaim: { actions.onClaim(item) },
-                onRelease: { actions.onRelease(item) },
+                onRelease: { actions.onRelease(item) }
               )
             }
             .buttonStyle(.plain)
@@ -268,5 +268,111 @@ private struct ListingRowView: View {
     }
     .padding(.vertical, DS.Spacing.sm)
     .contentShape(Rectangle())
+  }
+}
+
+// MARK: - Previews
+
+#Preview("Realtor Profile - Full") {
+  PreviewShell(
+    setup: { context in
+      PreviewDataFactory.seed(context)
+
+      // Add a property owned by Bob
+      let property = Property(
+        address: "456 Oak Street",
+        city: "Toronto",
+        province: "ON",
+        postalCode: "M5V 1A1",
+        ownedBy: PreviewDataFactory.bobID
+      )
+      context.insert(property)
+
+      // Create a listing on the property owned by Bob
+      let listing = Listing(
+        address: "456 Oak Street",
+        status: .active,
+        ownedBy: PreviewDataFactory.bobID
+      )
+      listing.city = "Toronto"
+      listing.province = "ON"
+      listing.syncState = .synced
+      context.insert(listing)
+
+      // Assign a task to Bob
+      let task = TaskItem(
+        title: "Update Lockbox Code",
+        status: .open,
+        declaredBy: PreviewDataFactory.aliceID,
+        claimedBy: PreviewDataFactory.bobID,
+        listingId: listing.id
+      )
+      task.syncState = .synced
+      context.insert(task)
+    }
+  ) { context in
+    let bobID = PreviewDataFactory.bobID
+    let bob = try? context.fetch(
+      FetchDescriptor<User>(predicate: #Predicate { $0.id == bobID })
+    ).first
+
+    if let bob {
+      RealtorProfileView(user: bob)
+        .environmentObject(WorkItemActions(
+          currentUserId: PreviewDataFactory.aliceID,
+          userLookup: { _ in nil }
+        ))
+    }
+  }
+}
+
+#Preview("Realtor Profile - Empty") {
+  PreviewShell(
+    setup: { context in
+      // Only seed users, no properties or work items for Bob
+      let bob = User(
+        id: PreviewDataFactory.bobID,
+        name: "Bob Agent",
+        email: "bob@dispatch.com",
+        avatarHash: nil,
+        userType: .realtor
+      )
+      bob.syncState = .synced
+      context.insert(bob)
+    }
+  ) { context in
+    let bobID = PreviewDataFactory.bobID
+    let bob = try? context.fetch(
+      FetchDescriptor<User>(predicate: #Predicate { $0.id == bobID })
+    ).first
+
+    if let bob {
+      RealtorProfileView(user: bob)
+        .environmentObject(WorkItemActions(
+          currentUserId: PreviewDataFactory.aliceID,
+          userLookup: { _ in nil }
+        ))
+    }
+  }
+}
+
+#Preview("Realtor Profile - Admin User") {
+  PreviewShell(
+    setup: { context in
+      PreviewDataFactory.seed(context)
+    }
+  ) { context in
+    let aliceID = PreviewDataFactory.aliceID
+    let alice = try? context.fetch(
+      FetchDescriptor<User>(predicate: #Predicate { $0.id == aliceID })
+    ).first
+
+    if let alice {
+      RealtorProfileView(user: alice)
+        .environmentObject(WorkItemActions(
+          currentUserId: PreviewDataFactory.aliceID,
+          userLookup: { _ in nil }
+        ))
+    }
   }
 }

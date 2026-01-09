@@ -15,9 +15,13 @@ struct DispatchApp: App {
 
   init() {
     SyncManager.shared.configure(with: sharedModelContainer)
+    configureNavigationBarAppearance()
   }
 
   // MARK: Internal
+
+  /// Check if running in UI test mode via launch argument
+  static let isUITesting = ProcessInfo.processInfo.arguments.contains("--uitesting")
 
   var sharedModelContainer: ModelContainer = {
     let schema = Schema([
@@ -34,14 +38,21 @@ struct DispatchApp: App {
     ])
     let modelConfiguration = ModelConfiguration(
       schema: schema,
-      isStoredInMemoryOnly: false,
+      isStoredInMemoryOnly: isUITesting
     )
 
     do {
-      return try ModelContainer(
+      let container = try ModelContainer(
         for: schema,
-        configurations: [modelConfiguration],
+        configurations: [modelConfiguration]
       )
+
+      // Seed test data when running UI tests
+      if isUITesting {
+        UITestSeeder.seedIfNeeded(container: container)
+      }
+
+      return container
     } catch {
       fatalError("Could not create ModelContainer: \(error)")
     }
@@ -65,8 +76,8 @@ struct DispatchApp: App {
           }
         }
         .animation(.easeInOut, value: appState.authManager.isAuthenticated)
-        .animation(.easeInOut, value: SyncManager.shared.currentUser)
       }
+      .tint(DS.Colors.accent)
       // Inject Brain & Core Services globally
       .environmentObject(appState)
       .environmentObject(appState.authManager)
@@ -119,5 +130,27 @@ struct DispatchApp: App {
   #if DEBUG
   @State private var showTestHarness = false
   #endif
+
+  /// Configures navigation bar appearance to prevent title color issues during interactive transitions.
+  /// Sets all 4 appearance states so iOS never falls back to tint defaults mid-gesture.
+  private func configureNavigationBarAppearance() {
+    #if os(iOS)
+    let appearance = UINavigationBarAppearance()
+    appearance.configureWithDefaultBackground()
+
+    // Explicit title colors - don't rely on defaults during interactive gestures
+    appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
+    appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
+
+    let navBar = UINavigationBar.appearance()
+    navBar.standardAppearance = appearance
+    navBar.scrollEdgeAppearance = appearance
+    navBar.compactAppearance = appearance
+    if #available(iOS 15.0, *) {
+      navBar.compactScrollEdgeAppearance = appearance
+    }
+    // NOTE: Button tint handled by SwiftUI .tint(DS.Colors.accent) at app root
+    #endif
+  }
 
 }

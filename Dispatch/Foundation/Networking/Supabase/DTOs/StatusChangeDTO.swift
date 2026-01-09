@@ -52,7 +52,7 @@ struct StatusChangeDTO: Codable, Sendable {
       newStatus: newStatus,
       changedBy: changedBy,
       changedAt: changedAt,
-      reason: reason,
+      reason: reason
     )
   }
 }

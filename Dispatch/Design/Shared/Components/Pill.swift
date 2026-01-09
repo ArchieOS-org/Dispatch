@@ -15,7 +15,7 @@ struct Pill<Content: View>: View {
   init(
     foreground: Color = DS.Colors.Text.secondary,
     background: Color = DS.Colors.Text.tertiary.opacity(0.15),
-    @ViewBuilder content: @escaping () -> Content,
+    @ViewBuilder content: @escaping () -> Content
   ) {
     foregroundColor = foreground
     backgroundColor = background

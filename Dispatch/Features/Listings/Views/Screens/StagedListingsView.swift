@@ -23,6 +23,8 @@ private struct StagedListingRow: View {
       Spacer(minLength: 0)
     }
     .padding(.vertical, DS.Spacing.listRowPadding)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .contentShape(Rectangle())
   }
 
   // MARK: Private
@@ -47,15 +49,6 @@ private struct StagedListingRow: View {
 import SwiftData
 import SwiftUI
 
-extension View {
-  @ViewBuilder
-  fileprivate func hideDisclosureIndicator() -> some View {
-    // navigationLinkIndicatorVisibility is not available on all CI SDKs.
-    // Keep this as a no-op for maximum toolchain compatibility.
-    self
-  }
-}
-
 // MARK: - ListingGroup
 
 /// A group of listings belonging to a single owner (reused pattern)
@@ -79,32 +72,29 @@ struct StagedListingsView: View {
   let stage: ListingStage
 
   var body: some View {
-    StandardScreen(title: stage.displayName, layout: .column, scroll: .disabled) {
-      StandardList(groupedByOwner) { group in
-        Section(group.owner?.name ?? "Unknown Owner") {
-          ForEach(group.listings) { listing in
-            ZStack {
-              StagedListingRow(listing: listing)
-
-              // Invisible link overlay so the row is tappable without showing a disclosure indicator
-              NavigationLink(value: listing) {
-                Color.clear
-              }
-              .hideDisclosureIndicator()
-              .buttonStyle(.plain)
-              .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .contentShape(Rectangle())
-          }
-        }
-      } emptyContent: {
+    StandardScreen(title: stage.displayName, layout: .column, scroll: .automatic) {
+      if groupedByOwner.isEmpty {
+        // Caller handles empty state
         ContentUnavailableView {
           Label("No \(stage.displayName) Listings", systemImage: stage.icon)
         } description: {
           Text("Listings in this stage will appear here")
         }
+      } else {
+        StandardGroupedList(
+          groupedByOwner,
+          items: { $0.listings },
+          header: { group in
+            SectionHeader(group.owner?.name ?? "Unknown Owner")
+          },
+          row: { _, listing in
+            ListRowLink(value: AppRoute.listing(listing.id)) {
+              StagedListingRow(listing: listing)
+            }
+          }
+        )
+        .pullToSearch() // Required: sensor is internal, modifier enables mechanism
       }
-      .pullToSearch()
     }
   }
 

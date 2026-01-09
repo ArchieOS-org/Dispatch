@@ -28,7 +28,7 @@ enum TestDataFactory {
   static func createTestUser(
     context: ModelContext,
     index: Int = 1,
-    isStaff: Bool = true,
+    isStaff: Bool = true
   ) -> User {
     let names = ["Alice Johnson", "Bob Smith", "Carol Williams", "David Brown", "Emma Davis"]
     let name = names[(index - 1) % names.count]
@@ -41,7 +41,7 @@ enum TestDataFactory {
       avatar: nil,
       userType: isStaff ? .admin : .realtor,
       createdAt: Date(),
-      updatedAt: Date(),
+      updatedAt: Date()
     )
     user.syncedAt = nil // Ensure dirty for sync testing
     context.insert(user)
@@ -58,7 +58,7 @@ enum TestDataFactory {
   static func createTestTask(
     context: ModelContext,
     index: Int = 1,
-    listingId: UUID? = nil,
+    listingId: UUID? = nil
   ) -> TaskItem {
     let titles = [
       "Order title search",
@@ -91,7 +91,7 @@ enum TestDataFactory {
       createdVia: .dispatch,
       sourceSlackMessages: nil,
       createdAt: Date(),
-      updatedAt: Date(),
+      updatedAt: Date()
     )
     task.syncedAt = nil // Ensure dirty for sync testing
     context.insert(task)
@@ -108,7 +108,7 @@ enum TestDataFactory {
   static func createTestActivity(
     context: ModelContext,
     index: Int = 1,
-    listingId: UUID? = nil,
+    listingId: UUID? = nil
   ) -> Activity {
     let titles = [
       "Property showing at 123 Queen St W",
@@ -144,7 +144,7 @@ enum TestDataFactory {
       sourceSlackMessages: nil,
       duration: TimeInterval(durations[activityIndex] * 60),
       createdAt: Date(),
-      updatedAt: Date(),
+      updatedAt: Date()
     )
     activity.syncedAt = nil // Ensure dirty for sync testing
     context.insert(activity)
@@ -159,7 +159,7 @@ enum TestDataFactory {
   @discardableResult
   static func createTestListing(
     context: ModelContext,
-    index: Int = 1,
+    index: Int = 1
   ) -> Listing {
     let addresses = [
       ("123 Queen Street West", "Toronto", "M5H 2M9"),
@@ -190,7 +190,7 @@ enum TestDataFactory {
       createdVia: .dispatch,
       sourceSlackMessages: nil,
       createdAt: Date(),
-      updatedAt: Date(),
+      updatedAt: Date()
     )
     listing.syncedAt = nil // Ensure dirty for sync testing
     context.insert(listing)
@@ -209,7 +209,7 @@ enum TestDataFactory {
     userCount: Int = 3,
     listingCount: Int = 3,
     tasksPerListing: Int = 2,
-    activitiesPerListing: Int = 2,
+    activitiesPerListing: Int = 2
   ) {
     // Create users (first is realtor, rest are staff)
     for i in 1 ... userCount {

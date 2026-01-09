@@ -27,7 +27,7 @@ final class Property {
     ownedBy: UUID,
     createdVia: CreationSource = .dispatch,
     createdAt: Date = Date(),
-    updatedAt: Date = Date(),
+    updatedAt: Date = Date()
   ) {
     self.id = id
     self.address = address

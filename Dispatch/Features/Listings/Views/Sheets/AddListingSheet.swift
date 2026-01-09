@@ -196,7 +196,7 @@ struct AddListingSheet: View {
       city: city.trimmingCharacters(in: .whitespacesAndNewlines),
       province: province.trimmingCharacters(in: .whitespacesAndNewlines),
       listingType: mapToLegacyEnum(selectedType),
-      ownedBy: ownerId, // Single source of truth
+      ownedBy: ownerId // Single source of truth
     )
     listing.typeDefinitionId = typeId
     listing.typeDefinition = selectedType
@@ -226,6 +226,6 @@ struct AddListingSheet: View {
 #Preview("Add Listing Sheet") {
   AddListingSheet(
     currentUserId: UUID(),
-    onSave: { },
+    onSave: { }
   )
 }

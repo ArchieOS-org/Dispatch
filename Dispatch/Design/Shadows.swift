@@ -64,7 +64,7 @@ extension DS {
           Color.clear
         ]),
         startPoint: .top,
-        endPoint: .bottom,
+        endPoint: .bottom
       )
     }
 
@@ -77,7 +77,7 @@ extension DS {
           Color.black.opacity(0.15)
         ]),
         startPoint: .top,
-        endPoint: .bottom,
+        endPoint: .bottom
       )
     }
   }
@@ -94,7 +94,7 @@ extension View {
       color: style.color,
       radius: style.radius,
       x: style.x,
-      y: style.y,
+      y: style.y
     )
   }
 }

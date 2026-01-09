@@ -7,6 +7,29 @@
 
 import SwiftUI
 
+// MARK: - StandardScreenScrollMode
+
+/// Scroll mode for contract enforcement in child components.
+/// Used by StandardGroupedList to verify correct usage context.
+enum StandardScreenScrollMode {
+  case automatic // StandardScreen owns ScrollView
+  case disabled // No ScrollView, child may own scrolling
+}
+
+// MARK: - StandardScreenScrollModeKey
+
+private struct StandardScreenScrollModeKey: EnvironmentKey {
+  static let defaultValue: StandardScreenScrollMode? = nil
+}
+
+extension EnvironmentValues {
+  /// The scroll mode set by StandardScreen. Nil if outside StandardScreen.
+  var standardScreenScrollMode: StandardScreenScrollMode? {
+    get { self[StandardScreenScrollModeKey.self] }
+    set { self[StandardScreenScrollModeKey.self] = newValue }
+  }
+}
+
 // MARK: - StandardScreen
 
 /// The Single Layout Boss.
@@ -25,7 +48,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     layout: LayoutMode = .column,
     scroll: ScrollMode = .automatic,
     @ViewBuilder content: @escaping () -> Content,
-    @ToolbarContentBuilder toolbarContent: @escaping () -> ToolbarItems,
+    @ToolbarContentBuilder toolbarContent: @escaping () -> ToolbarItems
   ) {
     self.title = title
     self.layout = layout
@@ -38,7 +61,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     title: String,
     layout: LayoutMode = .column,
     scroll: ScrollMode = .automatic,
-    @ViewBuilder content: @escaping () -> Content,
+    @ViewBuilder content: @escaping () -> Content
   ) where ToolbarItems == ToolbarItem<Void, EmptyView> {
     self.title = title
     self.layout = layout
@@ -76,11 +99,25 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
       }
       .applyLayoutWitness()
     #if os(iOS)
-      .navigationBarTitleDisplayMode(.automatic)
+      .navigationBarTitleDisplayMode(.large)
     #endif
   }
 
   // MARK: Private
+
+  private var horizontalPadding: CGFloat? {
+    switch layout {
+    case .fullBleed:
+      return 0
+    case .column:
+      #if os(iOS)
+      // Use Apple’s platform default inset so content aligns with the system large title.
+      return nil
+      #else
+      return DS.Spacing.Layout.pageMargin
+      #endif
+    }
+  }
 
   private var mainContent: some View {
     ZStack {
@@ -118,29 +155,21 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
       content()
         .frame(
           maxWidth: layout == .fullBleed ? .infinity : DS.Spacing.Layout.maxContentWidth,
-          alignment: .leading,
+          alignment: .leading
         )
         .padding(.horizontal, horizontalPadding)
     }
     .frame(maxWidth: .infinity, alignment: .top)
+    // Expose scroll mode to child components for contract enforcement
+    .environment(
+      \.standardScreenScrollMode,
+      scroll == .automatic ? .automatic : .disabled
+    )
     #if os(macOS)
-      .navigationTitle("") // Hide system title on Mac in favor of our custom header
+    .navigationTitle("") // Hide system title on Mac in favor of our custom header
     #endif
   }
 
-  private var horizontalPadding: CGFloat? {
-    switch layout {
-    case .fullBleed:
-      return 0
-    case .column:
-      #if os(iOS)
-      // Use Apple’s platform default inset so content aligns with the system large title.
-      return nil
-      #else
-      return DS.Spacing.Layout.pageMargin
-      #endif
-    }
-  }
 }
 
 // MARK: - StandardScreenPreviewContent
@@ -167,8 +196,6 @@ private struct StandardScreenPreviewContent: View {
               .font(DS.Typography.body)
               .foregroundColor(DS.Colors.Text.primary)
             Spacer()
-            Image(systemName: "chevron.right")
-              .foregroundColor(DS.Colors.Text.tertiary)
           }
           if i != 59 { Divider() }
         }
@@ -246,7 +273,7 @@ private struct StandardScreenPreviewContent: View {
     StandardScreen(
       title: "This is an intentionally long StandardScreen title to verify wrapping at the top and correct collapse behavior when scrolling",
       layout: .column,
-      scroll: .automatic,
+      scroll: .automatic
     ) {
       StandardScreenPreviewContent()
     }

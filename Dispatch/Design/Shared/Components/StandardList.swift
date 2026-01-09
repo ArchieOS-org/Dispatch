@@ -9,6 +9,14 @@ import SwiftUI
 
 /// A standardized list component that abstracts away the backing implementation (List vs LazyVStack).
 /// Enforces consistent row insets, separators, and empty states.
+///
+/// **Scroll Ownership:** This component uses native List which owns scrolling.
+/// When used inside StandardScreen, use `scroll: .disabled`.
+///
+/// **Limitation:** Large title collapse won't work because List scrolling
+/// doesn't coordinate with NavigationStack.
+///
+/// **For grouped lists that need title collapse:** Use `StandardGroupedList` instead.
 struct StandardList<Data: RandomAccessCollection, RowContent: View, EmptyContent: View>: View where Data.Element: Identifiable {
 
   // MARK: Lifecycle
@@ -16,7 +24,7 @@ struct StandardList<Data: RandomAccessCollection, RowContent: View, EmptyContent
   init(
     _ data: Data,
     @ViewBuilder rowContent: @escaping (Data.Element) -> RowContent,
-    @ViewBuilder emptyContent: @escaping () -> EmptyContent = { EmptyView() },
+    @ViewBuilder emptyContent: @escaping () -> EmptyContent = { EmptyView() }
   ) {
     self.data = data
     self.rowContent = rowContent
@@ -66,6 +74,8 @@ struct StandardList<Data: RandomAccessCollection, RowContent: View, EmptyContent
     .listStyle(.plain)
     .scrollContentBackground(.hidden)
     .environment(\.defaultMinListRowHeight, 1)
+    .environment(\.defaultMinListHeaderHeight, 0)
+    .headerProminence(.standard) // Prevent sticky section headers
     // Note: StandardScreen owns margins. List should be edge-to-edge inside StandardScreen's column.
     // Wait, if StandardScreen applies padding, the list content is already padded.
     // BUT `List` on iOS ignores safe areas/padding differently than ScrollView.

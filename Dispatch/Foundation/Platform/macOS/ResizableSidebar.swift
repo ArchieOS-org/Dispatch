@@ -48,7 +48,7 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
     // Only animate isVisible changes, NOT during drag
     .animation(
       state.isDragging ? .none : (reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)),
-      value: state.isVisible,
+      value: state.isVisible
     )
     .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
       withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -83,7 +83,7 @@ private struct UnifiedDragHandle: View {
           .opacity(isHovering || state.isDragging ? 1 : 0)
           .animation(
             reduceMotion ? .none : .easeInOut(duration: 0.15),
-            value: isHovering || state.isDragging,
+            value: isHovering || state.isDragging
           )
       }
       .onHover { hovering in

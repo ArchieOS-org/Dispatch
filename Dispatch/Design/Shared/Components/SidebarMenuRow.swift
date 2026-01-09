@@ -29,12 +29,21 @@ struct SidebarMenuRow: View {
         .symbolRenderingMode(.hierarchical)
         .font(.system(size: 16, weight: .medium))
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .contentShape(Rectangle())
     .tag(tab)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabelText)
   }
 
   // MARK: Private
+
+  private var accessibilityLabelText: String {
+    var label = tab.title
+    if itemCount > 0 { label += ", \(itemCount) open" }
+    if overdueCount > 0 { label += ", \(overdueCount) overdue" }
+    return label
+  }
 
   @ViewBuilder
   private var trailingContent: some View {
@@ -49,10 +58,4 @@ struct SidebarMenuRow: View {
     }
   }
 
-  private var accessibilityLabelText: String {
-    var label = tab.title
-    if itemCount > 0 { label += ", \(itemCount) open" }
-    if overdueCount > 0 { label += ", \(overdueCount) overdue" }
-    return label
-  }
 }

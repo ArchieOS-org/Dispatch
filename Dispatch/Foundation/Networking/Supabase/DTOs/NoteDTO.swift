@@ -94,7 +94,7 @@ struct NoteDTO: Codable, Sendable {
       createdBy: createdBy,
       parentType: resolvedParentType,
       parentId: parentId,
-      createdAt: createdAt,
+      createdAt: createdAt
     )
     note.editedAt = editedAt
     note.editedBy = editedBy

@@ -20,7 +20,7 @@ struct ClaimEventDTO: Codable, Sendable {
     performedAt: Date,
     reason: String?,
     createdAt: Date,
-    updatedAt: Date,
+    updatedAt: Date
   ) {
     self.id = id
     self.parentType = parentType
@@ -109,7 +109,7 @@ struct ClaimEventDTO: Codable, Sendable {
       performedAt: performedAt,
       reason: reason,
       createdAt: createdAt,
-      updatedAt: updatedAt,
+      updatedAt: updatedAt
     )
   }
 

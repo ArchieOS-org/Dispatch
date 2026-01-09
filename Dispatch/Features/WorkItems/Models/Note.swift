@@ -21,7 +21,7 @@ final class Note {
     createdBy: UUID,
     parentType: ParentType,
     parentId: UUID,
-    createdAt: Date = Date(),
+    createdAt: Date = Date()
   ) {
     self.id = id
     self.content = content

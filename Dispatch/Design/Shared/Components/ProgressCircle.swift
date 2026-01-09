@@ -35,7 +35,7 @@ struct ProgressCircle: View {
       Circle()
         .stroke(
           DS.Colors.Progress.track,
-          style: StrokeStyle(lineWidth: lineWidth, lineCap: .round),
+          style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
         )
 
       // Progress arc (fills from top, clockwise)
@@ -43,7 +43,7 @@ struct ProgressCircle: View {
         .trim(from: 0, to: clampedProgress)
         .stroke(
           DS.Colors.accent,
-          style: StrokeStyle(lineWidth: lineWidth, lineCap: .round),
+          style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
         )
         .rotationEffect(.degrees(-90)) // Start from 12 o'clock
         .animation(.easeInOut(duration: 0.2), value: clampedProgress)

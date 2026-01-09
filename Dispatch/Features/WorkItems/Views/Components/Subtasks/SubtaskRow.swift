@@ -28,7 +28,7 @@ struct SubtaskRow: View {
           .scaleEffect(subtask.completed ? 1.0 : 0.95)
           .animation(
             reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.6),
-            value: subtask.completed,
+            value: subtask.completed
           )
       }
       .buttonStyle(.plain)
@@ -76,10 +76,10 @@ struct SubtaskRow: View {
       subtask: Subtask(
         title: "Review the documentation",
         parentType: .task,
-        parentId: UUID(),
+        parentId: UUID()
       ),
       onToggle: { },
-      onDelete: { },
+      onDelete: { }
     )
 
     Divider()
@@ -89,10 +89,10 @@ struct SubtaskRow: View {
         title: "Completed subtask with longer text that might wrap",
         completed: true,
         parentType: .task,
-        parentId: UUID(),
+        parentId: UUID()
       ),
       onToggle: { },
-      onDelete: { },
+      onDelete: { }
     )
 
     Divider()
@@ -101,9 +101,9 @@ struct SubtaskRow: View {
       subtask: Subtask(
         title: "No delete button",
         parentType: .task,
-        parentId: UUID(),
+        parentId: UUID()
       ),
-      onToggle: { },
+      onToggle: { }
     )
   }
   .padding()

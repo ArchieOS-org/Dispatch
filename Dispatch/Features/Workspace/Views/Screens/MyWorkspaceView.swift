@@ -187,44 +187,68 @@ struct ListingWorkspaceSection: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      // Header
-      Button {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-          isExpanded.toggle()
-        }
-      } label: {
-        HStack(spacing: 12) {
-          // Chevron
+      // Header - Split into two distinct tap zones
+      HStack(spacing: 0) {
+        // ZONE 1: Chevron - 44pt hit target, shifted left into gutter
+        Button {
+          withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            isExpanded.toggle()
+          }
+        } label: {
           Image(systemName: "chevron.right")
-            .font(.system(size: 14, weight: .bold))
+            .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(DS.Colors.Text.tertiary)
             .rotationEffect(.degrees(isExpanded ? 90 : 0))
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, -20) // Shift 20pt left into the 24pt gutter (44 - 24 = 20)
+        #if os(iOS)
+          .sensoryFeedback(.impact(flexibility: .soft), trigger: isExpanded)
+        #endif
+          .accessibilityLabel(chevronAccessibilityLabel)
 
-          if let listing = group.listing {
-            Text(listing.address)
-              .font(DS.Typography.headline)
-              .foregroundStyle(DS.Colors.Text.primary)
+        // ZONE 2: Listing Info - naturally starts at 24pt line (aligned with checkboxes)
+        if let listing = group.listing {
+          NavigationLink(value: AppRoute.listing(listing.id)) {
+            HStack(spacing: 12) {
+              Text(listing.address)
+                .font(DS.Typography.headline)
+                .foregroundStyle(DS.Colors.Text.primary)
+                .lineLimit(1)
 
-            Spacer()
+              Spacer()
 
-            ProgressCircle(progress: listing.progress, size: 18)
-          } else {
+              ProgressCircle(progress: listing.progress, size: 18)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel(listing.address)
+          .accessibilityHint("Opens listing details")
+        } else {
+          // General/Unassigned
+          HStack(spacing: 12) {
             Text("General / Unassigned")
               .font(DS.Typography.headline)
               .foregroundStyle(DS.Colors.Text.primary)
             Spacer()
           }
+          .frame(maxWidth: .infinity)
+          .frame(minHeight: 44)
+          .accessibilityHint("No listing details")
         }
-        .padding(.vertical, 8)
-        .contentShape(Rectangle())
       }
-      .buttonStyle(.plain)
+      .padding(.leading, DS.Spacing.workItemRowIndent) // Same 24pt indent as work items
 
       // Items
       if isExpanded {
         VStack(spacing: 0) {
           ForEach(group.items) { item in
-            NavigationLink(value: WorkItemRef.from(item)) {
+            NavigationLink(value: AppRoute.workItem(WorkItemRef.from(item))) {
               WorkItemRow(
                 item: item,
                 claimState: .claimedByMe(user: User.mockCurrentUser), // Contextually implied "Me"
@@ -235,8 +259,9 @@ struct ListingWorkspaceSection: View {
                 onRelease: { actions.onRelease(item) },
                 onRetrySync: { },
                 hideUserTag: true,
+                hideClaimButton: true
               )
-              .padding(.leading, 24)
+              .workItemRowStyle()
             }
             .buttonStyle(.plain)
           }
@@ -251,11 +276,181 @@ struct ListingWorkspaceSection: View {
   @State private var isExpanded = true
   @EnvironmentObject private var actions: WorkItemActions
 
+  /// Contextual accessibility label includes address for VoiceOver users
+  private var chevronAccessibilityLabel: String {
+    if let listing = group.listing {
+      return isExpanded ? "Collapse \(listing.address)" : "Expand \(listing.address)"
+    }
+    return isExpanded ? "Collapse general items" : "Expand general items"
+  }
+
 }
 
 /// Mock user extension for preview/default
 extension User {
   static var mockCurrentUser: User {
     User(id: UUID(), name: "Me", email: "me@dispatch.com", userType: .admin)
+  }
+}
+
+// MARK: - Previews
+
+#Preview("My Workspace - With Items") {
+  PreviewShell(
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }(),
+    setup: { context in
+      // Seed standard data (Alice as owner, Bob as claimer)
+      PreviewDataFactory.seed(context)
+
+      // Add more tasks claimed by Bob for variety
+      let listing = try? context.fetch(FetchDescriptor<Listing>()).first
+
+      let taskUrgent = TaskItem(
+        title: "Fix Broken Window",
+        status: .open,
+        declaredBy: PreviewDataFactory.aliceID,
+        claimedBy: PreviewDataFactory.bobID,
+        listingId: listing?.id
+      )
+      taskUrgent.dueDate = Calendar.current.date(byAdding: .day, value: -2, to: Date())
+      taskUrgent.syncState = .synced
+      listing?.tasks.append(taskUrgent)
+
+      let activityScheduled = Activity(
+        title: "Schedule Inspection",
+        type: .call,
+        declaredBy: PreviewDataFactory.aliceID,
+        claimedBy: PreviewDataFactory.bobID,
+        listingId: listing?.id
+      )
+      activityScheduled.dueDate = Calendar.current.date(byAdding: .day, value: 1, to: Date())
+      activityScheduled.syncState = .synced
+      listing?.activities.append(activityScheduled)
+    }
+  ) { _ in
+    MyWorkspaceView()
+      .environmentObject(WorkItemActions(
+        currentUserId: PreviewDataFactory.bobID,
+        userLookup: { _ in nil }
+      ))
+  }
+}
+
+#Preview("My Workspace - Empty") {
+  PreviewShell(
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }()
+  ) { _ in
+    MyWorkspaceView()
+      .environmentObject(WorkItemActions(
+        currentUserId: PreviewDataFactory.bobID,
+        userLookup: { _ in nil }
+      ))
+  }
+}
+
+#Preview("My Workspace - Tasks Only Filter") {
+  PreviewShell(
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }(),
+    setup: { context in
+      PreviewDataFactory.seed(context)
+    }
+  ) { _ in
+    MyWorkspaceView()
+      .environmentObject(WorkItemActions(
+        currentUserId: PreviewDataFactory.bobID,
+        userLookup: { _ in nil }
+      ))
+  }
+}
+
+#Preview("Listing Section - Expanded") {
+  PreviewShell(
+    setup: { context in
+      PreviewDataFactory.seed(context)
+    }
+  ) { context in
+    let listing = try? context.fetch(FetchDescriptor<Listing>()).first
+
+    let group = WorkspaceGroup(
+      id: listing?.id ?? UUID(),
+      listing: listing,
+      items: [
+        .task(TaskItem(
+          title: "Sample Task 1",
+          status: .open,
+          declaredBy: PreviewDataFactory.aliceID,
+          listingId: listing?.id
+        )),
+        .task(TaskItem(
+          title: "Sample Task 2 - Overdue",
+          status: .open,
+          declaredBy: PreviewDataFactory.aliceID,
+          listingId: listing?.id
+        )),
+        .activity(Activity(
+          title: "Follow Up Call",
+          type: .call,
+          declaredBy: PreviewDataFactory.aliceID,
+          listingId: listing?.id
+        ))
+      ]
+    )
+
+    NavigationStack {
+      List {
+        ListingWorkspaceSection(group: group)
+      }
+      .listStyle(.plain)
+    }
+    .environmentObject(WorkItemActions(
+      currentUserId: PreviewDataFactory.bobID,
+      userLookup: { _ in nil }
+    ))
+  }
+}
+
+#Preview("Listing Section - General/Unassigned") {
+  PreviewShell { _ in
+    let group = WorkspaceGroup(
+      id: UUID(),
+      listing: nil,
+      items: [
+        .task(TaskItem(
+          title: "General Task - No Listing",
+          status: .open,
+          declaredBy: PreviewDataFactory.aliceID,
+          listingId: nil
+        )),
+        .activity(Activity(
+          title: "Team Meeting",
+          type: .meeting,
+          declaredBy: PreviewDataFactory.aliceID,
+          listingId: nil
+        ))
+      ]
+    )
+
+    NavigationStack {
+      List {
+        ListingWorkspaceSection(group: group)
+      }
+      .listStyle(.plain)
+    }
+    .environmentObject(WorkItemActions(
+      currentUserId: PreviewDataFactory.bobID,
+      userLookup: { _ in nil }
+    ))
   }
 }

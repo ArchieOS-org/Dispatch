@@ -24,7 +24,7 @@ final class ListingTypeDefinition {
     isArchived: Bool = false,
     ownedBy: UUID? = nil,
     createdAt: Date = Date(),
-    updatedAt: Date = Date(),
+    updatedAt: Date = Date()
   ) {
     self.id = id
     self.name = name

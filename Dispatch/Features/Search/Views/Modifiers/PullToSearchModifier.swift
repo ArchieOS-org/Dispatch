@@ -36,8 +36,12 @@ struct PullToSearchModifier: ViewModifier {
       }
       .coordinateSpace(name: "pullToSearchSpace")
       .onPreferenceChange(PullToSearchScrollOffsetKey.self) { minY in
-        // print("[PullToSearch] Preference change: \(minY)")
-        handlePullDistance(minY)
+        // Store value only - no side effects during render pass
+        scrollOffsetY = minY
+      }
+      .onChange(of: scrollOffsetY) { _, newValue in
+        // React outside render pass
+        handlePullTrigger(minY: newValue)
       }
     } else {
       content
@@ -52,11 +56,13 @@ struct PullToSearchModifier: ViewModifier {
   @EnvironmentObject private var appState: AppState // One Boss
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+  /// Scroll offset stored from preference (mutated via .onChange, not during render)
+  @State private var scrollOffsetY: CGFloat = 0
   @State private var didTriggerThisPull = false
   @State private var initialAnchorY: CGFloat? = nil
 
   #if os(iOS)
-  private func handlePullDistance(_ minY: CGFloat) {
+  private func handlePullTrigger(minY: CGFloat) {
     // Capture initial resting position on first valid layout
     if initialAnchorY == nil, minY > 0 {
       initialAnchorY = minY

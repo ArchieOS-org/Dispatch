@@ -28,7 +28,7 @@ struct StatusCheckbox: View {
         .scaleEffect(isCompleted ? 1.0 : 0.95)
         .animation(
           reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.6),
-          value: isCompleted,
+          value: isCompleted
         )
     }
     .buttonStyle(.plain)

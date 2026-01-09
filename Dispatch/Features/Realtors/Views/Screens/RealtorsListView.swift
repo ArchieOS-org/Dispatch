@@ -39,10 +39,9 @@ struct RealtorsListView: View {
   private var content: some View {
     StandardScreen(title: "Realtors", layout: .column, scroll: .disabled) {
       StandardList(activeRealtorList) { user in
-        NavigationLink(value: user) {
+        ListRowLink(value: AppRoute.realtor(user.id)) {
           RealtorRow(user: user)
         }
-        .buttonStyle(.plain)
       }
     } toolbarContent: {
       ToolbarItem(placement: .primaryAction) {
@@ -96,10 +95,6 @@ private struct RealtorRow: View {
       }
 
       Spacer()
-
-      Image(systemName: DS.Icons.Navigation.forward)
-        .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(DS.Colors.Text.tertiary)
     }
     .padding(.vertical, DS.Spacing.listRowPadding)
     .contentShape(Rectangle())
@@ -112,14 +107,14 @@ private struct RealtorRow: View {
   let container = try! ModelContainer(
     for: User.self,
     Listing.self,
-    configurations: ModelConfiguration(isStoredInMemoryOnly: true),
+    configurations: ModelConfiguration(isStoredInMemoryOnly: true)
   )
 
   let context = container.mainContext
   let user = User(
     name: "Sarah Connors",
     email: "sarah@dispatch.ca",
-    userType: .realtor,
+    userType: .realtor
   )
   context.insert(user)
 

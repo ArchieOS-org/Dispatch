@@ -32,6 +32,7 @@ struct WorkItemRow: View {
   // New property
   var hideDueDate = false
   var hideUserTag = false
+  var hideClaimButton = false
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -74,13 +75,8 @@ struct WorkItemRow: View {
         isCompleted: item.isCompleted,
         color: DS.Colors.Text.tertiary,
         isCircle: item.isTask,
-        onToggle: onComplete,
+        onToggle: onComplete
       )
-
-      // Date Pill (Left - Normal)
-      if let date = item.dueDate, !hideDueDate, !isOverdue {
-        DatePill(date: date)
-      }
 
       // Title
       Text(item.title)
@@ -100,14 +96,20 @@ struct WorkItemRow: View {
 
       // Right side items
       HStack(spacing: DS.Spacing.sm) {
-        // Overdue Flag (Right)
-        if item.dueDate != nil, !hideDueDate, isOverdue {
-          HStack(spacing: 4) {
-            Image(systemName: "flag.fill")
-            Text(overdueText)
+        // Due Date (Right) - normal or overdue
+        if let date = item.dueDate, !hideDueDate {
+          if isOverdue {
+            // Overdue: flag with date
+            HStack(spacing: 4) {
+              Image(systemName: "flag.fill")
+              Text(overdueText)
+            }
+            .font(DS.Typography.caption)
+            .foregroundStyle(.red)
+          } else {
+            // Normal: date pill
+            DatePill(date: date)
           }
-          .font(DS.Typography.caption)
-          .foregroundStyle(.red)
         }
 
         // Actions / Status - omit entirely for claimedByOther
@@ -121,17 +123,17 @@ struct WorkItemRow: View {
               DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 isRetrying = false
               }
-            },
+            }
           )
         } else if case .claimedByOther = claimState {
           // Nothing - truly omit, no branch renders anything
-        } else {
+        } else if !hideClaimButton {
           // .unclaimed or .claimedByMe
           ClaimButton(
             claimState: claimState,
             style: .compact,
             onClaim: onClaim,
-            onRelease: onRelease,
+            onRelease: onRelease
           )
         }
       }
@@ -205,14 +207,14 @@ struct WorkItemRow: View {
         title: "Review quarterly report",
         taskDescription: "Go through Q4 numbers",
         priority: .high,
-        declaredBy: UUID(),
+        declaredBy: UUID()
       )),
       claimState: .claimedByOther(user: otherUser),
       onComplete: { },
       onEdit: { },
       onDelete: { },
       onClaim: { },
-      onRelease: { },
+      onRelease: { }
     )
 
     // Activity example - unclaimed
@@ -222,14 +224,14 @@ struct WorkItemRow: View {
         activityDescription: "Discuss contract terms",
         type: .call,
         priority: .medium,
-        declaredBy: UUID(),
+        declaredBy: UUID()
       )),
       claimState: .unclaimed,
       onComplete: { },
       onEdit: { },
       onDelete: { },
       onClaim: { },
-      onRelease: { },
+      onRelease: { }
     )
 
     // Task example - claimed by me
@@ -238,14 +240,14 @@ struct WorkItemRow: View {
         title: "My claimed task",
         taskDescription: "Working on this",
         priority: .medium,
-        declaredBy: UUID(),
+        declaredBy: UUID()
       )),
       claimState: .claimedByMe(user: claimedUser),
       onComplete: { },
       onEdit: { },
       onDelete: { },
       onClaim: { },
-      onRelease: { },
+      onRelease: { }
     )
 
     // Completed task - unclaimed
@@ -255,14 +257,14 @@ struct WorkItemRow: View {
         taskDescription: "This is done",
         priority: .low,
         status: .completed,
-        declaredBy: UUID(),
+        declaredBy: UUID()
       )),
       claimState: .unclaimed,
       onComplete: { },
       onEdit: { },
       onDelete: { },
       onClaim: { },
-      onRelease: { },
+      onRelease: { }
     )
   }
   .listStyle(.plain)

@@ -158,10 +158,6 @@ private struct ActivityTemplateRow: View {
       }
 
       Spacer()
-
-      Image(systemName: DS.Icons.Navigation.forward)
-        .font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(DS.Colors.Text.tertiary)
     }
     .padding(.vertical, DS.Spacing.listRowPadding)
     .contentShape(Rectangle())
@@ -207,7 +203,7 @@ private struct AudienceChip: View {
       name: "Sale",
       isSystem: false,
       position: 0,
-      ownedBy: UUID(),
+      ownedBy: UUID()
     )
     context.insert(saleType)
 
@@ -215,7 +211,7 @@ private struct AudienceChip: View {
       title: "Order Photos",
       templateDescription: "Hire photographer for listing photos",
       audiencesRaw: ["marketing"],
-      listingTypeId: saleType.id,
+      listingTypeId: saleType.id
     )
     template.listingType = saleType
     context.insert(template)

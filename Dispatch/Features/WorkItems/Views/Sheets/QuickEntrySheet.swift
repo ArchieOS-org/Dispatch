@@ -36,7 +36,7 @@ struct QuickEntrySheet: View {
     defaultItemType: QuickEntryItemType = .task,
     currentUserId: UUID,
     listings: [Listing] = [],
-    onSave: @escaping () -> Void,
+    onSave: @escaping () -> Void
   ) {
     self.defaultItemType = defaultItemType
     self.currentUserId = currentUserId
@@ -194,7 +194,7 @@ struct QuickEntrySheet: View {
         title: trimmedTitle,
         priority: priority,
         declaredBy: currentUserId,
-        listingId: selectedListing?.id,
+        listingId: selectedListing?.id
       )
       // IMPORTANT: Insert into context BEFORE setting up relationships
       // SwiftData requires models to be in context before relationship manipulation
@@ -212,7 +212,7 @@ struct QuickEntrySheet: View {
         type: activityType,
         priority: priority,
         declaredBy: currentUserId,
-        listingId: selectedListing?.id,
+        listingId: selectedListing?.id
       )
       // IMPORTANT: Insert into context BEFORE setting up relationships
       // SwiftData requires models to be in context before relationship manipulation
@@ -238,7 +238,7 @@ struct QuickEntrySheet: View {
     defaultItemType: .task,
     currentUserId: UUID(),
     listings: [],
-    onSave: { },
+    onSave: { }
   )
 }
 
@@ -247,6 +247,6 @@ struct QuickEntrySheet: View {
     defaultItemType: .activity,
     currentUserId: UUID(),
     listings: [],
-    onSave: { },
+    onSave: { }
   )
 }

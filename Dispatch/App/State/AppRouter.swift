@@ -7,27 +7,59 @@
 
 import SwiftUI
 
+// MARK: - AppRoute
+
+/// Unified navigation route type for entity navigation.
+/// All entity navigation uses IDs, never model references.
+/// This prevents crashes when SwiftData's ModelContext is reset.
+///
+/// **Why ID-based:**
+/// SwiftData models become invalid after `ModelContext.reset()`. If a navigation
+/// path holds a model reference, accessing any property after a reset causes a
+/// fatal error. By using only UUIDs for navigation, we decouple navigation state
+/// from model lifecycle.
+enum AppRoute: Hashable, Sendable {
+  // Entities (ID-based for SwiftData stability)
+  case realtor(UUID)
+  case listing(UUID)
+  case property(UUID)
+  case listingType(UUID)
+
+  // Feature routes (absorbed from previous types)
+  case workItem(WorkItemRef)
+  case settings(SettingsSection)
+  case stagedListings(ListingStage)
+
+  // Tab destinations (for iPhone push navigation from menu)
+  // On iPad/Mac these are shown via sidebar selection, but iPhone needs to push them
+  case workspace
+  case propertiesList
+  case listingsList
+  case realtorsList
+  case settingsRoot
+}
+
 // MARK: - AppRouter
 
 /// Source of truth for Application Navigation State.
 /// Owned by AppState.
 struct AppRouter {
-  var pathMain = NavigationPath()
+  /// Use typed array instead of NavigationPath (homogeneous = Array per Apple WWDC22)
+  var path: [AppRoute] = []
   var selectedTab = AppTab.workspace
 
   /// Used to signal programmatic pushes even if path doesn't change
-  /// (e.g. popping to root by tapping tab again)
+  /// (e.g. popping to root by tapping tab again).
+  /// Root `NavigationStack` must be keyed by this ID for reliable reset.
   var stackID = UUID()
 
-  mutating func navigate(to destination: Destination) {
-    pathMain.append(destination)
+  mutating func navigate(to route: AppRoute) {
+    path.append(route)
   }
 
   mutating func popToRoot() {
-    if pathMain.isEmpty {
-      // Already at root
-    } else {
-      pathMain = NavigationPath()
+    if !path.isEmpty {
+      path.removeAll()
     }
   }
 
@@ -39,9 +71,8 @@ struct AppRouter {
       stackID = UUID()
     } else {
       selectedTab = tab
-      // Consider if switching tabs should clear path of previous tab?
-      // For now, let's say yes for simplicity, or manage per-tab paths later.
-      pathMain = NavigationPath()
+      // Switching tabs clears the path
+      path.removeAll()
     }
   }
 }
@@ -54,15 +85,5 @@ enum AppTab: String, CaseIterable, Equatable {
   case listings
   case realtors
   case settings
-  case search // If search is a tab? Or just an overlay?
-}
-
-// MARK: - Route
-
-/// Explicit navigation routes for type-safe, extensible routing.
-/// Prevents navigation stack from becoming a bag of unrelated types.
-/// Use for new navigation destinations; existing Destination type remains for backwards compatibility.
-enum Route: Hashable, Codable {
-  case stagedListings(ListingStage)
-  // Future routes go here without breaking existing navigation
+  case search // Search is overlay, not push destination
 }

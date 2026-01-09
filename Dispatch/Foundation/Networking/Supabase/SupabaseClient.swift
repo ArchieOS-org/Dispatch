@@ -37,12 +37,12 @@ final class SupabaseService {
         db: .init(schema: "public"),
         auth: .init(
           flowType: .pkce,
-          emitLocalSessionAsInitialSession: true,
+          emitLocalSessionAsInitialSession: true
         ),
         global: .init(
           headers: ["x-app-name": "dispatch-ios"]
-        ),
-      ),
+        )
+      )
     )
 
     #if DEBUG

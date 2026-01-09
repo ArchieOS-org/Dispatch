@@ -19,23 +19,26 @@ struct MenuPageView: View {
         StageCardsSection(
           stageCounts: stageCounts,
           onSelectStage: { stage in
-            appState.router.pathMain.append(Route.stagedListings(stage))
-          },
+            appState.router.path.append(.stagedListings(stage))
+          }
         )
       }
       .listRowInsets(EdgeInsets(top: 0, leading: DS.Spacing.lg, bottom: 0, trailing: DS.Spacing.lg))
       .listRowBackground(DS.Colors.Background.primary)
       .listRowSeparator(.hidden)
 
-      // MARK: - Menu Sections
+      // MARK: - Menu Sections (Push Navigation)
       ForEach(AppTab.menuTabs) { tab in
-        NavigationLink(value: tab) {
+        Button {
+          appState.router.path.append(route(for: tab))
+        } label: {
           SidebarMenuRow(
             tab: tab,
             itemCount: count(for: tab),
             overdueCount: tab == .workspace ? overdueCount : 0
           )
         }
+        .buttonStyle(.plain)
         .listRowInsets(EdgeInsets(top: 0, leading: DS.Spacing.lg, bottom: 0, trailing: DS.Spacing.lg))
         .listRowBackground(DS.Colors.Background.primary)
         .listRowSeparator(.hidden)
@@ -102,6 +105,18 @@ struct MenuPageView: View {
     case .listings: activeListings.count
     case .realtors: activeRealtors.count
     case .settings, .search: 0
+    }
+  }
+
+  /// Maps menu tabs to navigation routes for push navigation
+  private func route(for tab: AppTab) -> AppRoute {
+    switch tab {
+    case .workspace: .workspace
+    case .properties: .propertiesList
+    case .listings: .listingsList
+    case .realtors: .realtorsList
+    case .settings: .settingsRoot
+    case .search: .workspace // Search is overlay, shouldn't be pushed
     }
   }
 

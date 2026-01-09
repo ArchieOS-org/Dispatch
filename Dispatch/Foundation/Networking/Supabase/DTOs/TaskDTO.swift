@@ -162,7 +162,7 @@ struct TaskDTO: Codable, Sendable {
       sourceSlackMessages: sourceSlackMessages,
       audiencesRaw: audiences ?? ["admin", "marketing"],
       createdAt: createdAt,
-      updatedAt: updatedAt,
+      updatedAt: updatedAt
     )
   }
 }

@@ -63,7 +63,7 @@ struct ActivityTemplateDTO: Codable, Sendable {
       listingTypeId: listingTypeId,
       defaultAssigneeId: defaultAssigneeId,
       createdAt: createdAt,
-      updatedAt: updatedAt,
+      updatedAt: updatedAt
     )
   }
 }

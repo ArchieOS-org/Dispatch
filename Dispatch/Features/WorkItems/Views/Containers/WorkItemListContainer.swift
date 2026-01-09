@@ -20,7 +20,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     isActivityList: Bool = false,
     embedInNavigationStack: Bool = true,
     @ViewBuilder rowBuilder: @escaping (WorkItem, ClaimState) -> Row,
-    @ViewBuilder destination: @escaping (WorkItemRef) -> Destination,
+    @ViewBuilder destination: @escaping (WorkItemRef) -> Destination
   ) {
     self.title = title
     self.items = items
@@ -73,6 +73,33 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     filteredItems.isEmpty
   }
 
+  private var emptyTitle: String {
+    isActivityList ? "No Activities" : "No Tasks"
+  }
+
+  private var emptyIcon: String {
+    isActivityList ? DS.Icons.Entity.activity : DS.Icons.Entity.task
+  }
+
+  private var emptyDescription: String {
+    switch selectedFilter {
+    case .mine:
+      isActivityList
+        ? "Activities you claim will appear here"
+        : "Tasks you claim will appear here"
+
+    case .others:
+      isActivityList
+        ? "Activities claimed by others will appear here"
+        : "Tasks claimed by others will appear here"
+
+    case .unclaimed:
+      isActivityList
+        ? "Unclaimed activities will appear here"
+        : "Unclaimed tasks will appear here"
+    }
+  }
+
   private var mainScreen: some View {
     StandardScreen(title: title, layout: .column, scroll: .disabled) {
       VStack(spacing: 0) {
@@ -111,7 +138,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
                 top: 0,
                 leading: 0,
                 bottom: 0,
-                trailing: DS.Spacing.md,
+                trailing: DS.Spacing.md
               ))
           }
         } header: {
@@ -135,32 +162,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     .frame(minHeight: 300) // Ensure it takes some vertical space in the absence of list
   }
 
-  private var emptyTitle: String {
-    isActivityList ? "No Activities" : "No Tasks"
-  }
-
-  private var emptyIcon: String {
-    isActivityList ? DS.Icons.Entity.activity : DS.Icons.Entity.task
-  }
-
-  private var emptyDescription: String {
-    switch selectedFilter {
-    case .mine:
-      isActivityList
-        ? "Activities you claim will appear here"
-        : "Tasks you claim will appear here"
-
-    case .others:
-      isActivityList
-        ? "Activities claimed by others will appear here"
-        : "Tasks claimed by others will appear here"
-
-    case .unclaimed:
-      isActivityList
-        ? "Unclaimed activities will appear here"
-        : "Unclaimed tasks will appear here"
-    }
-  }
 }
 
 // MARK: - Preview
@@ -176,7 +177,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
       dueDate: Date(),
       priority: .high,
       declaredBy: currentUserId,
-      claimedBy: currentUserId,
+      claimedBy: currentUserId
     ))
   ]
 
@@ -190,7 +191,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     },
     destination: { _ in
       Text("Detail View")
-    },
+    }
   )
   .environmentObject(SearchPresentationManager())
   .environmentObject(LensState())

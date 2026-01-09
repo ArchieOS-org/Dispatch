@@ -106,7 +106,7 @@ struct SearchOverlay: View {
         listings: activeListings,
         onSelectResult: { result in
           selectResult(result)
-        },
+        }
       )
       .frame(maxHeight: 400)
     }
@@ -156,7 +156,7 @@ struct SearchOverlay: View {
       SearchOverlay(
         isPresented: $isPresented,
         searchText: $searchText,
-        onSelectResult: { _ in },
+        onSelectResult: { _ in }
       )
     }
   }

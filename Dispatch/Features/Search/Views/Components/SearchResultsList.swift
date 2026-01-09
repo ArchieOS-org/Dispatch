@@ -161,14 +161,14 @@ struct SearchResultsList: View {
       taskDescription: "Q4 analysis",
       dueDate: Date(),
       priority: .high,
-      declaredBy: UUID(),
+      declaredBy: UUID()
     ),
     TaskItem(
       title: "Update client database",
       taskDescription: "Enter new clients",
       dueDate: nil,
       priority: .medium,
-      declaredBy: UUID(),
+      declaredBy: UUID()
     )
   ]
 
@@ -183,7 +183,7 @@ struct SearchResultsList: View {
     tasks: tasks,
     activities: activities,
     listings: listings,
-    onSelectResult: { _ in },
+    onSelectResult: { _ in }
   )
   .background(DS.Colors.Background.primary)
 }

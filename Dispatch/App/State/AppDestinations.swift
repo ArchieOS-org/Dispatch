@@ -5,6 +5,9 @@
 //  Central registry for all navigation destinations in the app.
 //  Implementation of "One Boss" Phase 3: Consolidate Destinations.
 //
+//  All navigation now uses AppRoute (ID-based) to prevent crashes
+//  when SwiftData's ModelContext is reset during sync operations.
+//
 
 import SwiftUI
 
@@ -12,53 +15,18 @@ import SwiftUI
 
 /// Central registry of all navigation destinations.
 /// Attached to the Root Stack of each "Captain" (AppShell).
+///
+/// **Important:** All entity navigation uses AppRoute with UUIDs.
+/// Model-based destinations have been removed to prevent SwiftData crashes.
 struct AppDestinationsModifier: ViewModifier {
 
   // MARK: Internal
 
   func body(content: Content) -> some View {
     content
-      // MARK: - Work Items (Tasks/Activities)
-      .navigationDestination(for: WorkItemRef.self) { ref in
-        WorkItemResolverView(
-          ref: ref,
-          currentUserId: actions.currentUserId,
-          userLookup: actions.userLookup,
-          onComplete: actions.onComplete,
-          onClaim: actions.onClaim,
-          onRelease: actions.onRelease,
-          onEditNote: nil,
-          onDeleteNote: actions.onDeleteNote,
-          onAddNote: actions.onAddNote,
-          onToggleSubtask: actions.onToggleSubtask,
-          onDeleteSubtask: actions.onDeleteSubtask,
-          onAddSubtask: actions.onAddSubtask,
-        )
-      }
-      // MARK: - Routes (Type-safe navigation)
-      .navigationDestination(for: Route.self) { route in
+      // MARK: - All Routes (ID-based) - SINGLE DESTINATION
+      .navigationDestination(for: AppRoute.self) { route in
         routeDestination(for: route)
-      }
-      // MARK: - Core Entities
-      .navigationDestination(for: Listing.self) { listing in
-        ListingDetailView(listing: listing, userLookup: actions.userLookup)
-      }
-      .navigationDestination(for: Property.self) { property in
-        PropertyDetailView(property: property, userLookup: actions.userLookup)
-      }
-      .navigationDestination(for: User.self) { user in
-        RealtorProfileView(user: user)
-      }
-      // MARK: - iPhone Menu Navigation
-      .navigationDestination(for: AppTab.self) { tab in
-        menuDestination(for: tab)
-      }
-      // MARK: - Settings Navigation
-      .navigationDestination(for: SettingsSection.self) { section in
-        settingsDestination(for: section)
-      }
-      .navigationDestination(for: ListingTypeDefinition.self) { listingType in
-        ListingTypeDetailView(listingType: listingType)
       }
       // PROBE: Signal that registry is active
       .environment(\.destinationsAttached, true)
@@ -69,20 +37,59 @@ struct AppDestinationsModifier: ViewModifier {
   @EnvironmentObject private var actions: WorkItemActions
 
   @ViewBuilder
-  private func menuDestination(for tab: AppTab) -> some View {
-    switch tab {
+  private func routeDestination(for route: AppRoute) -> some View {
+    switch route {
+    // Entity resolvers (ID-based)
+    case .realtor(let id):
+      RealtorResolver(id: id)
+
+    case .listing(let id):
+      ListingResolver(id: id)
+
+    case .property(let id):
+      PropertyResolver(id: id)
+
+    case .listingType(let id):
+      ListingTypeResolver(id: id)
+
+    // Absorbed types (passthrough to existing views)
+    case .workItem(let ref):
+      WorkItemResolverView(
+        ref: ref,
+        currentUserId: actions.currentUserId,
+        userLookup: actions.userLookup,
+        onComplete: actions.onComplete,
+        onClaim: actions.onClaim,
+        onRelease: actions.onRelease,
+        onEditNote: nil,
+        onDeleteNote: actions.onDeleteNote,
+        onAddNote: actions.onAddNote,
+        onToggleSubtask: actions.onToggleSubtask,
+        onDeleteSubtask: actions.onDeleteSubtask,
+        onAddSubtask: actions.onAddSubtask
+      )
+
+    case .settings(let section):
+      settingsDestination(for: section)
+
+    case .stagedListings(let stage):
+      StagedListingsView(stage: stage)
+
+    // Tab destinations (iPhone push navigation from menu)
     case .workspace:
       MyWorkspaceView()
-    case .properties:
+
+    case .propertiesList:
       PropertiesListView()
-    case .listings:
+
+    case .listingsList:
       ListingListView()
-    case .realtors:
+
+    case .realtorsList:
       RealtorsListView()
-    case .settings:
+
+    case .settingsRoot:
       SettingsView()
-    case .search:
-      EmptyView() // Search is overlay, not push destination
     }
   }
 
@@ -91,14 +98,6 @@ struct AppDestinationsModifier: ViewModifier {
     switch section {
     case .listingTypes:
       ListingTypeListView()
-    }
-  }
-
-  @ViewBuilder
-  private func routeDestination(for route: Route) -> some View {
-    switch route {
-    case .stagedListings(let stage):
-      StagedListingsView(stage: stage)
     }
   }
 }

@@ -64,3 +64,16 @@ nesting:
 
 vertical_whitespace:
   max_empty_lines: 2
+
+# Custom rules for architecture enforcement
+custom_rules:
+  # Prevent model-based navigation (causes crashes on ModelContext.reset())
+  # Use AppRoute with UUID instead: NavigationLink(value: AppRoute.listing(listing.id))
+  navigation_model_in_path:
+    name: "Model-Based Navigation"
+    regex: '(NavigationLink|ListRowLink)\s*\(\s*value\s*:\s*(?!AppRoute\b)[A-Z][a-zA-Z]*(?:\s*\)|\s*,)'
+    message: "Use AppRoute with UUID instead of model types in navigation. Example: NavigationLink(value: AppRoute.listing(listing.id))"
+    severity: warning
+    match_kinds:
+      - identifier
+      - typeidentifier

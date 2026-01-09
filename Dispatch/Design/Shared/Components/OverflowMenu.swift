@@ -88,7 +88,7 @@ struct OverflowMenu: View {
       .foregroundColor(iconColor)
       .frame(
         width: CGFloat(DS.Spacing.minTouchTarget),
-        height: CGFloat(DS.Spacing.minTouchTarget),
+        height: CGFloat(DS.Spacing.minTouchTarget)
       )
       .contentShape(Rectangle())
   }

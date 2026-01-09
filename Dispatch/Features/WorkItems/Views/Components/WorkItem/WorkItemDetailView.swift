@@ -104,7 +104,7 @@ struct WorkItemDetailView: View {
         metadataRow(
           icon: item.typeIcon,
           label: "Type",
-          value: item.typeLabel,
+          value: item.typeLabel
         )
 
         Divider()
@@ -114,7 +114,7 @@ struct WorkItemDetailView: View {
           icon: item.statusIcon,
           label: "Status",
           value: item.statusText,
-          valueColor: item.statusColor,
+          valueColor: item.statusColor
         )
 
         Divider()
@@ -162,7 +162,7 @@ struct WorkItemDetailView: View {
         metadataRow(
           icon: DS.Icons.Time.clock,
           label: "Created",
-          value: formatDate(item.createdAt),
+          value: formatDate(item.createdAt)
         )
 
         Divider()
@@ -171,7 +171,7 @@ struct WorkItemDetailView: View {
         metadataRow(
           icon: DS.Icons.Time.clock,
           label: "Updated",
-          value: formatDate(item.updatedAt),
+          value: formatDate(item.updatedAt)
         )
 
         Divider()
@@ -188,7 +188,7 @@ struct WorkItemDetailView: View {
           ClaimButton(
             claimState: claimState,
             onClaim: onClaim,
-            onRelease: onRelease,
+            onRelease: onRelease
           )
         }
       }
@@ -204,7 +204,7 @@ struct WorkItemDetailView: View {
         subtasks: item.subtasks,
         onToggle: onToggleSubtask,
         onDelete: onDeleteSubtask,
-        onAdd: onAddSubtask,
+        onAdd: onAddSubtask
       )
     }
     .padding(DS.Spacing.md)
@@ -217,7 +217,7 @@ struct WorkItemDetailView: View {
       notes: item.notes,
       userLookup: userLookup,
       onSave: { content in onAddNote?(content) },
-      onDelete: onDeleteNote,
+      onDelete: onDeleteNote
     )
   }
 
@@ -231,7 +231,7 @@ struct WorkItemDetailView: View {
     icon: String,
     label: String,
     value: String,
-    valueColor: Color = DS.Colors.Text.primary,
+    valueColor: Color = DS.Colors.Text.primary
   ) -> some View {
     HStack {
       Image(systemName: icon)
@@ -259,7 +259,7 @@ struct WorkItemDetailView: View {
     title: "Review quarterly report",
     taskDescription: "Go through the Q4 numbers and prepare a summary for the board meeting.",
     priority: .high,
-    declaredBy: UUID(),
+    declaredBy: UUID()
   )
 
   let sampleUser = User(name: "John Doe", email: "john@example.com", userType: .admin)
@@ -273,7 +273,7 @@ struct WorkItemDetailView: View {
       onClaim: { },
       onRelease: { },
       onAddNote: { _ in },
-      onAddSubtask: { },
+      onAddSubtask: { }
     )
   }
   .environmentObject(LensState())

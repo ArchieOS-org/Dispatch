@@ -62,7 +62,7 @@ struct SubtasksList: View {
             SubtaskRow(
               subtask: subtask,
               onToggle: { onToggle?(subtask) },
-              onDelete: onDelete != nil ? { onDelete?(subtask) } : nil,
+              onDelete: onDelete != nil ? { onDelete?(subtask) } : nil
             )
 
             if index < subtasks.count - 1 {
@@ -133,7 +133,7 @@ struct SubtasksList: View {
         subtasks: sampleSubtasks,
         onToggle: { _ in },
         onDelete: { _ in },
-        onAdd: { },
+        onAdd: { }
       )
 
       Divider()
@@ -141,7 +141,7 @@ struct SubtasksList: View {
       Text("Empty State").font(DS.Typography.caption)
       SubtasksList(
         subtasks: [],
-        onAdd: { },
+        onAdd: { }
       )
 
       Divider()
@@ -154,7 +154,7 @@ struct SubtasksList: View {
           Subtask(title: "Review and edit", completed: true, parentType: .task, parentId: UUID()),
           Subtask(title: "Final submission", completed: true, parentType: .task, parentId: UUID())
         ],
-        onToggle: { _ in },
+        onToggle: { _ in }
       )
     }
     .padding()

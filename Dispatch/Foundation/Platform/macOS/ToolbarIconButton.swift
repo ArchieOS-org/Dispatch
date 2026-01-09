@@ -27,7 +27,7 @@ struct ToolbarIconButton: View {
         .foregroundStyle(iconColor)
         .frame(
           width: DS.Spacing.bottomToolbarButtonSize,
-          height: DS.Spacing.bottomToolbarButtonSize,
+          height: DS.Spacing.bottomToolbarButtonSize
         )
         .contentShape(Rectangle())
         .background(
@@ -41,7 +41,7 @@ struct ToolbarIconButton: View {
     }
     .animation(
       reduceMotion ? .none : .easeInOut(duration: 0.15),
-      value: isHovering,
+      value: isHovering
     )
     .accessibilityLabel(accessibilityLabel)
   }
@@ -65,18 +65,18 @@ struct ToolbarIconButton: View {
     ToolbarIconButton(
       icon: "plus",
       action: { },
-      accessibilityLabel: "New item",
+      accessibilityLabel: "New item"
     )
     ToolbarIconButton(
       icon: "magnifyingglass",
       action: { },
-      accessibilityLabel: "Search",
+      accessibilityLabel: "Search"
     )
     ToolbarIconButton(
       icon: "trash",
       action: { },
       accessibilityLabel: "Delete",
-      isDestructive: true,
+      isDestructive: true
     )
   }
   .padding()

@@ -38,7 +38,7 @@ struct UserDTO: Codable, Identifiable {
       avatarHash: avatarHash,
       userType: UserType(rawValue: userType) ?? .realtor,
       createdAt: createdAt,
-      updatedAt: updatedAt,
+      updatedAt: updatedAt
     )
   }
 }

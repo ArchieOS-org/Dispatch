@@ -131,39 +131,17 @@ struct StageBadgeRuleTests {
 
 struct RouteRestorationTests {
 
-    @Test("Route encodes and decodes correctly for restoration")
-    func testRouteRestoration() throws {
-        let route = Route.stagedListings(.workingOn)
-
-        let encoded = try JSONEncoder().encode(route)
-        let decoded = try JSONDecoder().decode(Route.self, from: encoded)
-
-        #expect(route == decoded)
-    }
-
-    @Test("Route encodes and decodes all stages correctly")
-    func testRouteRestorationAllStages() throws {
-        for stage in ListingStage.allCases {
-            let route = Route.stagedListings(stage)
-
-            let encoded = try JSONEncoder().encode(route)
-            let decoded = try JSONDecoder().decode(Route.self, from: encoded)
-
-            #expect(route == decoded)
-        }
-    }
-
-    @Test("Route is Hashable")
+    @Test("AppRoute is Hashable")
     func testRouteHashable() {
-        let route1 = Route.stagedListings(.live)
-        let route2 = Route.stagedListings(.live)
-        let route3 = Route.stagedListings(.sold)
+        let route1 = AppRoute.stagedListings(.live)
+        let route2 = AppRoute.stagedListings(.live)
+        let route3 = AppRoute.stagedListings(.sold)
 
         #expect(route1 == route2)
         #expect(route1 != route3)
 
         // Can be used in a Set
-        var routeSet = Set<Route>()
+        var routeSet = Set<AppRoute>()
         routeSet.insert(route1)
         routeSet.insert(route2) // Duplicate, should not increase count
         routeSet.insert(route3)
