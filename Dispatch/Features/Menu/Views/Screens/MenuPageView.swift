@@ -59,6 +59,7 @@ struct MenuPageView: View {
   // MARK: Private
 
   @EnvironmentObject private var appState: AppState
+  @EnvironmentObject private var syncManager: SyncManager
 
   @Query private var allTasksRaw: [TaskItem]
   @Query private var allActivitiesRaw: [Activity]
@@ -66,12 +67,14 @@ struct MenuPageView: View {
   @Query private var allListingsRaw: [Listing]
   @Query private var allRealtors: [User]
 
-  private var openTasks: [TaskItem] {
-    allTasksRaw.filter { $0.status != .completed && $0.status != .deleted }
+  private var workspaceTasks: [TaskItem] {
+    guard let currentUserID = syncManager.currentUserID else { return [] }
+    return allTasksRaw.filter { $0.claimedBy == currentUserID && $0.status != .deleted }
   }
 
-  private var openActivities: [Activity] {
-    allActivitiesRaw.filter { $0.status != .completed && $0.status != .deleted }
+  private var workspaceActivities: [Activity] {
+    guard let currentUserID = syncManager.currentUserID else { return [] }
+    return allActivitiesRaw.filter { $0.claimedBy == currentUserID && $0.status != .deleted }
   }
 
   private var activeProperties: [Property] {
@@ -93,14 +96,14 @@ struct MenuPageView: View {
 
   private var overdueCount: Int {
     let startOfToday = Calendar.current.startOfDay(for: Date())
-    let overdueTasks = openTasks.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
-    let overdueActivities = openActivities.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
+    let overdueTasks = workspaceTasks.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
+    let overdueActivities = workspaceActivities.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
     return overdueTasks.count + overdueActivities.count
   }
 
   private func count(for tab: AppTab) -> Int {
     switch tab {
-    case .workspace: openTasks.count + openActivities.count
+    case .workspace: workspaceTasks.count + workspaceActivities.count
     case .properties: activeProperties.count
     case .listings: activeListings.count
     case .realtors: activeRealtors.count
