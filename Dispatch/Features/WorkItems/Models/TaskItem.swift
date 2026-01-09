@@ -31,7 +31,7 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     sourceSlackMessages: [String]? = nil,
     audiencesRaw: [String] = ["admin", "marketing"],
     createdAt: Date = Date(),
-    updatedAt: Date = Date(),
+    updatedAt: Date = Date()
   ) {
     self.id = id
     self.title = title

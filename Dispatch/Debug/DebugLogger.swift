@@ -56,7 +56,7 @@ final class DebugLogger: ObservableObject {
     category: Category = .sync,
     file: String = #file,
     function: String = #function,
-    line: Int = #line,
+    line: Int = #line
   ) {
     let entry = DebugLogEntry(
       timestamp: Date(),
@@ -64,7 +64,7 @@ final class DebugLogger: ObservableObject {
       message: message,
       file: (file as NSString).lastPathComponent,
       function: function,
-      line: line,
+      line: line
     )
 
     // Add to buffer for in-app display
@@ -95,7 +95,7 @@ final class DebugLogger: ObservableObject {
     error: Error? = nil,
     file: String = #file,
     function: String = #function,
-    line: Int = #line,
+    line: Int = #line
   ) {
     var fullMessage = message
     if let error {
@@ -263,7 +263,7 @@ final class DebugLogger: ObservableObject {
     category _: Category = .sync,
     file _: String = #file,
     function _: String = #function,
-    line _: Int = #line,
+    line _: Int = #line
   ) { }
   @inlinable
   func error(
@@ -271,7 +271,7 @@ final class DebugLogger: ObservableObject {
     error _: Error? = nil,
     file _: String = #file,
     function _: String = #function,
-    line _: Int = #line,
+    line _: Int = #line
   ) { }
   @inlinable
   func startTiming(_: String) { }

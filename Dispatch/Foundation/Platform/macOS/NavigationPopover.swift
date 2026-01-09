@@ -13,7 +13,7 @@ struct NavigationPopover: View {
     isPresented: Binding<Bool>,
     currentTab: AppTab,
     onNavigate: @escaping (AppTab) -> Void,
-    onSelectResult: @escaping (SearchResult) -> Void,
+    onSelectResult: @escaping (SearchResult) -> Void
   ) {
     _searchText = searchText
     _isPresented = isPresented
@@ -45,7 +45,7 @@ struct NavigationPopover: View {
         showCancelButton: false,
         onCancel: {
           searchText = ""
-        },
+        }
       )
       .padding(.horizontal, DS.Spacing.searchModalPadding)
       .padding(.top, DS.Spacing.lg)
@@ -66,7 +66,7 @@ struct NavigationPopover: View {
             listings: activeListings,
             onSelectResult: { result in
               handleSearchResultSelection(result)
-            },
+            }
           )
         }
       }

@@ -24,7 +24,7 @@ final class PreviewContext: ObservableObject {
     appState: AppState,
     syncManager: SyncManager,
     lensState: LensState,
-    overlayState: AppOverlayState,
+    overlayState: AppOverlayState
   ) {
     self.appState = appState
     self.syncManager = syncManager
@@ -85,7 +85,7 @@ struct PreviewShell<Content: View>: View {
     lensState: LensState? = nil,
     overlayState: AppOverlayState? = nil,
     setup: @escaping (ModelContext) -> Void = { _ in },
-    @ViewBuilder content: @escaping (ModelContext) -> Content,
+    @ViewBuilder content: @escaping (ModelContext) -> Content
   ) {
     self.withNavigation = withNavigation
     self.content = content
@@ -97,7 +97,7 @@ struct PreviewShell<Content: View>: View {
       appState: appState ?? AppState(mode: .preview),
       syncManager: syncManager ?? SyncManager(mode: .preview),
       lensState: lensState ?? LensState(),
-      overlayState: overlayState ?? AppOverlayState(mode: .preview),
+      overlayState: overlayState ?? AppOverlayState(mode: .preview)
     ))
   }
 

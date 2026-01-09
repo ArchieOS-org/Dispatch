@@ -19,8 +19,7 @@ extension View {
   ///
   /// Note: listRowInsets only affects List contexts; no-op in VStack/LazyVStack.
   func workItemRowStyle() -> some View {
-    self
-      .padding(.leading, DS.Spacing.workItemRowIndent)
+    padding(.leading, DS.Spacing.workItemRowIndent)
       .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
   }
 }

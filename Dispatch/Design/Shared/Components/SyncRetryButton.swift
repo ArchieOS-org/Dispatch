@@ -72,7 +72,7 @@ struct SyncErrorRow: View {
       SyncRetryButton(
         errorMessage: errorMessage,
         isRetrying: isRetrying,
-        onRetry: onRetry,
+        onRetry: onRetry
       )
     }
     .padding(.horizontal, DS.Spacing.md)
@@ -86,25 +86,25 @@ struct SyncErrorRow: View {
     SyncRetryButton(
       errorMessage: "Network error",
       isRetrying: false,
-      onRetry: { },
+      onRetry: { }
     )
 
     SyncRetryButton(
       errorMessage: nil,
       isRetrying: true,
-      onRetry: { },
+      onRetry: { }
     )
 
     SyncErrorRow(
       errorMessage: "Failed to sync. Check your connection.",
       isRetrying: false,
-      onRetry: { },
+      onRetry: { }
     )
 
     SyncErrorRow(
       errorMessage: "Network timeout",
       isRetrying: true,
-      onRetry: { },
+      onRetry: { }
     )
   }
   .padding()

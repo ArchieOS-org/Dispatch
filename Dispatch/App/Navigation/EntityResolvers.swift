@@ -14,14 +14,17 @@ import SwiftUI
 /// Resolves a realtor by UUID and displays their profile.
 /// Shows ContentUnavailableView if the realtor no longer exists.
 struct RealtorResolver: View {
-  let id: UUID
 
-  @Query private var users: [User]
+  // MARK: Lifecycle
 
   init(id: UUID) {
     self.id = id
     _users = Query(filter: #Predicate<User> { $0.id == id })
   }
+
+  // MARK: Internal
+
+  let id: UUID
 
   var body: some View {
     if let user = users.first {
@@ -34,6 +37,11 @@ struct RealtorResolver: View {
       )
     }
   }
+
+  // MARK: Private
+
+  @Query private var users: [User]
+
 }
 
 // MARK: - ListingResolver
@@ -41,15 +49,17 @@ struct RealtorResolver: View {
 /// Resolves a listing by UUID and displays its detail view.
 /// Shows ContentUnavailableView if the listing no longer exists.
 struct ListingResolver: View {
-  let id: UUID
 
-  @Query private var listings: [Listing]
-  @EnvironmentObject private var actions: WorkItemActions
+  // MARK: Lifecycle
 
   init(id: UUID) {
     self.id = id
     _listings = Query(filter: #Predicate<Listing> { $0.id == id })
   }
+
+  // MARK: Internal
+
+  let id: UUID
 
   var body: some View {
     if let listing = listings.first {
@@ -62,6 +72,12 @@ struct ListingResolver: View {
       )
     }
   }
+
+  // MARK: Private
+
+  @Query private var listings: [Listing]
+  @EnvironmentObject private var actions: WorkItemActions
+
 }
 
 // MARK: - PropertyResolver
@@ -69,15 +85,17 @@ struct ListingResolver: View {
 /// Resolves a property by UUID and displays its detail view.
 /// Shows ContentUnavailableView if the property no longer exists.
 struct PropertyResolver: View {
-  let id: UUID
 
-  @Query private var properties: [Property]
-  @EnvironmentObject private var actions: WorkItemActions
+  // MARK: Lifecycle
 
   init(id: UUID) {
     self.id = id
     _properties = Query(filter: #Predicate<Property> { $0.id == id })
   }
+
+  // MARK: Internal
+
+  let id: UUID
 
   var body: some View {
     if let property = properties.first {
@@ -90,6 +108,12 @@ struct PropertyResolver: View {
       )
     }
   }
+
+  // MARK: Private
+
+  @Query private var properties: [Property]
+  @EnvironmentObject private var actions: WorkItemActions
+
 }
 
 // MARK: - ListingTypeResolver
@@ -97,14 +121,17 @@ struct PropertyResolver: View {
 /// Resolves a listing type definition by UUID and displays its detail view.
 /// Shows ContentUnavailableView if the listing type no longer exists.
 struct ListingTypeResolver: View {
-  let id: UUID
 
-  @Query private var types: [ListingTypeDefinition]
+  // MARK: Lifecycle
 
   init(id: UUID) {
     self.id = id
     _types = Query(filter: #Predicate<ListingTypeDefinition> { $0.id == id })
   }
+
+  // MARK: Internal
+
+  let id: UUID
 
   var body: some View {
     if let listingType = types.first {
@@ -117,4 +144,9 @@ struct ListingTypeResolver: View {
       )
     }
   }
+
+  // MARK: Private
+
+  @Query private var types: [ListingTypeDefinition]
+
 }

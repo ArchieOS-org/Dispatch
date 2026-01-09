@@ -87,7 +87,7 @@ final class DispatchSplitViewController: NSSplitViewController {
     toggleObserver = NotificationCenter.default.addObserver(
       forName: .toggleSidebar,
       object: nil,
-      queue: .main,
+      queue: .main
     ) { [weak self] _ in
       self?.toggleSidebar(nil)
     }

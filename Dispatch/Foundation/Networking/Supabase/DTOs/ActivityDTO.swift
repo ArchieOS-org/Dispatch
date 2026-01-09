@@ -30,7 +30,7 @@ struct ActivityDTO: Codable, Sendable {
     completedAt: Date? = nil,
     deletedAt: Date? = nil,
     createdAt: Date = Date(),
-    updatedAt: Date = Date(),
+    updatedAt: Date = Date()
   ) {
     self.id = id
     self.title = title
@@ -234,7 +234,7 @@ struct ActivityDTO: Codable, Sendable {
       duration: durationMinutes.map { TimeInterval($0 * 60) },
       audiencesRaw: audiences ?? ["admin", "marketing"],
       createdAt: createdAt,
-      updatedAt: updatedAt,
+      updatedAt: updatedAt
     )
   }
 }

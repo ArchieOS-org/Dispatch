@@ -13,8 +13,6 @@ import SwiftUI
 /// Uses Picker inside Menu for automatic checkmark on active selection.
 struct FilterMenu: View {
 
-  // MARK: Internal
-
   @Binding var audience: AudienceLens
 
   var body: some View {

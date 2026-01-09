@@ -89,7 +89,7 @@ struct BottomToolbar: View {
         ToolbarIconButton(
           icon: "plus",
           action: onNew,
-          accessibilityLabel: "New item",
+          accessibilityLabel: "New item"
         )
       }
 
@@ -97,7 +97,7 @@ struct BottomToolbar: View {
       ToolbarIconButton(
         icon: "plus.square",
         action: { },
-        accessibilityLabel: "Add subtask",
+        accessibilityLabel: "Add subtask"
       )
       .disabled(true)
       .opacity(0.4)
@@ -105,7 +105,7 @@ struct BottomToolbar: View {
       ToolbarIconButton(
         icon: "calendar",
         action: { },
-        accessibilityLabel: "Schedule",
+        accessibilityLabel: "Schedule"
       )
       .disabled(true)
       .opacity(0.4)
@@ -119,7 +119,7 @@ struct BottomToolbar: View {
       ToolbarIconButton(
         icon: "arrow.right",
         action: { },
-        accessibilityLabel: "Move",
+        accessibilityLabel: "Move"
       )
       .disabled(true)
       .opacity(0.4)
@@ -128,7 +128,7 @@ struct BottomToolbar: View {
         ToolbarIconButton(
           icon: "magnifyingglass",
           action: onSearch,
-          accessibilityLabel: "Search",
+          accessibilityLabel: "Search"
         )
       }
     }
@@ -143,7 +143,7 @@ struct BottomToolbar: View {
         ToolbarIconButton(
           icon: isClaimed ? "hand.raised.slash" : "hand.raised",
           action: onClaim,
-          accessibilityLabel: isClaimed ? "Release" : "Claim",
+          accessibilityLabel: isClaimed ? "Release" : "Claim"
         )
       }
     }
@@ -158,7 +158,7 @@ struct BottomToolbar: View {
           icon: "trash",
           action: onDelete,
           accessibilityLabel: "Delete",
-          isDestructive: true,
+          isDestructive: true
         )
       }
     }
@@ -172,7 +172,7 @@ struct BottomToolbar: View {
     BottomToolbar(
       context: .taskList,
       onNew: { },
-      onSearch: { },
+      onSearch: { }
     )
   }
   .frame(width: 400, height: 200)
@@ -186,7 +186,7 @@ struct BottomToolbar: View {
       onClaim: { },
       onDelete: { },
       isClaimable: true,
-      isClaimed: false,
+      isClaimed: false
     )
   }
   .frame(width: 400, height: 200)

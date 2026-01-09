@@ -22,7 +22,7 @@ struct GlobalFloatingButtons: View {
 
   var body: some View {
     #if os(iOS)
-    // Only show on iPhone (by idiom, not size class) 
+    // Only show on iPhone (by idiom, not size class)
     // iPad in Split View can be .compact but shouldn't show floating filter
     if isPhone {
       Color.clear

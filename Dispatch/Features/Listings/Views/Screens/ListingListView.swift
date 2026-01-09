@@ -182,7 +182,7 @@ struct ListingListView: View {
       onAddSubtask: { item in
         itemForSubtaskAdd = item
         showAddSubtaskSheet = true
-      },
+      }
     )
   }
 
@@ -322,17 +322,17 @@ private struct ListingListPreviewContainer: View {
     let janeRealtor = User(
       name: "Jane Smith",
       email: "jane@realestate.com",
-      userType: .realtor,
+      userType: .realtor
     )
     let johnAgent = User(
       name: "John Anderson",
       email: "john@realestate.com",
-      userType: .realtor,
+      userType: .realtor
     )
     let sarahBroker = User(
       name: "Sarah Chen",
       email: "sarah@realestate.com",
-      userType: .realtor,
+      userType: .realtor
     )
 
     modelContext.insert(janeRealtor)
@@ -348,7 +348,7 @@ private struct ListingListPreviewContainer: View {
       price: 899000,
       status: .active,
       ownedBy: janeRealtor.id,
-      dueDate: Calendar.current.date(byAdding: .day, value: 3, to: Date()),
+      dueDate: Calendar.current.date(byAdding: .day, value: 3, to: Date())
     )
 
     let listing2 = Listing(
@@ -359,7 +359,7 @@ private struct ListingListPreviewContainer: View {
       price: 1250000,
       status: .active,
       ownedBy: janeRealtor.id,
-      dueDate: Calendar.current.date(byAdding: .day, value: -2, to: Date()), // Overdue
+      dueDate: Calendar.current.date(byAdding: .day, value: -2, to: Date()) // Overdue
     )
 
     let listing3 = Listing(
@@ -367,7 +367,7 @@ private struct ListingListPreviewContainer: View {
       city: "Mississauga",
       province: "ON",
       status: .pending,
-      ownedBy: janeRealtor.id,
+      ownedBy: janeRealtor.id
       // No due date
     )
 
@@ -380,7 +380,7 @@ private struct ListingListPreviewContainer: View {
       price: 2500000,
       status: .active,
       ownedBy: johnAgent.id,
-      dueDate: Calendar.current.date(byAdding: .day, value: 7, to: Date()),
+      dueDate: Calendar.current.date(byAdding: .day, value: 7, to: Date())
     )
 
     let listing5 = Listing(
@@ -390,7 +390,7 @@ private struct ListingListPreviewContainer: View {
       price: 750000,
       status: .active,
       ownedBy: johnAgent.id,
-      dueDate: Calendar.current.date(byAdding: .day, value: -5, to: Date()), // Overdue
+      dueDate: Calendar.current.date(byAdding: .day, value: -5, to: Date()) // Overdue
     )
 
     // Sarah's listings
@@ -402,7 +402,7 @@ private struct ListingListPreviewContainer: View {
       listingType: .lease,
       status: .active,
       ownedBy: sarahBroker.id,
-      dueDate: Calendar.current.date(byAdding: .day, value: 14, to: Date()),
+      dueDate: Calendar.current.date(byAdding: .day, value: 14, to: Date())
     )
 
     let listing7 = Listing(
@@ -411,7 +411,7 @@ private struct ListingListPreviewContainer: View {
       province: "ON",
       price: 1800000,
       status: .draft,
-      ownedBy: sarahBroker.id,
+      ownedBy: sarahBroker.id
     )
 
     // Insert all listings
@@ -425,14 +425,14 @@ private struct ListingListPreviewContainer: View {
       taskDescription: "Book professional photos",
       priority: .high,
       status: .completed,
-      declaredBy: janeRealtor.id,
+      declaredBy: janeRealtor.id
     )
     let task2 = TaskItem(
       title: "Update MLS",
       taskDescription: "Update listing details",
       priority: .medium,
       status: .open,
-      declaredBy: janeRealtor.id,
+      declaredBy: janeRealtor.id
     )
     listing1.tasks.append(task1)
     listing1.tasks.append(task2)
@@ -442,21 +442,21 @@ private struct ListingListPreviewContainer: View {
       taskDescription: "Review comparable sales",
       priority: .high,
       status: .completed,
-      declaredBy: johnAgent.id,
+      declaredBy: johnAgent.id
     )
     let task4 = TaskItem(
       title: "Virtual tour",
       taskDescription: "Create 3D walkthrough",
       priority: .medium,
       status: .completed,
-      declaredBy: johnAgent.id,
+      declaredBy: johnAgent.id
     )
     let task5 = TaskItem(
       title: "Open house prep",
       taskDescription: "Prepare for weekend showing",
       priority: .low,
       status: .open,
-      declaredBy: johnAgent.id,
+      declaredBy: johnAgent.id
     )
     listing4.tasks.append(task3)
     listing4.tasks.append(task4)

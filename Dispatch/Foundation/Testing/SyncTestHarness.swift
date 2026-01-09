@@ -75,6 +75,15 @@ struct SyncTestHarness: View {
   @State private var selectedLogFilter: String? = nil
   @State private var showSystemLogs = true
 
+  private var statusInfo: (Color, String) {
+    switch syncManager.syncStatus {
+    case .idle: (.gray, "IDLE")
+    case .syncing: (.blue, "SYNCING")
+    case .ok: (.green, "OK")
+    case .error: (.red, "ERROR")
+    }
+  }
+
   private var statusSection: some View {
     GroupBox("Sync Status") {
       VStack(alignment: .leading, spacing: 8) {
@@ -127,15 +136,6 @@ struct SyncTestHarness: View {
       .background(color.opacity(0.2))
       .foregroundColor(color)
       .clipShape(Capsule())
-  }
-
-  private var statusInfo: (Color, String) {
-    switch syncManager.syncStatus {
-    case .idle: (.gray, "IDLE")
-    case .syncing: (.blue, "SYNCING")
-    case .ok: (.green, "OK")
-    case .error: (.red, "ERROR")
-    }
   }
 
   private var countsSection: some View {
@@ -395,7 +395,7 @@ struct SyncTestHarness: View {
         tasks: try modelContext.fetchCount(taskDescriptor),
         activities: try modelContext.fetchCount(activityDescriptor),
         listings: try modelContext.fetchCount(listingDescriptor),
-        users: try modelContext.fetchCount(userDescriptor),
+        users: try modelContext.fetchCount(userDescriptor)
       )
     } catch {
       log("Failed to fetch local counts: \(error.localizedDescription)", isError: true)
@@ -527,7 +527,7 @@ struct SyncTestHarness: View {
       #if DEBUG
       debugLog.log(
         "Cleanup deleted local: tasks=\(deletedCounts.tasks), activities=\(deletedCounts.activities), listings=\(deletedCounts.listings), users=\(deletedCounts.users)",
-        category: .sync,
+        category: .sync
       )
       #endif
     } catch {

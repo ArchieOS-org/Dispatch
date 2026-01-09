@@ -33,7 +33,7 @@ enum PreviewDataFactory {
       name: "Alice Owner",
       email: "alice@dispatch.com",
       avatarHash: nil,
-      userType: .admin,
+      userType: .admin
     )
     // Mark synced to avoid sync logic trying to upload
     alice.syncState = EntitySyncState.synced
@@ -43,7 +43,7 @@ enum PreviewDataFactory {
       name: "Bob Agent",
       email: "bob@dispatch.com",
       avatarHash: nil,
-      userType: .realtor,
+      userType: .realtor
     )
     bob.syncState = EntitySyncState.synced
 
@@ -55,7 +55,7 @@ enum PreviewDataFactory {
       id: listingID,
       address: "123 Job Standard Blvd",
       status: .active,
-      ownedBy: aliceID,
+      ownedBy: aliceID
     )
     listing.dueDate = Calendar.current.date(byAdding: .day, value: 3, to: Date())
     listing.syncState = EntitySyncState.synced
@@ -67,7 +67,7 @@ enum PreviewDataFactory {
       title: "Inspect Roof",
       status: .open,
       declaredBy: aliceID,
-      listingId: listingID,
+      listingId: listingID
     )
     taskOpen.syncState = EntitySyncState.synced
 
@@ -76,7 +76,7 @@ enum PreviewDataFactory {
       status: .open,
       declaredBy: aliceID,
       claimedBy: bobID,
-      listingId: listingID,
+      listingId: listingID
     )
     taskClaimed.syncState = EntitySyncState.synced
     // Add claim history
@@ -84,7 +84,7 @@ enum PreviewDataFactory {
       parentType: .task,
       parentId: taskClaimed.id,
       action: .claimed,
-      userId: bobID,
+      userId: bobID
     )
     taskClaimed.claimHistory.append(claimEvent)
 
@@ -92,7 +92,7 @@ enum PreviewDataFactory {
       title: "Replace Keybox",
       status: TaskStatus.completed,
       declaredBy: aliceID,
-      listingId: listingID,
+      listingId: listingID
     )
     taskDone.completedAt = Date().addingTimeInterval(-86400)
     taskDone.syncState = EntitySyncState.synced
@@ -104,7 +104,7 @@ enum PreviewDataFactory {
       title: "Client Call",
       type: .call,
       declaredBy: aliceID,
-      listingId: listingID,
+      listingId: listingID
     )
     activityCall.syncState = EntitySyncState.synced
 
@@ -113,7 +113,7 @@ enum PreviewDataFactory {
       type: .email,
       status: ActivityStatus.completed,
       declaredBy: aliceID,
-      listingId: listingID,
+      listingId: listingID
     )
     activityEmail.syncState = EntitySyncState.synced
 
@@ -124,7 +124,7 @@ enum PreviewDataFactory {
       content: "Please check for leaks.",
       createdBy: aliceID,
       parentType: .task,
-      parentId: taskOpen.id,
+      parentId: taskOpen.id
     )
     note1.createdAt = Date().addingTimeInterval(-3600)
     taskOpen.notes.append(note1)

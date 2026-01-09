@@ -125,129 +125,6 @@ struct ContentView: View {
     syncManager.currentUserID ?? Self.unauthenticatedUserId
   }
 
-  private var bodyCore: some View {
-    ZStack(alignment: .top) {
-      navigationContent
-      syncStatusBanner
-
-      #if DEBUG
-      if ProcessInfo.processInfo.environment["DISPATCH_PROBE"] == "1" {
-        Button(action: {
-          appState.dispatch(.openSearch(initialText: "probe"))
-        }) {
-          Text("Architectural Probe")
-            .padding()
-            .background(Color.red)
-            .foregroundColor(.white)
-            .cornerRadius(8)
-        }
-        .accessibilityIdentifier("DispatchProbe")
-        .zIndex(999)
-      }
-      #endif
-    }
-    .animation(.easeInOut(duration: 0.3), value: syncManager.syncStatus)
-    .onAppear { onAppearActions() }
-    .onChange(of: currentUserId) { _, _ in updateWorkItemActions() }
-    .onChange(of: userCache) { _, _ in updateWorkItemActions() }
-    .onChange(of: appState.router.selectedTab) { _, _ in updateLensState() }
-    .onChange(of: appState.router.path.count) { _, _ in updateLensState() }
-  }
-
-  @ViewBuilder
-  private var syncStatusBanner: some View {
-    if case .error = syncManager.syncStatus {
-      SyncStatusBanner(
-        message: syncManager.lastSyncErrorMessage ?? "Sync failed",
-        onRetry: { syncManager.requestSync() },
-      )
-      .transition(.move(edge: .top).combined(with: .opacity))
-      .zIndex(1)
-    }
-  }
-
-  @ViewBuilder
-  private var navigationContent: some View {
-    #if os(macOS)
-    // macOS always uses sidebar navigation
-    sidebarNavigation
-    #else
-    // iOS: Compact = MenuPageView, Regular (iPad) = Sidebar
-    if horizontalSizeClass == .regular {
-      sidebarNavigation
-    } else {
-      menuNavigation
-    }
-    #endif
-  }
-
-  /// Things 3-style menu page navigation for iPhone with pull-down search
-  private var menuNavigation: some View {
-    ZStack {
-      NavigationStack(path: $appState.router.path) {
-        MenuPageView()
-          .appDestinations()
-      }
-      .overlay {
-        // Search overlay - Driven by AppState Intent
-        if case .search(let initialText) = appState.overlayState {
-          SearchOverlay(
-            isPresented: Binding(
-              get: { true },
-              set: { if !$0 { appState.overlayState = .none } },
-            ),
-            searchText: Binding(
-              get: { initialText ?? "" },
-              set: { _ in }, // SearchOverlay handles strict text state locally for now
-            ),
-            onSelectResult: { result in
-              selectSearchResult(result)
-              appState.overlayState = .none
-            },
-          )
-        }
-      }
-
-      // Persistent floating buttons
-      // Helper to hide buttons when overlay is active (One Boss)
-      if appState.overlayState == .none {
-        GlobalFloatingButtons()
-      }
-    }
-    .onAppear {
-      // Keyboard observer relies on legacy AppOverlayState logic which we are deprecating.
-      // Leaving attached to local 'overlayState' variable for now if it exists,
-      // but we must clean up 'overlayState' variable usage.
-      // For this step, we just comment it out as it was iOS specific fallback.
-      // keyboardObserver.attach(to: overlayState)
-    }
-    // iOS Sheet Handling now driven by AppState
-    // Note: We use the same sheet logic as macOS eventually, but for now we map it here
-    .sheet(item: appState.sheetBinding) { state in
-      switch state {
-      case .quickEntry(let type):
-        QuickEntrySheet(
-          defaultItemType: type ?? .task,
-          currentUserId: currentUserId,
-          listings: activeListings,
-          onSave: { syncManager.requestSync() },
-        )
-
-      case .addListing:
-        AddListingSheet(
-          currentUserId: currentUserId,
-          onSave: { syncManager.requestSync() },
-        )
-
-      case .addRealtor:
-        EditRealtorSheet()
-
-      case .none:
-        EmptyView()
-      }
-    }
-  }
-
   // handleTabSelection removed - use appState.dispatch(.selectTab) directly
 
   #if os(macOS)
@@ -294,7 +171,7 @@ struct ContentView: View {
             stageCounts: stageCounts,
             onSelectStage: { stage in
               appState.router.path.append(.stagedListings(stage))
-            },
+            }
           )
         }
         .listRowBackground(Color.clear)
@@ -361,7 +238,7 @@ struct ContentView: View {
           context: toolbarContext,
           audience: Binding(
             get: { appState.lensState.audience },
-            set: { appState.lensState.audience = $0 },
+            set: { appState.lensState.audience = $0 }
           ),
           onNew: {
             if selectedTab == .listings {
@@ -375,7 +252,7 @@ struct ContentView: View {
 
           onSearch: {
             appState.dispatch(.openSearch(initialText: nil))
-          },
+          }
         )
       }
     }
@@ -392,7 +269,7 @@ struct ContentView: View {
               stageCounts: stageCounts,
               onSelectStage: { stage in
                 appState.router.path.append(.stagedListings(stage))
-              },
+              }
             )
           }
           .listRowInsets(EdgeInsets(top: DS.Spacing.sm, leading: DS.Spacing.md, bottom: DS.Spacing.sm, trailing: DS.Spacing.md))
@@ -474,6 +351,217 @@ struct ContentView: View {
   }
   #endif
 
+  private var bodyCore: some View {
+    ZStack(alignment: .top) {
+      navigationContent
+      syncStatusBanner
+
+      #if DEBUG
+      if ProcessInfo.processInfo.environment["DISPATCH_PROBE"] == "1" {
+        Button(action: {
+          appState.dispatch(.openSearch(initialText: "probe"))
+        }) {
+          Text("Architectural Probe")
+            .padding()
+            .background(Color.red)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+        }
+        .accessibilityIdentifier("DispatchProbe")
+        .zIndex(999)
+      }
+      #endif
+    }
+    .animation(.easeInOut(duration: 0.3), value: syncManager.syncStatus)
+    .onAppear { onAppearActions() }
+    .onChange(of: currentUserId) { _, _ in updateWorkItemActions() }
+    .onChange(of: userCache) { _, _ in updateWorkItemActions() }
+    .onChange(of: appState.router.selectedTab) { _, _ in updateLensState() }
+    .onChange(of: appState.router.path.count) { _, _ in updateLensState() }
+  }
+
+  @ViewBuilder
+  private var syncStatusBanner: some View {
+    if case .error = syncManager.syncStatus {
+      SyncStatusBanner(
+        message: syncManager.lastSyncErrorMessage ?? "Sync failed",
+        onRetry: { syncManager.requestSync() }
+      )
+      .transition(.move(edge: .top).combined(with: .opacity))
+      .zIndex(1)
+    }
+  }
+
+  @ViewBuilder
+  private var navigationContent: some View {
+    #if os(macOS)
+    // macOS always uses sidebar navigation
+    sidebarNavigation
+    #else
+    // iOS: Compact = MenuPageView, Regular (iPad) = Sidebar
+    if horizontalSizeClass == .regular {
+      sidebarNavigation
+    } else {
+      menuNavigation
+    }
+    #endif
+  }
+
+  /// Things 3-style menu page navigation for iPhone with pull-down search
+  private var menuNavigation: some View {
+    ZStack {
+      NavigationStack(path: $appState.router.path) {
+        MenuPageView()
+          .appDestinations()
+      }
+      .overlay {
+        // Search overlay - Driven by AppState Intent
+        if case .search(let initialText) = appState.overlayState {
+          SearchOverlay(
+            isPresented: Binding(
+              get: { true },
+              set: { if !$0 { appState.overlayState = .none } }
+            ),
+            searchText: Binding(
+              get: { initialText ?? "" },
+              set: { _ in } // SearchOverlay handles strict text state locally for now
+            ),
+            onSelectResult: { result in
+              selectSearchResult(result)
+              appState.overlayState = .none
+            }
+          )
+        }
+      }
+
+      // Persistent floating buttons
+      // Helper to hide buttons when overlay is active (One Boss)
+      if appState.overlayState == .none {
+        GlobalFloatingButtons()
+      }
+    }
+    .onAppear {
+      // Keyboard observer relies on legacy AppOverlayState logic which we are deprecating.
+      // Leaving attached to local 'overlayState' variable for now if it exists,
+      // but we must clean up 'overlayState' variable usage.
+      // For this step, we just comment it out as it was iOS specific fallback.
+      // keyboardObserver.attach(to: overlayState)
+    }
+    // iOS Sheet Handling now driven by AppState
+    // Note: We use the same sheet logic as macOS eventually, but for now we map it here
+    .sheet(item: appState.sheetBinding) { state in
+      switch state {
+      case .quickEntry(let type):
+        QuickEntrySheet(
+          defaultItemType: type ?? .task,
+          currentUserId: currentUserId,
+          listings: activeListings,
+          onSave: { syncManager.requestSync() }
+        )
+
+      case .addListing:
+        AddListingSheet(
+          currentUserId: currentUserId,
+          onSave: { syncManager.requestSync() }
+        )
+
+      case .addRealtor:
+        EditRealtorSheet()
+
+      case .none:
+        EmptyView()
+      }
+    }
+  }
+
+  @ViewBuilder
+  private var quickFindOverlay: some View {
+    #if os(macOS)
+    if case .search(let initialText) = appState.overlayState {
+      ZStack(alignment: .top) {
+        // Dimmer Background (Click to dismiss)
+        Color.black.opacity(0.1) // Transparent enough to see content, tangible enough to click
+          .edgesIgnoringSafeArea(.all)
+          .onTapGesture {
+            appState.overlayState = .none
+          }
+
+        // The Popover Itself
+        NavigationPopover(
+          searchText: $quickFindText,
+          isPresented: Binding(
+            get: { true },
+            set: { if !$0 { appState.overlayState = .none } }
+          ),
+          currentTab: selectedTab,
+          onNavigate: { tab in
+            appState.dispatch(.selectTab(tab))
+
+            // Post filters logic
+            // TODO: Refine this logic in next step
+            appState.dispatch(tab == .listings ? .filterUnclaimed : .filterMine)
+            appState.overlayState = .none
+          },
+          onSelectResult: { result in
+            selectSearchResult(result)
+            appState.overlayState = .none
+          }
+        )
+        .padding(.top, 100) // Position it nicely near the top
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .onAppear {
+          if let text = initialText {
+            // Wait for popover animation + autofocus
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+              quickFindText = text
+            }
+          }
+        }
+      }
+      .zIndex(100) // Ensure it floats above everything
+    }
+    #endif
+  }
+
+  #if os(macOS)
+  @ViewBuilder
+  private func sheetContent(for state: AppState.SheetState) -> some View {
+    switch state {
+    case .quickEntry(let type):
+      QuickEntrySheet(
+        defaultItemType: type ?? .task,
+        currentUserId: currentUserId,
+        listings: activeListings,
+        onSave: { syncManager.requestSync() }
+      )
+
+    case .addListing:
+      AddListingSheet(
+        currentUserId: currentUserId,
+        onSave: { syncManager.requestSync() }
+      )
+
+    case .addRealtor:
+      EditRealtorSheet()
+
+    case .none:
+      EmptyView()
+    }
+  }
+
+  /// Binding wrapper to make SheetState work with `.sheet(item:)` which requires Optional
+  private var sheetStateBinding: Binding<AppState.SheetState?> {
+    Binding<AppState.SheetState?>(
+      get: {
+        appState.sheetState == .none ? nil : appState.sheetState
+      },
+      set: { newValue in
+        appState.sheetState = newValue ?? .none
+      }
+    )
+  }
+  #endif
+
   #if os(iOS) || os(visionOS)
   // MARK: - iPad Sidebar Helpers
 
@@ -494,98 +582,10 @@ struct ContentView: View {
   }
   #endif
 
-  @ViewBuilder
-  private var quickFindOverlay: some View {
-    #if os(macOS)
-    if case .search(let initialText) = appState.overlayState {
-      ZStack(alignment: .top) {
-        // Dimmer Background (Click to dismiss)
-        Color.black.opacity(0.1) // Transparent enough to see content, tangible enough to click
-          .edgesIgnoringSafeArea(.all)
-          .onTapGesture {
-            appState.overlayState = .none
-          }
-
-        // The Popover Itself
-        NavigationPopover(
-          searchText: $quickFindText,
-          isPresented: Binding(
-            get: { true },
-            set: { if !$0 { appState.overlayState = .none } },
-          ),
-          currentTab: selectedTab,
-          onNavigate: { tab in
-            appState.dispatch(.selectTab(tab))
-
-            // Post filters logic
-            // TODO: Refine this logic in next step
-            appState.dispatch(tab == .listings ? .filterUnclaimed : .filterMine)
-            appState.overlayState = .none
-          },
-          onSelectResult: { result in
-            selectSearchResult(result)
-            appState.overlayState = .none
-          },
-        )
-        .padding(.top, 100) // Position it nicely near the top
-        .transition(.move(edge: .top).combined(with: .opacity))
-        .onAppear {
-          if let text = initialText {
-            // Wait for popover animation + autofocus
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-              quickFindText = text
-            }
-          }
-        }
-      }
-      .zIndex(100) // Ensure it floats above everything
-    }
-    #endif
-  }
-
   private func onAppearActions() {
     updateWorkItemActions()
     updateLensState()
   }
-
-  #if os(macOS)
-  @ViewBuilder
-  private func sheetContent(for state: AppState.SheetState) -> some View {
-    switch state {
-    case .quickEntry(let type):
-      QuickEntrySheet(
-        defaultItemType: type ?? .task,
-        currentUserId: currentUserId,
-        listings: activeListings,
-        onSave: { syncManager.requestSync() },
-      )
-
-    case .addListing:
-      AddListingSheet(
-        currentUserId: currentUserId,
-        onSave: { syncManager.requestSync() },
-      )
-
-    case .addRealtor:
-      EditRealtorSheet()
-
-    case .none:
-      EmptyView()
-    }
-  }
-
-  /// Binding wrapper to make SheetState work with `.sheet(item:)` which requires Optional
-  private var sheetStateBinding: Binding<AppState.SheetState?> {
-    Binding<AppState.SheetState?>(
-      get: {
-        appState.sheetState == .none ? nil : appState.sheetState
-      },
-      set: { newValue in
-        appState.sheetState = newValue ?? .none
-      },
-    )
-  }
-  #endif
 
   #if os(macOS)
   /// Global key handler for Type Travel
@@ -688,7 +688,7 @@ struct ContentView: View {
           parentType: .task,
           parentId: task.id,
           action: .claimed,
-          userId: currentUserId,
+          userId: currentUserId
         )
         task.claimHistory.append(event)
 
@@ -700,7 +700,7 @@ struct ContentView: View {
           parentType: .activity,
           parentId: activity.id,
           action: .claimed,
-          userId: currentUserId,
+          userId: currentUserId
         )
         activity.claimHistory.append(event)
       }
@@ -717,7 +717,7 @@ struct ContentView: View {
           parentType: .task,
           parentId: task.id,
           action: .released,
-          userId: currentUserId,
+          userId: currentUserId
         )
         task.claimHistory.append(event)
 
@@ -729,7 +729,7 @@ struct ContentView: View {
           parentType: .activity,
           parentId: activity.id,
           action: .released,
-          userId: currentUserId,
+          userId: currentUserId
         )
         activity.claimHistory.append(event)
       }
@@ -743,7 +743,7 @@ struct ContentView: View {
           content: content,
           createdBy: currentUserId,
           parentType: .task,
-          parentId: task.id,
+          parentId: task.id
         )
         task.notes.append(note)
         task.markPending()
@@ -753,7 +753,7 @@ struct ContentView: View {
           content: content,
           createdBy: currentUserId,
           parentType: .activity,
-          parentId: activity.id,
+          parentId: activity.id
         )
         activity.notes.append(note)
         activity.markPending()

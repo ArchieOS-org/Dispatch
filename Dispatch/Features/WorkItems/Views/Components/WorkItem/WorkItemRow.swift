@@ -75,7 +75,7 @@ struct WorkItemRow: View {
         isCompleted: item.isCompleted,
         color: DS.Colors.Text.tertiary,
         isCircle: item.isTask,
-        onToggle: onComplete,
+        onToggle: onComplete
       )
 
       // Title
@@ -123,7 +123,7 @@ struct WorkItemRow: View {
               DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 isRetrying = false
               }
-            },
+            }
           )
         } else if case .claimedByOther = claimState {
           // Nothing - truly omit, no branch renders anything
@@ -133,7 +133,7 @@ struct WorkItemRow: View {
             claimState: claimState,
             style: .compact,
             onClaim: onClaim,
-            onRelease: onRelease,
+            onRelease: onRelease
           )
         }
       }
@@ -207,14 +207,14 @@ struct WorkItemRow: View {
         title: "Review quarterly report",
         taskDescription: "Go through Q4 numbers",
         priority: .high,
-        declaredBy: UUID(),
+        declaredBy: UUID()
       )),
       claimState: .claimedByOther(user: otherUser),
       onComplete: { },
       onEdit: { },
       onDelete: { },
       onClaim: { },
-      onRelease: { },
+      onRelease: { }
     )
 
     // Activity example - unclaimed
@@ -224,14 +224,14 @@ struct WorkItemRow: View {
         activityDescription: "Discuss contract terms",
         type: .call,
         priority: .medium,
-        declaredBy: UUID(),
+        declaredBy: UUID()
       )),
       claimState: .unclaimed,
       onComplete: { },
       onEdit: { },
       onDelete: { },
       onClaim: { },
-      onRelease: { },
+      onRelease: { }
     )
 
     // Task example - claimed by me
@@ -240,14 +240,14 @@ struct WorkItemRow: View {
         title: "My claimed task",
         taskDescription: "Working on this",
         priority: .medium,
-        declaredBy: UUID(),
+        declaredBy: UUID()
       )),
       claimState: .claimedByMe(user: claimedUser),
       onComplete: { },
       onEdit: { },
       onDelete: { },
       onClaim: { },
-      onRelease: { },
+      onRelease: { }
     )
 
     // Completed task - unclaimed
@@ -257,14 +257,14 @@ struct WorkItemRow: View {
         taskDescription: "This is done",
         priority: .low,
         status: .completed,
-        declaredBy: UUID(),
+        declaredBy: UUID()
       )),
       claimState: .unclaimed,
       onComplete: { },
       onEdit: { },
       onDelete: { },
       onClaim: { },
-      onRelease: { },
+      onRelease: { }
     )
   }
   .listStyle(.plain)

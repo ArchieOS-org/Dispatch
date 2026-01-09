@@ -151,7 +151,7 @@ enum AnyCodableValue: Decodable, Sendable {
     } else {
       throw DecodingError.dataCorruptedError(
         in: container,
-        debugDescription: "AnyCodableValue cannot decode value",
+        debugDescription: "AnyCodableValue cannot decode value"
       )
     }
   }

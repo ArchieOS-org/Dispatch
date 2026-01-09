@@ -104,9 +104,9 @@ struct PropertyRow: View {
         province: "ON",
         postalCode: "M5V 1A1",
         propertyType: .residential,
-        ownedBy: sampleUser.id,
+        ownedBy: sampleUser.id
       ),
-      owner: sampleUser,
+      owner: sampleUser
     )
 
     PropertyRow(
@@ -116,9 +116,9 @@ struct PropertyRow: View {
         city: "Vancouver",
         province: "BC",
         propertyType: .condo,
-        ownedBy: sampleUser.id,
+        ownedBy: sampleUser.id
       ),
-      owner: sampleUser,
+      owner: sampleUser
     )
 
     PropertyRow(
@@ -127,9 +127,9 @@ struct PropertyRow: View {
         city: "Calgary",
         province: "AB",
         propertyType: .commercial,
-        ownedBy: UUID(),
+        ownedBy: UUID()
       ),
-      owner: nil,
+      owner: nil
     )
   }
   .listStyle(.plain)

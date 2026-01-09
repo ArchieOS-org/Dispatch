@@ -42,10 +42,13 @@ struct AppDestinationsModifier: ViewModifier {
     // Entity resolvers (ID-based)
     case .realtor(let id):
       RealtorResolver(id: id)
+
     case .listing(let id):
       ListingResolver(id: id)
+
     case .property(let id):
       PropertyResolver(id: id)
+
     case .listingType(let id):
       ListingTypeResolver(id: id)
 
@@ -63,22 +66,28 @@ struct AppDestinationsModifier: ViewModifier {
         onAddNote: actions.onAddNote,
         onToggleSubtask: actions.onToggleSubtask,
         onDeleteSubtask: actions.onDeleteSubtask,
-        onAddSubtask: actions.onAddSubtask,
+        onAddSubtask: actions.onAddSubtask
       )
+
     case .settings(let section):
       settingsDestination(for: section)
+
     case .stagedListings(let stage):
       StagedListingsView(stage: stage)
 
     // Tab destinations (iPhone push navigation from menu)
     case .workspace:
       MyWorkspaceView()
+
     case .propertiesList:
       PropertiesListView()
+
     case .listingsList:
       ListingListView()
+
     case .realtorsList:
       RealtorsListView()
+
     case .settingsRoot:
       SettingsView()
     }

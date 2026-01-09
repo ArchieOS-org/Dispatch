@@ -72,7 +72,7 @@ final class AuthManager: ObservableObject {
       // The URL Scheme must be registered in Xcode.
       try await supabase.auth.signInWithOAuth(
         provider: .google,
-        redirectTo: URL(string: "com.googleusercontent.apps.428022180682-9fm6p0e0l3o8j1bnmf78b5uon8lkhntt://google-auth"),
+        redirectTo: URL(string: "com.googleusercontent.apps.428022180682-9fm6p0e0l3o8j1bnmf78b5uon8lkhntt://google-auth")
       )
       // CRITICAL FIX: On iOS, ASWebAuthenticationSession handles the callback internally,
       // so onOpenURL may not fire. We must explicitly refresh the session here.

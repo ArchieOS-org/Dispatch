@@ -17,7 +17,7 @@ struct StageCardsSection: View {
   var body: some View {
     StageCardsGrid(
       stageCounts: stageCounts,
-      onSelectStage: onSelectStage,
+      onSelectStage: onSelectStage
     )
   }
 }
@@ -34,7 +34,7 @@ struct StageCardsSection: View {
       .reList: 2,
       .done: 45
     ],
-    onSelectStage: { _ in },
+    onSelectStage: { _ in }
   )
   .padding()
 }

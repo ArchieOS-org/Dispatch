@@ -101,6 +101,7 @@ struct StandardGroupedList<
         "StandardGroupedList requires StandardScreen(scroll: .automatic). " +
           "Current mode is .disabled - large title won't collapse and headers may stick."
       )
+
     case .none:
       assertionFailure(
         "StandardGroupedList must be inside StandardScreen. " +
@@ -121,13 +122,15 @@ private enum StandardGroupedListAssertionState {
 }
 #endif
 
-// MARK: - Preview
+// MARK: - PreviewGroup
 
 private struct PreviewGroup: Identifiable {
   let id: String
   let name: String
   let items: [PreviewItem]
 }
+
+// MARK: - PreviewItem
 
 private struct PreviewItem: Identifiable {
   let id: String
@@ -141,7 +144,7 @@ private struct PreviewItem: Identifiable {
       name: "John Smith",
       items: [
         PreviewItem(id: "1a", title: "123 Main St"),
-        PreviewItem(id: "1b", title: "456 Oak Ave"),
+        PreviewItem(id: "1b", title: "456 Oak Ave")
       ]
     ),
     PreviewGroup(
@@ -150,9 +153,9 @@ private struct PreviewItem: Identifiable {
       items: [
         PreviewItem(id: "2a", title: "789 Pine Rd"),
         PreviewItem(id: "2b", title: "321 Elm St"),
-        PreviewItem(id: "2c", title: "654 Maple Dr"),
+        PreviewItem(id: "2c", title: "654 Maple Dr")
       ]
-    ),
+    )
   ]
 
   NavigationStack {

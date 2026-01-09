@@ -28,7 +28,7 @@ struct NotesSection: View {
         notes: notes,
         userLookup: userLookup,
         onSave: onSave,
-        onDelete: onDelete,
+        onDelete: onDelete
       )
     }
     .padding(DS.Spacing.md)
@@ -70,7 +70,7 @@ struct NotesContent: View {
                 onDelete: onDelete.map { callback in { callback(note) } },
                 onTap: {
                   isComposerFocused = false
-                },
+                }
               )
             }
           }
@@ -275,7 +275,7 @@ private let previewNotes: [Note] = (0 ..< 3).map { i in
     content: "Note \(i + 1): This is sample content for testing.",
     createdBy: UUID(),
     parentType: .task,
-    parentId: UUID(),
+    parentId: UUID()
   )
 }
 
@@ -285,7 +285,7 @@ private let previewNotes: [Note] = (0 ..< 3).map { i in
       notes: previewNotes,
       userLookup: { _ in User(name: "Test User", email: "test@example.com", userType: .admin) },
       onSave: { _ in },
-      onDelete: { _ in },
+      onDelete: { _ in }
     )
     .padding()
   }
@@ -295,7 +295,7 @@ private let previewNotes: [Note] = (0 ..< 3).map { i in
   NotesSection(
     notes: [],
     userLookup: { _ in nil },
-    onSave: { _ in },
+    onSave: { _ in }
   )
   .padding()
 }
@@ -308,7 +308,7 @@ private let previewNotes: [Note] = (0 ..< 3).map { i in
       notes: previewNotes.prefix(2).map { $0 },
       userLookup: { _ in User(name: "Jane Doe", email: "jane@example.com", userType: .marketing) },
       onSave: { _ in },
-      onDelete: { _ in },
+      onDelete: { _ in }
     )
   }
   .padding()

@@ -20,7 +20,7 @@ struct MenuPageView: View {
           stageCounts: stageCounts,
           onSelectStage: { stage in
             appState.router.path.append(.stagedListings(stage))
-          },
+          }
         )
       }
       .listRowInsets(EdgeInsets(top: 0, leading: DS.Spacing.lg, bottom: 0, trailing: DS.Spacing.lg))

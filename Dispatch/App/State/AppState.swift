@@ -87,7 +87,7 @@ final class AppState: ObservableObject {
       },
       set: { [weak self] newValue in
         self?.sheetState = newValue ?? .none
-      },
+      }
     )
   }
 

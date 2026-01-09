@@ -53,7 +53,7 @@ struct ActivityTemplateEditorView: View {
               ForEach(availableAudiences, id: \.self) { audience in
                 AudienceToggleChip(
                   audience: audience,
-                  isSelected: selectedAudiences.contains(audience),
+                  isSelected: selectedAudiences.contains(audience)
                 ) {
                   toggleAudience(audience)
                 }
@@ -152,7 +152,7 @@ struct ActivityTemplateEditorView: View {
         position: nextPosition,
         audiencesRaw: Array(selectedAudiences),
         listingTypeId: listingType.id,
-        defaultAssigneeId: defaultAssigneeId,
+        defaultAssigneeId: defaultAssigneeId
       )
       template.listingType = listingType
       modelContext.insert(template)
@@ -214,7 +214,7 @@ private struct AudienceToggleChip: View {
       name: "Sale",
       isSystem: false,
       position: 0,
-      ownedBy: UUID(),
+      ownedBy: UUID()
     )
     context.insert(saleType)
   } content: { context in

@@ -40,7 +40,7 @@ struct CollapsibleHeader<Content: View>: View {
     expandedHeight: CGFloat = 100,
     collapsedHeight: CGFloat = 56,
     maxOffset: CGFloat = 80,
-    @ViewBuilder trailingContent: @escaping () -> Content = { EmptyView() },
+    @ViewBuilder trailingContent: @escaping () -> Content = { EmptyView() }
   ) {
     self.title = title
     self.scrollOffset = scrollOffset
@@ -127,7 +127,7 @@ struct CollapsibleHeaderScrollView<Header: View, Content: View>: View {
           Color.clear
             .preference(
               key: ScrollOffsetKey.self,
-              value: -geometry.frame(in: .named("scroll")).origin.y,
+              value: -geometry.frame(in: .named("scroll")).origin.y
             )
         }
         .frame(height: 0)
@@ -154,7 +154,7 @@ struct CollapsibleHeaderScrollView<Header: View, Content: View>: View {
   CollapsibleHeaderScrollView { offset in
     CollapsibleHeader(
       title: "Work Item Title",
-      scrollOffset: offset,
+      scrollOffset: offset
     ) {
       Circle()
         .fill(DS.Colors.PriorityColors.high)

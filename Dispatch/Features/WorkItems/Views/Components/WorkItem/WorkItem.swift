@@ -262,7 +262,7 @@ extension WorkItem {
       syncState: task.syncState,
       lastSyncError: task.lastSyncError,
       audiences: task.audiences,
-      listingId: task.listingId,
+      listingId: task.listingId
     )
     return .task(task, snapshot: snapshot)
   }
@@ -319,7 +319,7 @@ extension WorkItem {
       syncState: activity.syncState,
       lastSyncError: activity.lastSyncError,
       audiences: activity.audiences,
-      listingId: activity.listingId,
+      listingId: activity.listingId
     )
     return .activity(activity, snapshot: snapshot)
   }
@@ -353,7 +353,7 @@ extension WorkItem {
   /// - Returns: The appropriate ClaimState for display
   func claimState(
     currentUserId: UUID,
-    userLookup: (UUID) -> User?,
+    userLookup: (UUID) -> User?
   ) -> ClaimState {
     guard let claimedById = claimedBy else {
       return .unclaimed

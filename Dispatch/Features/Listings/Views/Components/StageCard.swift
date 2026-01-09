@@ -114,7 +114,7 @@ struct StageCard: View {
       GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing),
       GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing)
     ],
-    spacing: DS.Spacing.StageCards.gridSpacing,
+    spacing: DS.Spacing.StageCards.gridSpacing
   ) {
     ForEach(ListingStage.allCases.sorted(by: { $0.sortOrder < $1.sortOrder }), id: \.self) { stage in
       StageCard(stage: stage, count: stage == .done ? 45 : Int.random(in: 0 ... 15)) { }
@@ -129,7 +129,7 @@ struct StageCard: View {
       GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing),
       GridItem(.flexible(), spacing: DS.Spacing.StageCards.gridSpacing)
     ],
-    spacing: DS.Spacing.StageCards.gridSpacing,
+    spacing: DS.Spacing.StageCards.gridSpacing
   ) {
     ForEach(ListingStage.allCases.sorted(by: { $0.sortOrder < $1.sortOrder }), id: \.self) { stage in
       StageCard(stage: stage, count: 0) { }

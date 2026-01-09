@@ -24,7 +24,7 @@ final class ClaimEvent {
     performedAt: Date = Date(),
     reason: String? = nil,
     createdAt: Date = Date(),
-    updatedAt: Date = Date(),
+    updatedAt: Date = Date()
   ) {
     self.id = id
     self.parentType = parentType

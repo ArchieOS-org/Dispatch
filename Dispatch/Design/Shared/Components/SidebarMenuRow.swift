@@ -38,6 +38,13 @@ struct SidebarMenuRow: View {
 
   // MARK: Private
 
+  private var accessibilityLabelText: String {
+    var label = tab.title
+    if itemCount > 0 { label += ", \(itemCount) open" }
+    if overdueCount > 0 { label += ", \(overdueCount) overdue" }
+    return label
+  }
+
   @ViewBuilder
   private var trailingContent: some View {
     if tab == .settings {
@@ -51,10 +58,4 @@ struct SidebarMenuRow: View {
     }
   }
 
-  private var accessibilityLabelText: String {
-    var label = tab.title
-    if itemCount > 0 { label += ", \(itemCount) open" }
-    if overdueCount > 0 { label += ", \(overdueCount) overdue" }
-    return label
-  }
 }

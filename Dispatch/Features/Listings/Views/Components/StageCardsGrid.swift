@@ -21,7 +21,7 @@ struct StageCardsGrid: View {
         StageCard(
           stage: stage,
           count: stageCounts[stage, default: 0],
-          action: { onSelectStage(stage) },
+          action: { onSelectStage(stage) }
         )
       }
     }
@@ -48,7 +48,7 @@ struct StageCardsGrid: View {
       .reList: 2,
       .done: 45
     ],
-    onSelectStage: { _ in },
+    onSelectStage: { _ in }
   )
   .padding()
 }
@@ -56,7 +56,7 @@ struct StageCardsGrid: View {
 #Preview("Empty Counts") {
   StageCardsGrid(
     stageCounts: [:],
-    onSelectStage: { _ in },
+    onSelectStage: { _ in }
   )
   .padding()
 }

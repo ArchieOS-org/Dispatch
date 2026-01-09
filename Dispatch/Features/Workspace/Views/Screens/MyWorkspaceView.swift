@@ -205,9 +205,9 @@ struct ListingWorkspaceSection: View {
         .buttonStyle(.plain)
         .padding(.leading, -20) // Shift 20pt left into the 24pt gutter (44 - 24 = 20)
         #if os(iOS)
-        .sensoryFeedback(.impact(flexibility: .soft), trigger: isExpanded)
+          .sensoryFeedback(.impact(flexibility: .soft), trigger: isExpanded)
         #endif
-        .accessibilityLabel(chevronAccessibilityLabel)
+          .accessibilityLabel(chevronAccessibilityLabel)
 
         // ZONE 2: Listing Info - naturally starts at 24pt line (aligned with checkboxes)
         if let listing = group.listing {

@@ -85,7 +85,7 @@ struct SearchResultRow: View {
     taskDescription: "Go through Q4 numbers",
     dueDate: Date(),
     priority: .high,
-    declaredBy: UUID(),
+    declaredBy: UUID()
   )
   SearchResultRow(result: .task(task))
     .background(DS.Colors.Background.primary)
@@ -97,7 +97,7 @@ struct SearchResultRow: View {
     activityDescription: "Discuss contract terms",
     type: .meeting,
     priority: .medium,
-    declaredBy: UUID(),
+    declaredBy: UUID()
   )
   SearchResultRow(result: .activity(activity))
     .background(DS.Colors.Background.primary)
@@ -110,7 +110,7 @@ struct SearchResultRow: View {
     province: "ON",
     postalCode: "M5V 1A1",
     country: "Canada",
-    ownedBy: UUID(),
+    ownedBy: UUID()
   )
   SearchResultRow(result: .listing(listing))
     .background(DS.Colors.Background.primary)

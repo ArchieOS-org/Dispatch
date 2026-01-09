@@ -21,7 +21,7 @@ final class StatusChange {
     newStatus: String,
     changedBy: UUID,
     changedAt: Date = Date(),
-    reason: String? = nil,
+    reason: String? = nil
   ) {
     self.id = id
     self.parentType = parentType

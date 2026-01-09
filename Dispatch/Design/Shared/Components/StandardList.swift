@@ -24,7 +24,7 @@ struct StandardList<Data: RandomAccessCollection, RowContent: View, EmptyContent
   init(
     _ data: Data,
     @ViewBuilder rowContent: @escaping (Data.Element) -> RowContent,
-    @ViewBuilder emptyContent: @escaping () -> EmptyContent = { EmptyView() },
+    @ViewBuilder emptyContent: @escaping () -> EmptyContent = { EmptyView() }
   ) {
     self.data = data
     self.rowContent = rowContent

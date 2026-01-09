@@ -49,7 +49,7 @@ struct WorkItemResolverView: View {
         onAddNote: onAddNote,
         onToggleSubtask: onToggleSubtask,
         onDeleteSubtask: onDeleteSubtask,
-        onAddSubtask: onAddSubtask,
+        onAddSubtask: onAddSubtask
       )
 
     case .activity(let id):
@@ -65,7 +65,7 @@ struct WorkItemResolverView: View {
         onAddNote: onAddNote,
         onToggleSubtask: onToggleSubtask,
         onDeleteSubtask: onDeleteSubtask,
-        onAddSubtask: onAddSubtask,
+        onAddSubtask: onAddSubtask
       )
     }
   }
@@ -90,7 +90,7 @@ private struct TaskResolverView: View {
     onAddNote: ((String, WorkItem) -> Void)?,
     onToggleSubtask: ((Subtask) -> Void)?,
     onDeleteSubtask: ((Subtask, WorkItem) -> Void)?,
-    onAddSubtask: ((WorkItem) -> Void)?,
+    onAddSubtask: ((WorkItem) -> Void)?
   ) {
     self.taskId = taskId
     self.currentUserId = currentUserId
@@ -141,7 +141,7 @@ private struct TaskResolverView: View {
         onAddNote: { content in onAddNote?(content, workItem) },
         onToggleSubtask: onToggleSubtask,
         onDeleteSubtask: { subtask in onDeleteSubtask?(subtask, workItem) },
-        onAddSubtask: { onAddSubtask?(workItem) },
+        onAddSubtask: { onAddSubtask?(workItem) }
       )
     } else {
       notFoundView
@@ -180,7 +180,7 @@ private struct ActivityResolverView: View {
     onAddNote: ((String, WorkItem) -> Void)?,
     onToggleSubtask: ((Subtask) -> Void)?,
     onDeleteSubtask: ((Subtask, WorkItem) -> Void)?,
-    onAddSubtask: ((WorkItem) -> Void)?,
+    onAddSubtask: ((WorkItem) -> Void)?
   ) {
     self.activityId = activityId
     self.currentUserId = currentUserId
@@ -231,7 +231,7 @@ private struct ActivityResolverView: View {
         onAddNote: { content in onAddNote?(content, workItem) },
         onToggleSubtask: onToggleSubtask,
         onDeleteSubtask: { subtask in onDeleteSubtask?(subtask, workItem) },
-        onAddSubtask: { onAddSubtask?(workItem) },
+        onAddSubtask: { onAddSubtask?(workItem) }
       )
     } else {
       notFoundView

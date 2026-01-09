@@ -169,7 +169,7 @@ private struct ListingTypeEditorSheet: View {
     let listingType = ListingTypeDefinition(
       name: name.trimmingCharacters(in: .whitespacesAndNewlines),
       isSystem: false,
-      ownedBy: currentUserId,
+      ownedBy: currentUserId
     )
     modelContext.insert(listingType)
     listingType.markPending()
@@ -187,7 +187,7 @@ private struct ListingTypeEditorSheet: View {
       id: UUID(),
       name: "Sale",
       isSystem: true,
-      position: 0,
+      position: 0
     )
     context.insert(saleType)
 
@@ -195,7 +195,7 @@ private struct ListingTypeEditorSheet: View {
       id: UUID(),
       name: "Lease",
       isSystem: true,
-      position: 1,
+      position: 1
     )
     context.insert(leaseType)
   } content: { _ in

@@ -26,7 +26,7 @@ final class ActivityTemplate {
     listingTypeId: UUID,
     defaultAssigneeId: UUID? = nil,
     createdAt: Date = Date(),
-    updatedAt: Date = Date(),
+    updatedAt: Date = Date()
   ) {
     self.id = id
     self.title = title

@@ -129,7 +129,7 @@ struct ListingDTO: Codable, Sendable {
       sourceSlackMessages: sourceSlackMessages,
       dueDate: dueDate,
       createdAt: createdAt,
-      updatedAt: updatedAt,
+      updatedAt: updatedAt
     )
 
     // Set propertyId (relationship reconciled later in sync)

@@ -12,12 +12,14 @@ import SwiftData
 /// Seeder for UI test data. Uses the same stable IDs as PreviewDataFactory.
 @MainActor
 enum UITestSeeder {
+
+  // MARK: Internal
+
   /// Stable IDs for UI test verification
   static let testRealtorID = PreviewDataFactory.bobID
   static let testListingID = PreviewDataFactory.listingID
+  // swiftlint:disable:next force_unwrapping
   static let testPropertyID = UUID(uuidString: "880e8400-e29b-41d4-a716-446655440003")!
-
-  private static var hasSeeded = false
 
   /// Seeds the container with test data if not already seeded.
   static func seedIfNeeded(container: ModelContainer) {
@@ -42,4 +44,9 @@ enum UITestSeeder {
 
     try? context.save()
   }
+
+  // MARK: Private
+
+  private static var hasSeeded = false
+
 }

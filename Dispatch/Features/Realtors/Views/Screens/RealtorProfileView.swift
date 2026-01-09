@@ -112,7 +112,7 @@ struct RealtorProfileView: View {
                 onEdit: { },
                 onDelete: { },
                 onClaim: { actions.onClaim(item) },
-                onRelease: { actions.onRelease(item) },
+                onRelease: { actions.onRelease(item) }
               )
             }
             .buttonStyle(.plain)

@@ -178,7 +178,7 @@ struct ListingDetailView: View {
           listing.stage = newStage
           listing.markPending()
           syncManager.requestSync()
-        },
+        }
       ))
     }
   }
@@ -246,11 +246,11 @@ struct ListingDetailView: View {
                 item: .task(task),
                 claimState: WorkItem.task(task).claimState(
                   currentUserId: currentUserId,
-                  userLookup: userLookup,
+                  userLookup: userLookup
                 ),
                 onClaim: { claimTask(task) },
                 onRelease: { unclaimTask(task) },
-                hideDueDate: true,
+                hideDueDate: true
               )
             }
             .buttonStyle(.plain)
@@ -268,7 +268,7 @@ struct ListingDetailView: View {
       onDelete: { note in
         noteToDelete = note
         showDeleteNoteAlert = true
-      },
+      }
     )
   }
 
@@ -303,7 +303,7 @@ struct ListingDetailView: View {
       VStack(alignment: .leading, spacing: 0) {
         sectionHeader(
           title: NSLocalizedString("Marketing", comment: "Section header for marketing activities"),
-          count: activities.count,
+          count: activities.count
         )
         Divider().padding(.vertical, DS.Spacing.sm)
         activitiesContent(activities)
@@ -319,16 +319,31 @@ struct ListingDetailView: View {
             item: .activity(activity),
             claimState: WorkItem.activity(activity).claimState(
               currentUserId: currentUserId,
-              userLookup: userLookup,
+              userLookup: userLookup
             ),
             onClaim: { claimActivity(activity) },
             onRelease: { unclaimActivity(activity) },
-            hideDueDate: true,
+            hideDueDate: true
           )
         }
         .buttonStyle(.plain)
       }
     }
+  }
+
+  private func emptyStateView(icon: String, title: String, message: String) -> some View {
+    VStack(spacing: DS.Spacing.sm) {
+      Image(systemName: icon)
+        .font(.system(size: 32))
+        .foregroundColor(DS.Colors.Text.tertiary)
+      Text(title)
+        .font(DS.Typography.headline)
+        .foregroundColor(DS.Colors.Text.secondary)
+      Text(message)
+        .font(DS.Typography.caption)
+        .foregroundColor(DS.Colors.Text.tertiary)
+    }
+    .padding(.vertical, DS.Spacing.xl)
   }
 
   private func addNote(content: String) {
@@ -389,20 +404,6 @@ struct ListingDetailView: View {
     syncManager.requestSync()
   }
 
-  private func emptyStateView(icon: String, title: String, message: String) -> some View {
-    VStack(spacing: DS.Spacing.sm) {
-      Image(systemName: icon)
-        .font(.system(size: 32))
-        .foregroundColor(DS.Colors.Text.tertiary)
-      Text(title)
-        .font(DS.Typography.headline)
-        .foregroundColor(DS.Colors.Text.secondary)
-      Text(message)
-        .font(DS.Typography.caption)
-        .foregroundColor(DS.Colors.Text.tertiary)
-    }
-    .padding(.vertical, DS.Spacing.xl)
-  }
 }
 
 // MARK: - Previews
@@ -426,7 +427,7 @@ struct ListingDetailView: View {
         listing.province = "ON"
         listing.postalCode = "M5V 2T6"
       }
-    },
+    }
   ) { context in
     // O(1) Lookup covering all users (owner + others)
     let users = (try? context.fetch(FetchDescriptor<User>())) ?? []
@@ -438,7 +439,7 @@ struct ListingDetailView: View {
     if let listing = try? context.fetch(listingDescriptor).first {
       ListingDetailView(
         listing: listing,
-        userLookup: { id in usersById[id] },
+        userLookup: { id in usersById[id] }
       )
     } else {
       Text("Missing preview data")

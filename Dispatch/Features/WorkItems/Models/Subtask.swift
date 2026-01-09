@@ -19,7 +19,7 @@ final class Subtask {
     completed: Bool = false,
     parentType: ParentType,
     parentId: UUID,
-    createdAt: Date = Date(),
+    createdAt: Date = Date()
   ) {
     self.id = id
     self.title = title

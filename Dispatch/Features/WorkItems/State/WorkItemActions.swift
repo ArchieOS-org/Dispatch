@@ -21,7 +21,7 @@ final class WorkItemActions: ObservableObject {
   @MainActor
   init(
     currentUserId: UUID = WorkItemActions.unauthenticatedUserId,
-    userLookup: @escaping (UUID) -> User? = { _ in nil },
+    userLookup: @escaping (UUID) -> User? = { _ in nil }
   ) {
     self.currentUserId = currentUserId
     self.userLookup = userLookup

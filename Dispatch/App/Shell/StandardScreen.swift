@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-// MARK: - StandardScreen Scroll Mode Environment
+// MARK: - StandardScreenScrollMode
 
 /// Scroll mode for contract enforcement in child components.
 /// Used by StandardGroupedList to verify correct usage context.
@@ -15,6 +15,8 @@ enum StandardScreenScrollMode {
   case automatic // StandardScreen owns ScrollView
   case disabled // No ScrollView, child may own scrolling
 }
+
+// MARK: - StandardScreenScrollModeKey
 
 private struct StandardScreenScrollModeKey: EnvironmentKey {
   static let defaultValue: StandardScreenScrollMode? = nil
@@ -46,7 +48,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     layout: LayoutMode = .column,
     scroll: ScrollMode = .automatic,
     @ViewBuilder content: @escaping () -> Content,
-    @ToolbarContentBuilder toolbarContent: @escaping () -> ToolbarItems,
+    @ToolbarContentBuilder toolbarContent: @escaping () -> ToolbarItems
   ) {
     self.title = title
     self.layout = layout
@@ -59,7 +61,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     title: String,
     layout: LayoutMode = .column,
     scroll: ScrollMode = .automatic,
-    @ViewBuilder content: @escaping () -> Content,
+    @ViewBuilder content: @escaping () -> Content
   ) where ToolbarItems == ToolbarItem<Void, EmptyView> {
     self.title = title
     self.layout = layout
@@ -103,6 +105,20 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
 
   // MARK: Private
 
+  private var horizontalPadding: CGFloat? {
+    switch layout {
+    case .fullBleed:
+      return 0
+    case .column:
+      #if os(iOS)
+      // Use Apple’s platform default inset so content aligns with the system large title.
+      return nil
+      #else
+      return DS.Spacing.Layout.pageMargin
+      #endif
+    }
+  }
+
   private var mainContent: some View {
     ZStack {
       // 1. Unified Background
@@ -139,7 +155,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
       content()
         .frame(
           maxWidth: layout == .fullBleed ? .infinity : DS.Spacing.Layout.maxContentWidth,
-          alignment: .leading,
+          alignment: .leading
         )
         .padding(.horizontal, horizontalPadding)
     }
@@ -150,23 +166,10 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
       scroll == .automatic ? .automatic : .disabled
     )
     #if os(macOS)
-      .navigationTitle("") // Hide system title on Mac in favor of our custom header
+    .navigationTitle("") // Hide system title on Mac in favor of our custom header
     #endif
   }
 
-  private var horizontalPadding: CGFloat? {
-    switch layout {
-    case .fullBleed:
-      return 0
-    case .column:
-      #if os(iOS)
-      // Use Apple’s platform default inset so content aligns with the system large title.
-      return nil
-      #else
-      return DS.Spacing.Layout.pageMargin
-      #endif
-    }
-  }
 }
 
 // MARK: - StandardScreenPreviewContent
@@ -270,7 +273,7 @@ private struct StandardScreenPreviewContent: View {
     StandardScreen(
       title: "This is an intentionally long StandardScreen title to verify wrapping at the top and correct collapse behavior when scrolling",
       layout: .column,
-      scroll: .automatic,
+      scroll: .automatic
     ) {
       StandardScreenPreviewContent()
     }

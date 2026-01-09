@@ -55,7 +55,7 @@ struct ListingTypeDefinitionDTO: Codable, Sendable {
       isArchived: isArchived,
       ownedBy: ownedBy,
       createdAt: createdAt,
-      updatedAt: updatedAt,
+      updatedAt: updatedAt
     )
   }
 }

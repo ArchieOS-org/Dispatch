@@ -45,12 +45,15 @@ struct FloatingActionButton: View {
     }
     .buttonStyle(.plain)
     #if os(iOS)
-    .sensoryFeedback(.impact(flexibility: .soft), trigger: tapCount)
+      .sensoryFeedback(.impact(flexibility: .soft), trigger: tapCount)
     #endif
-    .accessibilityLabel(accessibilityLabelText)
+      .accessibilityLabel(accessibilityLabelText)
   }
 
   // MARK: Private
+
+  /// Haptic trigger - increments on each tap
+  @State private var tapCount = 0
 
   /// System blue for proper dark mode / accessibility behavior
   private var backgroundColor: Color {
@@ -68,8 +71,6 @@ struct FloatingActionButton: View {
       : DS.Spacing.floatingButtonIconSize // 20pt
   }
 
-  /// Haptic trigger - increments on each tap
-  @State private var tapCount = 0
 }
 
 // MARK: - Preview
