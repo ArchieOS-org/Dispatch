@@ -91,14 +91,16 @@ struct ContentView: View {
     Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
   }
 
-  /// Open tasks (not completed or deleted)
-  private var openTasks: [TaskItem] {
-    allTasksRaw.filter { $0.status != .completed && $0.status != .deleted }
+  /// Workspace tasks (claimed by current user and not deleted)
+  private var workspaceTasks: [TaskItem] {
+    guard let currentUserID = syncManager.currentUserID else { return [] }
+    return allTasksRaw.filter { $0.claimedBy == currentUserID && $0.status != .deleted }
   }
 
-  /// Open activities (not completed or deleted)
-  private var openActivities: [Activity] {
-    allActivitiesRaw.filter { $0.status != .completed && $0.status != .deleted }
+  /// Workspace activities (claimed by current user and not deleted)
+  private var workspaceActivities: [Activity] {
+    guard let currentUserID = syncManager.currentUserID else { return [] }
+    return allActivitiesRaw.filter { $0.claimedBy == currentUserID && $0.status != .deleted }
   }
 
   /// Active properties (not deleted)
@@ -147,7 +149,7 @@ struct ContentView: View {
 
   private func sidebarCount(for tab: AppTab) -> Int {
     switch tab {
-    case .workspace: openTasks.count + openActivities.count
+    case .workspace: workspaceTasks.count + workspaceActivities.count
     case .properties: activeProperties.count
     case .listings: activeListings.count
     case .realtors: activeRealtors.count
@@ -157,8 +159,8 @@ struct ContentView: View {
 
   private var sidebarOverdueCount: Int {
     let startOfToday = Calendar.current.startOfDay(for: Date())
-    return openTasks.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
-      + openActivities.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
+    return workspaceTasks.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
+      + workspaceActivities.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
   }
 
   /// macOS: Things 3-style resizable sidebar with native selection
@@ -567,7 +569,7 @@ struct ContentView: View {
 
   private func sidebarCount(for tab: AppTab) -> Int {
     switch tab {
-    case .workspace: openTasks.count + openActivities.count
+    case .workspace: workspaceTasks.count + workspaceActivities.count
     case .properties: activeProperties.count
     case .listings: activeListings.count
     case .realtors: activeRealtors.count
@@ -577,8 +579,8 @@ struct ContentView: View {
 
   private var sidebarOverdueCount: Int {
     let startOfToday = Calendar.current.startOfDay(for: Date())
-    return openTasks.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
-      + openActivities.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
+    return workspaceTasks.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
+      + workspaceActivities.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
   }
   #endif
 
