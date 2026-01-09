@@ -18,8 +18,21 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
   @StateObject private var state = SidebarState()
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+  // Ephemeral drag state - view-local, no Combine churn
+  @GestureState private var dragDelta: CGFloat = 0
+  @State private var dragStartWidth: CGFloat = 0
+  @State private var isHovering = false
+
   @ViewBuilder let sidebar: () -> Sidebar
   @ViewBuilder let content: () -> Content
+
+  /// Computed display width: clamped during drag, 0 when collapsed
+  private var displayWidth: CGFloat {
+    if state.isDragging {
+      return state.clampedWidth(dragStartWidth + dragDelta)
+    }
+    return state.isVisible ? state.width : 0
+  }
 
   var body: some View {
     GeometryReader { _ in
@@ -27,7 +40,7 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
         // Sidebar content - always in hierarchy when visible or dragging
         if state.shouldShowSidebar {
           sidebar()
-            .frame(width: state.displayWidth)
+            .frame(width: displayWidth)
             .background {
               // One unified vibrancy layer for everything in the sidebar column
               Rectangle()
@@ -41,8 +54,15 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
       }
       // Unified drag handle overlay - persists through entire drag
       .overlay(alignment: .leading) {
-        UnifiedDragHandle(state: state, reduceMotion: reduceMotion)
-          .offset(x: state.shouldShowSidebar ? state.displayWidth - DS.Spacing.sidebarDragHandleWidth / 2 : 0)
+        DragHandleView(
+          isHovering: $isHovering,
+          isDragging: state.isDragging,
+          reduceMotion: reduceMotion,
+          onTap: { toggleSidebar() }
+        )
+        .offset(x: state.shouldShowSidebar ? displayWidth - DS.Spacing.sidebarDragHandleWidth / 2 : 0)
+        .allowsHitTesting(state.shouldShowSidebar || isHovering)
+        .gesture(dragGesture)
       }
     }
     // Only animate isVisible changes, NOT during drag
@@ -51,24 +71,57 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
       value: state.isVisible
     )
     .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
-      withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-        state.toggle()
+      toggleSidebar()
+    }
+  }
+
+  private var dragGesture: some Gesture {
+    DragGesture(minimumDistance: 1)
+      .updating($dragDelta) { value, delta, _ in
+        delta = value.translation.width.rounded()
       }
+      .onChanged { _ in
+        // Set isDragging and capture start width ONCE
+        if !state.isDragging {
+          dragStartWidth = state.isVisible ? state.width : 0
+          state.isDragging = true
+        }
+      }
+      .onEnded { value in
+        let finalWidth = dragStartWidth + value.translation.width
+
+        if finalWidth < DS.Spacing.sidebarMinWidth - 30 {
+          // Collapse
+          withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            state.isVisible = false
+          }
+        } else if finalWidth > 50 || state.isVisible {
+          // Expand with clamped width
+          withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
+            state.isVisible = true
+            state.width = state.clampedWidth(finalWidth)
+          }
+        }
+
+        state.isDragging = false
+      }
+  }
+
+  private func toggleSidebar() {
+    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+      state.toggle()
     }
   }
 }
 
-// MARK: - Unified Drag Handle
+// MARK: - Drag Handle View
 
-/// A persistent drag handle that works in both collapsed and expanded states.
-/// This overlay persists through the entire drag operation, preventing gesture cancellation.
-private struct UnifiedDragHandle: View {
-
-  // MARK: Internal
-
-  @ObservedObject var state: SidebarState
-
+/// A dumb UI component for the drag handle - no gesture logic, no state mutations.
+private struct DragHandleView: View {
+  @Binding var isHovering: Bool
+  let isDragging: Bool
   let reduceMotion: Bool
+  let onTap: () -> Void
 
   var body: some View {
     Rectangle()
@@ -80,10 +133,10 @@ private struct UnifiedDragHandle: View {
         RoundedRectangle(cornerRadius: 2)
           .fill(Color.primary.opacity(0.3))
           .frame(width: 4, height: DS.Spacing.sidebarDragHandleHeight)
-          .opacity(isHovering || state.isDragging ? 1 : 0)
+          .opacity(isHovering || isDragging ? 1 : 0)
           .animation(
             reduceMotion ? .none : .easeInOut(duration: 0.15),
-            value: isHovering || state.isDragging
+            value: isHovering || isDragging
           )
       }
       .onHover { hovering in
@@ -94,52 +147,7 @@ private struct UnifiedDragHandle: View {
           NSCursor.pop()
         }
       }
-      .gesture(dragGesture)
-      .onTapGesture {
-        // Toggle sidebar on tap
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-          state.toggle()
-        }
-      }
-  }
-
-  // MARK: Private
-
-  @State private var isHovering = false
-  @State private var dragStartWidth: CGFloat = 0
-
-  private var dragGesture: some Gesture {
-    DragGesture(minimumDistance: 1)
-      .onChanged { value in
-        if !state.isDragging {
-          // Capture starting state
-          dragStartWidth = state.isVisible ? state.width : 0
-          state.isDragging = true
-        }
-
-        // Update liveWidth instantly - sidebar follows cursor
-        state.liveWidth = dragStartWidth + value.translation.width
-      }
-      .onEnded { _ in
-        // Determine final state based on final width
-        let finalWidth = state.liveWidth
-
-        if finalWidth < DS.Spacing.sidebarMinWidth - 30 {
-          // Collapse
-          withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-            state.isVisible = false
-          }
-        } else if finalWidth > 50 || state.isVisible {
-          // Expand or stay visible with proper width
-          withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
-            state.isVisible = true
-            state.width = state.clampedWidth(finalWidth)
-            state.liveWidth = state.width
-          }
-        }
-
-        state.isDragging = false
-      }
+      .onTapGesture(perform: onTap)
   }
 }
 

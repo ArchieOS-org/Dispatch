@@ -15,12 +15,6 @@ import SwiftUI
 @MainActor
 final class SidebarState: ObservableObject {
 
-  // MARK: Lifecycle
-
-  init() {
-    liveWidth = CGFloat(storedWidth)
-  }
-
   // MARK: Internal
 
   /// Whether the sidebar is currently visible
@@ -29,18 +23,10 @@ final class SidebarState: ObservableObject {
   /// Whether the sidebar is currently being dragged
   @Published var isDragging = false
 
-  /// Live width during drag (can go below minWidth for collapse preview)
-  @Published var liveWidth: CGFloat = DS.Spacing.sidebarDefaultWidth
-
   /// Current sidebar width as CGFloat
   var width: CGFloat {
     get { CGFloat(storedWidth) }
     set { storedWidth = Double(clampedWidth(newValue)) }
-  }
-
-  /// The effective width to display (liveWidth during drag, width otherwise)
-  var displayWidth: CGFloat {
-    isDragging ? max(0, liveWidth) : width
   }
 
   /// Whether to show sidebar based on drag state
@@ -58,19 +44,14 @@ final class SidebarState: ObservableObject {
   /// Toggle sidebar visibility (animation handled at view level)
   func toggle() {
     isVisible.toggle()
-    if isVisible {
-      liveWidth = width
-    }
   }
 
   /// Show sidebar (animation handled at view level)
   func show() {
     guard !isVisible else { return }
     isVisible = true
-    liveWidth = width
   }
 
-  /// Hide sidebar (animation handled at view level)
   /// Hide sidebar (animation handled at view level)
   func hide() {
     guard isVisible else { return }
