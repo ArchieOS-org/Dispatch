@@ -190,7 +190,7 @@ struct ListingDetailView: View {
 
         HStack {
           if let owner {
-            RealtorPill(user: owner)
+            RealtorPill(realtorID: owner.id, realtorName: owner.name)
           }
 
           Spacer()

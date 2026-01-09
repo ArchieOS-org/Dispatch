@@ -86,7 +86,7 @@ struct PropertyDetailView: View {
       // Owner and property type
       HStack {
         if let owner {
-          RealtorPill(user: owner)
+          RealtorPill(realtorID: owner.id, realtorName: owner.name)
         }
 
         Spacer()
