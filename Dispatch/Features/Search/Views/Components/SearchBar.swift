@@ -18,11 +18,11 @@ import SwiftUI
 /// - Automatic focus on appear
 struct SearchBar: View {
 
-  // MARK: Internal
-
   #if os(iOS)
   // @EnvironmentObject private var overlayState: AppOverlayState // Removed
   #endif
+
+  // MARK: Internal
 
   @Binding var text: String
 
