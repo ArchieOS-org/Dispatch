@@ -75,7 +75,18 @@ struct ListingListView: View {
 
   @EnvironmentObject private var syncManager: SyncManager
   @EnvironmentObject private var lensState: LensState
+  @EnvironmentObject private var appState: AppState
   @Environment(\.modelContext) private var modelContext
+
+  #if os(iOS)
+  /// Collapsed by default to avoid duplication with tabViewSidebarHeader.
+  @State private var stagesExpanded = false
+
+  /// Check device type for iPad-specific UI.
+  private var isIPad: Bool {
+    UIDevice.current.userInterfaceIdiom == .pad
+  }
+  #endif
 
   @State private var showDeleteNoteAlert = false
   @State private var noteToDelete: Note?
@@ -123,33 +134,58 @@ struct ListingListView: View {
     allListings.isEmpty
   }
 
+  /// Stage counts computed from active listings.
+  private var stageCounts: [ListingStage: Int] {
+    allListings.stageCounts()
+  }
+
   private var currentUserId: UUID {
     syncManager.currentUserID ?? Self.unauthenticatedUserId
   }
 
   private var mainScreen: some View {
     StandardScreen(title: "Listings", layout: .column, scroll: .automatic) {
-      if groupedByOwner.isEmpty {
-        // Caller handles empty state
-        ContentUnavailableView {
-          Label("No Listings", systemImage: DS.Icons.Entity.listing)
-        } description: {
-          Text("Listings will appear here")
-        }
-      } else {
-        StandardGroupedList(
-          groupedByOwner,
-          items: { $0.listings },
-          header: { group in
-            SectionHeader(group.owner?.name ?? "Unknown Owner")
-          },
-          row: { group, listing in
-            ListRowLink(value: AppRoute.listing(listing.id)) {
-              ListingRow(listing: listing, owner: group.owner)
-            }
+      VStack(spacing: 0) {
+        // iPad fallback: Stage cards in collapsed DisclosureGroup.
+        // tabViewSidebarHeader is hidden in tab bar mode, so we provide access here.
+        // Collapsed by default to avoid duplication when sidebar is visible.
+        #if os(iOS)
+        if isIPad {
+          DisclosureGroup("Stages", isExpanded: $stagesExpanded) {
+            StageCardsHeader(
+              stageCounts: stageCounts,
+              onSelectStage: { stage in
+                appState.dispatch(.navigateTo(.stagedListings(stage), on: .listings))
+              }
+            )
           }
-        )
-        .pullToSearch() // Required: sensor is internal, modifier enables mechanism
+          .padding(.horizontal, DS.Spacing.md)
+          .padding(.vertical, DS.Spacing.sm)
+        }
+        #endif
+
+        if groupedByOwner.isEmpty {
+          // Caller handles empty state
+          ContentUnavailableView {
+            Label("No Listings", systemImage: DS.Icons.Entity.listing)
+          } description: {
+            Text("Listings will appear here")
+          }
+        } else {
+          StandardGroupedList(
+            groupedByOwner,
+            items: { $0.listings },
+            header: { group in
+              SectionHeader(group.owner?.name ?? "Unknown Owner")
+            },
+            row: { group, listing in
+              ListRowLink(value: AppRoute.listing(listing.id)) {
+                ListingRow(listing: listing, owner: group.owner)
+              }
+            }
+          )
+          .pullToSearch() // Required: sensor is internal, modifier enables mechanism
+        }
       }
     } toolbarContent: {
       ToolbarItem(placement: .automatic) {
@@ -480,6 +516,7 @@ private struct ListingListPreviewContainer: View {
     ], inMemory: true)
     .environmentObject(SyncManager(mode: .preview))
     .environmentObject(LensState())
+    .environmentObject(AppState(mode: .preview))
 }
 
 #Preview("Listing List - Empty") {
@@ -487,4 +524,5 @@ private struct ListingListPreviewContainer: View {
     .modelContainer(for: [Listing.self, User.self], inMemory: true)
     .environmentObject(SyncManager(mode: .preview))
     .environmentObject(LensState())
+    .environmentObject(AppState(mode: .preview))
 }

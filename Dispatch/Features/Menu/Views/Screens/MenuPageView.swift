@@ -8,6 +8,10 @@
 import SwiftData
 import SwiftUI
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 struct MenuPageView: View {
 
   // MARK: Internal
@@ -18,19 +22,17 @@ struct MenuPageView: View {
       Section {
         StageCardsSection(
           stageCounts: stageCounts,
-          onSelectStage: { stage in
-            appState.router.path.append(.stagedListings(stage))
-          }
+          onSelectStage: handleStageCardTap
         )
       }
       .listRowInsets(EdgeInsets(top: 0, leading: DS.Spacing.lg, bottom: 0, trailing: DS.Spacing.lg))
       .listRowBackground(DS.Colors.Background.primary)
       .listRowSeparator(.hidden)
 
-      // MARK: - Menu Sections (Push Navigation)
+      // MARK: - Menu Sections (Push Navigation via phonePath)
       ForEach(AppTab.menuTabs) { tab in
         Button {
-          appState.router.path.append(route(for: tab))
+          appState.dispatch(.phoneNavigateTo(route(for: tab)))
         } label: {
           SidebarMenuRow(
             tab: tab,
@@ -54,6 +56,11 @@ struct MenuPageView: View {
         Color.clear.frame(height: DS.Spacing.sm)
       }
     #endif
+  }
+
+  /// Stage card tap - uses phonePath via dispatch for iPhone navigation.
+  private func handleStageCardTap(_ stage: ListingStage) {
+    appState.dispatch(.phoneNavigateTo(.stagedListings(stage)))
   }
 
   // MARK: Private
@@ -127,12 +134,348 @@ struct MenuPageView: View {
 
 // MARK: - Previews
 
-#Preview("Menu Page View") {
-  NavigationStack {
+#Preview("Menu - With Claimed Items") {
+  PreviewShell(
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }(),
+    setup: { context in
+      PreviewDataFactory.seed(context)
+
+      // Add more items claimed by Bob for variety
+      let listing = try? context.fetch(FetchDescriptor<Listing>()).first
+
+      // Additional claimed task
+      let task = TaskItem(
+        title: "Schedule Appraisal",
+        status: .open,
+        declaredBy: PreviewDataFactory.aliceID,
+        claimedBy: PreviewDataFactory.bobID,
+        listingId: listing?.id
+      )
+      task.syncState = .synced
+      listing?.tasks.append(task)
+
+      // Claimed activity
+      let activity = Activity(
+        title: "Follow Up Call",
+        type: .call,
+        declaredBy: PreviewDataFactory.aliceID,
+        claimedBy: PreviewDataFactory.bobID,
+        listingId: listing?.id
+      )
+      activity.syncState = .synced
+      listing?.activities.append(activity)
+    }
+  ) { _ in
     MenuPageView()
   }
-  .modelContainer(for: [TaskItem.self, Activity.self, Property.self, Listing.self, User.self], inMemory: true)
-  .environmentObject(AppState())
-  .environmentObject(SyncManager(mode: .preview))
-  .environmentObject(LensState())
 }
+
+#Preview("Menu - Empty Workspace") {
+  PreviewShell(
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }(),
+    setup: { context in
+      // Seed users but no items claimed by Bob
+      let alice = User(
+        id: PreviewDataFactory.aliceID,
+        name: "Alice Owner",
+        email: "alice@dispatch.com",
+        userType: .admin
+      )
+      alice.syncState = .synced
+      context.insert(alice)
+
+      let bob = User(
+        id: PreviewDataFactory.bobID,
+        name: "Bob Agent",
+        email: "bob@dispatch.com",
+        userType: .realtor
+      )
+      bob.syncState = .synced
+      context.insert(bob)
+
+      // Add listing with unclaimed tasks
+      let listing = Listing(
+        id: PreviewDataFactory.listingID,
+        address: "456 Empty Lane",
+        status: .active,
+        ownedBy: PreviewDataFactory.aliceID
+      )
+      listing.syncState = .synced
+      context.insert(listing)
+
+      let unclaimedTask = TaskItem(
+        title: "Unclaimed Task",
+        status: .open,
+        declaredBy: PreviewDataFactory.aliceID,
+        listingId: listing.id
+      )
+      unclaimedTask.syncState = .synced
+      listing.tasks.append(unclaimedTask)
+    }
+  ) { _ in
+    MenuPageView()
+  }
+}
+
+#Preview("Menu - With Overdue Items") {
+  PreviewShell(
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }(),
+    setup: { context in
+      PreviewDataFactory.seed(context)
+
+      let listing = try? context.fetch(FetchDescriptor<Listing>()).first
+
+      // Overdue task (due yesterday)
+      let overdueTask = TaskItem(
+        title: "Urgent: Fix Plumbing",
+        status: .open,
+        declaredBy: PreviewDataFactory.aliceID,
+        claimedBy: PreviewDataFactory.bobID,
+        listingId: listing?.id
+      )
+      overdueTask.dueDate = Calendar.current.date(byAdding: .day, value: -2, to: Date())
+      overdueTask.syncState = .synced
+      listing?.tasks.append(overdueTask)
+
+      // Another overdue task
+      let overdueTask2 = TaskItem(
+        title: "Overdue: Submit Documents",
+        status: .inProgress,
+        declaredBy: PreviewDataFactory.aliceID,
+        claimedBy: PreviewDataFactory.bobID,
+        listingId: listing?.id
+      )
+      overdueTask2.dueDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())
+      overdueTask2.syncState = .synced
+      listing?.tasks.append(overdueTask2)
+
+      // Overdue activity
+      let overdueActivity = Activity(
+        title: "Missed: Client Meeting",
+        type: .meeting,
+        declaredBy: PreviewDataFactory.aliceID,
+        claimedBy: PreviewDataFactory.bobID,
+        listingId: listing?.id
+      )
+      overdueActivity.dueDate = Calendar.current.date(byAdding: .day, value: -3, to: Date())
+      overdueActivity.syncState = .synced
+      listing?.activities.append(overdueActivity)
+    }
+  ) { _ in
+    MenuPageView()
+  }
+}
+
+#Preview("Menu - Rich Data") {
+  PreviewShell(
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }(),
+    setup: { context in
+      // Users
+      let alice = User(
+        id: PreviewDataFactory.aliceID,
+        name: "Alice Owner",
+        email: "alice@dispatch.com",
+        userType: .admin
+      )
+      alice.syncState = .synced
+      context.insert(alice)
+
+      let bob = User(
+        id: PreviewDataFactory.bobID,
+        name: "Bob Agent",
+        email: "bob@dispatch.com",
+        userType: .realtor
+      )
+      bob.syncState = .synced
+      context.insert(bob)
+
+      // Multiple realtors
+      for i in 1...5 {
+        let realtor = User(
+          id: UUID(),
+          name: "Realtor \(i)",
+          email: "realtor\(i)@dispatch.com",
+          userType: .realtor
+        )
+        realtor.syncState = .synced
+        context.insert(realtor)
+      }
+
+      // Multiple properties
+      for i in 1...8 {
+        let property = Property(
+          id: UUID(),
+          address: "\(100 + i) Property St",
+          ownedBy: PreviewDataFactory.aliceID
+        )
+        property.syncState = .synced
+        context.insert(property)
+      }
+
+      // Multiple listings with tasks claimed by Bob
+      for i in 1...4 {
+        let listing = Listing(
+          id: UUID(),
+          address: "\(200 + i) Listing Ave",
+          status: .active,
+          ownedBy: PreviewDataFactory.aliceID
+        )
+        listing.syncState = .synced
+        context.insert(listing)
+
+        // Add claimed tasks to each listing
+        for j in 1...2 {
+          let task = TaskItem(
+            title: "Task \(j) for Listing \(i)",
+            status: .open,
+            declaredBy: PreviewDataFactory.aliceID,
+            claimedBy: PreviewDataFactory.bobID,
+            listingId: listing.id
+          )
+          task.syncState = .synced
+          listing.tasks.append(task)
+        }
+
+        // Add claimed activity
+        let activity = Activity(
+          title: "Activity for Listing \(i)",
+          type: .call,
+          declaredBy: PreviewDataFactory.aliceID,
+          claimedBy: PreviewDataFactory.bobID,
+          listingId: listing.id
+        )
+        activity.syncState = .synced
+        listing.activities.append(activity)
+      }
+    }
+  ) { _ in
+    MenuPageView()
+  }
+}
+
+// MARK: - Container Context Previews (iOS only - uses UIColor)
+
+#if os(iOS)
+
+#Preview("Menu - In NavigationSplitView Sidebar") {
+  PreviewShell(
+    withNavigation: false,
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }(),
+    setup: { context in
+      PreviewDataFactory.seed(context)
+
+      let listing = try? context.fetch(FetchDescriptor<Listing>()).first
+
+      // Add claimed items for Bob
+      let task = TaskItem(
+        title: "Schedule Appraisal",
+        status: .open,
+        declaredBy: PreviewDataFactory.aliceID,
+        claimedBy: PreviewDataFactory.bobID,
+        listingId: listing?.id
+      )
+      task.syncState = .synced
+      listing?.tasks.append(task)
+    }
+  ) { _ in
+    NavigationSplitView {
+      MenuPageView()
+        .navigationTitle("Dispatch")
+    } detail: {
+      Text("Detail View")
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(uiColor: .systemGroupedBackground))
+    }
+    .navigationSplitViewStyle(.balanced)
+  }
+}
+
+#Preview("Menu - iPad Landscape", traits: .landscapeLeft) {
+  PreviewShell(
+    withNavigation: false,
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }(),
+    setup: { context in
+      PreviewDataFactory.seed(context)
+
+      let listing = try? context.fetch(FetchDescriptor<Listing>()).first
+
+      // Multiple claimed items
+      for i in 1...5 {
+        let task = TaskItem(
+          title: "Task \(i)",
+          status: .open,
+          declaredBy: PreviewDataFactory.aliceID,
+          claimedBy: PreviewDataFactory.bobID,
+          listingId: listing?.id
+        )
+        task.syncState = .synced
+        listing?.tasks.append(task)
+      }
+    }
+  ) { _ in
+    NavigationSplitView {
+      MenuPageView()
+        .navigationTitle("Dispatch")
+    } detail: {
+      Text("Select an item")
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(uiColor: .systemGroupedBackground))
+    }
+    .navigationSplitViewStyle(.balanced)
+  }
+}
+
+#Preview("Menu - Sidebar Width Constrained") {
+  PreviewShell(
+    withNavigation: false,
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }(),
+    setup: { context in
+      PreviewDataFactory.seed(context)
+    }
+  ) { _ in
+    HStack(spacing: 0) {
+      // Simulated sidebar at typical width
+      MenuPageView()
+        .frame(width: 320)
+        .background(Color(uiColor: .systemGroupedBackground))
+
+      Divider()
+
+      // Detail placeholder
+      Text("Detail Content")
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(uiColor: .secondarySystemGroupedBackground))
+    }
+  }
+}
+
+#endif

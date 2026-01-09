@@ -95,14 +95,49 @@ final class AppState: ObservableObject {
     Self.logger.debug("Dispatching command: \(String(describing: command))")
 
     switch command {
-    case .navigate(let route):
-      router.navigate(to: route)
+    // MARK: - Tab Selection (split for correctness)
 
-    case .popToRoot:
-      router.popToRoot()
+    case .userSelectedTab(let tab):
+      router.userSelectTab(tab)
+
+    case .setSelectedTab(let tab):
+      router.setSelectedTab(tab)
+
+    // MARK: - iPad/macOS Navigation (per-tab stacks)
+
+    case .navigateTo(let route, let tab):
+      router.navigate(to: route, on: tab)
+
+    case .setPath(let path, let tab):
+      router.paths[tab] = path
+
+    case .popToRoot(let tab):
+      router.popToRoot(for: tab)
+
+    case .resetStackID(let tab):
+      router.resetStackID(for: tab)
+
+    // MARK: - iPhone Navigation (single stack)
+
+    case .phoneNavigateTo(let route):
+      router.phoneNavigate(to: route)
+
+    case .setPhonePath(let path):
+      router.phonePath = path
+
+    case .phonePopToRoot:
+      router.phonePopToRoot()
+
+    // MARK: - Legacy Navigation (for backwards compatibility)
+
+    case .navigate(let route):
+      // Legacy: navigate on current tab (iPad/macOS) or phone path (iPhone)
+      // For now, use phone path as default since most existing code is iPhone-oriented
+      router.phoneNavigate(to: route)
 
     case .selectTab(let tab):
-      router.selectTab(tab)
+      // Legacy: map to userSelectedTab (maintains old behavior)
+      router.userSelectTab(tab)
 
     case .newItem:
       // Context-aware creation based on current tab

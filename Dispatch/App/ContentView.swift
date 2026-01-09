@@ -52,6 +52,12 @@ struct ContentView: View {
 
   #if os(iOS)
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+  /// Device idiom detection for container selection (NOT size class).
+  /// Using size class would flip iPad Slide Over/Split View into iPhone UI incorrectly.
+  private var isPhone: Bool {
+    UIDevice.current.userInterfaceIdiom == .phone
+  }
   #endif
 
   @Query private var users: [User]
@@ -84,6 +90,33 @@ struct ContentView: View {
   /// Local Tab state removed - using AppState.router.selectedTab (One Boss)
   private var selectedTab: AppTab {
     appState.router.selectedTab
+  }
+
+  // MARK: - Navigation Bindings (dispatch-driven)
+
+  /// Binding for TabView selection that routes through dispatcher.
+  /// Uses userSelectedTab which may pop-to-root on reselect.
+  private var selectedTabBinding: Binding<AppTab> {
+    Binding(
+      get: { appState.router.selectedTab },
+      set: { appState.dispatch(.userSelectedTab($0)) }
+    )
+  }
+
+  /// Create binding for specific tab's path (iPad/macOS per-tab stacks).
+  private func pathBinding(for tab: AppTab) -> Binding<[AppRoute]> {
+    Binding(
+      get: { appState.router.paths[tab, default: []] },
+      set: { appState.dispatch(.setPath($0, for: tab)) }
+    )
+  }
+
+  /// Binding for iPhone's single navigation path.
+  private var phonePathBinding: Binding<[AppRoute]> {
+    Binding(
+      get: { appState.router.phonePath },
+      set: { appState.dispatch(.setPhonePath($0)) }
+    )
   }
 
   /// Pre-computed user lookup dictionary for O(1) access
@@ -163,71 +196,41 @@ struct ContentView: View {
       + workspaceActivities.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
   }
 
-  /// macOS: Things 3-style resizable sidebar with native selection
+  /// macOS: Things 3-style resizable sidebar with native selection.
+  /// Stage cards appear above the List (not inside it).
+  /// Settings uses SettingsLink via SidebarTabList.
   private var sidebarNavigation: some View {
     ResizableSidebar {
-      List(selection: $sidebarSelection) {
-        // Stage Cards Section
-        Section {
-          StageCardsSection(
-            stageCounts: stageCounts,
-            onSelectStage: { stage in
-              appState.router.path.append(.stagedListings(stage))
-            }
-          )
-        }
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
-
-        // Menu Sections (no Settings - it goes after divider)
-        ForEach(AppTab.sidebarTabs) { tab in
-          SidebarMenuRow(
-            tab: tab,
-            itemCount: sidebarCount(for: tab),
-            overdueCount: tab == .workspace ? sidebarOverdueCount : 0
-          )
-        }
-
-        Divider()
-          .padding(.vertical, DS.Spacing.sm)
-
-        SidebarMenuRow(
-          tab: .settings,
-          itemCount: 0,
-          overdueCount: 0
+      VStack(spacing: 0) {
+        // Stage cards header (NOT in List - Reminders-style)
+        StageCardsHeader(
+          stageCounts: stageCounts,
+          onSelectStage: handleMacStageCardTap
         )
-      }
-      .listStyle(.sidebar)
-      .onAppear {
-        sidebarSelection = appState.router.selectedTab
-      }
-      .onChange(of: sidebarSelection) { _, newValue in
-        guard let tab = newValue, tab != appState.router.selectedTab else { return }
-        appState.dispatch(.selectTab(tab))
-      }
-      .onChange(of: appState.router.selectedTab) { _, newValue in
-        sidebarSelection = newValue
+
+        // Tab list with SettingsLink
+        SidebarTabList(
+          selection: $sidebarSelection,
+          tabCounts: macTabCounts,
+          overdueCount: sidebarOverdueCount
+        )
+        .onAppear {
+          sidebarSelection = appState.router.selectedTab
+        }
+        .onChange(of: sidebarSelection) { _, newValue in
+          guard let tab = newValue, tab != appState.router.selectedTab else { return }
+          appState.dispatch(.userSelectedTab(tab))
+        }
+        .onChange(of: appState.router.selectedTab) { _, newValue in
+          sidebarSelection = newValue
+        }
       }
     } content: {
-      NavigationStack(path: $appState.router.path) {
-        Group {
-          switch selectedTab {
-          case .properties:
-            PropertiesListView()
-          case .listings:
-            ListingListView()
-          case .realtors:
-            RealtorsListView() // Use root stack
-          case .settings:
-            SettingsView()
-          case .workspace, .search:
-            MyWorkspaceView()
-          }
-        }
-        .appDestinations()
+      NavigationStack(path: pathBinding(for: selectedTab)) {
+        macTabRootView(for: selectedTab)
+          .appDestinations()
       }
-      // toolbar(.hidden) removed to restore traffic lights
-      .id(appState.router.stackID) // Force rebuild when ID changes (pop to root)
+      .id(appState.router.stackIDs[selectedTab])
       .toolbar {
         // FORCE the NSToolbar to exist at all times.
         // This prevents the window corner radius from flickering (Large vs Small) when navigating between views.
@@ -251,7 +254,6 @@ struct ContentView: View {
               appState.sheetState = .quickEntry(type: nil)
             }
           },
-
           onSearch: {
             appState.dispatch(.openSearch(initialText: nil))
           }
@@ -259,78 +261,140 @@ struct ContentView: View {
       }
     }
   }
-  #else
-  /// iPad: Standard NavigationSplitView sidebar with FAB overlay + toolbar FilterMenu
-  private var sidebarNavigation: some View {
-    ZStack {
-      NavigationSplitView {
-        List(selection: $sidebarSelection) {
-          // Stage Cards Section
-          Section {
-            StageCardsSection(
-              stageCounts: stageCounts,
-              onSelectStage: { stage in
-                appState.router.path.append(.stagedListings(stage))
-              }
-            )
-          }
-          .listRowInsets(EdgeInsets(top: DS.Spacing.sm, leading: DS.Spacing.md, bottom: DS.Spacing.sm, trailing: DS.Spacing.md))
-          .listRowBackground(Color.clear)
-          .listRowSeparator(.hidden)
 
-          // Menu Sections (visibility controlled by data)
-          ForEach(AppTab.sidebarTabs) { tab in
-            SidebarMenuRow(
-              tab: tab,
-              itemCount: sidebarCount(for: tab),
-              overdueCount: tab == .workspace ? sidebarOverdueCount : 0
-            )
-          }
-        }
-        .listStyle(.sidebar)
-        .navigationTitle("Dispatch")
-        .onAppear {
-          sidebarSelection = appState.router.selectedTab
-        }
-        .onChange(of: sidebarSelection) { _, newValue in
-          guard let tab = newValue, tab != appState.router.selectedTab else { return }
-          appState.dispatch(.selectTab(tab))
-        }
-        .onChange(of: appState.router.selectedTab) { _, newValue in
-          sidebarSelection = newValue
-        }
-      } detail: {
-        // iPad: Unconditional Stack (One Boss Rule)
-        NavigationStack(path: $appState.router.path) {
-          Group {
-            switch selectedTab {
-            case .properties:
-              PropertiesListView()
-            case .listings:
-              ListingListView()
-            case .realtors:
-              RealtorsListView()
-            case .settings:
-              SettingsView()
-            case .workspace, .search:
-              MyWorkspaceView()
-            }
-          }
-          .appDestinations() // Registry Attached!
-          .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-              if appState.lensState.showFilterButton {
-                FilterMenu(audience: $appState.lensState.audience)
+  /// macOS tab counts for SidebarTabList.
+  private var macTabCounts: [AppTab: Int] {
+    [
+      .workspace: workspaceTasks.count + workspaceActivities.count,
+      .properties: activeProperties.count,
+      .listings: activeListings.count,
+      .realtors: activeRealtors.count
+    ]
+  }
+
+  /// macOS root view for selected tab.
+  @ViewBuilder
+  private func macTabRootView(for tab: AppTab) -> some View {
+    switch tab {
+    case .workspace:
+      MyWorkspaceView()
+    case .properties:
+      PropertiesListView()
+    case .listings:
+      ListingListView()
+    case .realtors:
+      RealtorsListView()
+    case .settings:
+      SettingsView()
+    case .search:
+      MyWorkspaceView()
+    }
+  }
+
+  /// Handle stage card tap on macOS.
+  /// Uses setSelectedTab (programmatic) which NEVER pops to root.
+  private func handleMacStageCardTap(_ stage: ListingStage) {
+    // Switch tabs only if needed (programmatic, no pop)
+    if appState.router.selectedTab != .listings {
+      appState.dispatch(.setSelectedTab(.listings))
+    }
+    // Then push the route
+    appState.dispatch(.navigateTo(.stagedListings(stage), on: .listings))
+  }
+  #else
+  /// iPad: TabView with sidebarAdaptable style (iOS 18+).
+  /// Uses per-tab NavigationStacks with stable stack IDs.
+  private var ipadTabViewNavigation: some View {
+    ZStack {
+      TabView(selection: selectedTabBinding) {
+        // Main tabs section
+        TabSection {
+          ForEach(AppTab.mainTabs) { tab in
+            Tab(tab.title, systemImage: tab.icon, value: tab) {
+              NavigationStack(path: pathBinding(for: tab)) {
+                tabRootView(for: tab)
+                  .appDestinations()
+                  .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                      if appState.lensState.showFilterButton {
+                        FilterMenu(audience: $appState.lensState.audience)
+                      }
+                    }
+                  }
               }
+              .id(appState.router.stackIDs[tab])
+            }
+            .badge(badgeCount(for: tab))
+          }
+        }
+
+        // Settings section (separate for visual grouping)
+        TabSection {
+          Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
+            NavigationStack {
+              SettingsView()
+                .appDestinations()
             }
           }
         }
       }
-      .navigationSplitViewStyle(.balanced)
+      .tabViewStyle(.sidebarAdaptable)
+      .tabViewSidebarHeader {
+        StageCardsHeader(
+          stageCounts: stageCounts,
+          onSelectStage: handleStageCardTap
+        )
+      }
 
-      // FAB overlay for iPad (filter is in toolbar, not floating)
+      // FAB overlay for iPad
       iPadFABOverlay
     }
+  }
+
+  /// Root view for each tab in iPad TabView.
+  @ViewBuilder
+  private func tabRootView(for tab: AppTab) -> some View {
+    switch tab {
+    case .workspace:
+      MyWorkspaceView()
+    case .properties:
+      PropertiesListView()
+    case .listings:
+      ListingListView()
+    case .realtors:
+      RealtorsListView()
+    case .settings:
+      SettingsView()
+    case .search:
+      MyWorkspaceView() // Search is overlay, shouldn't be a tab destination
+    }
+  }
+
+  /// Badge count for iPad tab badges.
+  private func badgeCount(for tab: AppTab) -> Int {
+    switch tab {
+    case .workspace:
+      sidebarOverdueCount > 0 ? sidebarOverdueCount : 0
+    case .listings:
+      activeListings.count
+    case .properties:
+      activeProperties.count
+    case .realtors:
+      activeRealtors.count
+    case .settings, .search:
+      0
+    }
+  }
+
+  /// Handle stage card tap: switch to Listings tab + push staged listings route.
+  /// Uses setSelectedTab (programmatic) which NEVER pops to root.
+  private func handleStageCardTap(_ stage: ListingStage) {
+    // Switch tabs only if needed (programmatic, no pop)
+    if appState.router.selectedTab != .listings {
+      appState.dispatch(.setSelectedTab(.listings))
+    }
+    // Then push the route
+    appState.dispatch(.navigateTo(.stagedListings(stage), on: .listings))
   }
 
   /// iPad floating FAB overlay with proper safe area handling
@@ -379,7 +443,21 @@ struct ContentView: View {
     .onChange(of: currentUserId) { _, _ in updateWorkItemActions() }
     .onChange(of: userCache) { _, _ in updateWorkItemActions() }
     .onChange(of: appState.router.selectedTab) { _, _ in updateLensState() }
-    .onChange(of: appState.router.path.count) { _, _ in updateLensState() }
+    .onChange(of: currentPathDepth) { _, _ in updateLensState() }
+  }
+
+  /// Current path depth for lens state updates.
+  /// Returns phonePath.count on iPhone, or current tab's path count on iPad/macOS.
+  private var currentPathDepth: Int {
+    #if os(iOS)
+    if isPhone {
+      return appState.router.phonePath.count
+    } else {
+      return appState.router.paths[appState.router.selectedTab, default: []].count
+    }
+    #else
+    return appState.router.paths[appState.router.selectedTab, default: []].count
+    #endif
   }
 
   @ViewBuilder
@@ -400,22 +478,25 @@ struct ContentView: View {
     // macOS always uses sidebar navigation
     sidebarNavigation
     #else
-    // iOS: Compact = MenuPageView, Regular (iPad) = Sidebar
-    if horizontalSizeClass == .regular {
-      sidebarNavigation
-    } else {
+    // iOS: iPhone = MenuPageView, iPad = TabView with sidebarAdaptable
+    // Using device idiom (NOT size class) to avoid iPad Slide Over/Split View issues
+    if isPhone {
       menuNavigation
+    } else {
+      ipadTabViewNavigation
     }
     #endif
   }
 
-  /// Things 3-style menu page navigation for iPhone with pull-down search
+  /// Things 3-style menu page navigation for iPhone with pull-down search.
+  /// Uses phonePath (single stack) instead of per-tab paths.
   private var menuNavigation: some View {
     ZStack {
-      NavigationStack(path: $appState.router.path) {
+      NavigationStack(path: phonePathBinding) {
         MenuPageView()
           .appDestinations()
       }
+      .id(appState.router.phoneStackID)
       .overlay {
         // Search overlay - Driven by AppState Intent
         if case .search(let initialText) = appState.overlayState {
@@ -795,11 +876,11 @@ struct ContentView: View {
   /// Eliminates the need for .onAppear hacks in views.
   private func updateLensState() {
     let tab = appState.router.selectedTab
-    let pathDepth = appState.router.path.count
+    let pathDepth = currentPathDepth
 
-    // iPhone Root Logic: If compact and at root, we are at Menu
+    // iPhone Root Logic: If phone and at root, we are at Menu
     #if os(iOS)
-    if horizontalSizeClass == .compact, pathDepth == 0 {
+    if isPhone, pathDepth == 0 {
       if appState.lensState.currentScreen != .menu {
         appState.lensState.currentScreen = .menu
       }

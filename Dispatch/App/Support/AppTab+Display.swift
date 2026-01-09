@@ -41,10 +41,19 @@ extension AppTab: Identifiable {
 // MARK: - Visibility Rules (Data-Driven)
 
 extension AppTab {
+  /// Main navigation tabs for TabView (excludes settings and search).
+  /// Settings is in a separate TabSection; search is an overlay.
+  static var mainTabs: [AppTab] {
+    [.workspace, .properties, .listings, .realtors]
+  }
+
+  /// Tabs shown in macOS sidebar (excludes settings and search).
+  /// Settings uses SettingsLink in a separate section.
   static var sidebarTabs: [AppTab] {
     allCases.filter(\.showsInSidebar)
   }
 
+  /// Tabs shown in iPhone menu (all except search).
   static var menuTabs: [AppTab] {
     allCases.filter(\.showsInMenu)
   }

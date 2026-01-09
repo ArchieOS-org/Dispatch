@@ -2688,6 +2688,8 @@ final class SyncManager: ObservableObject {
       return .ok(Date()) // Connected and healthy
     case .subscribing:
       return .syncing // Connecting...
+    case .unsubscribing:
+      return .syncing // Disconnecting in progress
     case .unsubscribed:
       return .idle // Stopped
     @unknown default:

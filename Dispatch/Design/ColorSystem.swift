@@ -66,7 +66,7 @@ extension DS {
         appearance.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
           ? NSColor(red: 38 / 255, green: 38 / 255, blue: 36 / 255, alpha: 1) // #262624
           : NSColor(red: 250 / 255, green: 249 / 255, blue: 255 / 255, alpha: 1) // #FAF9FF
-      } ?? .windowBackgroundColor)
+      })
       #endif
 
       /// Secondary background (subtle gray)

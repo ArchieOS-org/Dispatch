@@ -43,36 +43,88 @@ enum AppRoute: Hashable, Sendable {
 
 /// Source of truth for Application Navigation State.
 /// Owned by AppState.
+///
+/// **Architecture:**
+/// - iPad/macOS use per-tab NavigationStacks (`paths` dictionary)
+/// - iPhone uses a single NavigationStack (`phonePath`)
+/// - Tab selection is split into user (may pop) vs programmatic (never pops)
 struct AppRouter {
-  /// Use typed array instead of NavigationPath (homogeneous = Array per Apple WWDC22)
-  var path: [AppRoute] = []
   var selectedTab = AppTab.workspace
 
-  /// Used to signal programmatic pushes even if path doesn't change
-  /// (e.g. popping to root by tapping tab again).
-  /// Root `NavigationStack` must be keyed by this ID for reliable reset.
-  var stackID = UUID()
+  // MARK: - iPad/macOS Per-Tab Stacks
 
-  mutating func navigate(to route: AppRoute) {
-    path.append(route)
+  /// Per-tab navigation paths (iPad/macOS only - NOT shared)
+  /// Each tab maintains its own navigation stack, preserving state when switching tabs.
+  var paths: [AppTab: [AppRoute]] = [:]
+
+  /// Stable stack IDs - initialized once, mutated only via reducer.
+  /// Used to force NavigationStack rebuild when popping to root.
+  var stackIDs: [AppTab: UUID] = {
+    var ids: [AppTab: UUID] = [:]
+    for tab in AppTab.allCases {
+      ids[tab] = UUID()
+    }
+    return ids
+  }()
+
+  // MARK: - iPhone Single Stack
+
+  /// iPhone's single navigation path (phone isn't tabbed, uses MenuPageView → push).
+  var phonePath: [AppRoute] = []
+
+  /// iPhone stack ID for forced resets.
+  var phoneStackID = UUID()
+
+  // MARK: - iPad/macOS Navigation
+
+  /// Navigate to a route on a specific tab (or current tab if nil).
+  mutating func navigate(to route: AppRoute, on tab: AppTab? = nil) {
+    let targetTab = tab ?? selectedTab
+    paths[targetTab, default: []].append(route)
   }
 
-  mutating func popToRoot() {
-    if !path.isEmpty {
-      path.removeAll()
+  /// Pop to root for a specific tab (or current tab if nil).
+  mutating func popToRoot(for tab: AppTab? = nil) {
+    let targetTab = tab ?? selectedTab
+    if !(paths[targetTab]?.isEmpty ?? true) {
+      paths[targetTab]?.removeAll()
+      stackIDs[targetTab] = UUID()
     }
   }
 
-  mutating func selectTab(_ tab: AppTab) {
+  /// Force stack ID reset for a tab (triggers NavigationStack rebuild).
+  mutating func resetStackID(for tab: AppTab) {
+    stackIDs[tab] = UUID()
+  }
+
+  /// User tapped tab - pops to root if already selected.
+  /// Used when user physically taps a tab in TabView.
+  mutating func userSelectTab(_ tab: AppTab) {
     if selectedTab == tab {
-      // Double tap - pop to root
-      popToRoot()
-      // Bump stack ID to force SwiftUI to recognize change if needed
-      stackID = UUID()
+      popToRoot(for: tab)
     } else {
       selectedTab = tab
-      // Switching tabs clears the path
-      path.removeAll()
+    }
+  }
+
+  /// Programmatic tab selection - NEVER pops to root.
+  /// Used when navigating via stage cards or deep links.
+  mutating func setSelectedTab(_ tab: AppTab) {
+    selectedTab = tab
+  }
+
+  // MARK: - iPhone Navigation
+
+  /// Navigate to a route on iPhone's single stack.
+  mutating func phoneNavigate(to route: AppRoute) {
+    phonePath.append(route)
+  }
+
+  /// Pop to root on iPhone.
+  mutating func phonePopToRoot() {
+    if !phonePath.isEmpty {
+      phonePath.removeAll()
+      phoneStackID = UUID()
     }
   }
 }
