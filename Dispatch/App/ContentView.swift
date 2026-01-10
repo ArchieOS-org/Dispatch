@@ -76,6 +76,8 @@ struct ContentView: View {
   /// Local sidebar selection synced via .onChange (avoids mutation during render)
   @State private var sidebarSelection: SidebarDestination? = nil
   #else
+  /// Global Quick Find text state for iOS search overlay
+  @State private var quickFindText = ""
   /// Local sidebar selection synced via .onChange (avoids mutation during render)
   @State private var sidebarSelection: SidebarDestination? = nil
   /// Controls stage picker sheet visibility (for tab-bar mode fallback)
@@ -600,15 +602,15 @@ struct ContentView: View {
               get: { true },
               set: { if !$0 { appState.overlayState = .none } }
             ),
-            searchText: Binding(
-              get: { initialText ?? "" },
-              set: { _ in } // SearchOverlay handles strict text state locally for now
-            ),
+            searchText: $quickFindText,
             onSelectResult: { result in
               selectSearchResult(result)
               appState.overlayState = .none
             }
           )
+          .onAppear {
+            quickFindText = initialText ?? ""
+          }
         }
       }
 

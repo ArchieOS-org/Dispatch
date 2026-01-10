@@ -213,10 +213,6 @@ private struct SearchResultsPreviewList: View {
   let results: [SearchResult]
   @State var query: String
 
-  private var grouped: [(section: String, results: [SearchResult])] {
-    results.filtered(by: query).groupedBySectionWithLimit(20)
-  }
-
   var body: some View {
     List {
       if query.isEmpty {
@@ -224,18 +220,14 @@ private struct SearchResultsPreviewList: View {
           Text("Type to filter results")
             .foregroundStyle(DS.Colors.Text.secondary)
         }
-      } else if grouped.isEmpty {
+      } else if results.filtered(by: query).isEmpty {
         Section {
           Text("No matches")
             .foregroundStyle(DS.Colors.Text.secondary)
         }
       } else {
-        ForEach(grouped, id: \.section) { section, sectionResults in
-          Section(section) {
-            ForEach(sectionResults) { result in
-              SearchResultPreviewRow(result: result)
-            }
-          }
+        ForEach(results.filtered(by: query).prefix(60)) { result in
+          SearchResultPreviewRow(result: result)
         }
       }
     }
@@ -374,7 +366,20 @@ extension [SearchResult] {
     guard !query.isEmpty else { return [] }
 
     return filter { !$0.isDeleted && $0.matches(query: query) }
-      .sorted { $0.rankingScore(for: query) > $1.rankingScore(for: query) }
+      .sorted {
+        let lhsScore = $0.rankingScore(for: query)
+        let rhsScore = $1.rankingScore(for: query)
+        if lhsScore != rhsScore { return lhsScore > rhsScore }
+
+        // Tie-break 1: type priority
+        if $0.sectionOrder != $1.sectionOrder { return $0.sectionOrder < $1.sectionOrder }
+
+        // Tie-break 2: open before completed
+        if $0.isCompleted != $1.isCompleted { return !$0.isCompleted }
+
+        // Tie-break 3: stable alpha
+        return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+      }
   }
 
   /// Groups results by section with per-section limit
@@ -391,4 +396,3 @@ extension [SearchResult] {
       }
   }
 }
-
