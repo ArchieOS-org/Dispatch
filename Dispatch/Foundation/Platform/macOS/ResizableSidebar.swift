@@ -132,9 +132,9 @@ private struct DragHandleView: View {
       .contentShape(Rectangle())
       .overlay(alignment: .center) {
         // Visible handle indicator - shows on hover or during drag
-        RoundedRectangle(cornerRadius: 2)
+        RoundedRectangle(cornerRadius: 3)
           .fill(Color.primary.opacity(0.3))
-          .frame(width: 4, height: DS.Spacing.sidebarDragHandleHeight)
+          .frame(width: 6, height: DS.Spacing.sidebarDragHandleHeight)
           .opacity(isHovering || isDragging ? 1 : 0)
           .animation(
             reduceMotion ? .none : .easeInOut(duration: 0.15),

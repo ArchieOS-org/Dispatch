@@ -174,10 +174,10 @@ extension DS {
     static let sidebarDefaultWidth: CGFloat = 240
 
     /// Width of the invisible drag handle hit area
-    static let sidebarDragHandleWidth: CGFloat = 8
+    static let sidebarDragHandleWidth: CGFloat = 16
 
     /// Height of the visible drag handle indicator
-    static let sidebarDragHandleHeight: CGFloat = 40
+    static let sidebarDragHandleHeight: CGFloat = 28
 
     /// Bottom toolbar height
     static let bottomToolbarHeight: CGFloat = 44
