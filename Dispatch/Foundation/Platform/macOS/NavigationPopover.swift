@@ -31,12 +31,6 @@ struct NavigationPopover: View {
   let onNavigate: (AppTab) -> Void
   let onSelectResult: (SearchResult) -> Void
 
-  // Hardcoded empty arrays removed (Queries active)
-
-  // Hardcoded counts for MVP demo (Navigation List)
-  let inboxCount = 4
-  let todayCount = 8
-
   var body: some View {
     VStack(spacing: 0) {
       // Unifed Search Bar (replaces QuickFindField)
@@ -109,11 +103,11 @@ struct NavigationPopover: View {
   private var navigationList: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
-        // Navigation Items
+        // Navigation Items (matches iOS Quick Jump)
         let items: [SearchResult] = [
-          .navigation(title: "Inbox", icon: "tray", tab: .workspace, badgeCount: inboxCount),
-          .navigation(title: "Today", icon: "star.fill", tab: .workspace, badgeCount: todayCount),
-          .navigation(title: "Listings", icon: "building.2", tab: .listings, badgeCount: nil),
+          .navigation(title: "My Workspace", icon: "briefcase", tab: .workspace, badgeCount: nil),
+          .navigation(title: "Listings", icon: DS.Icons.Entity.listing, tab: .listings, badgeCount: nil),
+          .navigation(title: "Properties", icon: DS.Icons.Entity.property, tab: .properties, badgeCount: nil),
           .navigation(title: "Realtors", icon: DS.Icons.Entity.realtor, tab: .realtors, badgeCount: nil)
         ]
 

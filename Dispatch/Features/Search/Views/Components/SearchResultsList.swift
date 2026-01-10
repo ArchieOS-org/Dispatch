@@ -102,8 +102,9 @@ struct SearchResultsList: View {
         // Navigation Items
         let navigationItems: [SearchResult] = [
           .navigation(title: "My Workspace", icon: "briefcase", tab: .workspace),
-          .navigation(title: "Realtors", icon: DS.Icons.Entity.realtor, tab: .realtors),
-          .navigation(title: "Listings", icon: DS.Icons.Entity.listing, tab: .listings)
+          .navigation(title: "Listings", icon: DS.Icons.Entity.listing, tab: .listings),
+          .navigation(title: "Properties", icon: DS.Icons.Entity.property, tab: .properties),
+          .navigation(title: "Realtors", icon: DS.Icons.Entity.realtor, tab: .realtors)
         ]
 
         ForEach(navigationItems) { result in

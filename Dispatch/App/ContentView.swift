@@ -820,20 +820,25 @@ struct ContentView: View {
       appState.dispatch(.selectTab(.listings))
       appState.dispatch(.navigate(.listing(listing.id)))
     case .navigation(_, _, let tab, _):
-      // Map SearchResult tab (likely legacy or string) to AppTab
-      // Assuming tab is ContentView.Tab-like.
-      // Wait, SearchResult definition?
-      // Let's assume the mapped enum cases match AppTab.
-      switch tab {
-      case .workspace: appState.dispatch(.selectTab(.workspace))
-      case .properties: appState.dispatch(.selectTab(.properties))
-      case .listings: appState.dispatch(.selectTab(.listings))
-      case .realtors: appState.dispatch(.selectTab(.realtors))
-      case .settings: appState.dispatch(.selectTab(.settings))
-      case .search: break // Search tab doesn't navigate
+      #if os(iOS)
+      if isPhone {
+        // iPhone uses push navigation via phonePath
+        let route: AppRoute = switch tab {
+        case .workspace: .workspace
+        case .properties: .propertiesList
+        case .listings: .listingsList
+        case .realtors: .realtorsList
+        case .settings: .settingsRoot
+        case .search: .workspace
+        }
+        appState.dispatch(.phoneNavigateTo(route))
+      } else {
+        // iPad uses sidebar selection
+        appState.dispatch(.selectTab(tab))
       }
-      #if !os(macOS)
-      // iPhone specific logic if needed
+      #else
+      // macOS uses sidebar selection
+      appState.dispatch(.selectTab(tab))
       #endif
     }
   }
