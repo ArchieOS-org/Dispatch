@@ -32,18 +32,23 @@ struct PullToSearchModifier: ViewModifier {
     #if os(iOS)
     content
       .onScrollGeometryChange(for: CGFloat.self) { geometry in
-        // Calculate pull distance from content offset
-        // When pulling down at top, contentOffset.y becomes negative
-        max(0, geometry.contentInsets.top - geometry.contentOffset.y)
+        // The "at rest" position is contentOffset.y == -contentInsets.top
+        // We're only overscrolling when contentOffset.y < -contentInsets.top
+        let topEdgeY = -geometry.contentInsets.top
+        guard geometry.contentOffset.y < topEdgeY else { return 0 }
+        return topEdgeY - geometry.contentOffset.y  // positive pull distance
       } action: { _, pullDistance in
+        currentPullDistance = pullDistance
         updatePullState(pullDistance: pullDistance)
       }
       .onScrollPhaseChange { oldPhase, newPhase in
         handlePhaseChange(from: oldPhase, to: newPhase)
       }
       .overlay(alignment: .top) {
-        // Visual indicator overlay (positioned at top)
-        PullToSearchIndicator(state: state)
+        PullToSearchIndicator(state: state, progress: progress)
+          .offset(y: computeIconOffset(pullDistance: currentPullDistance))
+          .frame(maxWidth: .infinity, alignment: .top)
+          .allowsHitTesting(false)
       }
     #else
     content // macOS: no-op
@@ -58,37 +63,69 @@ struct PullToSearchModifier: ViewModifier {
   /// Current pull-to-search state
   @State private var state: PullToSearchState = .idle
 
+  /// Current pull distance for 1:1 indicator offset + release checks
+  @State private var currentPullDistance: CGFloat = 0
+
+  /// Prevents multiple triggers per pull
+  @State private var didTriggerThisPull = false
+
   /// Prevents multiple haptics per armed entry
   @State private var didFireHaptic = false
 
   #if os(iOS)
+  /// Pull progress (0-1)
+  private var progress: CGFloat {
+    let threshold = DS.Spacing.searchPullThreshold
+    guard threshold > 0 else { return 0 }
+    return min(1.0, max(0.0, currentPullDistance / threshold))
+  }
+
+  /// Computes the 1:1 icon offset for the pull indicator.
+  ///
+  /// The indicator moves down exactly 1:1 with the pull distance.
+  /// At rest (pullDistance=0): hidden above the content area
+  /// At threshold: docked at endOffset position
+  private func computeIconOffset(pullDistance: CGFloat) -> CGFloat {
+    let threshold = DS.Spacing.searchPullThreshold
+    // Dock position relative to scroll view's top (small margin)
+    let endOffset = DS.Spacing.sm
+    // Start position ensures we dock exactly at threshold
+    let startOffset = endOffset - threshold
+    // True 1:1 tracking, capped at endOffset
+    return min(endOffset, startOffset + pullDistance)
+  }
+
   /// Updates the pull state based on current pull distance
   private func updatePullState(pullDistance: CGFloat) {
     let threshold = DS.Spacing.searchPullThreshold
-    let progress = min(1.0, pullDistance / threshold)
+    let progress = min(1.0, max(0.0, pullDistance / threshold))
 
-    if progress >= 1.0 {
-      // Enter armed state
-      if state != .armed {
-        state = .armed
-        if !didFireHaptic {
-          HapticFeedback.medium() // Stronger haptic for "armed"
-          didFireHaptic = true
-        }
-      }
-    } else if progress > 0.05 {
-      // Pulling but not armed (small threshold to avoid jitter)
-      state = .pulling(progress: progress)
-      // Reset haptic flag when un-armed
-      if didFireHaptic {
+    switch state {
+    case .armed:
+      if progress <= 0 {
+        state = .idle
+        didFireHaptic = false
+      } else if progress < 0.85 {
+        state = .pulling(progress: progress)
         didFireHaptic = false
       }
-    } else {
-      // Idle
-      if state != .idle {
+    case .pulling, .idle:
+      if progress >= 1.0 {
+        state = .armed
+        if !didFireHaptic {
+          HapticFeedback.medium()
+          didFireHaptic = true
+        }
+      } else if progress > 0 {
+        state = .pulling(progress: progress)
+      } else {
         state = .idle
         didFireHaptic = false
       }
+    }
+
+    if pullDistance <= 1 {
+      didTriggerThisPull = false
     }
   }
 
@@ -99,14 +136,13 @@ struct PullToSearchModifier: ViewModifier {
     let wasInteracting = (oldPhase == .interacting || oldPhase == .tracking)
     let isReleased = (newPhase == .decelerating || newPhase == .idle || newPhase == .animating)
 
-    if wasInteracting && isReleased && state == .armed {
+    let threshold = DS.Spacing.searchPullThreshold
+    if wasInteracting && isReleased
+      && state == .armed
+      && currentPullDistance >= threshold
+      && !didTriggerThisPull {
+      didTriggerThisPull = true
       triggerSearch()
-    }
-
-    // Reset state when scroll fully settles
-    if newPhase == .idle {
-      state = .idle
-      didFireHaptic = false
     }
   }
 

@@ -27,36 +27,32 @@ enum PullToSearchState: Equatable {
 /// Displays a magnifying glass icon that:
 /// - Fades in and scales up as user pulls down
 /// - Shows blue capsule background when armed (threshold reached)
-/// - Tracks linearly with finger movement
+/// - Uses progress for opacity/scale only (position is owned by modifier)
 struct PullToSearchIndicator: View {
 
   // MARK: Internal
 
   let state: PullToSearchState
+  let progress: CGFloat
 
   var body: some View {
     #if os(iOS)
-    ZStack {
-      // Blue capsule background (only visible when armed)
-      if isArmed {
-        Capsule()
-          .fill(DS.Colors.searchArmed)
-          .frame(
-            width: DS.Spacing.searchPullIndicatorSize + DS.Spacing.searchPullArmedPadding * 2,
-            height: DS.Spacing.searchPullIndicatorSize + DS.Spacing.searchPullArmedPadding
-          )
+    // Icon with optional armed background - sizes to content, no infinite frames
+    Image(systemName: "magnifyingglass")
+      .font(.system(size: DS.Spacing.searchPullIndicatorSize, weight: .semibold))
+      .foregroundStyle(isArmed ? .white : DS.Colors.Text.secondary)
+      .padding(.horizontal, isArmed ? DS.Spacing.searchPullArmedPadding : 0)
+      .padding(.vertical, isArmed ? DS.Spacing.searchPullArmedPadding / 2 : 0)
+      .background {
+        if isArmed {
+          Capsule()
+            .fill(DS.Colors.searchArmed)
+        }
       }
-
-      // Magnifying glass icon
-      Image(systemName: "magnifyingglass")
-        .font(.system(size: DS.Spacing.searchPullIndicatorSize, weight: .medium))
-        .foregroundStyle(isArmed ? .white : DS.Colors.Text.secondary)
-    }
-    .scaleEffect(iconScale)
-    .opacity(iconOpacity)
-    .offset(y: iconOffset)
-    .accessibilityLabel(accessibilityText)
-    .accessibilityAddTraits(.isImage)
+      .scaleEffect(iconScale)
+      .opacity(iconOpacity)
+      .accessibilityLabel(accessibilityText)
+      .accessibilityAddTraits(.isImage)
     #else
     EmptyView()
     #endif
@@ -66,30 +62,27 @@ struct PullToSearchIndicator: View {
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-  /// Progress value (0-1) derived from state
-  private var progress: CGFloat {
-    switch state {
-    case .idle:
-      return 0
-    case .pulling(let p):
-      return p
-    case .armed:
-      return 1
-    }
-  }
-
   /// Whether the indicator is in armed state
   private var isArmed: Bool {
     state == .armed
   }
 
+  /// Progress value (0-1), clamped for safety
+  private var clampedProgress: CGFloat {
+    min(max(progress, 0), 1)
+  }
+
   /// Icon opacity: 0 when idle, scales with progress
   private var iconOpacity: CGFloat {
+    if reduceMotion {
+      return state == .idle ? 0 : 1
+    }
+
     switch state {
     case .idle:
       return 0
-    case .pulling(let p):
-      return p
+    case .pulling:
+      return clampedProgress
     case .armed:
       return 1
     }
@@ -98,16 +91,9 @@ struct PullToSearchIndicator: View {
   /// Icon scale: starts at 0.6, grows to 1.0 at full progress
   private var iconScale: CGFloat {
     if reduceMotion {
-      return progress > 0 ? 1.0 : 0.6
+      return state == .idle ? 0.6 : 1.0
     }
-    return 0.6 + (0.4 * progress)
-  }
-
-  /// Vertical offset based on pull progress (linear tracking)
-  private var iconOffset: CGFloat {
-    // Pull threshold determines max offset
-    let threshold = DS.Spacing.searchPullThreshold
-    return progress * threshold
+    return 0.6 + (0.4 * clampedProgress)
   }
 
   /// Accessibility label based on state
@@ -128,7 +114,7 @@ struct PullToSearchIndicator: View {
 #if DEBUG
 #Preview("Idle") {
   VStack {
-    PullToSearchIndicator(state: .idle)
+    PullToSearchIndicator(state: .idle, progress: 0)
   }
   .frame(maxWidth: .infinity, maxHeight: .infinity)
   .background(DS.Colors.Background.primary)
@@ -136,7 +122,7 @@ struct PullToSearchIndicator: View {
 
 #Preview("Pulling 50%") {
   VStack {
-    PullToSearchIndicator(state: .pulling(progress: 0.5))
+    PullToSearchIndicator(state: .pulling(progress: 0.5), progress: 0.5)
   }
   .frame(maxWidth: .infinity, maxHeight: .infinity)
   .background(DS.Colors.Background.primary)
@@ -144,7 +130,7 @@ struct PullToSearchIndicator: View {
 
 #Preview("Armed") {
   VStack {
-    PullToSearchIndicator(state: .armed)
+    PullToSearchIndicator(state: .armed, progress: 1)
   }
   .frame(maxWidth: .infinity, maxHeight: .infinity)
   .background(DS.Colors.Background.primary)
