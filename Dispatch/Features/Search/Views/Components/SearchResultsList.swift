@@ -258,7 +258,18 @@ private struct SearchResultsListPreviewHost: View {
       onSelectResult: { _ in }
     )
     .background(DS.Colors.Background.primary)
-    .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search")
+    #if os(iOS)
+    .searchable(
+      text: $query,
+      placement: .navigationBarDrawer(displayMode: .always),
+      prompt: "Search"
+    )
+    #else
+    .searchable(
+      text: $query,
+      prompt: "Search"
+    )
+    #endif
     .navigationTitle("SearchResultsList")
   }
 }

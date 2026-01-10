@@ -240,7 +240,11 @@ private struct SearchResultsPreviewList: View {
       }
     }
     .navigationTitle("SearchResult")
+#if os(iOS)
     .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search")
+#else
+    .searchable(text: $query, prompt: "Search")
+#endif
   }
 }
 
@@ -387,3 +391,4 @@ extension [SearchResult] {
       }
   }
 }
+
