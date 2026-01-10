@@ -132,13 +132,13 @@ enum SearchResult: Identifiable, Hashable {
     }
   }
 
-  /// Sort priority for section ordering (Tasks first, then Activities, then Listings)
+  /// Sort priority for section ordering (Navigation, then Listings, then Tasks, then Activities)
   var sectionOrder: Int {
     switch self {
     case .navigation: -1 // Navigation always first
-    case .task: 0
-    case .activity: 1
-    case .listing: 2
+    case .listing: 0
+    case .task: 1
+    case .activity: 2
     }
   }
 
@@ -384,7 +384,7 @@ extension [SearchResult] {
     return grouped
       .map { (section: $0.key, results: Array($0.value.prefix(limit))) }
       .sorted { lhs, rhs in
-        // Sort sections: Tasks, Activities, Listings
+        // Sort sections: Navigation, Listings, Tasks, Activities
         let lhsOrder = lhs.results.first?.sectionOrder ?? 0
         let rhsOrder = rhs.results.first?.sectionOrder ?? 0
         return lhsOrder < rhsOrder
