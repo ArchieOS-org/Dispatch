@@ -822,7 +822,9 @@ struct ContentView: View {
     case .navigation(_, _, let tab, _):
       #if os(iOS)
       if isPhone {
-        // iPhone uses push navigation via phonePath
+        // iPhone: Clear stack first, then push destination
+        // This ensures back button always returns to Menu page
+        appState.dispatch(.phonePopToRoot)
         let route: AppRoute = switch tab {
         case .workspace: .workspace
         case .properties: .propertiesList
