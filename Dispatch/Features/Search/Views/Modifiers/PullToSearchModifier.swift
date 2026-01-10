@@ -36,7 +36,7 @@ struct PullToSearchModifier: ViewModifier {
         // We're only overscrolling when contentOffset.y < -contentInsets.top
         let topEdgeY = -geometry.contentInsets.top
         guard geometry.contentOffset.y < topEdgeY else { return 0 }
-        return topEdgeY - geometry.contentOffset.y  // positive pull distance
+        return topEdgeY - geometry.contentOffset.y // positive pull distance
       } action: { _, pullDistance in
         currentPullDistance = pullDistance
         updatePullState(pullDistance: pullDistance)
@@ -109,6 +109,7 @@ struct PullToSearchModifier: ViewModifier {
         state = .pulling(progress: progress)
         didFireHaptic = false
       }
+
     case .pulling, .idle:
       if progress >= 1.0 {
         state = .armed
@@ -137,10 +138,12 @@ struct PullToSearchModifier: ViewModifier {
     let isReleased = (newPhase == .decelerating || newPhase == .idle || newPhase == .animating)
 
     let threshold = DS.Spacing.searchPullThreshold
-    if wasInteracting && isReleased
-      && state == .armed
-      && currentPullDistance >= threshold
-      && !didTriggerThisPull {
+    if
+      wasInteracting, isReleased,
+      state == .armed,
+      currentPullDistance >= threshold,
+      !didTriggerThisPull
+    {
       didTriggerThisPull = true
       triggerSearch()
     }
@@ -167,7 +170,7 @@ struct PullToSearchModifier: ViewModifier {
   #endif
 }
 
-// MARK: - PullToSearchScrollOffsetKey (Legacy - kept for backward compatibility)
+// MARK: - PullToSearchScrollOffsetKey
 
 /// Tracks the Y offset of the scroll content
 /// Note: This preference key approach is superseded by iOS 18 scroll APIs
@@ -180,7 +183,7 @@ struct PullToSearchScrollOffsetKey: PreferenceKey {
   }
 }
 
-// MARK: - PullToSearchSensor (Legacy - kept for backward compatibility)
+// MARK: - PullToSearchSensor
 
 /// Invisible sensor view to be placed at the very top of scroll content.
 /// Note: This is superseded by iOS 18 `onScrollGeometryChange` but kept

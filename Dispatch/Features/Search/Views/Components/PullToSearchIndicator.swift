@@ -100,11 +100,11 @@ struct PullToSearchIndicator: View {
   private var accessibilityText: String {
     switch state {
     case .idle:
-      return "Pull down to search"
+      "Pull down to search"
     case .pulling:
-      return "Pull down to search"
+      "Pull down to search"
     case .armed:
-      return "Release to search"
+      "Release to search"
     }
   }
 }

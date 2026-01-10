@@ -120,6 +120,7 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
 /// A dumb UI component for the drag handle - no gesture logic, no state mutations.
 private struct DragHandleView: View {
   @Binding var isHovering: Bool
+
   let isDragging: Bool
   let reduceMotion: Bool
   let onTap: () -> Void

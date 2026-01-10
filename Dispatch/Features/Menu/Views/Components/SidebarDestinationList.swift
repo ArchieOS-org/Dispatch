@@ -13,6 +13,7 @@ import SwiftUI
 /// Stages are accessed via StageCardsHeader above, not inline rows.
 struct SidebarDestinationList: View {
   @Binding var selection: SidebarDestination?
+
   let tabCounts: [AppTab: Int]
   let overdueCount: Int
 

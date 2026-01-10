@@ -40,8 +40,6 @@ struct StandardList<Data: RandomAccessCollection, RowContent: View, EmptyContent
   @ViewBuilder let rowContent: (Data.Element) -> RowContent
   @ViewBuilder let emptyContent: () -> EmptyContent
 
-  @Environment(\.pullToSearchDisabled) private var pullToSearchDisabled
-
   var body: some View {
     if data.isEmpty {
       emptyState
@@ -51,6 +49,8 @@ struct StandardList<Data: RandomAccessCollection, RowContent: View, EmptyContent
   }
 
   // MARK: Private
+
+  @Environment(\.pullToSearchDisabled) private var pullToSearchDisabled
 
   private var emptyState: some View {
     VStack {

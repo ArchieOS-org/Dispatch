@@ -88,7 +88,6 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
 
   /// Debug environment
   @Environment(\.layoutMetrics) var layoutMetrics
-  @Environment(\.pullToSearchDisabled) private var pullToSearchDisabled
 
   let title: String
   let layout: LayoutMode
@@ -110,6 +109,8 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
   }
 
   // MARK: Private
+
+  @Environment(\.pullToSearchDisabled) private var pullToSearchDisabled
 
   private var horizontalPadding: CGFloat? {
     switch layout {

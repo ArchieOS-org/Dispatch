@@ -13,6 +13,7 @@ import SwiftUI
 /// Settings row opens Settings scene via SettingsLink.
 struct SidebarTabList: View {
   @Binding var selection: AppTab?
+
   let tabCounts: [AppTab: Int]
   let overdueCount: Int
 

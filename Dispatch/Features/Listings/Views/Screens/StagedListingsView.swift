@@ -7,16 +7,6 @@ private struct StagedListingRow: View {
 
   let listing: Listing
 
-  // Show progress circle for stages other than live, done, sold
-  private var shouldShowProgress: Bool {
-    switch listing.stage {
-    case .live, .done, .sold:
-      return false
-    default:
-      return true
-    }
-  }
-
   var body: some View {
     HStack(spacing: DS.Spacing.md) {
       if shouldShowProgress {
@@ -41,6 +31,16 @@ private struct StagedListingRow: View {
   }
 
   // MARK: Private
+
+  /// Show progress circle for stages other than live, done, sold
+  private var shouldShowProgress: Bool {
+    switch listing.stage {
+    case .live, .done, .sold:
+      false
+    default:
+      true
+    }
+  }
 
   private var typeTagColors: (fg: Color, bg: Color) {
     let palette: [Color] = [.blue, .green, .orange, .purple, .teal, .pink]
@@ -174,6 +174,8 @@ private enum StagedListingsPreviewData {
     return container
   }
 }
+
+// MARK: - StagedListingsView_Previews
 
 struct StagedListingsView_Previews: PreviewProvider {
   static var previews: some View {

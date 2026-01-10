@@ -9,6 +9,8 @@
 import SwiftData
 import SwiftUI
 
+// MARK: - SearchOverlay
+
 /// A full-screen search overlay with dimmed backdrop and floating modal.
 ///
 /// **Layout:**

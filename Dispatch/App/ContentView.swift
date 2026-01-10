@@ -116,14 +116,6 @@ struct ContentView: View {
     )
   }
 
-  /// Create binding for specific destination's path (iPad/macOS per-destination stacks).
-  private func pathBinding(for destination: SidebarDestination) -> Binding<[AppRoute]> {
-    Binding(
-      get: { appState.router.paths[destination] ?? [] },
-      set: { appState.dispatch(.setPath($0, for: destination)) }
-    )
-  }
-
   /// Binding for iPhone's single navigation path.
   private var phonePathBinding: Binding<[AppRoute]> {
     Binding(
@@ -191,6 +183,7 @@ struct ContentView: View {
       case .workspace, .search:
         .taskList // Re-use task actions for now
       }
+
     case .stage:
       .listingList // All stage views use listing toolbar
     }
@@ -255,7 +248,7 @@ struct ContentView: View {
         destinationRootView(for: appState.router.selectedDestination)
           .appDestinations()
       }
-      .id(appState.router.stackIDs[appState.router.selectedDestination]!)
+      .id(appState.router.stackIDs[appState.router.selectedDestination] ?? UUID())
       .toolbar {
         // FORCE the NSToolbar to exist at all times.
         // This prevents the window corner radius from flickering (Large vs Small) when navigating between views.
@@ -350,7 +343,7 @@ struct ContentView: View {
                   }
                 }
             }
-            .id(appState.router.stackIDs[.stage(stage)]!)
+            .id(appState.router.stackIDs[.stage(stage)] ?? UUID())
           }
           .defaultVisibility(.hidden, for: .tabBar)
           .defaultVisibility(.hidden, for: .sidebar)
@@ -375,7 +368,7 @@ struct ContentView: View {
                     }
                   }
               }
-              .id(appState.router.stackIDs[.tab(tab)]!)
+              .id(appState.router.stackIDs[.tab(tab)] ?? UUID())
             }
             .badge(badgeCount(for: tab))
           }
@@ -433,8 +426,8 @@ struct ContentView: View {
               HStack {
                 Text(stage.displayName)
                 Spacer()
-                if let count = stageCounts[stage], count > 0, stage != .done {
-                  Text("\(count)")
+                if let stageCount = stageCounts[stage], stageCount > 0, stage != .done {
+                  Text("\(stageCount)")
                     .foregroundStyle(.secondary)
                 }
               }
@@ -514,6 +507,20 @@ struct ContentView: View {
   }
   #endif
 
+  /// Current path depth for lens state updates.
+  /// Returns phonePath.count on iPhone, or current destination's path count on iPad/macOS.
+  private var currentPathDepth: Int {
+    #if os(iOS)
+    if isPhone {
+      return appState.router.phonePath.count
+    } else {
+      return appState.router.paths[appState.router.selectedDestination]?.count ?? 0
+    }
+    #else
+    return appState.router.paths[appState.router.selectedDestination]?.count ?? 0
+    #endif
+  }
+
   private var bodyCore: some View {
     ZStack(alignment: .top) {
       navigationContent
@@ -541,20 +548,6 @@ struct ContentView: View {
     .onChange(of: userCache) { _, _ in updateWorkItemActions() }
     .onChange(of: appState.router.selectedDestination) { _, _ in updateLensState() }
     .onChange(of: currentPathDepth) { _, _ in updateLensState() }
-  }
-
-  /// Current path depth for lens state updates.
-  /// Returns phonePath.count on iPhone, or current destination's path count on iPad/macOS.
-  private var currentPathDepth: Int {
-    #if os(iOS)
-    if isPhone {
-      return appState.router.phonePath.count
-    } else {
-      return appState.router.paths[appState.router.selectedDestination]?.count ?? 0
-    }
-    #else
-    return appState.router.paths[appState.router.selectedDestination]?.count ?? 0
-    #endif
   }
 
   @ViewBuilder
@@ -742,6 +735,14 @@ struct ContentView: View {
   }
   #endif
 
+  /// Create binding for specific destination's path (iPad/macOS per-destination stacks).
+  private func pathBinding(for destination: SidebarDestination) -> Binding<[AppRoute]> {
+    Binding(
+      get: { appState.router.paths[destination] ?? [] },
+      set: { appState.dispatch(.setPath($0, for: destination)) }
+    )
+  }
+
   #if os(iOS) || os(visionOS)
   // MARK: - iPad Sidebar Helpers
 
@@ -825,14 +826,15 @@ struct ContentView: View {
         // iPhone: Clear stack first, then push destination
         // This ensures back button always returns to Menu page
         appState.dispatch(.phonePopToRoot)
-        let route: AppRoute = switch tab {
-        case .workspace: .workspace
-        case .properties: .propertiesList
-        case .listings: .listingsList
-        case .realtors: .realtorsList
-        case .settings: .settingsRoot
-        case .search: .workspace
-        }
+        let route: AppRoute =
+          switch tab {
+          case .workspace: .workspace
+          case .properties: .propertiesList
+          case .listings: .listingsList
+          case .realtors: .realtorsList
+          case .settings: .settingsRoot
+          case .search: .workspace
+          }
         appState.dispatch(.phoneNavigateTo(route))
       } else {
         // iPad uses sidebar selection

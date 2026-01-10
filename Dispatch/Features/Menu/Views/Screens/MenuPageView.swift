@@ -12,6 +12,8 @@ import SwiftUI
 import UIKit
 #endif
 
+// MARK: - MenuPageView
+
 struct MenuPageView: View {
 
   // MARK: Internal
@@ -59,11 +61,6 @@ struct MenuPageView: View {
     #endif
   }
 
-  /// Stage card tap - uses phonePath via dispatch for iPhone navigation.
-  private func handleStageCardTap(_ stage: ListingStage) {
-    appState.dispatch(.phoneNavigateTo(.stagedListings(stage)))
-  }
-
   // MARK: Private
 
   @EnvironmentObject private var appState: AppState
@@ -107,6 +104,11 @@ struct MenuPageView: View {
     let overdueTasks = workspaceTasks.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
     let overdueActivities = workspaceActivities.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
     return overdueTasks.count + overdueActivities.count
+  }
+
+  /// Stage card tap - uses phonePath via dispatch for iPhone navigation.
+  private func handleStageCardTap(_ stage: ListingStage) {
+    appState.dispatch(.phoneNavigateTo(.stagedListings(stage)))
   }
 
   private func count(for tab: AppTab) -> Int {
@@ -322,7 +324,7 @@ struct MenuPageView: View {
       context.insert(bob)
 
       // Multiple realtors
-      for i in 1...5 {
+      for i in 1 ... 5 {
         let realtor = User(
           id: UUID(),
           name: "Realtor \(i)",
@@ -334,7 +336,7 @@ struct MenuPageView: View {
       }
 
       // Multiple properties
-      for i in 1...8 {
+      for i in 1 ... 8 {
         let property = Property(
           id: UUID(),
           address: "\(100 + i) Property St",
@@ -345,7 +347,7 @@ struct MenuPageView: View {
       }
 
       // Multiple listings with tasks claimed by Bob
-      for i in 1...4 {
+      for i in 1 ... 4 {
         let listing = Listing(
           id: UUID(),
           address: "\(200 + i) Listing Ave",
@@ -356,7 +358,7 @@ struct MenuPageView: View {
         context.insert(listing)
 
         // Add claimed tasks to each listing
-        for j in 1...2 {
+        for j in 1 ... 2 {
           let task = TaskItem(
             title: "Task \(j) for Listing \(i)",
             status: .open,
@@ -440,7 +442,7 @@ struct MenuPageView: View {
       let listing = try? context.fetch(FetchDescriptor<Listing>()).first
 
       // Multiple claimed items
-      for i in 1...5 {
+      for i in 1 ... 5 {
         let task = TaskItem(
           title: "Task \(i)",
           status: .open,

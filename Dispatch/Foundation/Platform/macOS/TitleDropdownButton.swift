@@ -67,7 +67,7 @@ struct TitleDropdownButton: View {
     title: "Inbox",
     isHovering: .constant(false)
   ) { }
-  .padding(DS.Spacing.xl)
+    .padding(DS.Spacing.xl)
 }
 
 /// Hover state - shows subtle background
@@ -76,7 +76,7 @@ struct TitleDropdownButton: View {
     title: "Inbox",
     isHovering: .constant(true)
   ) { }
-  .padding(DS.Spacing.xl)
+    .padding(DS.Spacing.xl)
 }
 
 // MARK: Title Lengths

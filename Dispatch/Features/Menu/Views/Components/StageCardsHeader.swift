@@ -42,8 +42,6 @@ struct StageCardsHeader: View {
       .reList: 2,
       .done: 45
     ],
-    onSelectStage: { stage in
-      print("Selected: \(stage)")
-    }
+    onSelectStage: { _ in }
   )
 }

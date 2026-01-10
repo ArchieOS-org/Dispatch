@@ -47,6 +47,15 @@ enum SidebarDestination: Hashable {
   case tab(AppTab)
   case stage(ListingStage)
 
+  // MARK: Internal
+
+  /// All possible destinations (tabs + stages) for pre-seeding stackIDs
+  static var allDestinations: [SidebarDestination] {
+    let tabs = AppTab.allCases.map { SidebarDestination.tab($0) }
+    let stages = ListingStage.allCases.map { SidebarDestination.stage($0) }
+    return tabs + stages
+  }
+
   /// For backward compatibility with code expecting AppTab
   var asTab: AppTab? {
     if case .tab(let tab) = self { return tab }
@@ -65,12 +74,6 @@ enum SidebarDestination: Hashable {
     return nil
   }
 
-  /// All possible destinations (tabs + stages) for pre-seeding stackIDs
-  static var allDestinations: [SidebarDestination] {
-    let tabs = AppTab.allCases.map { SidebarDestination.tab($0) }
-    let stages = ListingStage.allCases.map { SidebarDestination.stage($0) }
-    return tabs + stages
-  }
 }
 
 // MARK: - AppRouter
@@ -85,11 +88,6 @@ enum SidebarDestination: Hashable {
 struct AppRouter {
   /// Selected destination for iPad/macOS (tab or stage)
   var selectedDestination: SidebarDestination = .tab(.workspace)
-
-  /// Computed property for backward compatibility with tab-based code
-  var selectedTab: AppTab {
-    selectedDestination.asTab ?? .workspace
-  }
 
   // MARK: - iPad/macOS Per-Destination Stacks
 
@@ -115,6 +113,11 @@ struct AppRouter {
 
   /// iPhone stack ID for forced resets.
   var phoneStackID = UUID()
+
+  /// Computed property for backward compatibility with tab-based code
+  var selectedTab: AppTab {
+    selectedDestination.asTab ?? .workspace
+  }
 
   // MARK: - iPad/macOS Navigation (Destination-based)
 

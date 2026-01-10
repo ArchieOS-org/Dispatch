@@ -189,8 +189,8 @@ struct BottomToolbar: View {
     BottomToolbar(
       context: .taskList,
       audience: $audience,
-      onNew: { print("New tapped") },
-      onSearch: { print("Search tapped") }
+      onNew: { },
+      onSearch: { }
     )
   }
   .frame(width: 500, height: 300)
@@ -215,7 +215,7 @@ struct BottomToolbar: View {
     BottomToolbar(
       context: .workItemDetail,
       onClaim: { isClaimed.toggle() },
-      onDelete: { print("Delete tapped") },
+      onDelete: { },
       isClaimable: true,
       isClaimed: isClaimed
     )

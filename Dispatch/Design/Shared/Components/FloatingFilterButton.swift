@@ -212,7 +212,7 @@ struct FloatingFilterButton: View {
     // Simulated list content
     ScrollView {
       LazyVStack(spacing: DS.Spacing.md) {
-        ForEach(0..<20, id: \.self) { index in
+        ForEach(0 ..< 20, id: \.self) { index in
           RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium)
             .fill(DS.Colors.Background.primary)
             .frame(height: 60)

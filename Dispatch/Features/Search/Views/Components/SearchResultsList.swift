@@ -10,6 +10,8 @@ import Combine
 import SwiftData
 import SwiftUI
 
+// MARK: - SearchResultsList
+
 /// A list view displaying search results grouped by section.
 ///
 /// Features:
@@ -209,7 +211,7 @@ private enum SearchResultsListPreviewData {
     context.insert(a1)
 
     // Add extra items so scrolling + dividers are exercised.
-    for idx in 1...16 {
+    for idx in 1 ... 16 {
       let task = TaskItem(
         title: "Follow up vendor #\(idx)",
         taskDescription: idx % 2 == 0 ? "Email + timeline" : "Call + confirm details",
@@ -235,12 +237,8 @@ private enum SearchResultsListPreviewData {
 }
 
 private struct SearchResultsListPreviewHost: View {
-  let tasks: [TaskItem]
-  let activities: [Activity]
-  let listings: [Listing]
-  let initialQuery: String
 
-  @State private var query: String
+  // MARK: Lifecycle
 
   init(tasks: [TaskItem], activities: [Activity], listings: [Listing], initialQuery: String) {
     self.tasks = tasks
@@ -249,6 +247,13 @@ private struct SearchResultsListPreviewHost: View {
     self.initialQuery = initialQuery
     _query = State(initialValue: initialQuery)
   }
+
+  // MARK: Internal
+
+  let tasks: [TaskItem]
+  let activities: [Activity]
+  let listings: [Listing]
+  let initialQuery: String
 
   var body: some View {
     SearchResultsList(
@@ -260,19 +265,24 @@ private struct SearchResultsListPreviewHost: View {
     )
     .background(DS.Colors.Background.primary)
     #if os(iOS)
-    .searchable(
-      text: $query,
-      placement: .navigationBarDrawer(displayMode: .always),
-      prompt: "Search"
-    )
+      .searchable(
+        text: $query,
+        placement: .navigationBarDrawer(displayMode: .always),
+        prompt: "Search"
+      )
     #else
-    .searchable(
-      text: $query,
-      prompt: "Search"
-    )
+      .searchable(
+        text: $query,
+        prompt: "Search"
+      )
     #endif
-    .navigationTitle("SearchResultsList")
+      .navigationTitle("SearchResultsList")
   }
+
+  // MARK: Private
+
+  @State private var query: String
+
 }
 
 #Preview("SearchResultsList · Quick Jump") {
