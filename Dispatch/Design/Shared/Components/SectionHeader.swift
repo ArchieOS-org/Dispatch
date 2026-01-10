@@ -47,7 +47,7 @@ struct SectionHeader<Trailing: View>: View {
     HStack {
       Text(title)
         .font(DS.Typography.headline)
-        .foregroundStyle(DS.Colors.Text.secondary)
+        .foregroundStyle(DS.Colors.Text.primary)
         .textCase(textCase)
 
       Spacer()
