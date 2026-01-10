@@ -36,9 +36,14 @@ final class SidebarState: ObservableObject {
     isDragging || isVisible
   }
 
-  /// Clamps width to valid range
+  /// Clamps width for final persist (min...max)
   func clampedWidth(_ newWidth: CGFloat) -> CGFloat {
     min(DS.Spacing.sidebarMaxWidth, max(DS.Spacing.sidebarMinWidth, newWidth))
+  }
+
+  /// Clamps width during drag (0...max) - no min enforcement to allow smooth drag from collapsed
+  func clampedWidthDuringDrag(_ newWidth: CGFloat) -> CGFloat {
+    min(DS.Spacing.sidebarMaxWidth, max(0, newWidth))
   }
 
   /// Toggle sidebar visibility (animation handled at view level)

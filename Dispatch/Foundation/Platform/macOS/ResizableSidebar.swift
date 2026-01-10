@@ -26,10 +26,10 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
   @ViewBuilder let sidebar: () -> Sidebar
   @ViewBuilder let content: () -> Content
 
-  /// Computed display width: clamped during drag, 0 when collapsed
+  /// Display width: 0...max during drag (no min clamp), 0 or width otherwise
   private var displayWidth: CGFloat {
     if state.isDragging {
-      return state.clampedWidth(dragStartWidth + dragDelta)
+      return state.clampedWidthDuringDrag(dragStartWidth + dragDelta)
     }
     return state.isVisible ? state.width : 0
   }
@@ -37,22 +37,23 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
   var body: some View {
     GeometryReader { _ in
       HStack(spacing: 0) {
-        // Sidebar content - always in hierarchy when visible or dragging
-        if state.shouldShowSidebar {
-          sidebar()
-            .frame(width: displayWidth)
-            .background {
-              // One unified vibrancy layer for everything in the sidebar column
-              Rectangle()
-                .fill(.thinMaterial)
-                .ignoresSafeArea(.all, edges: .top) // fills behind traffic lights
-            }
-        }
+        // Sidebar ALWAYS mounted - just width=0 when hidden
+        sidebar()
+          .frame(width: displayWidth)
+          .clipped() // Prevent overflow when width=0
+          .allowsHitTesting(state.isVisible || state.isDragging)
+          .transaction { if state.isDragging { $0.animation = nil } }
+          .background {
+            // One unified vibrancy layer for everything in the sidebar column
+            Rectangle()
+              .fill(.thinMaterial)
+              .ignoresSafeArea(.all, edges: .top) // fills behind traffic lights
+          }
 
         content()
           .frame(maxWidth: .infinity)
       }
-      // Unified drag handle overlay - persists through entire drag
+      // Full-height drag handle - always interactive
       .overlay(alignment: .leading) {
         DragHandleView(
           isHovering: $isHovering,
@@ -60,9 +61,9 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
           reduceMotion: reduceMotion,
           onTap: { toggleSidebar() }
         )
-        .offset(x: state.shouldShowSidebar ? displayWidth - DS.Spacing.sidebarDragHandleWidth / 2 : 0)
-        .allowsHitTesting(state.shouldShowSidebar || isHovering)
+        .offset(x: displayWidth > 0 ? displayWidth - DS.Spacing.sidebarDragHandleWidth / 2 : 0)
         .gesture(dragGesture)
+        // NO .allowsHitTesting guard - always interactive
       }
     }
     // Only animate isVisible changes, NOT during drag
@@ -90,13 +91,13 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
       .onEnded { value in
         let finalWidth = dragStartWidth + value.translation.width
 
+        // Collapse threshold: below minWidth - 30
         if finalWidth < DS.Spacing.sidebarMinWidth - 30 {
-          // Collapse
           withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             state.isVisible = false
           }
-        } else if finalWidth > 50 || state.isVisible {
-          // Expand with clamped width
+        } else {
+          // Expand with FULL clamp (min...max) on end only
           withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
             state.isVisible = true
             state.width = state.clampedWidth(finalWidth)
@@ -127,6 +128,7 @@ private struct DragHandleView: View {
     Rectangle()
       .fill(Color.clear)
       .frame(width: DS.Spacing.sidebarDragHandleWidth)
+      .frame(maxHeight: .infinity) // Full height
       .contentShape(Rectangle())
       .overlay(alignment: .center) {
         // Visible handle indicator - shows on hover or during drag
