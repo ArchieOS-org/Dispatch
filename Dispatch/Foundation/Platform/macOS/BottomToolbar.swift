@@ -166,7 +166,125 @@ struct BottomToolbar: View {
   }
 }
 
-#Preview("List Context") {
+// MARK: - Previews
+
+// MARK: Interactive
+
+/// Interactive list toolbar with filter cycling
+#Preview("Interactive - List") {
+  @Previewable @State var audience: AudienceLens = .all
+
+  VStack(spacing: 0) {
+    // Content area
+    VStack {
+      Text("Current Filter: \(audience.label)")
+        .font(.headline)
+      Text("Use the filter menu in the toolbar below")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color(nsColor: .windowBackgroundColor))
+
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { print("New tapped") },
+      onSearch: { print("Search tapped") }
+    )
+  }
+  .frame(width: 500, height: 300)
+}
+
+/// Interactive detail toolbar with claim toggle
+#Preview("Interactive - Detail") {
+  @Previewable @State var isClaimed = false
+
+  VStack(spacing: 0) {
+    // Content area
+    VStack {
+      Text(isClaimed ? "Task Claimed" : "Task Unclaimed")
+        .font(.headline)
+      Text("Tap the hand icon to toggle")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color(nsColor: .windowBackgroundColor))
+
+    BottomToolbar(
+      context: .workItemDetail,
+      onClaim: { isClaimed.toggle() },
+      onDelete: { print("Delete tapped") },
+      isClaimable: true,
+      isClaimed: isClaimed
+    )
+  }
+  .frame(width: 500, height: 300)
+}
+
+// MARK: List Contexts
+
+/// Task list with all actions
+#Preview("Task List - Full") {
+  @Previewable @State var audience: AudienceLens = .all
+
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// Activity list context
+#Preview("Activity List") {
+  @Previewable @State var audience: AudienceLens = .marketing
+
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .activityList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// Listing list context
+#Preview("Listing List") {
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .listingList,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// Realtor list context
+#Preview("Realtor List") {
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .realtorList,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// List without filter (no audience binding)
+#Preview("List - No Filter") {
   VStack(spacing: 0) {
     Spacer()
     BottomToolbar(
@@ -175,10 +293,43 @@ struct BottomToolbar: View {
       onSearch: { }
     )
   }
-  .frame(width: 400, height: 200)
+  .frame(width: 500, height: 200)
 }
 
-#Preview("Detail Context") {
+/// List without new button
+#Preview("List - No New Button") {
+  @Previewable @State var audience: AudienceLens = .all
+
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// List without search button
+#Preview("List - No Search Button") {
+  @Previewable @State var audience: AudienceLens = .all
+
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+// MARK: Detail Contexts
+
+/// Work item detail - unclaimed
+#Preview("Work Item Detail - Unclaimed") {
   VStack(spacing: 0) {
     Spacer()
     BottomToolbar(
@@ -189,6 +340,246 @@ struct BottomToolbar: View {
       isClaimed: false
     )
   }
-  .frame(width: 400, height: 200)
+  .frame(width: 500, height: 200)
 }
+
+/// Work item detail - claimed
+#Preview("Work Item Detail - Claimed") {
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .workItemDetail,
+      onClaim: { },
+      onDelete: { },
+      isClaimable: true,
+      isClaimed: true
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// Work item detail - not claimable (e.g., already owned by someone else)
+#Preview("Work Item Detail - Not Claimable") {
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .workItemDetail,
+      onClaim: { },
+      onDelete: { },
+      isClaimable: false,
+      isClaimed: false
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// Listing detail - no claim button, only delete
+#Preview("Listing Detail") {
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .listingDetail,
+      onDelete: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// Detail without delete button
+#Preview("Detail - No Delete") {
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .workItemDetail,
+      onClaim: { },
+      isClaimable: true,
+      isClaimed: false
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+// MARK: Color Schemes
+
+/// Light mode - list context
+#Preview("Light Mode - List") {
+  @Previewable @State var audience: AudienceLens = .admin
+
+  VStack(spacing: 0) {
+    Color(nsColor: .windowBackgroundColor)
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+  .preferredColorScheme(.light)
+}
+
+/// Dark mode - list context
+#Preview("Dark Mode - List") {
+  @Previewable @State var audience: AudienceLens = .admin
+
+  VStack(spacing: 0) {
+    Color(nsColor: .windowBackgroundColor)
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+  .preferredColorScheme(.dark)
+}
+
+/// Light mode - detail context
+#Preview("Light Mode - Detail") {
+  VStack(spacing: 0) {
+    Color(nsColor: .windowBackgroundColor)
+    BottomToolbar(
+      context: .workItemDetail,
+      onClaim: { },
+      onDelete: { },
+      isClaimable: true,
+      isClaimed: false
+    )
+  }
+  .frame(width: 500, height: 200)
+  .preferredColorScheme(.light)
+}
+
+/// Dark mode - detail context
+#Preview("Dark Mode - Detail") {
+  VStack(spacing: 0) {
+    Color(nsColor: .windowBackgroundColor)
+    BottomToolbar(
+      context: .workItemDetail,
+      onClaim: { },
+      onDelete: { },
+      isClaimable: true,
+      isClaimed: false
+    )
+  }
+  .frame(width: 500, height: 200)
+  .preferredColorScheme(.dark)
+}
+
+// MARK: Width Variations
+
+/// Narrow window
+#Preview("Narrow Width") {
+  @Previewable @State var audience: AudienceLens = .all
+
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 300, height: 200)
+}
+
+/// Wide window
+#Preview("Wide Width") {
+  @Previewable @State var audience: AudienceLens = .all
+
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 800, height: 200)
+}
+
+// MARK: All Filter States Gallery
+
+/// Shows toolbar with each audience filter state
+#Preview("Filter States Gallery") {
+  VStack(spacing: DS.Spacing.lg) {
+    ForEach(AudienceLens.allCases, id: \.self) { lens in
+      VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+        Text(lens.label)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .padding(.leading, DS.Spacing.md)
+
+        BottomToolbar(
+          context: .taskList,
+          audience: .constant(lens),
+          onNew: { },
+          onSearch: { }
+        )
+      }
+    }
+  }
+  .padding(.vertical, DS.Spacing.md)
+  .frame(width: 500)
+  .background(Color(nsColor: .windowBackgroundColor))
+}
+
+// MARK: Claim States Gallery
+
+/// Shows all claim button states
+#Preview("Claim States Gallery") {
+  VStack(spacing: DS.Spacing.lg) {
+    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+      Text("Unclaimed (claimable)")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.leading, DS.Spacing.md)
+
+      BottomToolbar(
+        context: .workItemDetail,
+        onClaim: { },
+        onDelete: { },
+        isClaimable: true,
+        isClaimed: false
+      )
+    }
+
+    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+      Text("Claimed (releasable)")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.leading, DS.Spacing.md)
+
+      BottomToolbar(
+        context: .workItemDetail,
+        onClaim: { },
+        onDelete: { },
+        isClaimable: true,
+        isClaimed: true
+      )
+    }
+
+    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+      Text("Not claimable (owned by other)")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.leading, DS.Spacing.md)
+
+      BottomToolbar(
+        context: .workItemDetail,
+        onClaim: { },
+        onDelete: { },
+        isClaimable: false,
+        isClaimed: false
+      )
+    }
+  }
+  .padding(.vertical, DS.Spacing.md)
+  .frame(width: 500)
+  .background(Color(nsColor: .windowBackgroundColor))
+}
+
 #endif
