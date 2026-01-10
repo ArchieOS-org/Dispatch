@@ -3,6 +3,7 @@
 //  Dispatch
 //
 //  iOS 18+ scroll-based pull-to-search modifier using native scroll APIs.
+//  Supports both iPhone and iPad with visual feedback and release-to-trigger.
 //  Created by Claude on 2025-12-18.
 //
 
@@ -11,43 +12,41 @@ import SwiftUI
 // MARK: - PullToSearchModifier
 
 /// A view modifier that triggers search overlay when the user pulls down
-/// past a threshold while at the top of a scroll view.
+/// past a threshold and releases while at the top of a scroll view.
 ///
 /// **Requirements:**
 /// - iOS 18.0+ (uses `onScrollGeometryChange` and `onScrollPhaseChange`)
-/// - iPhone only (never triggers on iPad)
+/// - Works on both iPhone and iPad
 ///
-/// **Detection Logic:**
-/// - Pull distance = `max(0, contentInsets.top - contentOffset.y)`
-/// - At rest: `contentOffset.y == contentInsets.top` → pullDistance = 0
-/// - Pulling down: `contentOffset.y < contentInsets.top` → pullDistance > 0
-/// - Triggers once per pull gesture via `didTriggerThisPull` flag
-/// - Resets when `pullDistance < 2` OR scroll phase becomes `.idle`
+/// **Behavior:**
+/// - Shows magnifying glass icon that animates down as user pulls
+/// - Blue background appears when armed (threshold reached)
+/// - Haptic fires when entering armed state
+/// - Search triggers on release, not at threshold
+/// - Respects `accessibilityReduceMotion`
 struct PullToSearchModifier: ViewModifier {
 
   // MARK: Internal
 
   func body(content: Content) -> some View {
     #if os(iOS)
-    if UIDevice.current.userInterfaceIdiom == .phone {
-      // Wrap in ZStack to ensure coordinate space is fixed relative to screen/container
-      ZStack {
-        content
-      }
-      .coordinateSpace(name: "pullToSearchSpace")
-      .onPreferenceChange(PullToSearchScrollOffsetKey.self) { minY in
-        // Store value only - no side effects during render pass
-        scrollOffsetY = minY
-      }
-      .onChange(of: scrollOffsetY) { _, newValue in
-        // React outside render pass
-        handlePullTrigger(minY: newValue)
-      }
-    } else {
-      content
-    }
-    #else
     content
+      .onScrollGeometryChange(for: CGFloat.self) { geometry in
+        // Calculate pull distance from content offset
+        // When pulling down at top, contentOffset.y becomes negative
+        max(0, geometry.contentInsets.top - geometry.contentOffset.y)
+      } action: { _, pullDistance in
+        updatePullState(pullDistance: pullDistance)
+      }
+      .onScrollPhaseChange { oldPhase, newPhase in
+        handlePhaseChange(from: oldPhase, to: newPhase)
+      }
+      .overlay(alignment: .top) {
+        // Visual indicator overlay (positioned at top)
+        PullToSearchIndicator(state: state)
+      }
+    #else
+    content // macOS: no-op
     #endif
   }
 
@@ -56,38 +55,65 @@ struct PullToSearchModifier: ViewModifier {
   @EnvironmentObject private var appState: AppState // One Boss
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-  /// Scroll offset stored from preference (mutated via .onChange, not during render)
-  @State private var scrollOffsetY: CGFloat = 0
-  @State private var didTriggerThisPull = false
-  @State private var initialAnchorY: CGFloat? = nil
+  /// Current pull-to-search state
+  @State private var state: PullToSearchState = .idle
+
+  /// Prevents multiple haptics per armed entry
+  @State private var didFireHaptic = false
 
   #if os(iOS)
-  private func handlePullTrigger(minY: CGFloat) {
-    // Capture initial resting position on first valid layout
-    if initialAnchorY == nil, minY > 0 {
-      initialAnchorY = minY
+  /// Updates the pull state based on current pull distance
+  private func updatePullState(pullDistance: CGFloat) {
+    let threshold = DS.Spacing.searchPullThreshold
+    let progress = min(1.0, pullDistance / threshold)
+
+    if progress >= 1.0 {
+      // Enter armed state
+      if state != .armed {
+        state = .armed
+        if !didFireHaptic {
+          HapticFeedback.medium() // Stronger haptic for "armed"
+          didFireHaptic = true
+        }
+      }
+    } else if progress > 0.05 {
+      // Pulling but not armed (small threshold to avoid jitter)
+      state = .pulling(progress: progress)
+      // Reset haptic flag when un-armed
+      if didFireHaptic {
+        didFireHaptic = false
+      }
+    } else {
+      // Idle
+      if state != .idle {
+        state = .idle
+        didFireHaptic = false
+      }
+    }
+  }
+
+  /// Handles scroll phase changes to detect release
+  private func handlePhaseChange(from oldPhase: ScrollPhase, to newPhase: ScrollPhase) {
+    // Detect finger lift: transitioning FROM interacting/tracking TO released state
+    // IMPORTANT: Finger lift typically goes .interacting → .decelerating (not .idle)
+    let wasInteracting = (oldPhase == .interacting || oldPhase == .tracking)
+    let isReleased = (newPhase == .decelerating || newPhase == .idle || newPhase == .animating)
+
+    if wasInteracting && isReleased && state == .armed {
+      triggerSearch()
     }
 
-    guard let initialY = initialAnchorY else { return }
-
-    // Calculate pull distance relative to resting position
-    let pullDistance = max(0, minY - initialY)
-
-    // Reset logic: if within 2pt of resting position
-    if pullDistance < 2 {
-      didTriggerThisPull = false
+    // Reset state when scroll fully settles
+    if newPhase == .idle {
+      state = .idle
+      didFireHaptic = false
     }
+  }
 
-    // Trigger logic
+  /// Triggers the search overlay via AppState
+  private func triggerSearch() {
     // Check if ANY overlay is active (One Boss) to prevent double trigger
-    guard
-      pullDistance >= DS.Spacing.searchPullThreshold,
-      !didTriggerThisPull,
-      appState.overlayState == .none
-    else { return }
-
-    didTriggerThisPull = true
-    HapticFeedback.light()
+    guard appState.overlayState == .none else { return }
 
     // Dispatch Command (One Boss)
     if reduceMotion {
@@ -97,13 +123,19 @@ struct PullToSearchModifier: ViewModifier {
         appState.dispatch(.openSearch(initialText: nil))
       }
     }
+
+    // Reset state after triggering
+    state = .idle
+    didFireHaptic = false
   }
   #endif
 }
 
-// MARK: - PullToSearchScrollOffsetKey
+// MARK: - PullToSearchScrollOffsetKey (Legacy - kept for backward compatibility)
 
 /// Tracks the Y offset of the scroll content
+/// Note: This preference key approach is superseded by iOS 18 scroll APIs
+/// but kept for backward compatibility with existing PullToSearchSensor usage.
 struct PullToSearchScrollOffsetKey: PreferenceKey {
   static var defaultValue: CGFloat = 0
 
@@ -112,10 +144,11 @@ struct PullToSearchScrollOffsetKey: PreferenceKey {
   }
 }
 
-// MARK: - PullToSearchSensor
+// MARK: - PullToSearchSensor (Legacy - kept for backward compatibility)
 
 /// Invisible sensor view to be placed at the very top of scroll content.
-/// Emits its Y frame origin to `ScrollOffsetKey`.
+/// Note: This is superseded by iOS 18 `onScrollGeometryChange` but kept
+/// to avoid breaking existing code that uses it.
 struct PullToSearchSensor: View {
   var body: some View {
     GeometryReader { geo in
@@ -132,13 +165,18 @@ struct PullToSearchSensor: View {
 extension View {
   /// Adds pull-to-search functionality to a scroll container.
   ///
-  /// When the user pulls down past the threshold while at the top of the scroll view,
+  /// When the user pulls down past the threshold and releases,
   /// the search overlay is presented.
   ///
   /// **Requirements:**
   /// - iOS 18.0+
-  /// - iPhone only (no-op on iPad/macOS)
-  /// - `SearchPresentationManager` must be in the environment
+  /// - Works on iPhone and iPad (no-op on macOS)
+  ///
+  /// **Behavior:**
+  /// - Shows magnifying glass icon during pull
+  /// - Blue background when armed (threshold reached)
+  /// - Haptic fires when entering armed state
+  /// - Search triggers on release
   @ViewBuilder
   func pullToSearch() -> some View {
     #if os(iOS)

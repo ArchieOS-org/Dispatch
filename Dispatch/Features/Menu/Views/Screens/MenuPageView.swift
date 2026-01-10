@@ -50,6 +50,7 @@ struct MenuPageView: View {
     .listStyle(.plain)
     .scrollContentBackground(.hidden)
     .background(DS.Colors.Background.primary)
+    .pullToSearch()
     #if os(iOS)
       .toolbar(.hidden, for: .navigationBar)
       .safeAreaInset(edge: .top) {
@@ -133,6 +134,21 @@ struct MenuPageView: View {
 }
 
 // MARK: - Previews
+
+#Preview("Menu - Pull to Search") {
+  PreviewShell(
+    syncManager: {
+      let sm = SyncManager(mode: .preview)
+      sm.currentUserID = PreviewDataFactory.bobID
+      return sm
+    }(),
+    setup: { context in
+      PreviewDataFactory.seed(context)
+    }
+  ) { _ in
+    MenuPageView()
+  }
+}
 
 #Preview("Menu - With Claimed Items") {
   PreviewShell(

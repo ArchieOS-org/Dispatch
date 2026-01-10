@@ -164,6 +164,12 @@ extension DS {
     /// Search overlay modal max width (for larger screens)
     static let searchModalMaxWidth: CGFloat = 500
 
+    /// Pull-to-search indicator icon size
+    static let searchPullIndicatorSize: CGFloat = 24
+
+    /// Pull-to-search armed state background padding
+    static let searchPullArmedPadding: CGFloat = 12
+
     /// Minimum sidebar width
     static let sidebarMinWidth: CGFloat = 200
 
