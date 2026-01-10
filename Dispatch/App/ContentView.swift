@@ -227,22 +227,25 @@ struct ContentView: View {
           }
         )
 
-        // Destination list with stages + tabs + SettingsLink
+        // Destination list (tabs only - stages accessed via cards above)
         SidebarDestinationList(
           selection: $sidebarSelection,
           tabCounts: macTabCounts,
-          stageCounts: stageCounts,
           overdueCount: sidebarOverdueCount
         )
         .onAppear {
-          sidebarSelection = appState.router.selectedDestination
+          // Only sync tab selections to sidebar; stages are nil
+          sidebarSelection = appState.router.selectedDestination.isStage
+            ? nil
+            : appState.router.selectedDestination
         }
         .onChange(of: sidebarSelection) { _, newValue in
           guard let dest = newValue, dest != appState.router.selectedDestination else { return }
           appState.dispatch(.userSelectedDestination(dest))
         }
         .onChange(of: appState.router.selectedDestination) { _, newValue in
-          sidebarSelection = newValue
+          // Only sync tab selections to sidebar; stages show as nil (deselected)
+          sidebarSelection = newValue.isStage ? nil : newValue
         }
       }
     } content: {
@@ -329,29 +332,26 @@ struct ContentView: View {
   private var ipadTabViewNavigation: some View {
     ZStack {
       TabView(selection: selectedDestinationBinding) {
-        // MARK: - Stages Section (sidebar-only via defaultVisibility on each Tab)
-        // Stages appear as first-class destinations in sidebar mode
-        // but are hidden in tab bar mode to avoid clutter.
-        // Reference: developer.apple.com/documentation/swiftui/tab/defaultvisibility(_:for:)
-        TabSection("Stages") {
-          ForEach(ListingStage.allCases, id: \.self) { stage in
-            Tab(stage.displayName, systemImage: stage.icon, value: SidebarDestination.stage(stage)) {
-              NavigationStack(path: pathBinding(for: .stage(stage))) {
-                StagedListingsView(stage: stage)
-                  .appDestinations()
-                  .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
-                      if appState.lensState.showFilterButton {
-                        FilterMenu(audience: $appState.lensState.audience)
-                      }
+        // MARK: - Hidden stage tabs (programmatic selection only)
+        // Not in a TabSection to avoid empty section header.
+        // Hidden from both tabBar and sidebar; accessed via StageCardsHeader.
+        ForEach(ListingStage.allCases, id: \.self) { stage in
+          Tab(stage.displayName, systemImage: stage.icon, value: SidebarDestination.stage(stage)) {
+            NavigationStack(path: pathBinding(for: .stage(stage))) {
+              StagedListingsView(stage: stage)
+                .appDestinations()
+                .toolbar {
+                  ToolbarItem(placement: .primaryAction) {
+                    if appState.lensState.showFilterButton {
+                      FilterMenu(audience: $appState.lensState.audience)
                     }
                   }
-              }
-              .id(appState.router.stackIDs[.stage(stage)]!)
+                }
             }
-            .badge(stageCounts[stage] ?? 0)
-            .defaultVisibility(.hidden, for: .tabBar) // Only show in sidebar
+            .id(appState.router.stackIDs[.stage(stage)]!)
           }
+          .defaultVisibility(.hidden, for: .tabBar)
+          .defaultVisibility(.hidden, for: .sidebar)
         }
 
         // MARK: - Main tabs section
