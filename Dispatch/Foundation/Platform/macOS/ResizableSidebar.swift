@@ -61,7 +61,7 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
           reduceMotion: reduceMotion,
           onTap: { toggleSidebar() }
         )
-        .offset(x: displayWidth > 0 ? displayWidth - DS.Spacing.sidebarDragHandleWidth / 2 : 0)
+        .offset(x: displayWidth > 0 ? displayWidth : 0)
         .gesture(dragGesture)
         // NO .allowsHitTesting guard - always interactive
       }
