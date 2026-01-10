@@ -24,20 +24,23 @@ struct SectionHeader<Trailing: View>: View {
   // MARK: Lifecycle
 
   /// Creates a section header without trailing content.
-  init(_ title: String) where Trailing == EmptyView {
+  init(_ title: String, textCase: Text.Case? = nil) where Trailing == EmptyView {
     self.title = title
+    self.textCase = textCase
     trailing = EmptyView()
   }
 
   /// Creates a section header with trailing content.
-  init(_ title: String, @ViewBuilder trailing: () -> Trailing) {
+  init(_ title: String, textCase: Text.Case? = nil, @ViewBuilder trailing: () -> Trailing) {
     self.title = title
+    self.textCase = textCase
     self.trailing = trailing()
   }
 
   // MARK: Internal
 
   let title: String
+  let textCase: Text.Case?
   let trailing: Trailing
 
   var body: some View {
@@ -45,7 +48,7 @@ struct SectionHeader<Trailing: View>: View {
       Text(title)
         .font(DS.Typography.headline)
         .foregroundStyle(DS.Colors.Text.secondary)
-        .textCase(.uppercase)
+        .textCase(textCase)
 
       Spacer()
 

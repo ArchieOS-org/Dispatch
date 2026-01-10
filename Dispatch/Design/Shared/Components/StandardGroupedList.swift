@@ -73,6 +73,11 @@ struct StandardGroupedList<
           // Non-sticky section header
           header(group)
 
+          // Divider under the header (group name)
+          Divider()
+            .accessibilityHidden(true)
+            .padding(.bottom, DS.Spacing.sm)
+
           // Section rows
           ForEach(items(group)) { item in
             row(group, item)
