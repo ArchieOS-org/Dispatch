@@ -20,10 +20,6 @@ struct SearchBar: View {
 
   // MARK: Internal
 
-  #if os(iOS)
-  // @EnvironmentObject private var overlayState: AppOverlayState // Removed
-  #endif
-
   @Binding var text: String
 
   var showCancelButton = true
@@ -89,11 +85,6 @@ struct SearchBar: View {
         }
       }
     }
-    #if os(iOS)
-    // One Boss Refactor: SearchBar is inside the overlay, no need to hide/show buttons manually.
-    // The overlay presence itself hides the buttons in ContentView.
-    // .onChange(of: isFocused) { ... } Removed
-    #endif
   }
 
   // MARK: Private
