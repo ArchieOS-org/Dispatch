@@ -106,7 +106,6 @@ struct StagedListingsView: View {
             }
           }
         )
-        .pullToSearch() // Required: sensor is internal, modifier enables mechanism
       }
     }
   }

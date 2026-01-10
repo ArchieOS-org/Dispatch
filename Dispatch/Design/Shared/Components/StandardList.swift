@@ -23,10 +23,12 @@ struct StandardList<Data: RandomAccessCollection, RowContent: View, EmptyContent
 
   init(
     _ data: Data,
+    pullToSearch: Bool = true,
     @ViewBuilder rowContent: @escaping (Data.Element) -> RowContent,
     @ViewBuilder emptyContent: @escaping () -> EmptyContent = { EmptyView() }
   ) {
     self.data = data
+    self.pullToSearch = pullToSearch
     self.rowContent = rowContent
     self.emptyContent = emptyContent
   }
@@ -34,8 +36,11 @@ struct StandardList<Data: RandomAccessCollection, RowContent: View, EmptyContent
   // MARK: Internal
 
   let data: Data
+  let pullToSearch: Bool
   @ViewBuilder let rowContent: (Data.Element) -> RowContent
   @ViewBuilder let emptyContent: () -> EmptyContent
+
+  @Environment(\.pullToSearchDisabled) private var pullToSearchDisabled
 
   var body: some View {
     if data.isEmpty {
@@ -76,6 +81,7 @@ struct StandardList<Data: RandomAccessCollection, RowContent: View, EmptyContent
     .environment(\.defaultMinListRowHeight, 1)
     .environment(\.defaultMinListHeaderHeight, 0)
     .headerProminence(.standard) // Prevent sticky section headers
+    .modifier(PullToSearchConditionalModifier(enabled: pullToSearch && !pullToSearchDisabled))
     // Note: StandardScreen owns margins. List should be edge-to-edge inside StandardScreen's column.
     // Wait, if StandardScreen applies padding, the list content is already padded.
     // BUT `List` on iOS ignores safe areas/padding differently than ScrollView.

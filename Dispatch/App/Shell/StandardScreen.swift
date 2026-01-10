@@ -47,12 +47,14 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     title: String,
     layout: LayoutMode = .column,
     scroll: ScrollMode = .automatic,
+    pullToSearch: Bool = true,
     @ViewBuilder content: @escaping () -> Content,
     @ToolbarContentBuilder toolbarContent: @escaping () -> ToolbarItems
   ) {
     self.title = title
     self.layout = layout
     self.scroll = scroll
+    self.pullToSearch = pullToSearch
     self.content = content
     self.toolbarContent = toolbarContent
   }
@@ -61,11 +63,13 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     title: String,
     layout: LayoutMode = .column,
     scroll: ScrollMode = .automatic,
+    pullToSearch: Bool = true,
     @ViewBuilder content: @escaping () -> Content
   ) where ToolbarItems == ToolbarItem<Void, EmptyView> {
     self.title = title
     self.layout = layout
     self.scroll = scroll
+    self.pullToSearch = pullToSearch
     self.content = content
     toolbarContent = { ToolbarItem(placement: .automatic) { EmptyView() } }
   }
@@ -84,10 +88,12 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
 
   /// Debug environment
   @Environment(\.layoutMetrics) var layoutMetrics
+  @Environment(\.pullToSearchDisabled) private var pullToSearchDisabled
 
   let title: String
   let layout: LayoutMode
   let scroll: ScrollMode
+  let pullToSearch: Bool
   @ViewBuilder let content: () -> Content
   let toolbarContent: () -> ToolbarItems
 
@@ -131,6 +137,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
         ScrollView {
           innerContent
         }
+        .modifier(PullToSearchConditionalModifier(enabled: pullToSearch && !pullToSearchDisabled))
 
       case .disabled:
         innerContent

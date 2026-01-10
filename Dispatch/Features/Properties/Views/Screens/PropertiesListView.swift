@@ -48,7 +48,6 @@ struct PropertiesListView: View {
             }
           }
         )
-        .pullToSearch() // Required: sensor is internal, modifier enables mechanism
       }
     } toolbarContent: {
       ToolbarItem(placement: .automatic) {

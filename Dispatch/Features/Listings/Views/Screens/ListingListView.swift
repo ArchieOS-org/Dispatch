@@ -184,7 +184,6 @@ struct ListingListView: View {
               }
             }
           )
-          .pullToSearch() // Required: sensor is internal, modifier enables mechanism
         }
       }
     } toolbarContent: {

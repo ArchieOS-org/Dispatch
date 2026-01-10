@@ -7,6 +7,7 @@
 //
 
 import Combine
+import SwiftData
 import SwiftUI
 
 /// A list view displaying search results grouped by section.
@@ -154,36 +155,180 @@ struct SearchResultsList: View {
 
 // MARK: - Preview
 
-#Preview("Search Results List") {
-  let tasks = [
-    TaskItem(
-      title: "Review quarterly report",
-      taskDescription: "Q4 analysis",
-      dueDate: Date(),
+#if DEBUG
+
+private enum SearchResultsListPreviewData {
+  static func seedAndCustomize(_ context: ModelContext) {
+    PreviewDataFactory.seed(context)
+
+    // Make at least one listing match common queries so the Listings section appears.
+    if let listing = try? context.fetch(FetchDescriptor<Listing>()).first {
+      listing.address = "123 Window St"
+      try? context.save()
+    }
+
+    // Add deterministic items so ranking/sectioning is obvious.
+    let listing = (try? context.fetch(FetchDescriptor<Listing>()).first)
+
+    let t1 = TaskItem(
+      title: "Fix Broken Window",
+      taskDescription: "Replace pane + schedule contractor",
+      dueDate: Calendar.current.date(byAdding: .day, value: -1, to: Date()),
       priority: .high,
-      declaredBy: UUID()
-    ),
-    TaskItem(
-      title: "Update client database",
-      taskDescription: "Enter new clients",
-      dueDate: nil,
-      priority: .medium,
-      declaredBy: UUID()
+      declaredBy: PreviewDataFactory.aliceID,
+      claimedBy: PreviewDataFactory.bobID,
+      listingId: listing?.id
     )
-  ]
+    t1.syncState = .synced
 
-  let activities = [
-    Activity(title: "Client call", activityDescription: "Follow up", type: .call, priority: .medium, declaredBy: UUID())
-  ]
+    let t2 = TaskItem(
+      title: "Window Measurements",
+      taskDescription: "Confirm dimensions",
+      dueDate: Calendar.current.date(byAdding: .day, value: 2, to: Date()),
+      priority: .medium,
+      declaredBy: PreviewDataFactory.aliceID,
+      claimedBy: PreviewDataFactory.bobID,
+      listingId: listing?.id
+    )
+    t2.syncState = .synced
 
-  let listings = [Listing]()
+    let a1 = Activity(
+      title: "Window inspection call",
+      activityDescription: "Confirm scope + pricing",
+      type: .call,
+      priority: .medium,
+      declaredBy: PreviewDataFactory.aliceID,
+      claimedBy: PreviewDataFactory.bobID,
+      listingId: listing?.id
+    )
+    a1.syncState = .synced
 
-  return SearchResultsList(
-    searchText: "review",
-    tasks: tasks,
-    activities: activities,
-    listings: listings,
-    onSelectResult: { _ in }
-  )
-  .background(DS.Colors.Background.primary)
+    context.insert(t1)
+    context.insert(t2)
+    context.insert(a1)
+
+    // Add extra items so scrolling + dividers are exercised.
+    for idx in 1...16 {
+      let task = TaskItem(
+        title: "Follow up vendor #\(idx)",
+        taskDescription: idx % 2 == 0 ? "Email + timeline" : "Call + confirm details",
+        dueDate: Calendar.current.date(byAdding: .day, value: idx, to: Date()),
+        priority: idx % 3 == 0 ? .high : .low,
+        declaredBy: PreviewDataFactory.aliceID,
+        claimedBy: PreviewDataFactory.bobID,
+        listingId: listing?.id
+      )
+      task.syncState = .synced
+      context.insert(task)
+    }
+
+    try? context.save()
+  }
+
+  static func fetch(_ context: ModelContext) -> (tasks: [TaskItem], activities: [Activity], listings: [Listing]) {
+    let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
+    let activities = (try? context.fetch(FetchDescriptor<Activity>())) ?? []
+    let listings = (try? context.fetch(FetchDescriptor<Listing>())) ?? []
+    return (tasks, activities, listings)
+  }
 }
+
+private struct SearchResultsListPreviewHost: View {
+  let tasks: [TaskItem]
+  let activities: [Activity]
+  let listings: [Listing]
+  let initialQuery: String
+
+  @State private var query: String
+
+  init(tasks: [TaskItem], activities: [Activity], listings: [Listing], initialQuery: String) {
+    self.tasks = tasks
+    self.activities = activities
+    self.listings = listings
+    self.initialQuery = initialQuery
+    _query = State(initialValue: initialQuery)
+  }
+
+  var body: some View {
+    SearchResultsList(
+      searchText: query,
+      tasks: tasks,
+      activities: activities,
+      listings: listings,
+      onSelectResult: { _ in }
+    )
+    .background(DS.Colors.Background.primary)
+    .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search")
+    .navigationTitle("SearchResultsList")
+  }
+}
+
+#Preview("SearchResultsList · Quick Jump") {
+  PreviewShell(setup: { context in
+    SearchResultsListPreviewData.seedAndCustomize(context)
+  }) { context in
+    let data = SearchResultsListPreviewData.fetch(context)
+
+    NavigationStack {
+      SearchResultsListPreviewHost(
+        tasks: data.tasks,
+        activities: data.activities,
+        listings: data.listings,
+        initialQuery: ""
+      )
+    }
+  }
+}
+
+#Preview("SearchResultsList · No Results") {
+  PreviewShell(setup: { context in
+    SearchResultsListPreviewData.seedAndCustomize(context)
+  }) { context in
+    let data = SearchResultsListPreviewData.fetch(context)
+
+    NavigationStack {
+      SearchResultsListPreviewHost(
+        tasks: data.tasks,
+        activities: data.activities,
+        listings: data.listings,
+        initialQuery: "zzzzzz"
+      )
+    }
+  }
+}
+
+#Preview("SearchResultsList · Mixed Results") {
+  PreviewShell(setup: { context in
+    SearchResultsListPreviewData.seedAndCustomize(context)
+  }) { context in
+    let data = SearchResultsListPreviewData.fetch(context)
+
+    NavigationStack {
+      SearchResultsListPreviewHost(
+        tasks: data.tasks,
+        activities: data.activities,
+        listings: data.listings,
+        initialQuery: "win"
+      )
+    }
+  }
+}
+
+#Preview("SearchResultsList · Long List") {
+  PreviewShell(setup: { context in
+    SearchResultsListPreviewData.seedAndCustomize(context)
+  }) { context in
+    let data = SearchResultsListPreviewData.fetch(context)
+
+    NavigationStack {
+      SearchResultsListPreviewHost(
+        tasks: data.tasks,
+        activities: data.activities,
+        listings: data.listings,
+        initialQuery: "follow"
+      )
+    }
+  }
+}
+
+#endif

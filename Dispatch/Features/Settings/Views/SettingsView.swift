@@ -22,6 +22,7 @@ struct SettingsView: View {
         }
       }
     }
+    .environment(\.pullToSearchDisabled, true)
   }
 
   @EnvironmentObject private var appState: AppState

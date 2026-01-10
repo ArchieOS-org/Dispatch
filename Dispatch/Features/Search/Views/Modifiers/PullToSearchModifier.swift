@@ -196,6 +196,39 @@ struct PullToSearchSensor: View {
   }
 }
 
+// MARK: - PullToSearchDisabledKey
+
+/// Environment key to disable pull-to-search in a view hierarchy.
+/// Used by Settings screens to opt out of pull-to-search.
+private struct PullToSearchDisabledKey: EnvironmentKey {
+  static let defaultValue = false
+}
+
+extension EnvironmentValues {
+  /// When true, pull-to-search is disabled for this view hierarchy.
+  /// Set this at a root container (like Settings) to disable for all descendants.
+  var pullToSearchDisabled: Bool {
+    get { self[PullToSearchDisabledKey.self] }
+    set { self[PullToSearchDisabledKey.self] = newValue }
+  }
+}
+
+// MARK: - PullToSearchConditionalModifier
+
+/// Conditionally applies pull-to-search based on enabled flag.
+/// Used by StandardScreen and StandardList to centralize pull-to-search application.
+struct PullToSearchConditionalModifier: ViewModifier {
+  let enabled: Bool
+
+  func body(content: Content) -> some View {
+    if enabled {
+      content.pullToSearch()
+    } else {
+      content
+    }
+  }
+}
+
 // MARK: - View Extension
 
 extension View {
