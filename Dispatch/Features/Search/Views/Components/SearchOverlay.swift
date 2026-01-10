@@ -144,21 +144,84 @@ struct SearchOverlay: View {
 
 // MARK: - Preview
 
-#Preview("Search Overlay") {
-  @Previewable @State var isPresented = true
-  @Previewable @State var searchText = ""
+#if DEBUG
 
-  ZStack {
-    Color.blue.opacity(0.2)
-      .ignoresSafeArea()
+private enum SearchOverlayPreviewData {
+  static func seededContainer() -> ModelContainer {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: TaskItem.self, Activity.self, Listing.self, configurations: config)
+    let context = ModelContext(container)
 
-    if isPresented {
-      SearchOverlay(
-        isPresented: $isPresented,
-        searchText: $searchText,
-        onSelectResult: { _ in }
-      )
+    // Seed standard data if available
+    PreviewDataFactory.seed(context)
+
+    // Add deterministic items that match a sample query
+    let listing = (try? context.fetch(FetchDescriptor<Listing>()).first)
+
+    let task1 = TaskItem(
+      title: "Fix Broken Window",
+      status: .open,
+      declaredBy: PreviewDataFactory.aliceID,
+      claimedBy: PreviewDataFactory.bobID,
+      listingId: listing?.id
+    )
+    task1.syncState = .synced
+
+    let task2 = TaskItem(
+      title: "Window Measurements",
+      status: .open,
+      declaredBy: PreviewDataFactory.aliceID,
+      claimedBy: PreviewDataFactory.bobID,
+      listingId: listing?.id
+    )
+    task2.syncState = .synced
+
+    let activity1 = Activity(
+      title: "Window inspection call",
+      type: .call,
+      declaredBy: PreviewDataFactory.aliceID,
+      claimedBy: PreviewDataFactory.bobID,
+      listingId: listing?.id
+    )
+    activity1.syncState = .synced
+
+    context.insert(task1)
+    context.insert(task2)
+    context.insert(activity1)
+
+    try? context.save()
+    return container
+  }
+}
+
+private struct SearchOverlayPreviewHost: View {
+  @State var isPresented: Bool
+  @State var searchText: String
+
+  var body: some View {
+    ZStack {
+      Color.blue.opacity(0.2)
+        .ignoresSafeArea()
+
+      if isPresented {
+        SearchOverlay(
+          isPresented: $isPresented,
+          searchText: $searchText,
+          onSelectResult: { _ in }
+        )
+      }
     }
   }
-  .modelContainer(for: [TaskItem.self, Activity.self, Listing.self], inMemory: true)
 }
+
+#Preview("Search Overlay · Empty") {
+  SearchOverlayPreviewHost(isPresented: true, searchText: "")
+    .modelContainer(for: [TaskItem.self, Activity.self, Listing.self], inMemory: true)
+}
+
+#Preview("Search Overlay · With Results") {
+  SearchOverlayPreviewHost(isPresented: true, searchText: "win")
+    .modelContainer(SearchOverlayPreviewData.seededContainer())
+}
+
+#endif

@@ -6,6 +6,7 @@
 //  Created by Claude on 2025-12-18.
 //
 
+import SwiftData
 import SwiftUI
 
 // MARK: - SearchResult
@@ -148,6 +149,154 @@ enum SearchResult: Identifiable, Hashable {
     }
   }
 }
+
+// MARK: - Previews
+
+#if DEBUG
+
+private enum SearchResultPreviewData {
+  static func makeResults(context: ModelContext) -> [SearchResult] {
+    // Seed base data if available in your preview harness
+    PreviewDataFactory.seed(context)
+
+    let listings = (try? context.fetch(FetchDescriptor<Listing>())) ?? []
+    let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
+    let activities = (try? context.fetch(FetchDescriptor<Activity>())) ?? []
+
+    // Mix a few of each type for sectioning + ranking
+    let listingResults = listings.prefix(6).map { SearchResult.listing($0) }
+    let taskResults = tasks.prefix(10).map { SearchResult.task($0) }
+    let activityResults = activities.prefix(10).map { SearchResult.activity($0) }
+
+    return taskResults + activityResults + listingResults
+  }
+}
+
+private struct SearchResultPreviewRow: View {
+  let result: SearchResult
+
+  var body: some View {
+    HStack(spacing: 12) {
+      Image(systemName: result.icon)
+        .foregroundStyle(result.accentColor)
+        .frame(width: 18)
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text(result.title)
+          .font(.headline)
+          .foregroundStyle(DS.Colors.Text.primary)
+          .lineLimit(1)
+
+        Text(result.subtitle)
+          .font(.subheadline)
+          .foregroundStyle(DS.Colors.Text.secondary)
+          .lineLimit(1)
+      }
+
+      Spacer(minLength: 0)
+
+      if let badge = result.badgeCount {
+        Text("\(badge)")
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(DS.Colors.Text.primary)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 4)
+          .background(Color.secondary.opacity(0.15))
+          .clipShape(Capsule())
+      }
+    }
+    .padding(.vertical, 6)
+  }
+}
+
+private struct SearchResultsPreviewList: View {
+  let results: [SearchResult]
+  @State var query: String
+
+  private var grouped: [(section: String, results: [SearchResult])] {
+    results.filtered(by: query).groupedBySectionWithLimit(20)
+  }
+
+  var body: some View {
+    List {
+      if query.isEmpty {
+        Section {
+          Text("Type to filter results")
+            .foregroundStyle(DS.Colors.Text.secondary)
+        }
+      } else if grouped.isEmpty {
+        Section {
+          Text("No matches")
+            .foregroundStyle(DS.Colors.Text.secondary)
+        }
+      } else {
+        ForEach(grouped, id: \.section) { section, sectionResults in
+          Section(section) {
+            ForEach(sectionResults) { result in
+              SearchResultPreviewRow(result: result)
+            }
+          }
+        }
+      }
+    }
+    .navigationTitle("SearchResult")
+    .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search")
+  }
+}
+
+#Preview("SearchResult · Grouped + Filtered") {
+  PreviewShell { context in
+    let results = SearchResultPreviewData.makeResults(context: context)
+
+    NavigationStack {
+      SearchResultsPreviewList(results: results, query: "a")
+    }
+  }
+}
+
+#Preview("SearchResult · Ranking (prefix vs contains)") {
+  PreviewShell(setup: { context in
+    PreviewDataFactory.seed(context)
+
+    // Add a few deterministic titles so ranking differences are obvious
+    let listing = (try? context.fetch(FetchDescriptor<Listing>()).first)
+
+    let t1 = TaskItem(
+      title: "Fix Broken Window",
+      status: .open,
+      declaredBy: PreviewDataFactory.aliceID,
+      claimedBy: PreviewDataFactory.bobID,
+      listingId: listing?.id
+    )
+    let t2 = TaskItem(
+      title: "Window Measurements",
+      status: .open,
+      declaredBy: PreviewDataFactory.aliceID,
+      claimedBy: PreviewDataFactory.bobID,
+      listingId: listing?.id
+    )
+    let t3 = TaskItem(
+      title: "Schedule contractor",
+      status: .open,
+      declaredBy: PreviewDataFactory.aliceID,
+      claimedBy: PreviewDataFactory.bobID,
+      listingId: listing?.id
+    )
+
+    context.insert(t1)
+    context.insert(t2)
+    context.insert(t3)
+    try? context.save()
+  }) { context in
+    let results = SearchResultPreviewData.makeResults(context: context)
+
+    NavigationStack {
+      SearchResultsPreviewList(results: results, query: "win")
+    }
+  }
+}
+
+#endif
 
 // MARK: - Filtering & Ranking
 
