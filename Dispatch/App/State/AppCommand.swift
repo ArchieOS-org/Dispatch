@@ -12,28 +12,38 @@ import Foundation
 /// Typed user intents that drive application behavior.
 /// Replaces stringly-typed NotificationCenter posts.
 enum AppCommand: Equatable {
-  // MARK: - Tab Selection (split for correctness)
+  // MARK: - Destination Selection (iPad/macOS)
+
+  /// User tapped a sidebar destination - may pop to root if already selected.
+  case userSelectedDestination(SidebarDestination)
+
+  /// Programmatic destination selection - NEVER pops to root.
+  /// Use for stage card header taps and deep links.
+  case setSelectedDestination(SidebarDestination)
+
+  // MARK: - Tab Selection (legacy wrappers - bridge to destination-based)
 
   /// User physically tapped a tab - may pop to root if same tab is reselected.
+  /// Internally bridges to userSelectedDestination(.tab(tab)).
   case userSelectedTab(AppTab)
 
   /// Programmatic tab selection - NEVER pops to root.
-  /// Use for stage card taps and deep links.
+  /// Internally bridges to setSelectedDestination(.tab(tab)).
   case setSelectedTab(AppTab)
 
-  // MARK: - iPad/macOS Navigation (per-tab stacks)
+  // MARK: - iPad/macOS Navigation (per-destination stacks)
 
-  /// Navigate to a route on a specific tab.
-  case navigateTo(AppRoute, on: AppTab)
+  /// Navigate to a route on a specific destination.
+  case navigateTo(AppRoute, on: SidebarDestination)
 
-  /// Set entire path for a tab (used for binding updates).
-  case setPath([AppRoute], for: AppTab)
+  /// Set entire path for a destination (used for binding updates).
+  case setPath([AppRoute], for: SidebarDestination)
 
-  /// Pop to root for a specific tab.
-  case popToRoot(AppTab)
+  /// Pop to root for a specific destination.
+  case popToRoot(SidebarDestination)
 
   /// Force stack ID reset (triggers NavigationStack rebuild).
-  case resetStackID(AppTab)
+  case resetStackID(SidebarDestination)
 
   // MARK: - iPhone Navigation (single stack)
 

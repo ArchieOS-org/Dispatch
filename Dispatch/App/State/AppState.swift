@@ -95,27 +95,35 @@ final class AppState: ObservableObject {
     Self.logger.debug("Dispatching command: \(String(describing: command))")
 
     switch command {
-    // MARK: - Tab Selection (split for correctness)
+    // MARK: - Destination Selection (iPad/macOS)
+
+    case .userSelectedDestination(let destination):
+      router.userSelectDestination(destination)
+
+    case .setSelectedDestination(let destination):
+      router.setSelectedDestination(destination)
+
+    // MARK: - Tab Selection (legacy wrappers - bridge to destination-based)
 
     case .userSelectedTab(let tab):
-      router.userSelectTab(tab)
+      router.userSelectDestination(.tab(tab))
 
     case .setSelectedTab(let tab):
-      router.setSelectedTab(tab)
+      router.setSelectedDestination(.tab(tab))
 
-    // MARK: - iPad/macOS Navigation (per-tab stacks)
+    // MARK: - iPad/macOS Navigation (per-destination stacks)
 
-    case .navigateTo(let route, let tab):
-      router.navigate(to: route, on: tab)
+    case .navigateTo(let route, let destination):
+      router.navigate(to: route, on: destination)
 
-    case .setPath(let path, let tab):
-      router.paths[tab] = path
+    case .setPath(let path, let destination):
+      router.paths[destination] = path
 
-    case .popToRoot(let tab):
-      router.popToRoot(for: tab)
+    case .popToRoot(let destination):
+      router.popToRoot(for: destination)
 
-    case .resetStackID(let tab):
-      router.resetStackID(for: tab)
+    case .resetStackID(let destination):
+      router.resetStackID(for: destination)
 
     // MARK: - iPhone Navigation (single stack)
 
@@ -140,8 +148,8 @@ final class AppState: ObservableObject {
       router.userSelectTab(tab)
 
     case .newItem:
-      // Context-aware creation based on current tab
-      switch router.selectedTab {
+      // Context-aware creation based on current destination
+      switch router.selectedDestination.asTab ?? .workspace {
       case .properties:
         // TODO: Add property creation sheet when implemented
         break

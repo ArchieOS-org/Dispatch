@@ -74,10 +74,12 @@ struct ContentView: View {
   /// Global Quick Find (Popover) State managed by AppState.overlayState
   @State private var quickFindText = ""
   /// Local sidebar selection synced via .onChange (avoids mutation during render)
-  @State private var sidebarSelection: AppTab? = nil
+  @State private var sidebarSelection: SidebarDestination? = nil
   #else
   /// Local sidebar selection synced via .onChange (avoids mutation during render)
-  @State private var sidebarSelection: AppTab? = nil
+  @State private var sidebarSelection: SidebarDestination? = nil
+  /// Controls stage picker sheet visibility (for tab-bar mode fallback)
+  @State private var showStagePicker = false
   #endif
   // searchManager migrated to AppState
   // @StateObject private var searchManager = SearchPresentationManager()
@@ -94,7 +96,7 @@ struct ContentView: View {
 
   // MARK: - Navigation Bindings (dispatch-driven)
 
-  /// Binding for TabView selection that routes through dispatcher.
+  /// Binding for TabView selection that routes through dispatcher (legacy tab-based).
   /// Uses userSelectedTab which may pop-to-root on reselect.
   private var selectedTabBinding: Binding<AppTab> {
     Binding(
@@ -103,11 +105,20 @@ struct ContentView: View {
     )
   }
 
-  /// Create binding for specific tab's path (iPad/macOS per-tab stacks).
-  private func pathBinding(for tab: AppTab) -> Binding<[AppRoute]> {
+  /// Binding for TabView selection using SidebarDestination (destination-based).
+  /// Uses userSelectedDestination which may pop-to-root on reselect.
+  private var selectedDestinationBinding: Binding<SidebarDestination> {
     Binding(
-      get: { appState.router.paths[tab, default: []] },
-      set: { appState.dispatch(.setPath($0, for: tab)) }
+      get: { appState.router.selectedDestination },
+      set: { appState.dispatch(.userSelectedDestination($0)) }
+    )
+  }
+
+  /// Create binding for specific destination's path (iPad/macOS per-destination stacks).
+  private func pathBinding(for destination: SidebarDestination) -> Binding<[AppRoute]> {
+    Binding(
+      get: { appState.router.paths[destination] ?? [] },
+      set: { appState.dispatch(.setPath($0, for: destination)) }
     )
   }
 
@@ -164,17 +175,22 @@ struct ContentView: View {
 
   #if os(macOS)
   private var toolbarContext: ToolbarContext {
-    switch selectedTab {
-    case .properties:
-      .listingList // Properties uses listing-style toolbar
-    case .listings:
-      .listingList
-    case .realtors:
-      .realtorList
-    case .settings:
-      .taskList // Settings uses default toolbar
-    case .workspace, .search:
-      .taskList // Re-use task actions for now
+    switch appState.router.selectedDestination {
+    case .tab(let tab):
+      switch tab {
+      case .properties:
+        .listingList // Properties uses listing-style toolbar
+      case .listings:
+        .listingList
+      case .realtors:
+        .realtorList
+      case .settings:
+        .taskList // Settings uses default toolbar
+      case .workspace, .search:
+        .taskList // Re-use task actions for now
+      }
+    case .stage:
+      .listingList // All stage views use listing toolbar
     }
   }
 
@@ -198,39 +214,43 @@ struct ContentView: View {
 
   /// macOS: Things 3-style resizable sidebar with native selection.
   /// Stage cards appear above the List (not inside it).
-  /// Settings uses SettingsLink via SidebarTabList.
+  /// Settings uses SettingsLink via SidebarDestinationList.
   private var sidebarNavigation: some View {
     ResizableSidebar {
       VStack(spacing: 0) {
         // Stage cards header (NOT in List - Reminders-style)
+        // Tapping a stage card uses programmatic selection (never pops)
         StageCardsHeader(
           stageCounts: stageCounts,
-          onSelectStage: handleMacStageCardTap
+          onSelectStage: { stage in
+            appState.dispatch(.setSelectedDestination(.stage(stage)))
+          }
         )
 
-        // Tab list with SettingsLink
-        SidebarTabList(
+        // Destination list with stages + tabs + SettingsLink
+        SidebarDestinationList(
           selection: $sidebarSelection,
           tabCounts: macTabCounts,
+          stageCounts: stageCounts,
           overdueCount: sidebarOverdueCount
         )
         .onAppear {
-          sidebarSelection = appState.router.selectedTab
+          sidebarSelection = appState.router.selectedDestination
         }
         .onChange(of: sidebarSelection) { _, newValue in
-          guard let tab = newValue, tab != appState.router.selectedTab else { return }
-          appState.dispatch(.userSelectedTab(tab))
+          guard let dest = newValue, dest != appState.router.selectedDestination else { return }
+          appState.dispatch(.userSelectedDestination(dest))
         }
-        .onChange(of: appState.router.selectedTab) { _, newValue in
+        .onChange(of: appState.router.selectedDestination) { _, newValue in
           sidebarSelection = newValue
         }
       }
     } content: {
-      NavigationStack(path: pathBinding(for: selectedTab)) {
-        macTabRootView(for: selectedTab)
+      NavigationStack(path: pathBinding(for: appState.router.selectedDestination)) {
+        destinationRootView(for: appState.router.selectedDestination)
           .appDestinations()
       }
-      .id(appState.router.stackIDs[selectedTab])
+      .id(appState.router.stackIDs[appState.router.selectedDestination]!)
       .toolbar {
         // FORCE the NSToolbar to exist at all times.
         // This prevents the window corner radius from flickering (Large vs Small) when navigating between views.
@@ -246,11 +266,12 @@ struct ContentView: View {
             set: { appState.lensState.audience = $0 }
           ),
           onNew: {
-            if selectedTab == .listings {
+            switch appState.router.selectedDestination {
+            case .tab(.listings), .stage:
               appState.sheetState = .addListing
-            } else if selectedTab == .realtors {
+            case .tab(.realtors):
               appState.sheetState = .addRealtor
-            } else {
+            default:
               appState.sheetState = .quickEntry(type: nil)
             }
           },
@@ -259,6 +280,17 @@ struct ContentView: View {
           }
         )
       }
+    }
+  }
+
+  /// Root view for any destination (tab or stage) - macOS
+  @ViewBuilder
+  private func destinationRootView(for destination: SidebarDestination) -> some View {
+    switch destination {
+    case .tab(let tab):
+      macTabRootView(for: tab)
+    case .stage(let stage):
+      StagedListingsView(stage: stage)
     }
   }
 
@@ -290,29 +322,22 @@ struct ContentView: View {
       MyWorkspaceView()
     }
   }
-
-  /// Handle stage card tap on macOS.
-  /// Uses setSelectedTab (programmatic) which NEVER pops to root.
-  private func handleMacStageCardTap(_ stage: ListingStage) {
-    // Switch tabs only if needed (programmatic, no pop)
-    if appState.router.selectedTab != .listings {
-      appState.dispatch(.setSelectedTab(.listings))
-    }
-    // Then push the route
-    appState.dispatch(.navigateTo(.stagedListings(stage), on: .listings))
-  }
   #else
   /// iPad: TabView with sidebarAdaptable style (iOS 18+).
-  /// Uses per-tab NavigationStacks with stable stack IDs.
+  /// Uses per-destination NavigationStacks with stable stack IDs.
+  /// Stages are first-class destinations, hidden from tab bar via defaultVisibility.
   private var ipadTabViewNavigation: some View {
     ZStack {
-      TabView(selection: selectedTabBinding) {
-        // Main tabs section
-        TabSection {
-          ForEach(AppTab.mainTabs) { tab in
-            Tab(tab.title, systemImage: tab.icon, value: tab) {
-              NavigationStack(path: pathBinding(for: tab)) {
-                tabRootView(for: tab)
+      TabView(selection: selectedDestinationBinding) {
+        // MARK: - Stages Section (sidebar-only via defaultVisibility on each Tab)
+        // Stages appear as first-class destinations in sidebar mode
+        // but are hidden in tab bar mode to avoid clutter.
+        // Reference: developer.apple.com/documentation/swiftui/tab/defaultvisibility(_:for:)
+        TabSection("Stages") {
+          ForEach(ListingStage.allCases, id: \.self) { stage in
+            Tab(stage.displayName, systemImage: stage.icon, value: SidebarDestination.stage(stage)) {
+              NavigationStack(path: pathBinding(for: .stage(stage))) {
+                StagedListingsView(stage: stage)
                   .appDestinations()
                   .toolbar {
                     ToolbarItem(placement: .primaryAction) {
@@ -322,15 +347,41 @@ struct ContentView: View {
                     }
                   }
               }
-              .id(appState.router.stackIDs[tab])
+              .id(appState.router.stackIDs[.stage(stage)]!)
+            }
+            .badge(stageCounts[stage] ?? 0)
+            .defaultVisibility(.hidden, for: .tabBar) // Only show in sidebar
+          }
+        }
+
+        // MARK: - Main tabs section
+        TabSection {
+          ForEach(AppTab.mainTabs) { tab in
+            Tab(tab.title, systemImage: tab.icon, value: SidebarDestination.tab(tab)) {
+              NavigationStack(path: pathBinding(for: .tab(tab))) {
+                tabRootView(for: tab)
+                  .appDestinations()
+                  .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                      if appState.lensState.showFilterButton {
+                        FilterMenu(audience: $appState.lensState.audience)
+                      }
+                    }
+                    // Stage picker button for tab-bar mode fallback
+                    ToolbarItem(placement: .primaryAction) {
+                      stagePickerButton
+                    }
+                  }
+              }
+              .id(appState.router.stackIDs[.tab(tab)]!)
             }
             .badge(badgeCount(for: tab))
           }
         }
 
-        // Settings section (separate for visual grouping)
+        // MARK: - Settings section (separate for visual grouping)
         TabSection {
-          Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
+          Tab("Settings", systemImage: "gearshape", value: SidebarDestination.tab(.settings)) {
             NavigationStack {
               SettingsView()
                 .appDestinations()
@@ -340,15 +391,70 @@ struct ContentView: View {
       }
       .tabViewStyle(.sidebarAdaptable)
       .tabViewSidebarHeader {
+        // Stage cards header - tapping uses programmatic selection (never pops)
         StageCardsHeader(
           stageCounts: stageCounts,
-          onSelectStage: handleStageCardTap
+          onSelectStage: { stage in
+            appState.dispatch(.setSelectedDestination(.stage(stage)))
+          }
         )
+      }
+      .sheet(isPresented: $showStagePicker) {
+        stagePickerSheet
       }
 
       // FAB overlay for iPad
       iPadFABOverlay
     }
+  }
+
+  /// Toolbar button to open stage picker (fallback for tab-bar mode)
+  @ViewBuilder
+  private var stagePickerButton: some View {
+    Button {
+      showStagePicker = true
+    } label: {
+      Label("Stages", systemImage: "folder")
+    }
+  }
+
+  /// Stage picker sheet for tab-bar mode fallback
+  private var stagePickerSheet: some View {
+    NavigationStack {
+      List {
+        ForEach(ListingStage.allCases, id: \.self) { stage in
+          Button {
+            showStagePicker = false
+            appState.dispatch(.setSelectedDestination(.stage(stage)))
+          } label: {
+            Label {
+              HStack {
+                Text(stage.displayName)
+                Spacer()
+                if let count = stageCounts[stage], count > 0, stage != .done {
+                  Text("\(count)")
+                    .foregroundStyle(.secondary)
+                }
+              }
+            } icon: {
+              Image(systemName: stage.icon)
+                .foregroundStyle(stage.color)
+            }
+          }
+          .foregroundStyle(.primary)
+        }
+      }
+      .navigationTitle("Stages")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Cancel") {
+            showStagePicker = false
+          }
+        }
+      }
+    }
+    .presentationDetents([.medium])
   }
 
   /// Root view for each tab in iPad TabView.
@@ -384,17 +490,6 @@ struct ContentView: View {
     case .settings, .search:
       0
     }
-  }
-
-  /// Handle stage card tap: switch to Listings tab + push staged listings route.
-  /// Uses setSelectedTab (programmatic) which NEVER pops to root.
-  private func handleStageCardTap(_ stage: ListingStage) {
-    // Switch tabs only if needed (programmatic, no pop)
-    if appState.router.selectedTab != .listings {
-      appState.dispatch(.setSelectedTab(.listings))
-    }
-    // Then push the route
-    appState.dispatch(.navigateTo(.stagedListings(stage), on: .listings))
   }
 
   /// iPad floating FAB overlay with proper safe area handling
@@ -442,21 +537,21 @@ struct ContentView: View {
     .onAppear { onAppearActions() }
     .onChange(of: currentUserId) { _, _ in updateWorkItemActions() }
     .onChange(of: userCache) { _, _ in updateWorkItemActions() }
-    .onChange(of: appState.router.selectedTab) { _, _ in updateLensState() }
+    .onChange(of: appState.router.selectedDestination) { _, _ in updateLensState() }
     .onChange(of: currentPathDepth) { _, _ in updateLensState() }
   }
 
   /// Current path depth for lens state updates.
-  /// Returns phonePath.count on iPhone, or current tab's path count on iPad/macOS.
+  /// Returns phonePath.count on iPhone, or current destination's path count on iPad/macOS.
   private var currentPathDepth: Int {
     #if os(iOS)
     if isPhone {
       return appState.router.phonePath.count
     } else {
-      return appState.router.paths[appState.router.selectedTab, default: []].count
+      return appState.router.paths[appState.router.selectedDestination]?.count ?? 0
     }
     #else
-    return appState.router.paths[appState.router.selectedTab, default: []].count
+    return appState.router.paths[appState.router.selectedDestination]?.count ?? 0
     #endif
   }
 
@@ -875,7 +970,7 @@ struct ContentView: View {
   /// Pure function to derive the current "Screen" (Lens Context) from Router State.
   /// Eliminates the need for .onAppear hacks in views.
   private func updateLensState() {
-    let tab = appState.router.selectedTab
+    let destination = appState.router.selectedDestination
     let pathDepth = currentPathDepth
 
     // iPhone Root Logic: If phone and at root, we are at Menu
@@ -889,33 +984,44 @@ struct ContentView: View {
     #endif
 
     let newScreen: LensState.CurrentScreen =
-      switch tab {
-      case .workspace:
-        // Workspace always allows filtering (My Tasks vs All)
-        .myWorkspace
+      switch destination {
+      case .tab(let tab):
+        switch tab {
+        case .workspace:
+          // Workspace always allows filtering (My Tasks vs All)
+          .myWorkspace
 
-      case .properties:
-        // Properties list - no filtering needed
-        .other
+        case .properties:
+          // Properties list - no filtering needed
+          .other
 
-      case .listings:
-        // List = No Filter, Detail = Filter (Audience/Kind)
+        case .listings:
+          // List = No Filter, Detail = Filter (Audience/Kind)
+          if pathDepth > 0 {
+            .listingDetail
+          } else {
+            .listings
+          }
+
+        case .realtors:
+          // Realtors currently has no global filtering in header
+          .realtors
+
+        case .settings:
+          // Settings has no filtering
+          .other
+
+        case .search:
+          .other
+        }
+
+      case .stage:
+        // Stage destinations are listing-context screens
         if pathDepth > 0 {
           .listingDetail
         } else {
           .listings
         }
-
-      case .realtors:
-        // Realtors currently has no global filtering in header
-        .realtors
-
-      case .settings:
-        // Settings has no filtering
-        .other
-
-      case .search:
-        .other
       }
 
     if appState.lensState.currentScreen != newScreen {

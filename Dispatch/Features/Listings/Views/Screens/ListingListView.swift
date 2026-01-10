@@ -155,7 +155,7 @@ struct ListingListView: View {
             StageCardsHeader(
               stageCounts: stageCounts,
               onSelectStage: { stage in
-                appState.dispatch(.navigateTo(.stagedListings(stage), on: .listings))
+                appState.dispatch(.setSelectedDestination(.stage(stage)))
               }
             )
           }
