@@ -19,7 +19,7 @@ struct SidebarDestinationList: View {
 
   var body: some View {
     List(selection: $selection) {
-      // Main navigation tabs
+      // Main navigation tabs (now includes Settings)
       ForEach(AppTab.sidebarTabs) { tab in
         SidebarMenuRow(
           tab: tab,
@@ -28,19 +28,6 @@ struct SidebarDestinationList: View {
         )
         .tag(SidebarDestination.tab(tab))
       }
-
-      Divider()
-        .padding(.vertical, DS.Spacing.sm)
-
-      // Settings opens Settings scene via SettingsLink
-      SettingsLink {
-        SidebarMenuRow(
-          tab: .settings,
-          itemCount: 0,
-          overdueCount: 0
-        )
-      }
-      .buttonStyle(.plain)
     }
     .listStyle(.sidebar)
     .scrollContentBackground(.hidden)

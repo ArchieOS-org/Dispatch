@@ -47,8 +47,8 @@ extension AppTab {
     [.workspace, .properties, .listings, .realtors]
   }
 
-  /// Tabs shown in macOS sidebar (excludes settings and search).
-  /// Settings uses SettingsLink in a separate section.
+  /// Tabs shown in macOS sidebar (excludes search only).
+  /// Settings is now navigated in-window, not a separate scene.
   static var sidebarTabs: [AppTab] {
     allCases.filter(\.showsInSidebar)
   }
@@ -60,7 +60,7 @@ extension AppTab {
 
   var showsInSidebar: Bool {
     switch self {
-    case .search, .settings: false
+    case .search: false
     default: true
     }
   }

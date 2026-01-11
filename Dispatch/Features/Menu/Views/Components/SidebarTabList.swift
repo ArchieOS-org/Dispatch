@@ -3,14 +3,14 @@
 //  Dispatch
 //
 //  macOS sidebar navigation list with selection-based tab switching.
-//  Uses SettingsLink for Settings to open the Settings scene (Cmd+,).
+//  Settings is now navigated in-window like other tabs.
 //
 
 import SwiftUI
 
 #if os(macOS)
 /// Selection-based List for macOS sidebar navigation.
-/// Settings row opens Settings scene via SettingsLink.
+/// Settings is navigated in the main window (not a separate scene).
 struct SidebarTabList: View {
   @Binding var selection: AppTab?
 
@@ -19,7 +19,7 @@ struct SidebarTabList: View {
 
   var body: some View {
     List(selection: $selection) {
-      // Main navigation tabs
+      // Main navigation tabs (now includes Settings)
       ForEach(AppTab.sidebarTabs) { tab in
         SidebarMenuRow(
           tab: tab,
@@ -27,19 +27,6 @@ struct SidebarTabList: View {
           overdueCount: tab == .workspace ? overdueCount : 0
         )
       }
-
-      Divider()
-        .padding(.vertical, DS.Spacing.sm)
-
-      // Settings opens Settings scene via SettingsLink (not NavigationStack push)
-      SettingsLink {
-        SidebarMenuRow(
-          tab: .settings,
-          itemCount: 0,
-          overdueCount: 0
-        )
-      }
-      .buttonStyle(.plain)
     }
     .listStyle(.sidebar)
     .scrollContentBackground(.hidden)

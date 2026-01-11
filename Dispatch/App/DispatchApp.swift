@@ -116,16 +116,6 @@ struct DispatchApp: App {
         appState.syncCoordinator.handle(authStatusIsAuthenticated: isAuthenticated)
       }
 
-    // macOS Settings scene for ⌘, shortcut
-    // SettingsLink in sidebar opens this window
-    #if os(macOS)
-    Settings {
-      SettingsView()
-        .modelContainer(sharedModelContainer)
-        .environmentObject(appState)
-        .environmentObject(SyncManager.shared)
-    }
-    #endif
   }
 
   // MARK: Private
