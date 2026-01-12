@@ -1980,6 +1980,31 @@ final class SyncManager: ObservableObject {
       debugLog.log("    INSERT new note: \(dto.id)", category: .sync)
       let newNote = dto.toModel()
       context.insert(newNote)
+
+      // Link note to parent's notes array (required for UI to display it)
+      let parentId = dto.parentId
+      if let parentType = ParentType(rawValue: dto.parentType) {
+        switch parentType {
+        case .task:
+          let taskDescriptor = FetchDescriptor<TaskItem>(predicate: #Predicate { $0.id == parentId })
+          if let task = try? context.fetch(taskDescriptor).first {
+            task.notes.append(newNote)
+            debugLog.log("    → Linked note to task \(parentId)", category: .sync)
+          }
+        case .activity:
+          let activityDescriptor = FetchDescriptor<Activity>(predicate: #Predicate { $0.id == parentId })
+          if let activity = try? context.fetch(activityDescriptor).first {
+            activity.notes.append(newNote)
+            debugLog.log("    → Linked note to activity \(parentId)", category: .sync)
+          }
+        case .listing:
+          let listingDescriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == parentId })
+          if let listing = try? context.fetch(listingDescriptor).first {
+            listing.notes.append(newNote)
+            debugLog.log("    → Linked note to listing \(parentId)", category: .sync)
+          }
+        }
+      }
     }
   }
 
