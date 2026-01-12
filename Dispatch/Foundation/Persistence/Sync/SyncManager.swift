@@ -1043,6 +1043,11 @@ final class SyncManager: ObservableObject {
     try await syncDownNotes(context: context)
     debugLog.endTiming("syncDownNotes")
 
+    // Notes Reconciliation - catches any notes missed by incremental sync
+    debugLog.startTiming("reconcileMissingNotes")
+    _ = try await reconcileMissingNotes(context: context)
+    debugLog.endTiming("reconcileMissingNotes")
+
     // JOBS-STANDARD: Order-Independent Relationship Reconciliation
     // Ensure Listing.owner is resolved regardless of sync order
     debugLog.startTiming("reconcileListingRelationships")
@@ -1933,6 +1938,52 @@ final class SyncManager: ObservableObject {
     if mode == .live {
       UserDefaults.standard.set(Date(), forKey: Self.lastSyncNotesKey)
     }
+  }
+
+  /// Reconciles missing notes - finds notes on server that don't exist locally and fetches them.
+  /// This is a failsafe to catch notes that were missed due to watermark issues or other sync gaps.
+  /// Runs on every sync to ensure data consistency.
+  private func reconcileMissingNotes(context: ModelContext) async throws -> Int {
+    // 1. Fetch all note IDs from server (lightweight query)
+    let remoteDTOs: [IDOnlyDTO] = try await supabase
+      .from("notes")
+      .select("id")
+      .execute()
+      .value
+    let remoteIds = Set(remoteDTOs.map { $0.id })
+    debugLog.log("  Remote notes: \(remoteIds.count)", category: .sync)
+
+    // 2. Get all local note IDs
+    let localDescriptor = FetchDescriptor<Note>()
+    let localNotes = try context.fetch(localDescriptor)
+    let localIds = Set(localNotes.map { $0.id })
+    debugLog.log("  Local notes: \(localIds.count)", category: .sync)
+
+    // 3. Find IDs that exist on server but not locally
+    let missingIds = remoteIds.subtracting(localIds)
+
+    guard !missingIds.isEmpty else {
+      debugLog.log("  ✓ No missing notes", category: .sync)
+      return 0
+    }
+
+    debugLog.log("  ⚠️ Found \(missingIds.count) missing notes, fetching...", category: .sync)
+
+    // 4. Fetch full note data for missing IDs (batch query)
+    let missingDTOs: [NoteDTO] = try await supabase
+      .from("notes")
+      .select()
+      .in("id", values: Array(missingIds).map { $0.uuidString })
+      .execute()
+      .value
+
+    // 5. Insert missing notes using unified merge function
+    for dto in missingDTOs {
+      try applyRemoteNote(dto: dto, source: .syncDown, context: context)
+    }
+
+    debugLog.log("  ✓ Reconciled \(missingDTOs.count) missing notes", category: .sync)
+    return missingDTOs.count
   }
 
   /// Single source of truth for applying remote note changes (used by syncDown and broadcast)
