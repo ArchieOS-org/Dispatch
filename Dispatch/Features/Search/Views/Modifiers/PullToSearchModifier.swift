@@ -43,20 +43,6 @@ enum PullToSearchLayout {
     let startOffset = endOffset - threshold
     return min(endOffset, startOffset + pullDistance)
   }
-
-  /// Screen-top rendering (PullToSearchHost with ignoresSafeArea).
-  ///
-  /// The overlay's base position is at y=safeTop (safe area boundary).
-  /// This function returns an OFFSET from that base position:
-  /// - At rest: offset = -safeTop → actual y = 0 (behind dynamic island)
-  /// - At threshold: offset = endOffset → actual y = safeTop + endOffset (below dynamic island)
-  static func screenTopOffset(pullDistance: CGFloat, safeTop: CGFloat) -> CGFloat {
-    let threshold = DS.Spacing.searchPullThreshold
-    let endOffset = DS.Spacing.sm
-    let progress = min(1.0, max(0, pullDistance / threshold))
-    // Interpolate from -safeTop (hidden) to +endOffset (visible below safe area)
-    return -safeTop + progress * (safeTop + endOffset)
-  }
 }
 
 // MARK: - PullToSearchModifier

@@ -40,20 +40,22 @@ struct PullToSearchHost<Content: View>: View {
       .onPreferenceChange(PullToSearchStateKey.self) { pullState = $0 }
       #if os(iOS)
       .overlay(alignment: .top) {
-        Color.clear
-          .frame(height: 0)
-          .overlay(alignment: .top) {
-            GeometryReader { proxy in
-              let safeTop = proxy.safeAreaInsets.top
+        // GeometryReader OUTSIDE ignoresSafeArea so safeTop is read correctly
+        GeometryReader { proxy in
+          let safeTop = proxy.safeAreaInsets.top
+          Color.clear
+            .overlay(alignment: .top) {
               PullToSearchIndicator(state: pullState.state, progress: pullState.progress)
-                .offset(y: PullToSearchLayout.screenTopOffset(pullDistance: pullState.pullDistance, safeTop: safeTop))
+                // iconOffset gives 1:1 movement with pullDistance
+                .offset(y: safeTop + PullToSearchLayout.iconOffset(pullDistance: pullState.pullDistance))
                 .frame(maxWidth: .infinity, alignment: .top)
                 .allowsHitTesting(false)
             }
-            .frame(height: 0) // keeps GeometryReader from expanding
-          }
-          .allowsHitTesting(false)
-          .ignoresSafeArea(edges: .top)
+            // ignoresSafeArea ONLY on inner container so indicator can extend above safe area
+            .ignoresSafeArea(edges: .top)
+        }
+        .frame(height: 0)
+        .allowsHitTesting(false)
       }
       #endif
   }
