@@ -231,6 +231,9 @@ final class SyncManager: ObservableObject {
   func resetLastSyncTime() {
     debugLog.log("resetLastSyncTime() called - next sync will run FULL RECONCILIATION", category: .sync)
     lastSyncTime = nil
+    // Also reset per-table watermarks so all entities are re-fetched
+    lastSyncNotes = nil
+    debugLog.log("  → Also reset notes watermark", category: .sync)
   }
 
   /// Performs a full sync with orphan reconciliation, regardless of lastSyncTime.
