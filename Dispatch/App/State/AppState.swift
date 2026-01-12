@@ -166,6 +166,8 @@ final class AppState: ObservableObject {
       }
 
     case .openSearch(let initialText):
+      // Idempotency guard: ignore if already searching or dismissing
+      guard case .none = overlayState else { return }
       overlayState = .search(initialText: initialText)
 
     case .toggleSidebar:

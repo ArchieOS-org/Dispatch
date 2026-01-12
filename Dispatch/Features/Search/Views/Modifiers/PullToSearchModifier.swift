@@ -217,13 +217,9 @@ struct PullToSearchModifier: ViewModifier {
     guard appState.overlayState == .none else { return }
 
     // Dispatch Command (One Boss)
-    if reduceMotion {
-      appState.dispatch(.openSearch(initialText: nil))
-    } else {
-      withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-        appState.dispatch(.openSearch(initialText: nil))
-      }
-    }
+    // NOTE: Don't wrap in withAnimation - NavigationStack doesn't like having
+    // its path animated externally. SearchOverlay handles its own entry animation.
+    appState.dispatch(.openSearch(initialText: nil))
 
     // Reset state after triggering
     state = .idle

@@ -70,10 +70,12 @@ struct SearchOverlay: View {
       overlayState.hide(reason: .searchOverlay)
     }
     .task {
-      // Wait for text input system to initialize before focusing
-      // Using task instead of onAppear ensures proper lifecycle management
-      try? await Task.sleep(for: .milliseconds(100))
-      guard !Task.isCancelled else { return }
+      // Wait for text input system to fully initialize before focusing
+      // iOS text input requires the view hierarchy to stabilize and the
+      // RTIInputSystemSession to be established before focus can be set safely.
+      // 250ms allows for: view layout (1 frame ~16ms) + text system init (~100-150ms) + buffer
+      try? await Task.sleep(for: .milliseconds(250))
+      guard !Task.isCancelled, !isDismissing else { return }
       isFocused = true
     }
     .onDisappear {
