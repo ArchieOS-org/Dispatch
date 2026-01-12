@@ -40,17 +40,19 @@ struct PullToSearchHost<Content: View>: View {
       .onPreferenceChange(PullToSearchStateKey.self) { pullState = $0 }
       #if os(iOS)
       .overlay(alignment: .top) {
-        // Nested overlay pattern: zero-height container with ignoresSafeArea
-        // ensures indicator is positioned relative to screen top, not nav bar
         Color.clear
           .frame(height: 0)
           .overlay(alignment: .top) {
-            PullToSearchIndicator(state: pullState.state, progress: pullState.progress)
-              .offset(y: PullToSearchLayout.iconOffset(pullDistance: pullState.pullDistance))
-              .frame(maxWidth: .infinity, alignment: .top)
-              .allowsHitTesting(false)
-              .padding(.top, 6) // Notch insurance
+            GeometryReader { proxy in
+              let safeTop = proxy.safeAreaInsets.top
+              PullToSearchIndicator(state: pullState.state, progress: pullState.progress)
+                .offset(y: PullToSearchLayout.screenTopOffset(pullDistance: pullState.pullDistance, safeTop: safeTop))
+                .frame(maxWidth: .infinity, alignment: .top)
+                .allowsHitTesting(false)
+            }
+            .frame(height: 0) // keeps GeometryReader from expanding
           }
+          .allowsHitTesting(false)
           .ignoresSafeArea(edges: .top)
       }
       #endif

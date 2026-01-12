@@ -32,7 +32,7 @@ struct PullToSearchStateKey: PreferenceKey {
 /// Shared layout calculations for pull-to-search indicator positioning.
 /// Single source of truth - used by both tracking modifier and host.
 enum PullToSearchLayout {
-  /// Computes the 1:1 icon offset for the pull indicator.
+  /// Computes the 1:1 icon offset for the pull indicator (direct overlay rendering).
   ///
   /// The indicator moves down exactly 1:1 with the pull distance.
   /// At rest (pullDistance=0): hidden above the content area
@@ -42,6 +42,18 @@ enum PullToSearchLayout {
     let endOffset = DS.Spacing.sm
     let startOffset = endOffset - threshold
     return min(endOffset, startOffset + pullDistance)
+  }
+
+  /// Screen-top rendering (PullToSearchHost with ignoresSafeArea).
+  ///
+  /// Returns absolute y position from screen top:
+  /// - At rest: y=0 (behind dynamic island)
+  /// - At threshold: y=safeTop+margin (below dynamic island)
+  static func screenTopOffset(pullDistance: CGFloat, safeTop: CGFloat) -> CGFloat {
+    let threshold = DS.Spacing.searchPullThreshold
+    let endOffset = DS.Spacing.sm
+    let progress = min(1.0, max(0, pullDistance / threshold))
+    return progress * (safeTop + endOffset)
   }
 }
 
@@ -61,6 +73,7 @@ enum PullToSearchLayout {
 /// - Search triggers on release, not at threshold
 /// - Respects `accessibilityReduceMotion`
 struct PullToSearchModifier: ViewModifier {
+    
 
   // MARK: Internal
 
@@ -255,11 +268,12 @@ struct PullToSearchTrackingModifier: ViewModifier {
       .onScrollPhaseChange { oldPhase, newPhase in
         handlePhaseChange(from: oldPhase, to: newPhase)
       }
-      .preference(key: PullToSearchStateKey.self, value: .init(
-        state: state,
-        progress: progress,
-        pullDistance: currentPullDistance
-      ))
+      .preference(
+        key: PullToSearchStateKey.self,
+        value: (currentPullDistance > 0 || state != .idle)
+          ? .init(state: state, progress: progress, pullDistance: currentPullDistance)
+          : .init()
+      )
     #else
     content
     #endif
