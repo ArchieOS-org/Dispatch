@@ -27,6 +27,11 @@ import SwiftUI
 /// **Navigation:**
 /// - Selecting a result dismisses the overlay and triggers navigation
 /// - Navigation is deferred to prevent "push while presenting" issues
+///
+/// **Focus & Overlay Management:**
+/// - Owns its own `@FocusState` for keyboard control
+/// - Registers `.searchOverlay` reason with `AppOverlayState` on appear
+/// - Clears focus and overlay reason in `dismiss()` (suspenders) + `onDisappear` (belt)
 struct SearchOverlay: View {
 
   // MARK: Internal
@@ -55,10 +60,48 @@ struct SearchOverlay: View {
         Spacer()
       }
     }
+    // Phase 1: Visual fade-out (immediate)
+    .opacity(isDismissing ? 0 : 1)
+    .animation(.easeOut(duration: 0.2), value: isDismissing)
+    .allowsHitTesting(!isDismissing)
     .transition(.opacity)
+    .onAppear {
+      // Register overlay reason immediately
+      overlayState.hide(reason: .searchOverlay)
+    }
+    .task {
+      // Wait for text input system to initialize before focusing
+      // Using task instead of onAppear ensures proper lifecycle management
+      try? await Task.sleep(for: .milliseconds(100))
+      guard !Task.isCancelled else { return }
+      isFocused = true
+    }
+    .onDisappear {
+      // Belt: ensure reason is cleared even if dismiss() was bypassed
+      overlayState.show(reason: .searchOverlay)
+    }
+    // Phase 2: Wait for keyboard to finish hiding before removing from hierarchy
+    .onChange(of: overlayState.activeReasons) { _, reasons in
+      // If we're dismissing and keyboard reason is now cleared, finalize
+      if isDismissing && !reasons.contains(.keyboard) {
+        finalizeDismiss()
+      }
+    }
   }
 
   // MARK: Private
+
+  @FocusState private var isFocused: Bool
+  @EnvironmentObject private var overlayState: AppOverlayState
+
+  /// Phase 1 state: overlay is visually fading out
+  @State private var isDismissing = false
+
+  /// Stored result for deferred navigation
+  @State private var pendingResult: SearchResult?
+
+  /// Fallback dismiss ID to prevent stale timeouts
+  @State private var dismissID: UUID?
 
   @Query(sort: \TaskItem.title)
   private var tasks: [TaskItem]
@@ -93,8 +136,8 @@ struct SearchOverlay: View {
 
   private var modalContent: some View {
     VStack(spacing: 0) {
-      // Search bar
-      SearchBar(text: $searchText) {
+      // Search bar with external focus binding
+      SearchBar(text: $searchText, externalFocus: $isFocused) {
         dismiss()
       }
 
@@ -115,31 +158,72 @@ struct SearchOverlay: View {
   }
 
   private func dismiss() {
-    if reduceMotion {
-      isPresented = false
-      searchText = ""
+    guard !isDismissing else { return }
+
+    // Phase 1: Clear focus (keyboard starts hiding) + visual fade
+    isFocused = false
+    overlayState.show(reason: .searchOverlay)
+    isDismissing = true
+
+    // If keyboard isn't active, finalize immediately
+    #if os(iOS)
+    if !overlayState.isReasonActive(.keyboard) {
+      finalizeDismiss()
     } else {
-      withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-        isPresented = false
+      // Fallback timeout in case notification is missed
+      let currentDismissID = UUID()
+      dismissID = currentDismissID
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
+        guard isDismissing, dismissID == currentDismissID else { return }
+        finalizeDismiss()
       }
-      searchText = ""
     }
+    #else
+    finalizeDismiss()
+    #endif
   }
 
   private func selectResult(_ result: SearchResult) {
-    // Dismiss overlay first
-    if reduceMotion {
-      isPresented = false
+    guard !isDismissing else { return }
+
+    // Phase 1: Clear focus (keyboard starts hiding) + visual fade
+    isFocused = false
+    overlayState.show(reason: .searchOverlay)
+    isDismissing = true
+    pendingResult = result
+
+    // If keyboard isn't active, finalize immediately
+    #if os(iOS)
+    if !overlayState.isReasonActive(.keyboard) {
+      finalizeDismiss()
     } else {
-      withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-        isPresented = false
+      // Fallback timeout in case notification is missed
+      let currentDismissID = UUID()
+      dismissID = currentDismissID
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
+        guard isDismissing, dismissID == currentDismissID else { return }
+        finalizeDismiss()
       }
     }
+    #else
+    finalizeDismiss()
+    #endif
+  }
+
+  private func finalizeDismiss() {
+    let result = pendingResult
+    pendingResult = nil
+    dismissID = nil
     searchText = ""
 
-    // Defer navigation to next run loop to avoid "push while presenting"
-    DispatchQueue.main.async {
-      onSelectResult(result)
+    // Phase 2: Actually remove from hierarchy
+    isPresented = false
+
+    // Trigger navigation if we had a pending result
+    if let result {
+      DispatchQueue.main.async {
+        onSelectResult(result)
+      }
     }
   }
 }
@@ -213,6 +297,7 @@ private struct SearchOverlayPreviewHost: View {
         )
       }
     }
+    .environmentObject(AppOverlayState(mode: .preview))
   }
 }
 

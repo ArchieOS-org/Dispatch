@@ -19,7 +19,7 @@ struct NotesSection: View {
   var onDelete: ((Note) -> Void)? = nil
 
   var body: some View {
-    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
       Text("Notes")
         .font(DS.Typography.headline)
         .foregroundColor(DS.Colors.Text.primary)
@@ -31,7 +31,6 @@ struct NotesSection: View {
         onDelete: onDelete
       )
     }
-    .padding(DS.Spacing.md)
     .background(DS.Colors.Background.card)
     .cornerRadius(DS.Spacing.radiusCard)
   }
@@ -62,7 +61,7 @@ struct NotesContent: View {
       VStack(alignment: .leading, spacing: DS.Spacing.xs) {
         // Note list
         if !visibleNotes.isEmpty {
-          LazyVStack(alignment: .leading, spacing: DS.Spacing.sm) {
+          LazyVStack(alignment: .leading, spacing: DS.Spacing.xs) {
             ForEach(visibleNotes) { note in
               NoteCard(
                 note: note,
@@ -142,7 +141,7 @@ private struct NoteCard: View {
           .italic()
       }
     }
-    .padding(.vertical, DS.Spacing.sm)
+    .padding(.vertical, DS.Spacing.xs)
     .contentShape(Rectangle())
     .onTapGesture {
       onTap?()
@@ -201,7 +200,7 @@ private struct NoteComposer: View {
   var onSave: (String) -> Void
 
   var body: some View {
-    HStack(alignment: .top, spacing: DS.Spacing.sm) {
+    HStack(alignment: .top, spacing: DS.Spacing.xs) {
       ZStack(alignment: .topLeading) {
         // Placeholder (visible when empty and not focused)
         if text.isEmpty, !isFocused {
@@ -218,6 +217,7 @@ private struct NoteComposer: View {
           .foregroundColor(DS.Colors.Text.primary)
           .scrollContentBackground(.hidden)
           .focused($isFocused)
+          .padding(.vertical, DS.Spacing.xs)
           .frame(minHeight: 40, maxHeight: 120)
           .fixedSize(horizontal: false, vertical: true)
       }

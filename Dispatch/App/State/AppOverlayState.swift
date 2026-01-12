@@ -41,6 +41,7 @@ final class AppOverlayState: ObservableObject {
     case textInput
     case keyboard
     case modal
+    case searchOverlay
   }
 
   enum RunMode {
@@ -56,6 +57,11 @@ final class AppOverlayState: ObservableObject {
   /// Returns true if the overlay should be hidden (any reason is active)
   var isOverlayHidden: Bool {
     !activeReasons.isEmpty
+  }
+
+  /// Returns true if the given reason is currently active
+  func isReasonActive(_ reason: HideReason) -> Bool {
+    activeReasons.contains(reason)
   }
 
   /// Hides the overlay for the given reason

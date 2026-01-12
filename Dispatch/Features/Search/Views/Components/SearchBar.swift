@@ -15,13 +15,39 @@ import SwiftUI
 /// - Text input with placeholder
 /// - Clear button (appears when text is present)
 /// - Cancel button to dismiss
-/// - Automatic focus on appear
+/// - Two focus modes: external binding (for SearchOverlay) or internal (standalone)
 struct SearchBar: View {
+
+  // MARK: Lifecycle
+
+  /// External focus control (for SearchOverlay)
+  init(
+    text: Binding<String>,
+    externalFocus: FocusState<Bool>.Binding,
+    showCancelButton: Bool = true,
+    onCancel: @escaping () -> Void
+  ) {
+    self._text = text
+    self.externalFocus = externalFocus
+    self.showCancelButton = showCancelButton
+    self.onCancel = onCancel
+  }
+
+  /// Internal focus control (standalone usage)
+  init(
+    text: Binding<String>,
+    showCancelButton: Bool = true,
+    onCancel: @escaping () -> Void
+  ) {
+    self._text = text
+    self.externalFocus = nil
+    self.showCancelButton = showCancelButton
+    self.onCancel = onCancel
+  }
 
   // MARK: Internal
 
   @Binding var text: String
-
   var showCancelButton = true
   var onCancel: () -> Void
 
@@ -35,7 +61,7 @@ struct SearchBar: View {
 
         TextField("Search tasks, activities, listings...", text: $text)
           .textFieldStyle(.plain)
-          .focused($isFocused)
+          .focused(externalFocus ?? $internalFocus)
           .submitLabel(.search)
           .autocorrectionDisabled()
         #if os(iOS)
@@ -74,22 +100,16 @@ struct SearchBar: View {
     }
     .padding(.horizontal, DS.Spacing.lg)
     .padding(.vertical, DS.Spacing.md)
-    .onAppear {
-      // Delay focus slightly for smoother animation, but wrap in transaction
-      // to avoid triggering layout animations if inside a popover
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-          isFocused = true
-        }
-      }
-    }
+    // No .onAppear auto-focus — parent controls focus timing when using external focus
   }
 
   // MARK: Private
 
-  @FocusState private var isFocused: Bool
+  /// External focus binding (nil = use internal)
+  private let externalFocus: FocusState<Bool>.Binding?
+
+  /// Internal focus for standalone usage
+  @FocusState private var internalFocus: Bool
 
 }
 

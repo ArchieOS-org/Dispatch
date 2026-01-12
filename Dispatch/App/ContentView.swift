@@ -27,7 +27,7 @@ struct ContentView: View {
       // .environmentObject(searchManager) // Remvoved
       .environmentObject(appState.lensState)
     // .environmentObject(quickEntryState) // Removed
-    // .environmentObject(overlayState) // Removed
+      .environmentObject(overlayState)
     #if os(macOS)
       .background(KeyMonitorView { event in
         handleGlobalKeyDown(event)
@@ -610,11 +610,8 @@ struct ContentView: View {
       }
     }
     .onAppear {
-      // Keyboard observer relies on legacy AppOverlayState logic which we are deprecating.
-      // Leaving attached to local 'overlayState' variable for now if it exists,
-      // but we must clean up 'overlayState' variable usage.
-      // For this step, we just comment it out as it was iOS specific fallback.
-      // keyboardObserver.attach(to: overlayState)
+      // Attach KeyboardObserver to track keyboard visibility
+      keyboardObserver.attach(to: overlayState)
     }
     // iOS Sheet Handling now driven by AppState
     // Note: We use the same sheet logic as macOS eventually, but for now we map it here

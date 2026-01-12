@@ -16,13 +16,13 @@ extension DS {
     /// Uses Dynamic Type styles for accessibility compliance.
     enum StageCards {
       /// PRIMARY: Icon font - scales with Dynamic Type
-      static let primarySemibold = Font.title.weight(.semibold)
+      static let primarySemibold = Font.title3.weight(.semibold)
 
       /// PRIMARY: Count font - scales with Dynamic Type
-      static let primaryBold = Font.title.weight(.bold)
+      static let primaryBold = Font.title3.weight(.bold)
 
       /// SECONDARY: Label font - scales with Dynamic Type
-      static let secondary = Font.system(size: 20, weight: .medium)
+      static let secondary = Font.body.weight(.medium)
     }
 
     /// Large title (32pt bold) - Screen titles, hero text

@@ -133,10 +133,12 @@ struct ListingDetailView: View {
     }
     let hasAnyActivities = !adminActivities.isEmpty || !marketingActivities.isEmpty
 
-    return VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+    return VStack(alignment: .leading, spacing: 0) {
       stageSection
+      Color.clear.frame(height: DS.Spacing.lg)
 
       metadataSection
+      Color.clear.frame(height: DS.Spacing.lg)
 
       notesSection
 
@@ -150,6 +152,8 @@ struct ListingDetailView: View {
 
       // Activity sections - wrapped in container to prevent orphan spacing
       if hasAnyActivities {
+        // Keep normal section spacing when Tasks exist; otherwise use the smaller Notes gap
+        Color.clear.frame(height: filteredTasks.isEmpty ? DS.Spacing.sm : DS.Spacing.lg)
         VStack(alignment: .leading, spacing: DS.Spacing.lg) {
           if showAdminFirst {
             adminSection(activities: adminActivities)
@@ -426,6 +430,52 @@ struct ListingDetailView: View {
         listing.city = "Toronto"
         listing.province = "ON"
         listing.postalCode = "M5V 2T6"
+      }
+    }
+  ) { context in
+    // O(1) Lookup covering all users (owner + others)
+    let users = (try? context.fetch(FetchDescriptor<User>())) ?? []
+    let usersById = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
+
+    // Deterministic Fetch
+    let listingID = PreviewDataFactory.listingID
+    let listingDescriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingID })
+    if let listing = try? context.fetch(listingDescriptor).first {
+      ListingDetailView(
+        listing: listing,
+        userLookup: { id in usersById[id] }
+      )
+    } else {
+      Text("Missing preview data")
+    }
+  }
+}
+
+#Preview("With Two Notes") {
+  PreviewShell(
+    // Force Lens Match
+    lensState: {
+      let l = LensState()
+      l.audience = .all
+      return l
+    }(),
+    setup: { context in
+      PreviewDataFactory.seed(context)
+
+      // Preview-only: populate location fields so the metadata section renders
+      let listingID = PreviewDataFactory.listingID
+      let listingDescriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingID })
+      if let listing = try? context.fetch(listingDescriptor).first {
+        listing.city = "Toronto"
+        listing.province = "ON"
+        listing.postalCode = "M5V 2T6"
+
+        // Preview-only: ensure there are exactly two notes
+        let previewUserId = UUID()
+        listing.notes = [
+          Note(content: "First note for preview", createdBy: previewUserId, parentType: .listing, parentId: listing.id),
+          Note(content: "Second note for preview", createdBy: previewUserId, parentType: .listing, parentId: listing.id)
+        ]
       }
     }
   ) { context in
