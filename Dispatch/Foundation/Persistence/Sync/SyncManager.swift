@@ -904,6 +904,9 @@ final class SyncManager: ObservableObject {
   /// NOTE: Will be removed in Phase 3 once origin_user_id filtering is validated
   private var inFlightActivityIds = Set<UUID>()
 
+  /// Notes currently being synced up - skip realtime echoes for these
+  private var inFlightNoteIds = Set<UUID>()
+
   #if DEBUG
   /// Track recently processed IDs to detect duplicate processing (DEBUG only)
   /// Used during Phase 1 to log when both postgres_changes and broadcast process same event
@@ -955,11 +958,30 @@ final class SyncManager: ObservableObject {
       }
     }
 
-    // Detect Postgres/RLS errors
+    // Detect Postgres/RLS errors with table-aware messaging
     // Note: PostgrestError handling ideally involves checking the error code (e.g. 42501 or PGRST102)
-    let errorString = String(describing: error)
-    if errorString.contains("42501") || errorString.localizedCaseInsensitiveContains("permission denied") {
-      return "Permission denied. You can only edit your own profile."
+    let errorString = String(describing: error).lowercased()
+    if errorString.contains("42501") || errorString.contains("permission denied") {
+      // Provide table-specific error messages for better debugging
+      if errorString.contains("notes") {
+        return "Permission denied syncing notes."
+      }
+      if errorString.contains("listings") {
+        return "Permission denied syncing listings."
+      }
+      if errorString.contains("tasks") {
+        return "Permission denied syncing tasks."
+      }
+      if errorString.contains("activities") {
+        return "Permission denied syncing activities."
+      }
+      if errorString.contains("users") {
+        return "Permission denied syncing user profile."
+      }
+      if errorString.contains("properties") {
+        return "Permission denied syncing properties."
+      }
+      return "Permission denied during sync."
     }
 
     return "Sync failed: \(error.localizedDescription)"
@@ -1901,7 +1923,7 @@ final class SyncManager: ObservableObject {
     debugLog.logSyncOperation(operation: "FETCH", table: "notes", count: dtos.count)
 
     for dto in dtos {
-      try upsertNote(dto: dto, context: context)
+      try applyRemoteNote(dto: dto, source: .syncDown, context: context)
     }
 
     // Update per-table watermark
@@ -1910,47 +1932,67 @@ final class SyncManager: ObservableObject {
     }
   }
 
-  /// Centralized upsert logic for Notes (used by SyncDown and Realtime)
-  private func upsertNote(dto: NoteDTO, context: ModelContext) throws {
+  /// Single source of truth for applying remote note changes (used by syncDown and broadcast)
+  /// Handles in-flight protection, pending protection, and upsert in one place.
+  private func applyRemoteNote(dto: NoteDTO, source: RemoteNoteSource, context: ModelContext) throws {
     let descriptor = FetchDescriptor<Note>(predicate: #Predicate { $0.id == dto.id })
     let existing = try context.fetch(descriptor).first
 
-    // Pending protection: don't overwrite if we have pending local changes
-    if let existing, existing.syncState == .pending || existing.syncState == .failed {
-      debugLog.log("    SKIP (pending/failed): \(dto.id)", category: .sync)
+    // 1. In-flight protection: skip if we're currently syncing this note up
+    if inFlightNoteIds.contains(dto.id) {
+      debugLog.log("  ⏭️ Skipping in-flight note \(dto.id) from \(source)", category: .sync)
       return
     }
 
+    // 2. Pending protection: don't overwrite if we have pending local changes
+    if let existing, existing.syncState == .pending || existing.syncState == .failed {
+      existing.hasRemoteChangeWhilePending = true
+      debugLog.log("  ⏭️ Marked pending note \(dto.id) as having remote change from \(source)", category: .sync)
+      return
+    }
+
+    // 3. Upsert (handles soft delete via deleted_at field)
     if let existing {
       // UPDATE (or Soft Delete)
       if let deletedAt = dto.deletedAt {
         debugLog.log("    SOFT DELETE existing note: \(dto.id)", category: .sync)
         existing.deletedAt = deletedAt
-        existing.markSynced() // Ensure state reflects server
+        existing.deletedBy = dto.deletedBy
+        existing.markSynced()
       } else {
         debugLog.log("    UPDATE existing note: \(dto.id)", category: .sync)
         existing.content = dto.content
         existing.editedAt = dto.editedAt
         existing.editedBy = dto.editedBy
-        existing.updatedAt = dto.updatedAt ?? existing.updatedAt // Fallback if nil in DTO (shouldn't be)
+        existing.updatedAt = dto.updatedAt ?? existing.updatedAt
         existing.deletedAt = nil // Resurrect if needed
+        existing.deletedBy = nil
         existing.markSynced()
       }
 
-      // Parent keys are immutable usually, but update just in case
+      // Parent keys are immutable, but update just in case
       if let pType = ParentType(rawValue: dto.parentType) {
         existing.parentType = pType
       }
       existing.parentId = dto.parentId
     } else {
-      // INSERT
-      // If it's already deleted on server, should we insert it?
-      // Yes, as a tombstone (deletedAt != nil) to prevent re-fetch or invalid reference issues.
-      // But usually SyncDown fetches based onUpdatedAt, so we might want to have the record.
+      // INSERT (even if deleted on server, as tombstone)
       debugLog.log("    INSERT new note: \(dto.id)", category: .sync)
       let newNote = dto.toModel()
-      // toModel sets syncState=.synced
       context.insert(newNote)
+    }
+  }
+
+  /// Source of remote note changes for logging
+  private enum RemoteNoteSource: CustomStringConvertible {
+    case syncDown
+    case broadcast
+
+    var description: String {
+      switch self {
+      case .syncDown: "syncDown"
+      case .broadcast: "broadcast"
+      }
     }
   }
 
@@ -2344,33 +2386,61 @@ final class SyncManager: ObservableObject {
 
     guard !pendingNotes.isEmpty else { return }
 
-    // Batch upsert first
+    // Mark in-flight BEFORE any network calls to prevent realtime echo overwrites
+    inFlightNoteIds = Set(pendingNotes.map { $0.id })
+    defer { inFlightNoteIds.removeAll() }
+
+    // INSERT-first pattern: Try batch INSERT first (for new notes)
+    // This avoids relying on syncedAt which can be unreliable after reinstalls/DB resets
+    let insertDTOs = pendingNotes.map { NoteDTO(from: $0) }
+    debugLog.log("  Attempting batch INSERT for \(insertDTOs.count) notes...", category: .sync)
+
     do {
-      let dtos = pendingNotes.map { NoteDTO(from: $0) }
-      debugLog.log("  Batch upserting \(dtos.count) notes...", category: .sync)
       try await supabase
         .from("notes")
-        .upsert(dtos)
+        .insert(insertDTOs)
+        .execute()
+
+      // All succeeded as inserts
+      for note in pendingNotes {
+        note.markSynced()
+        note.hasRemoteChangeWhilePending = false
+      }
+      debugLog.log("  Batch INSERT succeeded for \(pendingNotes.count) notes", category: .sync)
+      return
+    } catch {
+      // Some/all may already exist - fall through to update path
+      debugLog.log("  Batch INSERT had conflicts, trying UPDATE path...", category: .sync)
+    }
+
+    // Batch UPDATE with mutable-only DTO (NoteUpdateDTO excludes immutable columns)
+    // This respects column-level UPDATE grants on: content, edited_at, edited_by, updated_at, deleted_at, deleted_by
+    let updateDTOs = pendingNotes.map { NoteUpdateDTO(from: $0) }
+
+    do {
+      try await supabase
+        .from("notes")
+        .upsert(updateDTOs, onConflict: "id")
         .execute()
 
       for note in pendingNotes {
         note.markSynced()
-        note.hasRemoteChangeWhilePending = false // Jobs Standard: Clear conflict flag
+        note.hasRemoteChangeWhilePending = false
       }
-      debugLog.log("  Marked \(pendingNotes.count) notes as synced", category: .sync)
+      debugLog.log("  Batch UPDATE succeeded for \(pendingNotes.count) notes", category: .sync)
     } catch {
-      // Individual fallback
-      debugLog.log("Batch note sync failed, trying individually: \(error.localizedDescription)", category: .error)
+      // Individual fallback for partial failures
+      debugLog.log("Batch note UPDATE failed, trying individually: \(error.localizedDescription)", category: .error)
 
       for note in pendingNotes {
         do {
-          let dto = NoteDTO(from: note)
+          let dto = NoteUpdateDTO(from: note)
           try await supabase
             .from("notes")
-            .upsert([dto])
+            .upsert([dto], onConflict: "id")
             .execute()
           note.markSynced()
-          note.hasRemoteChangeWhilePending = false // Jobs Standard: Clear conflict flag
+          note.hasRemoteChangeWhilePending = false
           debugLog.log("  ✓ Note \(note.id) synced", category: .sync)
         } catch {
           let message = userFacingMessage(for: error)
@@ -2848,6 +2918,8 @@ final class SyncManager: ObservableObject {
         try await handleUserBroadcast(payload: payload, context: context)
       case .claimEvents:
         try await handleClaimEventBroadcast(payload: payload, context: context)
+      case .notes:
+        try await handleNoteBroadcast(payload: payload, context: context)
       }
 
       try context.save()
@@ -3012,6 +3084,47 @@ final class SyncManager: ObservableObject {
 
       try upsertClaimEvent(dto: dto, context: context)
       debugLog.log("  ✓ Broadcast: Upserted claim event \(dto.id)", category: .event)
+    }
+  }
+
+  /// Handles note broadcast - converts payload to NoteDTO and applies with pending/in-flight protection
+  private func handleNoteBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+    if payload.type == .delete {
+      // Hard delete on server = hard delete locally (not soft delete!)
+      if
+        let oldRecord = payload.cleanedOldRecord(),
+        let idString = oldRecord["id"] as? String,
+        let id = UUID(uuidString: idString)
+      {
+        let descriptor = FetchDescriptor<Note>(predicate: #Predicate { $0.id == id })
+        if let existing = try? context.fetch(descriptor).first {
+          context.delete(existing)
+          debugLog.log("  ✓ Broadcast: Hard deleted note \(id)", category: .event)
+        } else {
+          // Log missing note for debugging (helps identify sync gaps)
+          debugLog.log("  ⚠️ Broadcast: DELETE for missing local note \(id)", category: .event)
+        }
+      }
+    } else {
+      // INSERT or UPDATE (soft deletes come through as UPDATE with deleted_at set)
+      guard let cleanRecord = payload.cleanedRecord() else {
+        debugLog.log("  ⚠️ Broadcast: Failed to get cleanedRecord for note", category: .event)
+        return
+      }
+
+      let recordData = try JSONSerialization.data(withJSONObject: cleanRecord)
+      let dto = try PostgrestClient.Configuration.jsonDecoder.decode(NoteDTO.self, from: recordData)
+
+      #if DEBUG
+      if recentlyProcessedIds.contains(dto.id) {
+        debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for note \(dto.id)", category: .event)
+      }
+      recentlyProcessedIds.insert(dto.id)
+      #endif
+
+      // Use unified merge function (handles in-flight + pending protection)
+      try applyRemoteNote(dto: dto, source: .broadcast, context: context)
+      debugLog.log("  ✓ Broadcast: Processed note \(dto.id)", category: .event)
     }
   }
 }
@@ -3219,7 +3332,7 @@ extension SyncManager {
     await MainActor.run {
       guard let context = modelContainer?.mainContext else { return }
       do {
-        try upsertNote(dto: dto, context: context)
+        try applyRemoteNote(dto: dto, source: .syncDown, context: context)
         debugLog.log("RT: Inserted Note \(dto.id)", category: .realtime)
       } catch {
         debugLog.error("RT: Note Insert Failed", error: error)
@@ -3247,7 +3360,7 @@ extension SyncManager {
     await MainActor.run {
       guard let context = modelContainer?.mainContext else { return }
       do {
-        try upsertNote(dto: dto, context: context)
+        try applyRemoteNote(dto: dto, source: .syncDown, context: context)
         debugLog.log("RT: Updated Note \(dto.id) (Deleted: \(dto.deletedAt != nil))", category: .realtime)
       } catch {
         debugLog.error("RT: Note Update Failed", error: error)

@@ -17,6 +17,7 @@ enum BroadcastTable: String, Codable, Sendable {
   case listings
   case users
   case claimEvents = "claim_events"
+  case notes
 }
 
 // MARK: - BroadcastOp
