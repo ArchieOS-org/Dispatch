@@ -333,13 +333,10 @@ struct PullToSearchTrackingModifier: ViewModifier {
   private func triggerSearch() {
     guard appState.overlayState == .none else { return }
 
-    if reduceMotion {
-      appState.dispatch(.openSearch(initialText: nil))
-    } else {
-      withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-        appState.dispatch(.openSearch(initialText: nil))
-      }
-    }
+    // Dispatch Command (One Boss)
+    // NOTE: Don't wrap in withAnimation - NavigationStack doesn't like having
+    // its path animated externally. SearchOverlay handles its own entry animation.
+    appState.dispatch(.openSearch(initialText: nil))
 
     state = .idle
     didFireHaptic = false
