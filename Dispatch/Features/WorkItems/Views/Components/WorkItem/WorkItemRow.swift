@@ -27,7 +27,6 @@ struct WorkItemRow: View {
 
   // New property
   var hideDueDate = false
-  var hideUserTag = false
   var hideClaimButton = false
 
   @Environment(\.colorScheme) private var colorScheme
@@ -81,12 +80,6 @@ struct WorkItemRow: View {
         .foregroundColor(item.isCompleted ? DS.Colors.Text.tertiary : DS.Colors.Text.primary)
         .lineLimit(1)
 
-      // User Tag (Inline with title) - only show for claimedByMe
-      if !hideUserTag {
-        if case .claimedByMe(let user) = claimState {
-          UserTag(user: user)
-        }
-      }
 
       Spacer()
 
@@ -108,17 +101,23 @@ struct WorkItemRow: View {
           }
         }
 
-        // Actions / Status - omit entirely for claimedByOther
-        if case .claimedByOther = claimState {
-          // Nothing - truly omit, no branch renders anything
-        } else if !hideClaimButton {
-          // .unclaimed or .claimedByMe
-          ClaimButton(
-            claimState: claimState,
-            style: .compact,
-            onClaim: onClaim,
-            onRelease: onRelease
-          )
+        // Actions / Claim status
+        switch claimState {
+        case .claimedByOther(let user):
+          // Show who claimed it in the same slot where the claim/unclaim control normally appears
+          if !hideClaimButton {
+            UserTag(user: user)
+          }
+        case .unclaimed, .claimedByMe:
+          // Show claim/unclaim control for items you can act on
+          if !hideClaimButton {
+            ClaimButton(
+              claimState: claimState,
+              style: .compact,
+              onClaim: onClaim,
+              onRelease: onRelease
+            )
+          }
         }
       }
     }
@@ -212,7 +211,7 @@ struct WorkItemRow: View {
       onRelease: { }
     )
 
-    // Task example - claimed by me
+    // Task example - claimed by me (shows unclaim control only)
     WorkItemRow(
       item: .task(TaskItem(
         title: "My claimed task",
