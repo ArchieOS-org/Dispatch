@@ -23,6 +23,9 @@ extension DS {
 
       /// Minimum card height - allows expansion at larger Dynamic Type sizes
       static let cardMinHeight: CGFloat = 88
+
+      /// Maximum card height - prevents excessive growth
+      static let cardMaxHeight: CGFloat = 120
     }
 
     enum Layout {

@@ -62,7 +62,7 @@ struct StageCard: View {
       }
       .padding(DS.Spacing.StageCards.cardPadding)
       .frame(maxWidth: .infinity, alignment: .leading)
-      .frame(minHeight: DS.Spacing.StageCards.cardMinHeight)
+      .frame(minHeight: DS.Spacing.StageCards.cardMinHeight, maxHeight: DS.Spacing.StageCards.cardMaxHeight)
       .background(stage.cardFillColor)
       .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusCard, style: .continuous))
       .contentShape(Rectangle())
