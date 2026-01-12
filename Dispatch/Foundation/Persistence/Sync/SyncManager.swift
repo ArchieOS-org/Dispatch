@@ -1509,6 +1509,7 @@ final class SyncManager: ObservableObject {
         existing.stage = .pending
       }
       existing.propertyId = dto.propertyId
+      existing.typeDefinitionId = dto.listingTypeId
       existing.activatedAt = dto.activatedAt
       existing.pendingAt = dto.pendingAt
       existing.closedAt = dto.closedAt
@@ -3023,29 +3024,49 @@ extension SyncManager {
   // MARK: Internal
 
   func handleTaskInsert(_ action: InsertAction) async {
-    guard let container = modelContainer else { return }
+    debugLog.log("📥 [Realtime] Task INSERT event received", category: .realtime)
+    guard let container = modelContainer else {
+      debugLog.log("  ⚠️ No modelContainer - skipping", category: .realtime)
+      return
+    }
     do {
       let dto = try action.decodeRecord(as: TaskDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+      debugLog.log("  ✓ Decoded task: \(dto.id) - \(dto.title)", category: .realtime)
       try upsertTask(dto: dto, context: container.mainContext)
+      debugLog.log("  ✓ Upserted task successfully", category: .realtime)
     } catch {
       debugLog.error("Failed to handle Task INSERT", error: error)
     }
   }
 
   func handleTaskUpdate(_ action: UpdateAction) async {
-    guard let container = modelContainer else { return }
+    debugLog.log("📥 [Realtime] Task UPDATE event received", category: .realtime)
+    guard let container = modelContainer else {
+      debugLog.log("  ⚠️ No modelContainer - skipping", category: .realtime)
+      return
+    }
     do {
       let dto = try action.decodeRecord(as: TaskDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+      debugLog.log("  ✓ Decoded task: \(dto.id) - \(dto.title)", category: .realtime)
       try upsertTask(dto: dto, context: container.mainContext)
+      debugLog.log("  ✓ Upserted task successfully", category: .realtime)
     } catch {
       debugLog.error("Failed to handle Task UPDATE", error: error)
     }
   }
 
   func handleTaskDelete(_ action: DeleteAction) async {
-    guard let container = modelContainer else { return }
+    debugLog.log("📥 [Realtime] Task DELETE event received", category: .realtime)
+    guard let container = modelContainer else {
+      debugLog.log("  ⚠️ No modelContainer - skipping", category: .realtime)
+      return
+    }
     if let id = extractUUID(from: action.oldRecord, key: "id") {
+      debugLog.log("  ✓ Deleting task: \(id)", category: .realtime)
       _ = try? deleteLocalTask(id: id, context: container.mainContext)
+      debugLog.log("  ✓ Deleted task successfully", category: .realtime)
+    } else {
+      debugLog.log("  ⚠️ Could not extract ID from oldRecord", category: .realtime)
     }
   }
 
@@ -3077,29 +3098,49 @@ extension SyncManager {
   }
 
   func handleListingInsert(_ action: InsertAction) async {
-    guard let container = modelContainer else { return }
+    debugLog.log("📥 [Realtime] Listing INSERT event received", category: .realtime)
+    guard let container = modelContainer else {
+      debugLog.log("  ⚠️ No modelContainer - skipping", category: .realtime)
+      return
+    }
     do {
       let dto = try action.decodeRecord(as: ListingDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+      debugLog.log("  ✓ Decoded listing: \(dto.id) - \(dto.address)", category: .realtime)
       try upsertListing(dto: dto, context: container.mainContext)
+      debugLog.log("  ✓ Upserted listing successfully", category: .realtime)
     } catch {
       debugLog.error("Failed to handle Listing INSERT", error: error)
     }
   }
 
   func handleListingUpdate(_ action: UpdateAction) async {
-    guard let container = modelContainer else { return }
+    debugLog.log("📥 [Realtime] Listing UPDATE event received", category: .realtime)
+    guard let container = modelContainer else {
+      debugLog.log("  ⚠️ No modelContainer - skipping", category: .realtime)
+      return
+    }
     do {
       let dto = try action.decodeRecord(as: ListingDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+      debugLog.log("  ✓ Decoded listing: \(dto.id) - \(dto.address)", category: .realtime)
       try upsertListing(dto: dto, context: container.mainContext)
+      debugLog.log("  ✓ Upserted listing successfully", category: .realtime)
     } catch {
       debugLog.error("Failed to handle Listing UPDATE", error: error)
     }
   }
 
   func handleListingDelete(_ action: DeleteAction) async {
-    guard let container = modelContainer else { return }
+    debugLog.log("📥 [Realtime] Listing DELETE event received", category: .realtime)
+    guard let container = modelContainer else {
+      debugLog.log("  ⚠️ No modelContainer - skipping", category: .realtime)
+      return
+    }
     if let id = extractUUID(from: action.oldRecord, key: "id") {
+      debugLog.log("  ✓ Deleting listing: \(id)", category: .realtime)
       _ = try? deleteLocalListing(id: id, context: container.mainContext)
+      debugLog.log("  ✓ Deleted listing successfully", category: .realtime)
+    } else {
+      debugLog.log("  ⚠️ Could not extract ID from oldRecord", category: .realtime)
     }
   }
 

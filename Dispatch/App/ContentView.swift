@@ -597,7 +597,9 @@ struct ContentView: View {
               appState.overlayState = .none
             }
           )
-          .onAppear {
+          .task(id: initialText) {
+            // Defer text update to avoid NavigationAuthority warnings.
+            // Setting state during .onAppear can cause cascading updates.
             quickFindText = initialText ?? ""
           }
         }

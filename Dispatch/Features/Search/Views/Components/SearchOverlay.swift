@@ -65,16 +65,19 @@ struct SearchOverlay: View {
     .animation(.easeOut(duration: 0.2), value: isDismissing)
     .allowsHitTesting(!isDismissing)
     .transition(.opacity)
-    .onAppear {
-      // Register overlay reason immediately
-      overlayState.hide(reason: .searchOverlay)
-    }
     .task {
-      // Wait for text input system to fully initialize before focusing
-      // iOS text input requires the view hierarchy to stabilize and the
-      // RTIInputSystemSession to be established before focus can be set safely.
-      // 250ms allows for: view layout (1 frame ~16ms) + text system init (~100-150ms) + buffer
-      try? await Task.sleep(for: .milliseconds(250))
+      // Wait one frame for view hierarchy to stabilize before any state changes.
+      // This prevents NavigationAuthority warnings from cascading updates.
+      try? await Task.sleep(for: .milliseconds(16))
+      guard !Task.isCancelled, !isDismissing else { return }
+
+      // Register overlay reason (hides GlobalFloatingButtons)
+      overlayState.hide(reason: .searchOverlay)
+
+      // Wait for text input system to fully initialize before focusing.
+      // iOS text input requires the RTIInputSystemSession to be established.
+      // 300ms allows for: text system init (~100-150ms) + emoji keyboard (~100ms) + buffer
+      try? await Task.sleep(for: .milliseconds(300))
       guard !Task.isCancelled, !isDismissing else { return }
       isFocused = true
     }
