@@ -583,8 +583,10 @@ struct ContentView: View {
   private var menuNavigation: some View {
     ZStack {
       NavigationStack(path: phonePathBinding) {
-        MenuPageView()
-          .appDestinations()
+        PullToSearchHost {
+          MenuPageView()
+        }
+        .appDestinations()
       }
       .id(appState.router.phoneStackID)
       .overlay {

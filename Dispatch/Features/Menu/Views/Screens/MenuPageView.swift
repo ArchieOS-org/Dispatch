@@ -52,12 +52,9 @@ struct MenuPageView: View {
     .listStyle(.plain)
     .scrollContentBackground(.hidden)
     .background(DS.Colors.Background.primary)
-    .pullToSearch()
+    .pullToSearchTracking()
     #if os(iOS)
-      .toolbar(.hidden, for: .navigationBar)
-      .safeAreaInset(edge: .top) {
-        Color.clear.frame(height: DS.Spacing.sm)
-      }
+    .toolbar(.hidden, for: .navigationBar)
     #endif
   }
 

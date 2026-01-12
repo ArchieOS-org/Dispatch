@@ -9,6 +9,42 @@
 
 import SwiftUI
 
+// MARK: - PullToSearchStateKey
+
+/// PreferenceKey for passing pull-to-search state up the view hierarchy.
+/// Used by PullToSearchHost to render the indicator at screen level.
+struct PullToSearchStateKey: PreferenceKey {
+  struct Value: Equatable {
+    var state: PullToSearchState = .idle
+    var progress: CGFloat = 0
+    var pullDistance: CGFloat = 0
+  }
+
+  static var defaultValue = Value()
+
+  static func reduce(value: inout Value, nextValue: () -> Value) {
+    value = nextValue()
+  }
+}
+
+// MARK: - PullToSearchLayout
+
+/// Shared layout calculations for pull-to-search indicator positioning.
+/// Single source of truth - used by both tracking modifier and host.
+enum PullToSearchLayout {
+  /// Computes the 1:1 icon offset for the pull indicator.
+  ///
+  /// The indicator moves down exactly 1:1 with the pull distance.
+  /// At rest (pullDistance=0): hidden above the content area
+  /// At threshold: docked at endOffset position
+  static func iconOffset(pullDistance: CGFloat) -> CGFloat {
+    let threshold = DS.Spacing.searchPullThreshold
+    let endOffset = DS.Spacing.sm
+    let startOffset = endOffset - threshold
+    return min(endOffset, startOffset + pullDistance)
+  }
+}
+
 // MARK: - PullToSearchModifier
 
 /// A view modifier that triggers search overlay when the user pulls down
@@ -28,27 +64,49 @@ struct PullToSearchModifier: ViewModifier {
 
   // MARK: Internal
 
+  #if os(iOS)
+  private struct PullToSearchMetrics: Equatable {
+    let pullDistance: CGFloat
+    let contentTopInset: CGFloat
+  }
+  #endif
+
   func body(content: Content) -> some View {
     #if os(iOS)
     content
-      .onScrollGeometryChange(for: CGFloat.self) { geometry in
+      .onScrollGeometryChange(for: PullToSearchMetrics.self) { geometry in
         // The "at rest" position is contentOffset.y == -contentInsets.top
         // We're only overscrolling when contentOffset.y < -contentInsets.top
-        let topEdgeY = -geometry.contentInsets.top
-        guard geometry.contentOffset.y < topEdgeY else { return 0 }
-        return topEdgeY - geometry.contentOffset.y // positive pull distance
-      } action: { _, pullDistance in
-        currentPullDistance = pullDistance
-        updatePullState(pullDistance: pullDistance)
+        let topInset = geometry.contentInsets.top
+        let topEdgeY = -topInset
+        guard geometry.contentOffset.y < topEdgeY else {
+          return PullToSearchMetrics(pullDistance: 0, contentTopInset: topInset)
+        }
+        let pullDistance = topEdgeY - geometry.contentOffset.y // positive pull distance
+        return PullToSearchMetrics(pullDistance: pullDistance, contentTopInset: topInset)
+      } action: { _, metrics in
+        currentPullDistance = metrics.pullDistance
+        currentContentTopInset = metrics.contentTopInset
+        updatePullState(pullDistance: metrics.pullDistance)
       }
       .onScrollPhaseChange { oldPhase, newPhase in
         handlePhaseChange(from: oldPhase, to: newPhase)
       }
       .overlay(alignment: .top) {
-        PullToSearchIndicator(state: state, progress: progress)
-          .offset(y: computeIconOffset(pullDistance: currentPullDistance))
-          .frame(maxWidth: .infinity, alignment: .top)
-          .allowsHitTesting(false)
+        GeometryReader { proxy in
+          // contentInsets.top includes safe-area + navigation bar/large-title inset.
+          // Shift the indicator up by the nav-bar portion so it docks above titles.
+          let safeTop = proxy.safeAreaInsets.top
+          let navBarInset = max(0, currentContentTopInset - safeTop)
+
+          PullToSearchIndicator(state: state, progress: progress)
+            .offset(y: -navBarInset + computeIconOffset(pullDistance: currentPullDistance))
+            .frame(maxWidth: .infinity, alignment: .top)
+            .allowsHitTesting(false)
+            .zIndex(999)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+        .allowsHitTesting(false)
       }
     #else
     content // macOS: no-op
@@ -65,6 +123,9 @@ struct PullToSearchModifier: ViewModifier {
 
   /// Current pull distance for 1:1 indicator offset + release checks
   @State private var currentPullDistance: CGFloat = 0
+
+  /// Latest scroll content top inset (safe area + nav bar/large title)
+  @State private var currentContentTopInset: CGFloat = 0
 
   /// Prevents multiple triggers per pull
   @State private var didTriggerThisPull = false
@@ -170,6 +231,124 @@ struct PullToSearchModifier: ViewModifier {
   #endif
 }
 
+// MARK: - PullToSearchTrackingModifier
+
+/// Tracking-only modifier that publishes pull-to-search state via PreferenceKey.
+/// Does NOT render the indicator - that's handled by PullToSearchHost.
+/// Used when indicator rendering should happen at a higher level in the view hierarchy.
+struct PullToSearchTrackingModifier: ViewModifier {
+
+  // MARK: Internal
+
+  func body(content: Content) -> some View {
+    #if os(iOS)
+    content
+      .onScrollGeometryChange(for: CGFloat.self) { geometry in
+        let topInset = geometry.contentInsets.top
+        let topEdgeY = -topInset
+        guard geometry.contentOffset.y < topEdgeY else { return 0 }
+        return topEdgeY - geometry.contentOffset.y
+      } action: { _, pullDistance in
+        currentPullDistance = pullDistance
+        updatePullState(pullDistance: pullDistance)
+      }
+      .onScrollPhaseChange { oldPhase, newPhase in
+        handlePhaseChange(from: oldPhase, to: newPhase)
+      }
+      .preference(key: PullToSearchStateKey.self, value: .init(
+        state: state,
+        progress: progress,
+        pullDistance: currentPullDistance
+      ))
+    #else
+    content
+    #endif
+  }
+
+  // MARK: Private
+
+  @EnvironmentObject private var appState: AppState
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  @State private var state: PullToSearchState = .idle
+  @State private var currentPullDistance: CGFloat = 0
+  @State private var didTriggerThisPull = false
+  @State private var didFireHaptic = false
+
+  #if os(iOS)
+  private var progress: CGFloat {
+    let threshold = DS.Spacing.searchPullThreshold
+    guard threshold > 0 else { return 0 }
+    return min(1.0, max(0.0, currentPullDistance / threshold))
+  }
+
+  private func updatePullState(pullDistance: CGFloat) {
+    let threshold = DS.Spacing.searchPullThreshold
+    let progress = min(1.0, max(0.0, pullDistance / threshold))
+
+    switch state {
+    case .armed:
+      if progress <= 0 {
+        state = .idle
+        didFireHaptic = false
+      } else if progress < 0.85 {
+        state = .pulling(progress: progress)
+        didFireHaptic = false
+      }
+
+    case .pulling, .idle:
+      if progress >= 1.0 {
+        state = .armed
+        if !didFireHaptic {
+          HapticFeedback.medium()
+          didFireHaptic = true
+        }
+      } else if progress > 0 {
+        state = .pulling(progress: progress)
+      } else {
+        state = .idle
+        didFireHaptic = false
+      }
+    }
+
+    if pullDistance <= 1 {
+      didTriggerThisPull = false
+    }
+  }
+
+  private func handlePhaseChange(from oldPhase: ScrollPhase, to newPhase: ScrollPhase) {
+    let wasInteracting = (oldPhase == .interacting || oldPhase == .tracking)
+    let isReleased = (newPhase == .decelerating || newPhase == .idle || newPhase == .animating)
+
+    let threshold = DS.Spacing.searchPullThreshold
+    if
+      wasInteracting, isReleased,
+      state == .armed,
+      currentPullDistance >= threshold,
+      !didTriggerThisPull
+    {
+      didTriggerThisPull = true
+      triggerSearch()
+    }
+  }
+
+  private func triggerSearch() {
+    guard appState.overlayState == .none else { return }
+
+    if reduceMotion {
+      appState.dispatch(.openSearch(initialText: nil))
+    } else {
+      withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+        appState.dispatch(.openSearch(initialText: nil))
+      }
+    }
+
+    state = .idle
+    didFireHaptic = false
+  }
+  #endif
+}
+
 // MARK: - PullToSearchScrollOffsetKey
 
 /// Tracks the Y offset of the scroll content
@@ -232,6 +411,22 @@ struct PullToSearchConditionalModifier: ViewModifier {
   }
 }
 
+// MARK: - PullToSearchTrackingConditionalModifier
+
+/// Conditionally applies pull-to-search tracking (no rendering) based on enabled flag.
+/// Used when indicator rendering is handled by PullToSearchHost at a higher level.
+struct PullToSearchTrackingConditionalModifier: ViewModifier {
+  let enabled: Bool
+
+  func body(content: Content) -> some View {
+    if enabled {
+      content.pullToSearchTracking()
+    } else {
+      content
+    }
+  }
+}
+
 // MARK: - View Extension
 
 extension View {
@@ -253,6 +448,23 @@ extension View {
   func pullToSearch() -> some View {
     #if os(iOS)
     modifier(PullToSearchModifier())
+    #else
+    self
+    #endif
+  }
+
+  /// Adds pull-to-search tracking without rendering the indicator.
+  ///
+  /// Use this when the indicator should be rendered at a higher level
+  /// via PullToSearchHost (e.g., to escape navigation bar coordinate space).
+  ///
+  /// **Requirements:**
+  /// - iOS 18.0+
+  /// - Must be paired with PullToSearchHost ancestor
+  @ViewBuilder
+  func pullToSearchTracking() -> some View {
+    #if os(iOS)
+    modifier(PullToSearchTrackingModifier())
     #else
     self
     #endif

@@ -97,14 +97,16 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
   let toolbarContent: () -> ToolbarItems
 
   var body: some View {
-    mainContent
-      .navigationTitle(title)
-      .toolbar {
-        toolbarContent()
-      }
-      .applyLayoutWitness()
+    PullToSearchHost {
+      mainContent
+    }
+    .navigationTitle(title)
+    .toolbar {
+      toolbarContent()
+    }
+    .applyLayoutWitness()
     #if os(iOS)
-      .navigationBarTitleDisplayMode(.large)
+    .navigationBarTitleDisplayMode(.large)
     #endif
   }
 
@@ -138,7 +140,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
         ScrollView {
           innerContent
         }
-        .modifier(PullToSearchConditionalModifier(enabled: pullToSearch && !pullToSearchDisabled))
+        .modifier(PullToSearchTrackingConditionalModifier(enabled: pullToSearch && !pullToSearchDisabled))
 
       case .disabled:
         innerContent
