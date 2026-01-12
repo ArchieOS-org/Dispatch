@@ -522,9 +522,15 @@ struct ContentView: View {
   }
 
   private var bodyCore: some View {
-    ZStack(alignment: .top) {
+    ZStack {
       navigationContent
-      syncStatusBanner
+
+      // Offline indicator - bottom left
+      if appState.syncCoordinator.isOffline {
+        OfflineIndicator()
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+          .padding()
+      }
 
       #if DEBUG
       if ProcessInfo.processInfo.environment["DISPATCH_PROBE"] == "1" {
@@ -542,24 +548,12 @@ struct ContentView: View {
       }
       #endif
     }
-    .animation(.easeInOut(duration: 0.3), value: syncManager.syncStatus)
+    .animation(.easeInOut(duration: 0.3), value: appState.syncCoordinator.isOffline)
     .onAppear { onAppearActions() }
     .onChange(of: currentUserId) { _, _ in updateWorkItemActions() }
     .onChange(of: userCache) { _, _ in updateWorkItemActions() }
     .onChange(of: appState.router.selectedDestination) { _, _ in updateLensState() }
     .onChange(of: currentPathDepth) { _, _ in updateLensState() }
-  }
-
-  @ViewBuilder
-  private var syncStatusBanner: some View {
-    if case .error = syncManager.syncStatus {
-      SyncStatusBanner(
-        message: syncManager.lastSyncErrorMessage ?? "Sync failed",
-        onRetry: { syncManager.requestSync() }
-      )
-      .transition(.move(edge: .top).combined(with: .opacity))
-      .zIndex(1)
-    }
   }
 
   @ViewBuilder

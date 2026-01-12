@@ -257,7 +257,6 @@ struct ListingWorkspaceSection: View {
                 onDelete: { }, // TODO: Delete actions if needed
                 onClaim: { actions.onClaim(item) },
                 onRelease: { actions.onRelease(item) },
-                onRetrySync: { },
                 hideUserTag: true,
                 hideClaimButton: true
               )

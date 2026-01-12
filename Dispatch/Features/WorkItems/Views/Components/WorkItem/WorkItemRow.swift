@@ -24,10 +24,6 @@ struct WorkItemRow: View {
   var onDelete: () -> Void = { }
   var onClaim: () -> Void = { }
   var onRelease: () -> Void = { }
-  var onRetrySync: () -> Void = { }
-
-  /// State for retry animation
-  @State private var isRetrying = false
 
   // New property
   var hideDueDate = false
@@ -113,19 +109,7 @@ struct WorkItemRow: View {
         }
 
         // Actions / Status - omit entirely for claimedByOther
-        if item.isSyncFailed {
-          SyncRetryButton(
-            errorMessage: item.lastSyncError,
-            isRetrying: isRetrying,
-            onRetry: {
-              isRetrying = true
-              onRetrySync()
-              DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                isRetrying = false
-              }
-            }
-          )
-        } else if case .claimedByOther = claimState {
+        if case .claimedByOther = claimState {
           // Nothing - truly omit, no branch renders anything
         } else if !hideClaimButton {
           // .unclaimed or .claimedByMe
@@ -183,12 +167,6 @@ struct WorkItemRow: View {
       parts.append("Claimed by you")
     case .claimedByOther(let user):
       parts.append("Claimed by \(user.name)")
-    }
-    if item.isSyncFailed {
-      parts.append("Sync failed")
-      if let error = item.lastSyncError {
-        parts.append(error)
-      }
     }
     return parts.filter { !$0.isEmpty }.joined(separator: ", ")
   }
