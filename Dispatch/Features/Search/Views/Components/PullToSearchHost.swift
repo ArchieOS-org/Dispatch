@@ -101,5 +101,6 @@ struct PullToSearchHost<Content: View>: View {
     .navigationBarTitleDisplayMode(.large)
     #endif
   }
+  .environmentObject(AppState(mode: .preview))
 }
 #endif
