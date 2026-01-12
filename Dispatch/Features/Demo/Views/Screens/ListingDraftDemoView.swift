@@ -9,6 +9,8 @@
 
 import SwiftUI
 
+// MARK: - ListingDraftDemoView
+
 struct ListingDraftDemoView: View {
 
   // MARK: Internal
@@ -117,7 +119,9 @@ struct ListingDraftDemoView: View {
     DraftPhotoGallery(
       photos: Binding(
         get: { draft.photos },
-        set: { draft.photos = $0; draft.markDirty() }
+        set: { draft.photos = $0
+          draft.markDirty()
+        }
       ),
       onAddPhoto: {
         // Demo only - no actual photo picker
@@ -194,9 +198,9 @@ struct ListingDraftDemoView: View {
 
         TextField("Price", value: $draft.price, format: .currency(code: "CAD"))
           .textFieldStyle(.roundedBorder)
-          #if os(iOS)
-            .keyboardType(.decimalPad)
-          #endif
+        #if os(iOS)
+          .keyboardType(.decimalPad)
+        #endif
       }
 
       // Listing Type
@@ -293,7 +297,7 @@ struct ListingDraftDemoView: View {
 
 }
 
-// MARK: - Supporting Components
+// MARK: - LabeledTextField
 
 private struct LabeledTextField: View {
   let label: String
@@ -310,6 +314,8 @@ private struct LabeledTextField: View {
     }
   }
 }
+
+// MARK: - StatStepper
 
 private struct StatStepper: View {
   let label: String
@@ -359,6 +365,8 @@ private struct StatStepper: View {
     .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium))
   }
 }
+
+// MARK: - FeatureRow
 
 private struct FeatureRow: View {
   let feature: String

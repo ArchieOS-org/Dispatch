@@ -88,7 +88,7 @@ struct SearchOverlay: View {
     // Phase 2: Wait for keyboard to finish hiding before removing from hierarchy
     .onChange(of: overlayState.activeReasons) { _, reasons in
       // If we're dismissing and keyboard reason is now cleared, finalize
-      if isDismissing && !reasons.contains(.keyboard) {
+      if isDismissing, !reasons.contains(.keyboard) {
         finalizeDismiss()
       }
     }

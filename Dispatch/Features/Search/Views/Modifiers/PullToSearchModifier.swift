@@ -61,16 +61,8 @@ enum PullToSearchLayout {
 /// - Search triggers on release, not at threshold
 /// - Respects `accessibilityReduceMotion`
 struct PullToSearchModifier: ViewModifier {
-    
 
   // MARK: Internal
-
-  #if os(iOS)
-  private struct PullToSearchMetrics: Equatable {
-    let pullDistance: CGFloat
-    let contentTopInset: CGFloat
-  }
-  #endif
 
   func body(content: Content) -> some View {
     #if os(iOS)
@@ -115,6 +107,13 @@ struct PullToSearchModifier: ViewModifier {
   }
 
   // MARK: Private
+
+  #if os(iOS)
+  private struct PullToSearchMetrics: Equatable {
+    let pullDistance: CGFloat
+    let contentTopInset: CGFloat
+  }
+  #endif
 
   @EnvironmentObject private var appState: AppState // One Boss
   @Environment(\.accessibilityReduceMotion) private var reduceMotion

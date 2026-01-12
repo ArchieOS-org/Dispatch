@@ -38,7 +38,7 @@ struct PullToSearchHost<Content: View>: View {
   var body: some View {
     content()
       .onPreferenceChange(PullToSearchStateKey.self) { pullState = $0 }
-      #if os(iOS)
+    #if os(iOS)
       .overlay(alignment: .top) {
         // Use device safe area (from window), not view safe area which may include nav bar
         let safeTop = Self.deviceSafeAreaTop
@@ -55,7 +55,7 @@ struct PullToSearchHost<Content: View>: View {
           .frame(height: 0)
           .allowsHitTesting(false)
       }
-      #endif
+    #endif
   }
 
   // MARK: Private
@@ -64,8 +64,10 @@ struct PullToSearchHost<Content: View>: View {
   /// Device safe area top (Dynamic Island/notch), not view-adjusted safe area.
   /// View safe area may include navigation bar height, which we don't want.
   private static var deviceSafeAreaTop: CGFloat {
-    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-       let window = windowScene.windows.first {
+    if
+      let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+      let window = windowScene.windows.first
+    {
       return window.safeAreaInsets.top
     }
     return 59 // Fallback for Dynamic Island devices
@@ -98,7 +100,7 @@ struct PullToSearchHost<Content: View>: View {
     }
     .navigationTitle("Test Screen")
     #if os(iOS)
-    .navigationBarTitleDisplayMode(.large)
+      .navigationBarTitleDisplayMode(.large)
     #endif
   }
   .environmentObject(AppState(mode: .preview))

@@ -115,7 +115,6 @@ struct DispatchApp: App {
       .onChange(of: appState.authManager.isAuthenticated) { _, isAuthenticated in
         appState.syncCoordinator.handle(authStatusIsAuthenticated: isAuthenticated)
       }
-
   }
 
   // MARK: Private

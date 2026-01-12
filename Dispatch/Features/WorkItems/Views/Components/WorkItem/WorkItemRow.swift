@@ -15,6 +15,9 @@ import SwiftUI
 /// - Compact ClaimButton for claim/release actions
 /// - Swipe actions for edit/delete
 struct WorkItemRow: View {
+
+  // MARK: Internal
+
   let item: WorkItem
   let claimState: ClaimState
 
@@ -28,40 +31,6 @@ struct WorkItemRow: View {
   // New property
   var hideDueDate = false
   var hideClaimButton = false
-
-  @Environment(\.colorScheme) private var colorScheme
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-  // MARK: - Computed Properties
-
-  private var isOverdue: Bool {
-    guard let date = item.dueDate else { return false }
-    // An item is overdue if its due date is before the start of today
-    return date < Calendar.current.startOfDay(for: Date())
-  }
-
-  private var overdueText: String {
-    guard let date = item.dueDate else { return "" }
-    let startToday = Calendar.current.startOfDay(for: Date())
-    let startDue = Calendar.current.startOfDay(for: date)
-    let days = Calendar.current.dateComponents([.day], from: startDue, to: startToday).day ?? 0
-
-    if days < 7 {
-      let formatter = DateFormatter()
-      formatter.dateFormat = "EEE"
-      return formatter.string(from: date)
-    }
-
-    let formatter = DateFormatter()
-    formatter.dateFormat = "MMM d"
-    return formatter.string(from: date)
-  }
-
-  private static let accessibilityDateFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .medium
-    return formatter
-  }()
 
   var body: some View {
     HStack(spacing: 6) {
@@ -79,7 +48,6 @@ struct WorkItemRow: View {
         .strikethrough(item.isCompleted, color: DS.Colors.Text.tertiary)
         .foregroundColor(item.isCompleted ? DS.Colors.Text.tertiary : DS.Colors.Text.primary)
         .lineLimit(1)
-
 
       Spacer()
 
@@ -108,6 +76,7 @@ struct WorkItemRow: View {
           if !hideClaimButton {
             UserTag(user: user)
           }
+
         case .unclaimed, .claimedByMe:
           // Show claim/unclaim control for items you can act on
           if !hideClaimButton {
@@ -148,6 +117,42 @@ struct WorkItemRow: View {
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabel)
     .accessibilityHint("Double tap to view details. Swipe for more options.")
+  }
+
+  // MARK: Private
+
+  private static let accessibilityDateFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateStyle = .medium
+    return formatter
+  }()
+
+  @Environment(\.colorScheme) private var colorScheme
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  // MARK: - Computed Properties
+
+  private var isOverdue: Bool {
+    guard let date = item.dueDate else { return false }
+    // An item is overdue if its due date is before the start of today
+    return date < Calendar.current.startOfDay(for: Date())
+  }
+
+  private var overdueText: String {
+    guard let date = item.dueDate else { return "" }
+    let startToday = Calendar.current.startOfDay(for: Date())
+    let startDue = Calendar.current.startOfDay(for: date)
+    let days = Calendar.current.dateComponents([.day], from: startDue, to: startToday).day ?? 0
+
+    if days < 7 {
+      let formatter = DateFormatter()
+      formatter.dateFormat = "EEE"
+      return formatter.string(from: date)
+    }
+
+    let formatter = DateFormatter()
+    formatter.dateFormat = "MMM d"
+    return formatter.string(from: date)
   }
 
   private var accessibilityLabel: String {

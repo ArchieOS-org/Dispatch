@@ -11,11 +11,6 @@ import SwiftUI
 // MARK: - DemoPhoto
 
 struct DemoPhoto: Identifiable, Equatable {
-  let id: UUID
-  let index: Int
-  let imageName: String
-  let label: String
-
   static var allPhotos: [DemoPhoto] {
     let labels = [
       "Exterior Front",
@@ -37,7 +32,7 @@ struct DemoPhoto: Identifiable, Equatable {
       "Lake View 2",
       "Amenities",
       "Lobby",
-      "Floor Plan",
+      "Floor Plan"
     ]
 
     return labels.enumerated().map { index, label in
@@ -49,6 +44,12 @@ struct DemoPhoto: Identifiable, Equatable {
       )
     }
   }
+
+  let id: UUID
+  let index: Int
+  let imageName: String
+  let label: String
+
 }
 
 // MARK: - DemoListingType
@@ -111,7 +112,7 @@ final class DemoListingDraft {
     "Smart home technology throughout",
     "Two underground parking spaces",
     "Concierge service 24/7",
-    "Steps to transit and waterfront trail",
+    "Steps to transit and waterfront trail"
   ]
 
   // MARK: - Photos

@@ -8,6 +8,8 @@
 
 import SwiftUI
 
+// MARK: - DraftPhotoThumbnail
+
 struct DraftPhotoThumbnail: View {
 
   // MARK: Internal
@@ -84,7 +86,7 @@ struct DraftPhotoThumbnail: View {
       .blue, .purple, .pink, .red, .orange,
       .yellow, .green, .teal, .cyan, .indigo,
       .mint, .brown, .gray, .blue, .purple,
-      .green, .orange, .teal, .pink, .indigo,
+      .green, .orange, .teal, .pink, .indigo
     ]
     let index = (photo.index - 1) % colors.count
     return colors[index]
@@ -102,7 +104,7 @@ struct DraftPhotoThumbnail: View {
 
 }
 
-// MARK: - Add Photo Button Cell
+// MARK: - AddPhotoCell
 
 struct AddPhotoCell: View {
 

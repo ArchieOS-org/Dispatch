@@ -106,7 +106,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     }
     .applyLayoutWitness()
     #if os(iOS)
-    .navigationBarTitleDisplayMode(.large)
+      .navigationBarTitleDisplayMode(.large)
     #endif
   }
 

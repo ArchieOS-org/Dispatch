@@ -26,7 +26,7 @@ struct ContentView: View {
       .environmentObject(workItemActions)
       // .environmentObject(searchManager) // Remvoved
       .environmentObject(appState.lensState)
-    // .environmentObject(quickEntryState) // Removed
+      // .environmentObject(quickEntryState) // Removed
       .environmentObject(overlayState)
     #if os(macOS)
       .background(KeyMonitorView { event in

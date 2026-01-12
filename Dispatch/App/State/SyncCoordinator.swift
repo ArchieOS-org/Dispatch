@@ -17,10 +17,6 @@ import SwiftUI
 @MainActor
 class SyncCoordinator: ObservableObject {
 
-  /// Indicates whether the device is offline (no network connection).
-  /// Used to display the offline indicator in the UI.
-  @Published private(set) var isOffline = true
-
   // MARK: Lifecycle
 
   init(syncManager: SyncManager, authManager: AuthManager) {
@@ -31,6 +27,10 @@ class SyncCoordinator: ObservableObject {
   }
 
   // MARK: Internal
+
+  /// Indicates whether the device is offline (no network connection).
+  /// Used to display the offline indicator in the UI.
+  @Published private(set) var isOffline = true
 
   /// Called by AppState or DispatchApp when ScenePhase changes
   func handle(scenePhase: ScenePhase) {

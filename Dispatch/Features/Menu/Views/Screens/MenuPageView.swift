@@ -54,7 +54,7 @@ struct MenuPageView: View {
     .background(DS.Colors.Background.primary)
     .pullToSearchTracking()
     #if os(iOS)
-    .toolbar(.hidden, for: .navigationBar)
+      .toolbar(.hidden, for: .navigationBar)
     #endif
   }
 

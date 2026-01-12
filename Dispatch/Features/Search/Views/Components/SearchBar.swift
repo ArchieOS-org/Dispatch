@@ -27,7 +27,7 @@ struct SearchBar: View {
     showCancelButton: Bool = true,
     onCancel: @escaping () -> Void
   ) {
-    self._text = text
+    _text = text
     self.externalFocus = externalFocus
     self.showCancelButton = showCancelButton
     self.onCancel = onCancel
@@ -39,8 +39,8 @@ struct SearchBar: View {
     showCancelButton: Bool = true,
     onCancel: @escaping () -> Void
   ) {
-    self._text = text
-    self.externalFocus = nil
+    _text = text
+    externalFocus = nil
     self.showCancelButton = showCancelButton
     self.onCancel = onCancel
   }

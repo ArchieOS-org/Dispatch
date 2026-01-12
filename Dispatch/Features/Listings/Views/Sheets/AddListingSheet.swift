@@ -210,11 +210,11 @@ struct AddListingSheet: View {
   /// Maps dynamic ListingTypeDefinition to legacy ListingType enum by name.
   private func mapToLegacyEnum(_ type: ListingTypeDefinition) -> ListingType {
     switch type.name.lowercased() {
-    case "sale": return .sale
-    case "lease": return .lease
-    case "pre-listing": return .preListing
-    case "rental": return .rental
-    default: return .other
+    case "sale": .sale
+    case "lease": .lease
+    case "pre-listing": .preListing
+    case "rental": .rental
+    default: .other
     }
   }
 }
