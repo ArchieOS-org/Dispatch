@@ -945,8 +945,8 @@ struct ContentView: View {
       syncManager.requestSync()
     }
 
-    workItemActions.onDeleteNote = { [syncManager] note, _ in
-      note.softDelete()
+    workItemActions.onDeleteNote = { [syncManager, currentUserId] note, _ in
+      note.softDelete(by: currentUserId)
       syncManager.requestSync()
     }
 

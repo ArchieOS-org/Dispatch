@@ -1799,7 +1799,6 @@ final class SyncManager: ObservableObject {
         // UPDATE
         debugLog.log("    UPDATE: \(dto.id) - \(dto.name)", category: .sync)
         existing.name = dto.name
-        existing.isSystem = dto.isSystem
         existing.position = dto.position
         existing.isArchived = dto.isArchived
         existing.ownedBy = dto.ownedBy

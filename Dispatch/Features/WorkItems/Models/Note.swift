@@ -49,6 +49,7 @@ final class Note {
   var createdAt: Date
   var updatedAt: Date
   var deletedAt: Date? // Soft delete tombstone
+  var deletedBy: UUID? // Who soft-deleted (enables undo)
 
   // Sync state
   var syncedAt: Date?
@@ -86,8 +87,15 @@ extension Note: RealtimeSyncable {
     lastSyncError = message
   }
 
-  func softDelete() {
+  func softDelete(by userId: UUID) {
     deletedAt = Date()
+    deletedBy = userId
+    markPending()
+  }
+
+  func undoDelete() {
+    deletedAt = nil
+    deletedBy = nil
     markPending()
   }
 }

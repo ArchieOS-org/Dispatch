@@ -359,7 +359,7 @@ struct ListingDetailView: View {
 
   private func confirmDeleteNote() {
     guard let note = noteToDelete else { return }
-    note.softDelete()
+    note.softDelete(by: currentUserId)
     noteToDelete = nil
     syncManager.requestSync()
   }

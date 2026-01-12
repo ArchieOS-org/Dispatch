@@ -89,16 +89,6 @@ private struct ListingTypeRow: View {
             .font(DS.Typography.body)
             .foregroundStyle(DS.Colors.Text.primary)
 
-          if listingType.isSystem {
-            Text("System")
-              .font(DS.Typography.caption)
-              .foregroundStyle(DS.Colors.Text.tertiary)
-              .padding(.horizontal, DS.Spacing.xs)
-              .padding(.vertical, 2)
-              .background(DS.Colors.Background.secondary)
-              .cornerRadius(DS.Spacing.radiusSmall)
-          }
-
           if listingType.isArchived {
             Text("Archived")
               .font(DS.Typography.caption)
@@ -168,7 +158,6 @@ private struct ListingTypeEditorSheet: View {
 
     let listingType = ListingTypeDefinition(
       name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-      isSystem: false,
       ownedBy: currentUserId
     )
     modelContext.insert(listingType)
@@ -186,7 +175,6 @@ private struct ListingTypeEditorSheet: View {
     let saleType = ListingTypeDefinition(
       id: UUID(),
       name: "Sale",
-      isSystem: true,
       position: 0
     )
     context.insert(saleType)
@@ -194,7 +182,6 @@ private struct ListingTypeEditorSheet: View {
     let leaseType = ListingTypeDefinition(
       id: UUID(),
       name: "Lease",
-      isSystem: true,
       position: 1
     )
     context.insert(leaseType)

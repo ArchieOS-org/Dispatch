@@ -19,7 +19,6 @@ final class ListingTypeDefinition {
   init(
     id: UUID = UUID(),
     name: String,
-    isSystem: Bool = false,
     position: Int = 0,
     isArchived: Bool = false,
     ownedBy: UUID? = nil,
@@ -28,7 +27,6 @@ final class ListingTypeDefinition {
   ) {
     self.id = id
     self.name = name
-    self.isSystem = isSystem
     self.position = position
     self.isArchived = isArchived
     self.ownedBy = ownedBy
@@ -41,7 +39,6 @@ final class ListingTypeDefinition {
 
   @Attribute(.unique) var id: UUID
   var name: String
-  var isSystem: Bool
   var position: Int
   var isArchived: Bool
 
