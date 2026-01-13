@@ -11,26 +11,24 @@ import SwiftUI
 /// A list row displaying a work item (task or activity) with:
 /// - Status checkbox
 /// - Title with strikethrough when completed
-/// - Type label, due date badge, priority dot
-/// - Compact ClaimButton for claim/release actions
+/// - Type label, due date badge
+/// - Overlapping assignee avatars (max 3 + "+N")
 /// - Swipe actions for edit/delete
 struct WorkItemRow: View {
 
   // MARK: Internal
 
   let item: WorkItem
-  let claimState: ClaimState
+  let userLookup: [UUID: User]
 
   // Closure-based actions (onTap removed - use NavigationLink wrapper instead)
   var onComplete: () -> Void = { }
   var onEdit: () -> Void = { }
   var onDelete: () -> Void = { }
-  var onClaim: () -> Void = { }
-  var onRelease: () -> Void = { }
 
-  // New property
+  // Display options
   var hideDueDate = false
-  var hideClaimButton = false
+  var hideAssignees = false
 
   var body: some View {
     HStack(spacing: 6) {
@@ -69,24 +67,14 @@ struct WorkItemRow: View {
           }
         }
 
-        // Actions / Claim status
-        switch claimState {
-        case .claimedByOther(let user):
-          // Show who claimed it in the same slot where the claim/unclaim control normally appears
-          if !hideClaimButton {
-            UserTag(user: user)
-          }
-
-        case .unclaimed, .claimedByMe:
-          // Show claim/unclaim control for items you can act on
-          if !hideClaimButton {
-            ClaimButton(
-              claimState: claimState,
-              style: .compact,
-              onClaim: onClaim,
-              onRelease: onRelease
-            )
-          }
+        // Assignees
+        if !hideAssignees {
+          OverlappingAvatars(
+            userIds: item.assigneeUserIds,
+            users: userLookup,
+            maxVisible: 3,
+            size: .small
+          )
         }
       }
     }
@@ -159,19 +147,30 @@ struct WorkItemRow: View {
     var parts = [String]()
     parts.append(item.typeLabel)
     parts.append(item.title)
-    parts.append(item.isCompleted ? "Completed" : "")
-    parts.append("\(item.priority.rawValue) priority")
+
+    if item.isCompleted {
+      parts.append("Completed")
+    }
+
     if let dueDate = item.dueDate {
       parts.append("Due \(Self.accessibilityDateFormatter.string(from: dueDate))")
     }
-    switch claimState {
-    case .unclaimed:
-      parts.append("Unclaimed")
-    case .claimedByMe:
-      parts.append("Claimed by you")
-    case .claimedByOther(let user):
-      parts.append("Claimed by \(user.name)")
+
+    // Assignee description
+    let assigneeNames = item.assigneeUserIds.compactMap { userLookup[$0]?.name }
+    if assigneeNames.isEmpty && item.assigneeUserIds.isEmpty {
+      parts.append("Unassigned")
+    } else if assigneeNames.isEmpty {
+      parts.append("Assigned to \(item.assigneeUserIds.count) unknown user\(item.assigneeUserIds.count == 1 ? "" : "s")")
+    } else if assigneeNames.count == 1 {
+      parts.append("Assigned to \(assigneeNames[0])")
+    } else if assigneeNames.count == 2 {
+      parts.append("Assigned to \(assigneeNames[0]) and \(assigneeNames[1])")
+    } else {
+      let allButLast = assigneeNames.dropLast().joined(separator: ", ")
+      parts.append("Assigned to \(allButLast), and \(assigneeNames.last!)")
     }
+
     return parts.filter { !$0.isEmpty }.joined(separator: ", ")
   }
 }
@@ -179,74 +178,105 @@ struct WorkItemRow: View {
 // MARK: - Preview
 
 #Preview("Work Item Row") {
-  let claimedUser = User(name: "John Doe", email: "john@example.com", userType: .admin)
-  let otherUser = User(name: "Jane Smith", email: "jane@example.com", userType: .admin)
+  let users: [UUID: User] = {
+    var dict = [UUID: User]()
+    let ids = [UUID(), UUID(), UUID(), UUID(), UUID()]
+    let names = ["Alice Smith", "Bob Jones", "Carol White", "Dave Brown", "Eve Green"]
+    for (id, name) in zip(ids, names) {
+      dict[id] = User(id: id, name: name, email: "\(name.lowercased().replacingOccurrences(of: " ", with: "."))@example.com", userType: .realtor)
+    }
+    return dict
+  }()
+
+  let userIds = Array(users.keys)
 
   List {
-    // Task example - claimed by other
+    // Task example - multiple assignees
     WorkItemRow(
       item: .task(TaskItem(
         title: "Review quarterly report",
         taskDescription: "Go through Q4 numbers",
-        priority: .high,
-        declaredBy: UUID()
+        dueDate: Calendar.current.date(byAdding: .day, value: 2, to: Date()),
+        declaredBy: UUID(),
+        assigneeUserIds: Array(userIds.prefix(3))
       )),
-      claimState: .claimedByOther(user: otherUser),
+      userLookup: users,
       onComplete: { },
       onEdit: { },
-      onDelete: { },
-      onClaim: { },
-      onRelease: { }
+      onDelete: { }
     )
 
-    // Activity example - unclaimed
+    // Activity example - unassigned
     WorkItemRow(
       item: .activity(Activity(
         title: "Client follow-up call",
         activityDescription: "Discuss contract terms",
-        type: .call,
-        priority: .medium,
-        declaredBy: UUID()
+        dueDate: Calendar.current.date(byAdding: .day, value: 1, to: Date()),
+        declaredBy: UUID(),
+        assigneeUserIds: []
       )),
-      claimState: .unclaimed,
+      userLookup: users,
       onComplete: { },
       onEdit: { },
-      onDelete: { },
-      onClaim: { },
-      onRelease: { }
+      onDelete: { }
     )
 
-    // Task example - claimed by me (shows unclaim control only)
+    // Task example - single assignee
     WorkItemRow(
       item: .task(TaskItem(
-        title: "My claimed task",
+        title: "My assigned task",
         taskDescription: "Working on this",
-        priority: .medium,
-        declaredBy: UUID()
+        declaredBy: UUID(),
+        assigneeUserIds: [userIds[0]]
       )),
-      claimState: .claimedByMe(user: claimedUser),
+      userLookup: users,
       onComplete: { },
       onEdit: { },
-      onDelete: { },
-      onClaim: { },
-      onRelease: { }
+      onDelete: { }
     )
 
-    // Completed task - unclaimed
+    // Task example - overflow assignees (5)
+    WorkItemRow(
+      item: .task(TaskItem(
+        title: "Team collaboration task",
+        taskDescription: "Everyone involved",
+        declaredBy: UUID(),
+        assigneeUserIds: userIds
+      )),
+      userLookup: users,
+      onComplete: { },
+      onEdit: { },
+      onDelete: { }
+    )
+
+    // Completed task
     WorkItemRow(
       item: .task(TaskItem(
         title: "Completed task example",
         taskDescription: "This is done",
-        priority: .low,
         status: .completed,
-        declaredBy: UUID()
+        declaredBy: UUID(),
+        assigneeUserIds: [userIds[1]]
       )),
-      claimState: .unclaimed,
+      userLookup: users,
       onComplete: { },
       onEdit: { },
-      onDelete: { },
-      onClaim: { },
-      onRelease: { }
+      onDelete: { }
+    )
+
+    // Overdue task
+    WorkItemRow(
+      item: .task(TaskItem(
+        title: "Overdue task",
+        taskDescription: "Should have been done",
+        dueDate: Calendar.current.date(byAdding: .day, value: -3, to: Date()),
+        declaredBy: UUID(),
+        assigneeUserIds: [userIds[2]]
+      )),
+      userLookup: users,
+      onComplete: { },
+      onEdit: { },
+      onDelete: { }
     )
   }
   .listStyle(.plain)

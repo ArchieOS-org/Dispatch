@@ -61,7 +61,15 @@ enum SearchResult: Identifiable, Hashable {
       return task.taskDescription.isEmpty ? "No description" : task.taskDescription
 
     case .activity(let activity):
-      return activity.type.displayName
+      // Show due date if available, otherwise assignee count or unassigned
+      if let dueDate = activity.dueDate {
+        return dueDateSubtitle(for: dueDate)
+      } else if !activity.assigneeUserIds.isEmpty {
+        let count = activity.assigneeUserIds.count
+        return count == 1 ? "1 assignee" : "\(count) assignees"
+      } else {
+        return "Unassigned"
+      }
 
     case .listing(let listing):
       let status = listing.status.rawValue.capitalized
@@ -71,23 +79,35 @@ enum SearchResult: Identifiable, Hashable {
     }
   }
 
+  /// Formats due date as relative subtitle text
+  private func dueDateSubtitle(for date: Date) -> String {
+    let calendar = Calendar.current
+    let today = calendar.startOfDay(for: Date())
+    let dueDay = calendar.startOfDay(for: date)
+
+    let daysDiff = calendar.dateComponents([.day], from: today, to: dueDay).day ?? 0
+
+    if daysDiff < 0 {
+      return "Overdue by \(abs(daysDiff)) day\(abs(daysDiff) == 1 ? "" : "s")"
+    } else if daysDiff == 0 {
+      return "Due today"
+    } else if daysDiff == 1 {
+      return "Due tomorrow"
+    } else if daysDiff <= 7 {
+      return "Due in \(daysDiff) days"
+    } else {
+      let formatter = DateFormatter()
+      formatter.dateFormat = "MMM d"
+      return "Due \(formatter.string(from: date))"
+    }
+  }
+
   /// Icon name (SF Symbol)
   var icon: String {
     switch self {
     case .task: DS.Icons.Entity.task
-
-    case .activity(let activity):
-      switch activity.type {
-      case .call: DS.Icons.ActivityType.call
-      case .email: DS.Icons.ActivityType.email
-      case .meeting: DS.Icons.ActivityType.meeting
-      case .showProperty: DS.Icons.ActivityType.showProperty
-      case .followUp: DS.Icons.ActivityType.followUp
-      case .other: DS.Icons.ActivityType.other
-      }
-
+    case .activity: DS.Icons.Entity.activity
     case .listing: DS.Icons.Entity.listing
-
     case .navigation(_, let icon, _, _): icon
     }
   }
@@ -261,22 +281,22 @@ private struct SearchResultsPreviewList: View {
       title: "Fix Broken Window",
       status: .open,
       declaredBy: PreviewDataFactory.aliceID,
-      claimedBy: PreviewDataFactory.bobID,
-      listingId: listing?.id
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
     )
     let t2 = TaskItem(
       title: "Window Measurements",
       status: .open,
       declaredBy: PreviewDataFactory.aliceID,
-      claimedBy: PreviewDataFactory.bobID,
-      listingId: listing?.id
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
     )
     let t3 = TaskItem(
       title: "Schedule contractor",
       status: .open,
       declaredBy: PreviewDataFactory.aliceID,
-      claimedBy: PreviewDataFactory.bobID,
-      listingId: listing?.id
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
     )
 
     context.insert(t1)

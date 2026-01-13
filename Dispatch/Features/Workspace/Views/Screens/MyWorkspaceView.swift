@@ -93,9 +93,9 @@ struct MyWorkspaceView: View {
 
   private var emptyDescription: String {
     switch selectedFilter {
-    case .all: "You have no claimed tasks or activities."
-    case .tasks: "You have no claimed tasks."
-    case .activities: "You have no claimed activities."
+    case .all: "You have no assigned tasks or activities."
+    case .tasks: "You have no assigned tasks."
+    case .activities: "You have no assigned activities."
     }
   }
 
@@ -116,7 +116,7 @@ struct MyWorkspaceView: View {
     let relevantTasks: [TaskItem] =
       if shouldShowTasks {
         allTasks.filter { task in
-          task.claimedBy == currentUserID &&
+          task.assigneeUserIds.contains(currentUserID) &&
             task.status != .deleted &&
             lensState.audience.matches(audiences: task.audiences)
         }
@@ -128,7 +128,7 @@ struct MyWorkspaceView: View {
     let relevantActivities: [Activity] =
       if shouldShowActivities {
         allActivities.filter { activity in
-          activity.claimedBy == currentUserID &&
+          activity.assigneeUserIds.contains(currentUserID) &&
             activity.status != .deleted &&
             lensState.audience.matches(audiences: activity.audiences)
         }
@@ -251,13 +251,11 @@ struct ListingWorkspaceSection: View {
             NavigationLink(value: AppRoute.workItem(WorkItemRef.from(item))) {
               WorkItemRow(
                 item: item,
-                claimState: .claimedByMe(user: User.mockCurrentUser), // Contextually implied "Me"
+                userLookup: actions.userLookupDict,
                 onComplete: { actions.onComplete(item) },
-                onEdit: { }, // TODO: Edit actions if needed
-                onDelete: { }, // TODO: Delete actions if needed
-                onClaim: { actions.onClaim(item) },
-                onRelease: { actions.onRelease(item) },
-                hideClaimButton: true
+                onEdit: { },
+                onDelete: { },
+                hideAssignees: true // In workspace, we know it's assigned to me
               )
               .workItemRowStyle()
             }
@@ -311,8 +309,8 @@ extension User {
         title: "Fix Broken Window",
         status: .open,
         declaredBy: PreviewDataFactory.aliceID,
-        claimedBy: PreviewDataFactory.bobID,
-        listingId: listing?.id
+        listingId: listing?.id,
+        assigneeUserIds: [PreviewDataFactory.bobID]
       )
       taskUrgent.dueDate = Calendar.current.date(byAdding: .day, value: -2, to: Date())
       taskUrgent.syncState = .synced
@@ -320,10 +318,9 @@ extension User {
 
       let activityScheduled = Activity(
         title: "Schedule Inspection",
-        type: .call,
         declaredBy: PreviewDataFactory.aliceID,
-        claimedBy: PreviewDataFactory.bobID,
-        listingId: listing?.id
+        listingId: listing?.id,
+        assigneeUserIds: [PreviewDataFactory.bobID]
       )
       activityScheduled.dueDate = Calendar.current.date(byAdding: .day, value: 1, to: Date())
       activityScheduled.syncState = .synced
@@ -399,7 +396,6 @@ extension User {
         )),
         .activity(Activity(
           title: "Follow Up Call",
-          type: .call,
           declaredBy: PreviewDataFactory.aliceID,
           listingId: listing?.id
         ))
@@ -433,7 +429,6 @@ extension User {
         )),
         .activity(Activity(
           title: "Team Meeting",
-          type: .meeting,
           declaredBy: PreviewDataFactory.aliceID,
           listingId: nil
         ))

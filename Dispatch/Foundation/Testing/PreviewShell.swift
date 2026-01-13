@@ -37,8 +37,9 @@ final class PreviewContext: ObservableObject {
       Listing.self,
       TaskItem.self,
       Activity.self,
+      TaskAssignee.self,
+      ActivityAssignee.self,
       Note.self,
-      ClaimEvent.self,
       ListingTypeDefinition.self,
       ActivityTemplate.self
     ])

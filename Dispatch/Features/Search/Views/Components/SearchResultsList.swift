@@ -177,10 +177,9 @@ private enum SearchResultsListPreviewData {
       title: "Fix Broken Window",
       taskDescription: "Replace pane + schedule contractor",
       dueDate: Calendar.current.date(byAdding: .day, value: -1, to: Date()),
-      priority: .high,
       declaredBy: PreviewDataFactory.aliceID,
-      claimedBy: PreviewDataFactory.bobID,
-      listingId: listing?.id
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
     )
     t1.syncState = .synced
 
@@ -188,21 +187,18 @@ private enum SearchResultsListPreviewData {
       title: "Window Measurements",
       taskDescription: "Confirm dimensions",
       dueDate: Calendar.current.date(byAdding: .day, value: 2, to: Date()),
-      priority: .medium,
       declaredBy: PreviewDataFactory.aliceID,
-      claimedBy: PreviewDataFactory.bobID,
-      listingId: listing?.id
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
     )
     t2.syncState = .synced
 
     let a1 = Activity(
       title: "Window inspection call",
       activityDescription: "Confirm scope + pricing",
-      type: .call,
-      priority: .medium,
       declaredBy: PreviewDataFactory.aliceID,
-      claimedBy: PreviewDataFactory.bobID,
-      listingId: listing?.id
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
     )
     a1.syncState = .synced
 
@@ -216,10 +212,9 @@ private enum SearchResultsListPreviewData {
         title: "Follow up vendor #\(idx)",
         taskDescription: idx % 2 == 0 ? "Email + timeline" : "Call + confirm details",
         dueDate: Calendar.current.date(byAdding: .day, value: idx, to: Date()),
-        priority: idx % 3 == 0 ? .high : .low,
         declaredBy: PreviewDataFactory.aliceID,
-        claimedBy: PreviewDataFactory.bobID,
-        listingId: listing?.id
+        listingId: listing?.id,
+        assigneeUserIds: [PreviewDataFactory.bobID]
       )
       task.syncState = .synced
       context.insert(task)

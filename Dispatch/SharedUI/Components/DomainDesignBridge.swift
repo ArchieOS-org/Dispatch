@@ -8,19 +8,6 @@
 
 import SwiftUI
 
-// MARK: - Priority Colors
-
-extension Priority {
-  var color: Color {
-    switch self {
-    case .low: DS.Colors.PriorityColors.low
-    case .medium: DS.Colors.PriorityColors.medium
-    case .high: DS.Colors.PriorityColors.high
-    case .urgent: DS.Colors.PriorityColors.urgent
-    }
-  }
-}
-
 // MARK: - TaskStatus Colors & Icons
 
 extension TaskStatus {
@@ -83,26 +70,6 @@ extension SyncStatus {
     case .syncing: DS.Icons.Sync.syncing
     case .ok: DS.Icons.Sync.ok
     case .error: DS.Icons.Sync.error
-    }
-  }
-}
-
-// MARK: - ClaimState Colors & Icons
-
-extension ClaimState {
-  var color: Color {
-    switch self {
-    case .unclaimed: DS.Colors.Claim.unclaimed
-    case .claimedByMe: DS.Colors.Claim.claimedByMe
-    case .claimedByOther: DS.Colors.Claim.claimedByOther
-    }
-  }
-
-  var icon: String {
-    switch self {
-    case .unclaimed: DS.Icons.Claim.unclaimed
-    case .claimedByMe: DS.Icons.Claim.claimed
-    case .claimedByOther: DS.Icons.Claim.claimedByOther
     }
   }
 }

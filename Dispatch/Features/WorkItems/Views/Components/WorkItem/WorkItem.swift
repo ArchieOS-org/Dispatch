@@ -18,8 +18,7 @@ struct WorkItemSnapshot: Equatable, Hashable {
   let title: String
   let itemDescription: String
   let dueDate: Date?
-  let priority: Priority
-  let claimedBy: UUID?
+  let assigneeUserIds: [UUID]
   let subtaskCount: Int
   let completedSubtaskCount: Int
   let noteCount: Int
@@ -32,15 +31,12 @@ struct WorkItemSnapshot: Equatable, Hashable {
   let typeIcon: String
   let statusRawValue: String
 
-  /// For activity type-specific properties
-  let activityType: ActivityType?
-
   // Sync state for per-entity error display
   let syncState: EntitySyncState
   let lastSyncError: String?
 
   /// Audience targeting
-  let audiences: Set<Role> // was Role
+  let audiences: Set<Role>
 
   /// Relationships
   let listingId: UUID?
@@ -82,12 +78,8 @@ enum WorkItem: Identifiable {
     snapshot.dueDate
   }
 
-  var priority: Priority {
-    snapshot.priority
-  }
-
-  var claimedBy: UUID? {
-    snapshot.claimedBy
+  var assigneeUserIds: [UUID] {
+    snapshot.assigneeUserIds
   }
 
   var createdAt: Date {
@@ -245,8 +237,7 @@ extension WorkItem {
       title: task.title,
       itemDescription: task.taskDescription,
       dueDate: task.dueDate,
-      priority: task.priority,
-      claimedBy: task.claimedBy,
+      assigneeUserIds: task.assigneeUserIds,
       subtaskCount: task.subtasks.count,
       completedSubtaskCount: task.subtasks.count(where: { $0.completed }),
       noteCount: task.notes.filter { $0.deletedAt == nil }.count,
@@ -258,7 +249,6 @@ extension WorkItem {
       typeLabel: "Task",
       typeIcon: DS.Icons.Entity.task,
       statusRawValue: task.status.rawValue,
-      activityType: nil,
       syncState: task.syncState,
       lastSyncError: task.lastSyncError,
       audiences: task.audiences,
@@ -269,41 +259,12 @@ extension WorkItem {
 
   /// Create a WorkItem wrapping an Activity, caching all display properties
   static func activity(_ activity: Activity) -> WorkItem {
-    let typeLabel: String
-    let typeIcon: String
-    switch activity.type {
-    case .call:
-      typeLabel = "Call"
-      typeIcon = DS.Icons.ActivityType.call
-
-    case .email:
-      typeLabel = "Email"
-      typeIcon = DS.Icons.ActivityType.email
-
-    case .meeting:
-      typeLabel = "Meeting"
-      typeIcon = DS.Icons.ActivityType.meeting
-
-    case .showProperty:
-      typeLabel = "Showing"
-      typeIcon = DS.Icons.ActivityType.showProperty
-
-    case .followUp:
-      typeLabel = "Follow-up"
-      typeIcon = DS.Icons.ActivityType.followUp
-
-    case .other:
-      typeLabel = "Activity"
-      typeIcon = DS.Icons.ActivityType.other
-    }
-
     let snapshot = WorkItemSnapshot(
       id: activity.id,
       title: activity.title,
       itemDescription: activity.activityDescription,
       dueDate: activity.dueDate,
-      priority: activity.priority,
-      claimedBy: activity.claimedBy,
+      assigneeUserIds: activity.assigneeUserIds,
       subtaskCount: activity.subtasks.count,
       completedSubtaskCount: activity.subtasks.count(where: { $0.completed }),
       noteCount: activity.notes.filter { $0.deletedAt == nil }.count,
@@ -312,10 +273,9 @@ extension WorkItem {
       declaredBy: activity.declaredBy,
       isCompleted: activity.status == .completed,
       isDeleted: activity.status == .deleted,
-      typeLabel: typeLabel,
-      typeIcon: typeIcon,
+      typeLabel: "Activity",
+      typeIcon: DS.Icons.Entity.activity,
       statusRawValue: activity.status.rawValue,
-      activityType: activity.type,
       syncState: activity.syncState,
       lastSyncError: activity.lastSyncError,
       audiences: activity.audiences,
@@ -340,34 +300,5 @@ extension WorkItem: Hashable {
   func hash(into hasher: inout Hasher) {
     // Hash full snapshot to ensure UI updates when properties change
     hasher.combine(snapshot)
-  }
-}
-
-// MARK: - Claim State Helper
-
-extension WorkItem {
-  /// Computes the claim state for this work item relative to the current user.
-  /// - Parameters:
-  ///   - currentUserId: The ID of the currently authenticated user
-  ///   - userLookup: A closure to look up a User by their ID
-  /// - Returns: The appropriate ClaimState for display
-  func claimState(
-    currentUserId: UUID,
-    userLookup: (UUID) -> User?
-  ) -> ClaimState {
-    guard let claimedById = claimedBy else {
-      return .unclaimed
-    }
-    if claimedById == currentUserId {
-      if let user = userLookup(claimedById) {
-        return .claimedByMe(user: user)
-      }
-      return .claimedByMe(user: User(name: "You", email: "", userType: .realtor))
-    } else {
-      if let user = userLookup(claimedById) {
-        return .claimedByOther(user: user)
-      }
-      return .claimedByOther(user: User(name: "Unknown", email: "", userType: .realtor))
-    }
   }
 }

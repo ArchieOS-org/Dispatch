@@ -197,10 +197,10 @@ struct ListingListView: View {
     WorkItemResolverView(
       ref: ref,
       currentUserId: currentUserId,
-      userLookup: { userCache[$0] },
+      userLookup: userCache,
+      availableUsers: users,
       onComplete: { item in toggleComplete(item) },
-      onClaim: { item in claim(item) },
-      onRelease: { item in unclaim(item) },
+      onAssigneesChanged: { item, userIds in updateAssignees(item, userIds: userIds) },
       onEditNote: nil,
       onDeleteNote: { note, item in
         noteToDelete = note
@@ -236,31 +236,40 @@ struct ListingListView: View {
     syncManager.requestSync()
   }
 
-  private func claim(_ item: WorkItem) {
+  private func updateAssignees(_ item: WorkItem, userIds: [UUID]) {
+    let userIdSet = Set(userIds)
+
     switch item {
     case .task(let task, _):
-      task.claimedBy = currentUserId
-      task.claimedAt = Date()
+      // Remove assignees no longer in list
+      task.assignees.removeAll { !userIdSet.contains($0.userId) }
+      // Add new assignees
+      let existingUserIds = Set(task.assignees.map { $0.userId })
+      for userId in userIds where !existingUserIds.contains(userId) {
+        let assignee = TaskAssignee(
+          taskId: task.id,
+          userId: userId,
+          assignedBy: currentUserId
+        )
+        assignee.task = task
+        task.assignees.append(assignee)
+      }
       task.markPending()
 
     case .activity(let activity, _):
-      activity.claimedBy = currentUserId
-      activity.claimedAt = Date()
-      activity.markPending()
-    }
-    syncManager.requestSync()
-  }
-
-  private func unclaim(_ item: WorkItem) {
-    switch item {
-    case .task(let task, _):
-      task.claimedBy = nil
-      task.claimedAt = nil
-      task.markPending()
-
-    case .activity(let activity, _):
-      activity.claimedBy = nil
-      activity.claimedAt = nil
+      // Remove assignees no longer in list
+      activity.assignees.removeAll { !userIdSet.contains($0.userId) }
+      // Add new assignees
+      let existingUserIds = Set(activity.assignees.map { $0.userId })
+      for userId in userIds where !existingUserIds.contains(userId) {
+        let assignee = ActivityAssignee(
+          activityId: activity.id,
+          userId: userId,
+          assignedBy: currentUserId
+        )
+        assignee.activity = activity
+        activity.assignees.append(assignee)
+      }
       activity.markPending()
     }
     syncManager.requestSync()
@@ -458,14 +467,12 @@ private struct ListingListPreviewContainer: View {
     let task1 = TaskItem(
       title: "Schedule photography",
       taskDescription: "Book professional photos",
-      priority: .high,
       status: .completed,
       declaredBy: janeRealtor.id
     )
     let task2 = TaskItem(
       title: "Update MLS",
       taskDescription: "Update listing details",
-      priority: .medium,
       status: .open,
       declaredBy: janeRealtor.id
     )
@@ -475,21 +482,18 @@ private struct ListingListPreviewContainer: View {
     let task3 = TaskItem(
       title: "Price review",
       taskDescription: "Review comparable sales",
-      priority: .high,
       status: .completed,
       declaredBy: johnAgent.id
     )
     let task4 = TaskItem(
       title: "Virtual tour",
       taskDescription: "Create 3D walkthrough",
-      priority: .medium,
       status: .completed,
       declaredBy: johnAgent.id
     )
     let task5 = TaskItem(
       title: "Open house prep",
       taskDescription: "Prepare for weekend showing",
-      priority: .low,
       status: .open,
       declaredBy: johnAgent.id
     )
@@ -511,7 +515,8 @@ private struct ListingListPreviewContainer: View {
       Note.self,
       Subtask.self,
       StatusChange.self,
-      ClaimEvent.self
+      TaskAssignee.self,
+      ActivityAssignee.self
     ], inMemory: true)
     .environmentObject(SyncManager(mode: .preview))
     .environmentObject(LensState())

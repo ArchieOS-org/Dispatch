@@ -253,8 +253,8 @@ private enum SearchOverlayPreviewData {
       title: "Fix Broken Window",
       status: .open,
       declaredBy: PreviewDataFactory.aliceID,
-      claimedBy: PreviewDataFactory.bobID,
-      listingId: listing?.id
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
     )
     task1.syncState = .synced
 
@@ -262,17 +262,16 @@ private enum SearchOverlayPreviewData {
       title: "Window Measurements",
       status: .open,
       declaredBy: PreviewDataFactory.aliceID,
-      claimedBy: PreviewDataFactory.bobID,
-      listingId: listing?.id
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
     )
     task2.syncState = .synced
 
     let activity1 = Activity(
       title: "Window inspection call",
-      type: .call,
       declaredBy: PreviewDataFactory.aliceID,
-      claimedBy: PreviewDataFactory.bobID,
-      listingId: listing?.id
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
     )
     activity1.syncState = .synced
 

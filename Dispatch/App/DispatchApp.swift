@@ -28,11 +28,12 @@ struct DispatchApp: App {
       User.self,
       TaskItem.self,
       Activity.self,
+      TaskAssignee.self,
+      ActivityAssignee.self,
       Listing.self,
       Note.self,
       Subtask.self,
       StatusChange.self,
-      ClaimEvent.self,
       ListingTypeDefinition.self,
       ActivityTemplate.self
     ])

@@ -21,10 +21,14 @@ final class WorkItemActions: ObservableObject {
   @MainActor
   init(
     currentUserId: UUID = WorkItemActions.unauthenticatedUserId,
-    userLookup: @escaping (UUID) -> User? = { _ in nil }
+    userLookup: @escaping (UUID) -> User? = { _ in nil },
+    userLookupDict: [UUID: User] = [:],
+    availableUsers: [User] = []
   ) {
     self.currentUserId = currentUserId
     self.userLookup = userLookup
+    self.userLookupDict = userLookupDict
+    self.availableUsers = availableUsers
   }
 
   // MARK: Internal
@@ -38,14 +42,17 @@ final class WorkItemActions: ObservableObject {
   /// Lookup function for resolving User from UUID
   @MainActor var userLookup: (UUID) -> User?
 
+  /// Dictionary-based user lookup for multi-assignee views
+  @MainActor var userLookupDict: [UUID: User] = [:]
+
+  /// Available users for assignee picker
+  @MainActor var availableUsers: [User] = []
+
   /// Complete/uncomplete a work item
   @MainActor var onComplete: (WorkItem) -> Void = { _ in }
 
-  /// Claim a work item for current user
-  @MainActor var onClaim: (WorkItem) -> Void = { _ in }
-
-  /// Release claim on a work item
-  @MainActor var onRelease: (WorkItem) -> Void = { _ in }
+  /// Update assignees on a work item
+  @MainActor var onAssigneesChanged: (WorkItem, [UUID]) -> Void = { _, _ in }
 
   /// Delete a note from a work item (triggers confirmation alert)
   @MainActor var onDeleteNote: (Note, WorkItem) -> Void = { _, _ in }

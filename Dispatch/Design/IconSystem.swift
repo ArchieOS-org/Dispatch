@@ -45,21 +45,6 @@ extension DS {
       static let deleted = "trash.circle"
     }
 
-    /// Icons for work item claim states
-    enum Claim {
-      /// Unclaimed - available to claim
-      static let unclaimed = "person.badge.plus"
-
-      /// Claimed by current user
-      static let claimed = "person.fill.checkmark"
-
-      /// Claimed by another user
-      static let claimedByOther = "person.fill"
-
-      /// Release claim action
-      static let release = "person.badge.minus"
-    }
-
     /// Icons for common user actions
     enum Action {
       /// Edit action

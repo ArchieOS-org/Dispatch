@@ -76,17 +76,14 @@ enum TestDataFactory {
     ]
 
     let titleIndex = (index - 1) % titles.count
-    let priorities: [Priority] = [.high, .medium, .medium, .low, .high]
 
     let task = TaskItem(
       id: deterministicUUID(type: "task", index: index),
       title: titles[titleIndex],
       taskDescription: descriptions[titleIndex],
       dueDate: Calendar.current.date(byAdding: .day, value: index, to: Date()),
-      priority: priorities[titleIndex],
       status: .open,
       declaredBy: deterministicUUID(type: "user", index: 1),
-      claimedBy: nil,
       listingId: listingId,
       createdVia: .dispatch,
       sourceSlackMessages: nil,
@@ -124,7 +121,6 @@ enum TestDataFactory {
       "Present competing offers to seller",
       "Pre-closing inspection with buyers"
     ]
-    let types: [ActivityType] = [.showProperty, .other, .call, .meeting, .followUp]
     let durations: [Int] = [60, 180, 30, 90, 45] // minutes
 
     let activityIndex = (index - 1) % titles.count
@@ -133,12 +129,9 @@ enum TestDataFactory {
       id: deterministicUUID(type: "activity", index: index),
       title: titles[activityIndex],
       activityDescription: descriptions[activityIndex],
-      type: types[activityIndex],
       dueDate: Calendar.current.date(byAdding: .day, value: index, to: Date()),
-      priority: .medium,
       status: .open,
       declaredBy: deterministicUUID(type: "user", index: 1),
-      claimedBy: nil,
       listingId: listingId,
       createdVia: .dispatch,
       sourceSlackMessages: nil,

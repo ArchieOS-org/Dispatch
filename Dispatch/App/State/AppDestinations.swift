@@ -57,10 +57,10 @@ struct AppDestinationsModifier: ViewModifier {
       WorkItemResolverView(
         ref: ref,
         currentUserId: actions.currentUserId,
-        userLookup: actions.userLookup,
+        userLookup: actions.userLookupDict,
+        availableUsers: actions.availableUsers,
         onComplete: actions.onComplete,
-        onClaim: actions.onClaim,
-        onRelease: actions.onRelease,
+        onAssigneesChanged: actions.onAssigneesChanged,
         onEditNote: nil,
         onDeleteNote: actions.onDeleteNote,
         onAddNote: actions.onAddNote,

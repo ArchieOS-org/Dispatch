@@ -14,13 +14,13 @@ struct WorkItemDetailView: View {
   // MARK: Internal
 
   let item: WorkItem
-  let claimState: ClaimState
-  let userLookup: (UUID) -> User?
+  let userLookup: [UUID: User]
+  let currentUserId: UUID
+  let availableUsers: [User]
 
   // Actions
   var onComplete: () -> Void = { }
-  var onClaim: () -> Void = { }
-  var onRelease: () -> Void = { }
+  var onAssigneesChanged: (([UUID]) -> Void)?
   var onEditNote: ((Note) -> Void)?
   var onDeleteNote: ((Note) -> Void)?
   var onAddNote: ((String) -> Void)?
@@ -37,11 +37,15 @@ struct WorkItemDetailView: View {
       let parentType: ParentType = item.isTask ? .task : .activity
       await syncManager.refreshNotesForParent(parentId: item.id, parentType: parentType)
     }
+    .sheet(isPresented: $showAssigneePicker) {
+      assigneePickerSheet
+    }
   }
 
   // MARK: Private
 
-  // showNoteInput removed - always-visible composer uses internal state
+  @State private var showAssigneePicker = false
+  @State private var selectedAssigneeIds: Set<UUID> = []
 
   private static let detailDateFormatter: DateFormatter = {
     let formatter = DateFormatter()
@@ -56,10 +60,8 @@ struct WorkItemDetailView: View {
 
   private var content: some View {
     VStack(alignment: .leading, spacing: DS.Spacing.xl) {
-      // Header / Priority / Due Date
-      // Moved from CollapsibleHeader to content top
+      // Header / Due Date
       HStack(spacing: DS.Spacing.sm) {
-        PriorityDot(priority: item.priority)
         DueDateBadge(dueDate: item.dueDate)
         Spacer()
       }
@@ -125,27 +127,13 @@ struct WorkItemDetailView: View {
 
         Divider()
 
-        // Priority
-        HStack {
-          Image(systemName: DS.Icons.priorityDot)
-            .foregroundColor(DS.Colors.Text.secondary)
-            .frame(width: 24)
-          Text("Priority")
-            .font(DS.Typography.bodySecondary)
-            .foregroundColor(DS.Colors.Text.secondary)
-          Spacer()
-          HStack(spacing: DS.Spacing.xs) {
-            PriorityDot(priority: item.priority)
-            Text(item.priority.rawValue.capitalized)
-              .font(DS.Typography.body)
-              .foregroundColor(item.priority.color)
-          }
-        }
+        // Assignees
+        assigneesRow
 
         Divider()
 
         // Created by
-        if let creator = userLookup(item.declaredBy) {
+        if let creator = userLookup[item.declaredBy] {
           HStack {
             Image(systemName: DS.Icons.Entity.user)
               .foregroundColor(DS.Colors.Text.secondary)
@@ -179,24 +167,6 @@ struct WorkItemDetailView: View {
           label: "Updated",
           value: formatDate(item.updatedAt)
         )
-
-        Divider()
-
-        // Claim section
-        HStack {
-          Image(systemName: DS.Icons.Claim.unclaimed)
-            .foregroundColor(DS.Colors.Text.secondary)
-            .frame(width: 24)
-          Text("Assignment")
-            .font(DS.Typography.bodySecondary)
-            .foregroundColor(DS.Colors.Text.secondary)
-          Spacer()
-          ClaimButton(
-            claimState: claimState,
-            onClaim: onClaim,
-            onRelease: onRelease
-          )
-        }
       }
     }
     .padding(DS.Spacing.md)
@@ -221,10 +191,103 @@ struct WorkItemDetailView: View {
   private var notesSection: some View {
     NotesSection(
       notes: item.notes,
-      userLookup: userLookup,
+      userLookup: { userLookup[$0] },
       onSave: { content in onAddNote?(content) },
       onDelete: onDeleteNote
     )
+  }
+
+  /// Whether current user is assigned to this item
+  private var isAssignedToMe: Bool {
+    item.assigneeUserIds.contains(currentUserId)
+  }
+
+  private var assigneesRow: some View {
+    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+      HStack {
+        Image(systemName: "person.2")
+          .foregroundColor(DS.Colors.Text.secondary)
+          .frame(width: 24)
+        Text("Assigned to")
+          .font(DS.Typography.bodySecondary)
+          .foregroundColor(DS.Colors.Text.secondary)
+        Spacer()
+
+        Button {
+          selectedAssigneeIds = Set(item.assigneeUserIds)
+          showAssigneePicker = true
+        } label: {
+          HStack(spacing: DS.Spacing.xs) {
+            OverlappingAvatars(
+              userIds: item.assigneeUserIds,
+              users: userLookup,
+              maxVisible: 3,
+              size: .small
+            )
+            Image(systemName: "chevron.right")
+              .font(.caption)
+              .foregroundColor(DS.Colors.Text.tertiary)
+          }
+        }
+        .buttonStyle(.plain)
+      }
+
+      // Quick assign/unassign button
+      HStack {
+        Spacer()
+        Button {
+          if isAssignedToMe {
+            // Unassign me
+            var newIds = item.assigneeUserIds
+            newIds.removeAll { $0 == currentUserId }
+            onAssigneesChanged?(newIds)
+          } else {
+            // Assign me
+            var newIds = item.assigneeUserIds
+            newIds.append(currentUserId)
+            onAssigneesChanged?(newIds)
+          }
+        } label: {
+          HStack(spacing: DS.Spacing.xs) {
+            Image(systemName: isAssignedToMe ? "person.fill.badge.minus" : "person.fill.badge.plus")
+            Text(isAssignedToMe ? "Unassign Me" : "Assign to Me")
+          }
+          .font(DS.Typography.caption)
+          .foregroundColor(isAssignedToMe ? DS.Colors.Text.secondary : DS.Colors.accent)
+        }
+        .buttonStyle(.plain)
+      }
+    }
+  }
+
+  private var assigneePickerSheet: some View {
+    NavigationStack {
+      MultiUserPicker(
+        selectedUserIds: $selectedAssigneeIds,
+        availableUsers: availableUsers,
+        currentUserId: currentUserId
+      )
+      .navigationTitle("Assign Users")
+      #if os(iOS)
+      .navigationBarTitleDisplayMode(.inline)
+      #endif
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Cancel") {
+            showAssigneePicker = false
+          }
+        }
+        ToolbarItem(placement: .confirmationAction) {
+          Button("Done") {
+            showAssigneePicker = false
+            onAssigneesChanged?(Array(selectedAssigneeIds))
+          }
+        }
+      }
+    }
+    #if os(macOS)
+    .frame(minWidth: 300, minHeight: 400)
+    #endif
   }
 
   private func sectionHeader(_ title: String) -> some View {
@@ -261,23 +324,35 @@ struct WorkItemDetailView: View {
 // MARK: - Preview
 
 #Preview("Work Item Detail View") {
+  let users: [UUID: User] = {
+    var dict = [UUID: User]()
+    let ids = [UUID(), UUID(), UUID()]
+    let names = ["Alice Smith", "Bob Jones", "Carol White"]
+    for (id, name) in zip(ids, names) {
+      dict[id] = User(id: id, name: name, email: "\(name.lowercased().replacingOccurrences(of: " ", with: "."))@example.com", userType: .realtor)
+    }
+    return dict
+  }()
+
+  let userIds = Array(users.keys)
+  let currentUserId = userIds[0]
+
   let sampleTask = TaskItem(
     title: "Review quarterly report",
     taskDescription: "Go through the Q4 numbers and prepare a summary for the board meeting.",
-    priority: .high,
-    declaredBy: UUID()
+    dueDate: Calendar.current.date(byAdding: .day, value: 2, to: Date()),
+    declaredBy: userIds[1],
+    assigneeUserIds: Array(userIds.prefix(2))
   )
-
-  let sampleUser = User(name: "John Doe", email: "john@example.com", userType: .admin)
 
   NavigationStack {
     WorkItemDetailView(
       item: .task(sampleTask),
-      claimState: .claimedByMe(user: sampleUser),
-      userLookup: { _ in sampleUser },
+      userLookup: users,
+      currentUserId: currentUserId,
+      availableUsers: Array(users.values),
       onComplete: { },
-      onClaim: { },
-      onRelease: { },
+      onAssigneesChanged: { ids in print("Assignees changed: \(ids)") },
       onAddNote: { _ in },
       onAddSubtask: { }
     )

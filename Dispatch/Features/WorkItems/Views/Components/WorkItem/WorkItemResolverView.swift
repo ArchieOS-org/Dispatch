@@ -21,12 +21,12 @@ import SwiftUI
 struct WorkItemResolverView: View {
   let ref: WorkItemRef
   let currentUserId: UUID
-  let userLookup: (UUID) -> User?
+  let userLookup: [UUID: User]
+  let availableUsers: [User]
 
   // Actions passed through to detail view
   var onComplete: (WorkItem) -> Void = { _ in }
-  var onClaim: (WorkItem) -> Void = { _ in }
-  var onRelease: (WorkItem) -> Void = { _ in }
+  var onAssigneesChanged: ((WorkItem, [UUID]) -> Void)?
   var onEditNote: ((Note) -> Void)?
   var onDeleteNote: ((Note, WorkItem) -> Void)?
   var onAddNote: ((String, WorkItem) -> Void)?
@@ -41,9 +41,9 @@ struct WorkItemResolverView: View {
         taskId: id,
         currentUserId: currentUserId,
         userLookup: userLookup,
+        availableUsers: availableUsers,
         onComplete: onComplete,
-        onClaim: onClaim,
-        onRelease: onRelease,
+        onAssigneesChanged: onAssigneesChanged,
         onEditNote: onEditNote,
         onDeleteNote: onDeleteNote,
         onAddNote: onAddNote,
@@ -57,9 +57,9 @@ struct WorkItemResolverView: View {
         activityId: id,
         currentUserId: currentUserId,
         userLookup: userLookup,
+        availableUsers: availableUsers,
         onComplete: onComplete,
-        onClaim: onClaim,
-        onRelease: onRelease,
+        onAssigneesChanged: onAssigneesChanged,
         onEditNote: onEditNote,
         onDeleteNote: onDeleteNote,
         onAddNote: onAddNote,
@@ -81,10 +81,10 @@ private struct TaskResolverView: View {
   init(
     taskId: UUID,
     currentUserId: UUID,
-    userLookup: @escaping (UUID) -> User?,
+    userLookup: [UUID: User],
+    availableUsers: [User],
     onComplete: @escaping (WorkItem) -> Void,
-    onClaim: @escaping (WorkItem) -> Void,
-    onRelease: @escaping (WorkItem) -> Void,
+    onAssigneesChanged: ((WorkItem, [UUID]) -> Void)?,
     onEditNote: ((Note) -> Void)?,
     onDeleteNote: ((Note, WorkItem) -> Void)?,
     onAddNote: ((String, WorkItem) -> Void)?,
@@ -95,9 +95,9 @@ private struct TaskResolverView: View {
     self.taskId = taskId
     self.currentUserId = currentUserId
     self.userLookup = userLookup
+    self.availableUsers = availableUsers
     self.onComplete = onComplete
-    self.onClaim = onClaim
-    self.onRelease = onRelease
+    self.onAssigneesChanged = onAssigneesChanged
     self.onEditNote = onEditNote
     self.onDeleteNote = onDeleteNote
     self.onAddNote = onAddNote
@@ -114,11 +114,11 @@ private struct TaskResolverView: View {
 
   let taskId: UUID
   let currentUserId: UUID
-  let userLookup: (UUID) -> User?
+  let userLookup: [UUID: User]
+  let availableUsers: [User]
 
   var onComplete: (WorkItem) -> Void
-  var onClaim: (WorkItem) -> Void
-  var onRelease: (WorkItem) -> Void
+  var onAssigneesChanged: ((WorkItem, [UUID]) -> Void)?
   var onEditNote: ((Note) -> Void)?
   var onDeleteNote: ((Note, WorkItem) -> Void)?
   var onAddNote: ((String, WorkItem) -> Void)?
@@ -131,11 +131,11 @@ private struct TaskResolverView: View {
       let workItem = WorkItem.task(task)
       WorkItemDetailView(
         item: workItem,
-        claimState: workItem.claimState(currentUserId: currentUserId, userLookup: userLookup),
         userLookup: userLookup,
+        currentUserId: currentUserId,
+        availableUsers: availableUsers,
         onComplete: { onComplete(workItem) },
-        onClaim: { onClaim(workItem) },
-        onRelease: { onRelease(workItem) },
+        onAssigneesChanged: { userIds in onAssigneesChanged?(workItem, userIds) },
         onEditNote: onEditNote,
         onDeleteNote: { note in onDeleteNote?(note, workItem) },
         onAddNote: { content in onAddNote?(content, workItem) },
@@ -171,10 +171,10 @@ private struct ActivityResolverView: View {
   init(
     activityId: UUID,
     currentUserId: UUID,
-    userLookup: @escaping (UUID) -> User?,
+    userLookup: [UUID: User],
+    availableUsers: [User],
     onComplete: @escaping (WorkItem) -> Void,
-    onClaim: @escaping (WorkItem) -> Void,
-    onRelease: @escaping (WorkItem) -> Void,
+    onAssigneesChanged: ((WorkItem, [UUID]) -> Void)?,
     onEditNote: ((Note) -> Void)?,
     onDeleteNote: ((Note, WorkItem) -> Void)?,
     onAddNote: ((String, WorkItem) -> Void)?,
@@ -185,9 +185,9 @@ private struct ActivityResolverView: View {
     self.activityId = activityId
     self.currentUserId = currentUserId
     self.userLookup = userLookup
+    self.availableUsers = availableUsers
     self.onComplete = onComplete
-    self.onClaim = onClaim
-    self.onRelease = onRelease
+    self.onAssigneesChanged = onAssigneesChanged
     self.onEditNote = onEditNote
     self.onDeleteNote = onDeleteNote
     self.onAddNote = onAddNote
@@ -204,11 +204,11 @@ private struct ActivityResolverView: View {
 
   let activityId: UUID
   let currentUserId: UUID
-  let userLookup: (UUID) -> User?
+  let userLookup: [UUID: User]
+  let availableUsers: [User]
 
   var onComplete: (WorkItem) -> Void
-  var onClaim: (WorkItem) -> Void
-  var onRelease: (WorkItem) -> Void
+  var onAssigneesChanged: ((WorkItem, [UUID]) -> Void)?
   var onEditNote: ((Note) -> Void)?
   var onDeleteNote: ((Note, WorkItem) -> Void)?
   var onAddNote: ((String, WorkItem) -> Void)?
@@ -221,11 +221,11 @@ private struct ActivityResolverView: View {
       let workItem = WorkItem.activity(activity)
       WorkItemDetailView(
         item: workItem,
-        claimState: workItem.claimState(currentUserId: currentUserId, userLookup: userLookup),
         userLookup: userLookup,
+        currentUserId: currentUserId,
+        availableUsers: availableUsers,
         onComplete: { onComplete(workItem) },
-        onClaim: { onClaim(workItem) },
-        onRelease: { onRelease(workItem) },
+        onAssigneesChanged: { userIds in onAssigneesChanged?(workItem, userIds) },
         onEditNote: onEditNote,
         onDeleteNote: { note in onDeleteNote?(note, workItem) },
         onAddNote: { content in onAddNote?(content, workItem) },

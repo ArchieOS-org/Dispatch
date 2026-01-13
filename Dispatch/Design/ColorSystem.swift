@@ -44,13 +44,6 @@ extension DS {
       static let error = Color.red
     }
 
-    /// Colors for work item claim states
-    enum Claim {
-      static let unclaimed = Color.gray
-      static let claimedByMe = Color.green
-      static let claimedByOther = Color.orange
-    }
-
     /// Semantic background colors that adapt to light/dark mode
     enum Background {
       /// Primary background - custom theme colors

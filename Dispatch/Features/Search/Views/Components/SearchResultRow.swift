@@ -84,7 +84,6 @@ struct SearchResultRow: View {
     title: "Review quarterly report",
     taskDescription: "Go through Q4 numbers",
     dueDate: Date(),
-    priority: .high,
     declaredBy: UUID()
   )
   SearchResultRow(result: .task(task))
@@ -95,8 +94,6 @@ struct SearchResultRow: View {
   let activity = Activity(
     title: "Client meeting",
     activityDescription: "Discuss contract terms",
-    type: .meeting,
-    priority: .medium,
     declaredBy: UUID()
   )
   SearchResultRow(result: .activity(activity))

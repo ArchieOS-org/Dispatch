@@ -56,12 +56,12 @@ struct RealtorProfileView: View {
     var items = [WorkItem]()
 
     let userTasks = tasks.filter {
-      ($0.claimedByUser?.id == user.id || $0.declaredBy == user.id) && $0.status != .deleted
+      ($0.assigneeUserIds.contains(user.id) || $0.declaredBy == user.id) && $0.status != .deleted
     }
     items.append(contentsOf: userTasks.map { WorkItem.task($0) })
 
     let userActivities = activities.filter {
-      ($0.claimedByUser?.id == user.id || $0.declaredBy == user.id) && $0.status != .deleted
+      ($0.assigneeUserIds.contains(user.id) || $0.declaredBy == user.id) && $0.status != .deleted
     }
     items.append(contentsOf: userActivities.map { WorkItem.activity($0) })
 
@@ -107,12 +107,10 @@ struct RealtorProfileView: View {
             NavigationLink(value: AppRoute.workItem(WorkItemRef.from(item))) {
               WorkItemRow(
                 item: item,
-                claimState: item.claimState(currentUserId: actions.currentUserId, userLookup: actions.userLookup),
+                userLookup: actions.userLookupDict,
                 onComplete: { actions.onComplete(item) },
                 onEdit: { },
-                onDelete: { },
-                onClaim: { actions.onClaim(item) },
-                onRelease: { actions.onRelease(item) }
+                onDelete: { }
               )
             }
             .buttonStyle(.plain)
@@ -304,8 +302,8 @@ private struct ListingRowView: View {
         title: "Update Lockbox Code",
         status: .open,
         declaredBy: PreviewDataFactory.aliceID,
-        claimedBy: PreviewDataFactory.bobID,
-        listingId: listing.id
+        listingId: listing.id,
+        assigneeUserIds: [PreviewDataFactory.bobID]
       )
       task.syncState = .synced
       context.insert(task)
@@ -320,7 +318,7 @@ private struct ListingRowView: View {
       RealtorProfileView(user: bob)
         .environmentObject(WorkItemActions(
           currentUserId: PreviewDataFactory.aliceID,
-          userLookup: { _ in nil }
+          userLookupDict: [:]
         ))
     }
   }
@@ -350,7 +348,7 @@ private struct ListingRowView: View {
       RealtorProfileView(user: bob)
         .environmentObject(WorkItemActions(
           currentUserId: PreviewDataFactory.aliceID,
-          userLookup: { _ in nil }
+          userLookupDict: [:]
         ))
     }
   }
@@ -371,7 +369,7 @@ private struct ListingRowView: View {
       RealtorProfileView(user: alice)
         .environmentObject(WorkItemActions(
           currentUserId: PreviewDataFactory.aliceID,
-          userLookup: { _ in nil }
+          userLookupDict: [:]
         ))
     }
   }

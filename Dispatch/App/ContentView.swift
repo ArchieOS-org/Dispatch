@@ -129,16 +129,16 @@ struct ContentView: View {
     Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
   }
 
-  /// Workspace tasks (claimed by current user and not deleted)
+  /// Workspace tasks (assigned to current user and not deleted)
   private var workspaceTasks: [TaskItem] {
     guard let currentUserID = syncManager.currentUserID else { return [] }
-    return allTasksRaw.filter { $0.claimedBy == currentUserID && $0.status != .deleted }
+    return allTasksRaw.filter { $0.assigneeUserIds.contains(currentUserID) && $0.status != .deleted }
   }
 
-  /// Workspace activities (claimed by current user and not deleted)
+  /// Workspace activities (assigned to current user and not deleted)
   private var workspaceActivities: [Activity] {
     guard let currentUserID = syncManager.currentUserID else { return [] }
-    return allActivitiesRaw.filter { $0.claimedBy == currentUserID && $0.status != .deleted }
+    return allActivitiesRaw.filter { $0.assigneeUserIds.contains(currentUserID) && $0.status != .deleted }
   }
 
   /// Active properties (not deleted)
@@ -624,6 +624,7 @@ struct ContentView: View {
           defaultItemType: type ?? .task,
           currentUserId: currentUserId,
           listings: activeListings,
+          availableUsers: users,
           onSave: { syncManager.requestSync() }
         )
 
@@ -700,6 +701,7 @@ struct ContentView: View {
         defaultItemType: type ?? .task,
         currentUserId: currentUserId,
         listings: activeListings,
+        availableUsers: users,
         onSave: { syncManager.requestSync() }
       )
 
@@ -846,6 +848,8 @@ struct ContentView: View {
   private func updateWorkItemActions() {
     workItemActions.currentUserId = currentUserId
     workItemActions.userLookup = { [userCache] id in userCache[id] }
+    workItemActions.userLookupDict = userCache
+    workItemActions.availableUsers = users
 
     workItemActions.onComplete = { [syncManager] item in
       switch item {
@@ -862,60 +866,41 @@ struct ContentView: View {
       syncManager.requestSync()
     }
 
-    workItemActions.onClaim = { [syncManager, currentUserId] item in
+    workItemActions.onAssigneesChanged = { [syncManager, currentUserId] item, userIds in
+      let userIdSet = Set(userIds)
+
       switch item {
       case .task(let task, _):
-        task.claimedBy = currentUserId
-        task.claimedAt = Date()
+        // Remove assignees no longer in list
+        task.assignees.removeAll { !userIdSet.contains($0.userId) }
+        // Add new assignees
+        let existingUserIds = Set(task.assignees.map { $0.userId })
+        for userId in userIds where !existingUserIds.contains(userId) {
+          let assignee = TaskAssignee(
+            taskId: task.id,
+            userId: userId,
+            assignedBy: currentUserId
+          )
+          assignee.task = task
+          task.assignees.append(assignee)
+        }
         task.markPending()
-        let event = ClaimEvent(
-          parentType: .task,
-          parentId: task.id,
-          action: .claimed,
-          userId: currentUserId
-        )
-        task.claimHistory.append(event)
 
       case .activity(let activity, _):
-        activity.claimedBy = currentUserId
-        activity.claimedAt = Date()
+        // Remove assignees no longer in list
+        activity.assignees.removeAll { !userIdSet.contains($0.userId) }
+        // Add new assignees
+        let existingUserIds = Set(activity.assignees.map { $0.userId })
+        for userId in userIds where !existingUserIds.contains(userId) {
+          let assignee = ActivityAssignee(
+            activityId: activity.id,
+            userId: userId,
+            assignedBy: currentUserId
+          )
+          assignee.activity = activity
+          activity.assignees.append(assignee)
+        }
         activity.markPending()
-        let event = ClaimEvent(
-          parentType: .activity,
-          parentId: activity.id,
-          action: .claimed,
-          userId: currentUserId
-        )
-        activity.claimHistory.append(event)
-      }
-      syncManager.requestSync()
-    }
-
-    workItemActions.onRelease = { [syncManager, currentUserId] item in
-      switch item {
-      case .task(let task, _):
-        task.claimedBy = nil
-        task.claimedAt = nil
-        task.markPending()
-        let event = ClaimEvent(
-          parentType: .task,
-          parentId: task.id,
-          action: .released,
-          userId: currentUserId
-        )
-        task.claimHistory.append(event)
-
-      case .activity(let activity, _):
-        activity.claimedBy = nil
-        activity.claimedAt = nil
-        activity.markPending()
-        let event = ClaimEvent(
-          parentType: .activity,
-          parentId: activity.id,
-          action: .released,
-          userId: currentUserId
-        )
-        activity.claimHistory.append(event)
       }
       syncManager.requestSync()
     }

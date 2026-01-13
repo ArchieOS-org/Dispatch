@@ -8,69 +8,18 @@
 import Foundation
 
 struct ActivityDTO: Codable, Sendable {
-
-  // MARK: Lifecycle
-
-  init(
-    id: UUID = UUID(),
-    title: String,
-    description: String? = nil,
-    activityType: String,
-    dueDate: Date? = nil,
-    priority: String,
-    status: String,
-    declaredBy: UUID,
-    claimedBy: UUID? = nil,
-    listing: UUID? = nil,
-    createdVia: String,
-    sourceSlackMessages: [String]? = nil,
-    audiences: [String]? = nil,
-    durationMinutes: Int? = nil,
-    claimedAt: Date? = nil,
-    completedAt: Date? = nil,
-    deletedAt: Date? = nil,
-    createdAt: Date = Date(),
-    updatedAt: Date = Date()
-  ) {
-    self.id = id
-    self.title = title
-    self.description = description
-    self.activityType = activityType
-    self.dueDate = dueDate
-    self.priority = priority
-    self.status = status
-    self.declaredBy = declaredBy
-    self.claimedBy = claimedBy
-    self.listing = listing
-    self.createdVia = createdVia
-    self.sourceSlackMessages = sourceSlackMessages
-    self.audiences = audiences
-    self.durationMinutes = durationMinutes
-    self.claimedAt = claimedAt
-    self.completedAt = completedAt
-    self.deletedAt = deletedAt
-    self.createdAt = createdAt
-    self.updatedAt = updatedAt
-  }
-
-  // MARK: Internal
-
   enum CodingKeys: String, CodingKey {
     case id
     case title
     case description
-    case priority
     case status
     case listing
     case audiences
-    case activityType = "activity_type"
     case dueDate = "due_date"
     case declaredBy = "declared_by"
-    case claimedBy = "claimed_by"
     case createdVia = "created_via"
     case sourceSlackMessages = "source_slack_messages"
     case durationMinutes = "duration_minutes"
-    case claimedAt = "claimed_at"
     case completedAt = "completed_at"
     case deletedAt = "deleted_at"
     case createdAt = "created_at"
@@ -80,18 +29,14 @@ struct ActivityDTO: Codable, Sendable {
   let id: UUID
   let title: String
   let description: String?
-  let activityType: String
   let dueDate: Date?
-  let priority: String
   let status: String
   let declaredBy: UUID
-  let claimedBy: UUID?
-  let listing: UUID?
+  let listing: UUID? // Supabase column is "listing" not "listing_id"
   let createdVia: String
   let sourceSlackMessages: [String]?
   let audiences: [String]?
   let durationMinutes: Int?
-  let claimedAt: Date?
   let completedAt: Date?
   let deletedAt: Date?
   let createdAt: Date
@@ -99,13 +44,11 @@ struct ActivityDTO: Codable, Sendable {
 
   /// Swift's default JSONEncoder omits nil values entirely.
   /// Supabase interprets missing keys as "don't update this column".
-  /// We must explicitly encode null for fields like claimedBy so unclaim works.
+  /// We must explicitly encode null for nullable columns.
   func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(id, forKey: .id)
     try container.encode(title, forKey: .title)
-    try container.encode(activityType, forKey: .activityType)
-    try container.encode(priority, forKey: .priority)
     try container.encode(status, forKey: .status)
     try container.encode(declaredBy, forKey: .declaredBy)
     try container.encode(createdVia, forKey: .createdVia)
@@ -122,11 +65,6 @@ struct ActivityDTO: Codable, Sendable {
       try container.encode(dueDate, forKey: .dueDate)
     } else {
       try container.encodeNil(forKey: .dueDate)
-    }
-    if let claimedBy {
-      try container.encode(claimedBy, forKey: .claimedBy)
-    } else {
-      try container.encodeNil(forKey: .claimedBy)
     }
     if let listing {
       try container.encode(listing, forKey: .listing)
@@ -148,11 +86,6 @@ struct ActivityDTO: Codable, Sendable {
     } else {
       try container.encodeNil(forKey: .durationMinutes)
     }
-    if let claimedAt {
-      try container.encode(claimedAt, forKey: .claimedAt)
-    } else {
-      try container.encodeNil(forKey: .claimedAt)
-    }
     if let completedAt {
       try container.encode(completedAt, forKey: .completedAt)
     } else {
@@ -166,32 +99,6 @@ struct ActivityDTO: Codable, Sendable {
   }
 
   func toModel() -> Activity {
-    let resolvedType: ActivityType
-    if let t = ActivityType(rawValue: activityType) {
-      resolvedType = t
-    } else {
-      #if DEBUG
-      let typeMessage = "⚠️ Invalid activityType '\(activityType)' for Activity \(id), defaulting to .other"
-      Task { @MainActor in
-        debugLog.log(typeMessage, category: .sync)
-      }
-      #endif
-      resolvedType = .other
-    }
-
-    let resolvedPriority: Priority
-    if let p = Priority(rawValue: priority) {
-      resolvedPriority = p
-    } else {
-      #if DEBUG
-      let priorityMessage = "⚠️ Invalid priority '\(priority)' for Activity \(id), defaulting to .medium"
-      Task { @MainActor in
-        debugLog.log(priorityMessage, category: .sync)
-      }
-      #endif
-      resolvedPriority = .medium
-    }
-
     let resolvedStatus: ActivityStatus
     if let s = ActivityStatus(rawValue: status) {
       resolvedStatus = s
@@ -222,12 +129,9 @@ struct ActivityDTO: Codable, Sendable {
       id: id,
       title: title,
       activityDescription: description ?? "",
-      type: resolvedType,
       dueDate: dueDate,
-      priority: resolvedPriority,
       status: resolvedStatus,
       declaredBy: declaredBy,
-      claimedBy: claimedBy,
       listingId: listing,
       createdVia: resolvedCreatedVia,
       sourceSlackMessages: sourceSlackMessages,

@@ -55,6 +55,7 @@ struct ListingDetailView: View {
 
   @EnvironmentObject private var syncManager: SyncManager
   @EnvironmentObject private var lensState: LensState
+  @EnvironmentObject private var actions: WorkItemActions
   @Environment(\.modelContext) private var modelContext
   @Environment(\.dismiss) private var dismiss
 
@@ -252,12 +253,10 @@ struct ListingDetailView: View {
             NavigationLink(value: AppRoute.workItem(.task(task))) {
               WorkItemRow(
                 item: .task(task),
-                claimState: WorkItem.task(task).claimState(
-                  currentUserId: currentUserId,
-                  userLookup: userLookup
-                ),
-                onClaim: { claimTask(task) },
-                onRelease: { unclaimTask(task) },
+                userLookup: actions.userLookupDict,
+                onComplete: { actions.onComplete(.task(task)) },
+                onEdit: { },
+                onDelete: { },
                 hideDueDate: true
               )
             }
@@ -325,12 +324,10 @@ struct ListingDetailView: View {
         NavigationLink(value: AppRoute.workItem(.activity(activity))) {
           WorkItemRow(
             item: .activity(activity),
-            claimState: WorkItem.activity(activity).claimState(
-              currentUserId: currentUserId,
-              userLookup: userLookup
-            ),
-            onClaim: { claimActivity(activity) },
-            onRelease: { unclaimActivity(activity) },
+            userLookup: actions.userLookupDict,
+            onComplete: { actions.onComplete(.activity(activity)) },
+            onEdit: { },
+            onDelete: { },
             hideDueDate: true
           )
         }
@@ -376,42 +373,6 @@ struct ListingDetailView: View {
     dismiss()
   }
 
-  private func claimTask(_ task: TaskItem) {
-    task.claimedBy = currentUserId
-    task.claimedAt = Date()
-    task.markPending()
-    let event = ClaimEvent(parentType: .task, parentId: task.id, action: .claimed, userId: currentUserId)
-    task.claimHistory.append(event)
-    syncManager.requestSync()
-  }
-
-  private func unclaimTask(_ task: TaskItem) {
-    task.claimedBy = nil
-    task.claimedAt = nil
-    task.markPending()
-    let event = ClaimEvent(parentType: .task, parentId: task.id, action: .released, userId: currentUserId)
-    task.claimHistory.append(event)
-    syncManager.requestSync()
-  }
-
-  private func claimActivity(_ activity: Activity) {
-    activity.claimedBy = currentUserId
-    activity.claimedAt = Date()
-    activity.markPending()
-    let event = ClaimEvent(parentType: .activity, parentId: activity.id, action: .claimed, userId: currentUserId)
-    activity.claimHistory.append(event)
-    syncManager.requestSync()
-  }
-
-  private func unclaimActivity(_ activity: Activity) {
-    activity.claimedBy = nil
-    activity.claimedAt = nil
-    activity.markPending()
-    let event = ClaimEvent(parentType: .activity, parentId: activity.id, action: .released, userId: currentUserId)
-    activity.claimHistory.append(event)
-    syncManager.requestSync()
-  }
-
 }
 
 // MARK: - Previews
@@ -449,6 +410,10 @@ struct ListingDetailView: View {
         listing: listing,
         userLookup: { id in usersById[id] }
       )
+      .environmentObject(WorkItemActions(
+        currentUserId: PreviewDataFactory.aliceID,
+        userLookupDict: usersById
+      ))
     } else {
       Text("Missing preview data")
     }
@@ -495,6 +460,10 @@ struct ListingDetailView: View {
         listing: listing,
         userLookup: { id in usersById[id] }
       )
+      .environmentObject(WorkItemActions(
+        currentUserId: PreviewDataFactory.aliceID,
+        userLookupDict: usersById
+      ))
     } else {
       Text("Missing preview data")
     }

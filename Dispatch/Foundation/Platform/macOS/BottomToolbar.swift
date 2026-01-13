@@ -47,12 +47,7 @@ struct BottomToolbar: View {
   var onSearch: (() -> Void)?
 
   // Detail context actions
-  var onClaim: (() -> Void)?
   var onDelete: (() -> Void)?
-
-  // Claim state for detail views
-  var isClaimable = true
-  var isClaimed = false
 
   var body: some View {
     HStack(spacing: 0) {
@@ -137,18 +132,7 @@ struct BottomToolbar: View {
 
   @ViewBuilder
   private var detailToolbar: some View {
-    // Left: Claim button (only for work items, not listings)
-    HStack(spacing: 0) {
-      if context == .workItemDetail, let onClaim, isClaimable {
-        ToolbarIconButton(
-          icon: isClaimed ? "hand.raised.slash" : "hand.raised",
-          action: onClaim,
-          accessibilityLabel: isClaimed ? "Release" : "Claim"
-        )
-      }
-    }
-    .padding(.leading, DS.Spacing.bottomToolbarPadding)
-
+    // Left spacer for balance
     Spacer()
 
     // Right: Delete button
@@ -196,16 +180,14 @@ struct BottomToolbar: View {
   .frame(width: 500, height: 300)
 }
 
-/// Interactive detail toolbar with claim toggle
+/// Interactive detail toolbar
 #Preview("Interactive - Detail") {
-  @Previewable @State var isClaimed = false
-
   VStack(spacing: 0) {
     // Content area
     VStack {
-      Text(isClaimed ? "Task Claimed" : "Task Unclaimed")
+      Text("Work Item Detail")
         .font(.headline)
-      Text("Tap the hand icon to toggle")
+      Text("Detail toolbar with delete action")
         .font(.caption)
         .foregroundStyle(.secondary)
     }
@@ -214,10 +196,7 @@ struct BottomToolbar: View {
 
     BottomToolbar(
       context: .workItemDetail,
-      onClaim: { isClaimed.toggle() },
-      onDelete: { },
-      isClaimable: true,
-      isClaimed: isClaimed
+      onDelete: { }
     )
   }
   .frame(width: 500, height: 300)
@@ -328,46 +307,13 @@ struct BottomToolbar: View {
 
 // MARK: Detail Contexts
 
-/// Work item detail - unclaimed
-#Preview("Work Item Detail - Unclaimed") {
+/// Work item detail with delete
+#Preview("Work Item Detail") {
   VStack(spacing: 0) {
     Spacer()
     BottomToolbar(
       context: .workItemDetail,
-      onClaim: { },
-      onDelete: { },
-      isClaimable: true,
-      isClaimed: false
-    )
-  }
-  .frame(width: 500, height: 200)
-}
-
-/// Work item detail - claimed
-#Preview("Work Item Detail - Claimed") {
-  VStack(spacing: 0) {
-    Spacer()
-    BottomToolbar(
-      context: .workItemDetail,
-      onClaim: { },
-      onDelete: { },
-      isClaimable: true,
-      isClaimed: true
-    )
-  }
-  .frame(width: 500, height: 200)
-}
-
-/// Work item detail - not claimable (e.g., already owned by someone else)
-#Preview("Work Item Detail - Not Claimable") {
-  VStack(spacing: 0) {
-    Spacer()
-    BottomToolbar(
-      context: .workItemDetail,
-      onClaim: { },
-      onDelete: { },
-      isClaimable: false,
-      isClaimed: false
+      onDelete: { }
     )
   }
   .frame(width: 500, height: 200)
@@ -390,10 +336,7 @@ struct BottomToolbar: View {
   VStack(spacing: 0) {
     Spacer()
     BottomToolbar(
-      context: .workItemDetail,
-      onClaim: { },
-      isClaimable: true,
-      isClaimed: false
+      context: .workItemDetail
     )
   }
   .frame(width: 500, height: 200)
@@ -441,10 +384,7 @@ struct BottomToolbar: View {
     Color(nsColor: .windowBackgroundColor)
     BottomToolbar(
       context: .workItemDetail,
-      onClaim: { },
-      onDelete: { },
-      isClaimable: true,
-      isClaimed: false
+      onDelete: { }
     )
   }
   .frame(width: 500, height: 200)
@@ -457,10 +397,7 @@ struct BottomToolbar: View {
     Color(nsColor: .windowBackgroundColor)
     BottomToolbar(
       context: .workItemDetail,
-      onClaim: { },
-      onDelete: { },
-      isClaimable: true,
-      isClaimed: false
+      onDelete: { }
     )
   }
   .frame(width: 500, height: 200)
@@ -520,61 +457,6 @@ struct BottomToolbar: View {
           onSearch: { }
         )
       }
-    }
-  }
-  .padding(.vertical, DS.Spacing.md)
-  .frame(width: 500)
-  .background(Color(nsColor: .windowBackgroundColor))
-}
-
-// MARK: Claim States Gallery
-
-/// Shows all claim button states
-#Preview("Claim States Gallery") {
-  VStack(spacing: DS.Spacing.lg) {
-    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-      Text("Unclaimed (claimable)")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .padding(.leading, DS.Spacing.md)
-
-      BottomToolbar(
-        context: .workItemDetail,
-        onClaim: { },
-        onDelete: { },
-        isClaimable: true,
-        isClaimed: false
-      )
-    }
-
-    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-      Text("Claimed (releasable)")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .padding(.leading, DS.Spacing.md)
-
-      BottomToolbar(
-        context: .workItemDetail,
-        onClaim: { },
-        onDelete: { },
-        isClaimable: true,
-        isClaimed: true
-      )
-    }
-
-    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-      Text("Not claimable (owned by other)")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .padding(.leading, DS.Spacing.md)
-
-      BottomToolbar(
-        context: .workItemDetail,
-        onClaim: { },
-        onDelete: { },
-        isClaimable: false,
-        isClaimed: false
-      )
     }
   }
   .padding(.vertical, DS.Spacing.md)

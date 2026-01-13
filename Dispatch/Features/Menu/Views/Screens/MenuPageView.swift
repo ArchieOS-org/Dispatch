@@ -71,12 +71,12 @@ struct MenuPageView: View {
 
   private var workspaceTasks: [TaskItem] {
     guard let currentUserID = syncManager.currentUserID else { return [] }
-    return allTasksRaw.filter { $0.claimedBy == currentUserID && $0.status != .deleted }
+    return allTasksRaw.filter { $0.assigneeUserIds.contains(currentUserID) && $0.status != .deleted }
   }
 
   private var workspaceActivities: [Activity] {
     guard let currentUserID = syncManager.currentUserID else { return [] }
-    return allActivitiesRaw.filter { $0.claimedBy == currentUserID && $0.status != .deleted }
+    return allActivitiesRaw.filter { $0.assigneeUserIds.contains(currentUserID) && $0.status != .deleted }
   }
 
   private var activeProperties: [Property] {
@@ -162,24 +162,23 @@ struct MenuPageView: View {
       // Add more items claimed by Bob for variety
       let listing = try? context.fetch(FetchDescriptor<Listing>()).first
 
-      // Additional claimed task
+      // Additional assigned task
       let task = TaskItem(
         title: "Schedule Appraisal",
         status: .open,
         declaredBy: PreviewDataFactory.aliceID,
-        claimedBy: PreviewDataFactory.bobID,
-        listingId: listing?.id
+        listingId: listing?.id,
+        assigneeUserIds: [PreviewDataFactory.bobID]
       )
       task.syncState = .synced
       listing?.tasks.append(task)
 
-      // Claimed activity
+      // Assigned activity
       let activity = Activity(
         title: "Follow Up Call",
-        type: .call,
         declaredBy: PreviewDataFactory.aliceID,
-        claimedBy: PreviewDataFactory.bobID,
-        listingId: listing?.id
+        listingId: listing?.id,
+        assigneeUserIds: [PreviewDataFactory.bobID]
       )
       activity.syncState = .synced
       listing?.activities.append(activity)
@@ -257,8 +256,8 @@ struct MenuPageView: View {
         title: "Urgent: Fix Plumbing",
         status: .open,
         declaredBy: PreviewDataFactory.aliceID,
-        claimedBy: PreviewDataFactory.bobID,
-        listingId: listing?.id
+        listingId: listing?.id,
+        assigneeUserIds: [PreviewDataFactory.bobID]
       )
       overdueTask.dueDate = Calendar.current.date(byAdding: .day, value: -2, to: Date())
       overdueTask.syncState = .synced
@@ -269,8 +268,8 @@ struct MenuPageView: View {
         title: "Overdue: Submit Documents",
         status: .inProgress,
         declaredBy: PreviewDataFactory.aliceID,
-        claimedBy: PreviewDataFactory.bobID,
-        listingId: listing?.id
+        listingId: listing?.id,
+        assigneeUserIds: [PreviewDataFactory.bobID]
       )
       overdueTask2.dueDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())
       overdueTask2.syncState = .synced
@@ -279,10 +278,9 @@ struct MenuPageView: View {
       // Overdue activity
       let overdueActivity = Activity(
         title: "Missed: Client Meeting",
-        type: .meeting,
         declaredBy: PreviewDataFactory.aliceID,
-        claimedBy: PreviewDataFactory.bobID,
-        listingId: listing?.id
+        listingId: listing?.id,
+        assigneeUserIds: [PreviewDataFactory.bobID]
       )
       overdueActivity.dueDate = Calendar.current.date(byAdding: .day, value: -3, to: Date())
       overdueActivity.syncState = .synced
@@ -354,26 +352,25 @@ struct MenuPageView: View {
         listing.syncState = .synced
         context.insert(listing)
 
-        // Add claimed tasks to each listing
+        // Add assigned tasks to each listing
         for j in 1 ... 2 {
           let task = TaskItem(
             title: "Task \(j) for Listing \(i)",
             status: .open,
             declaredBy: PreviewDataFactory.aliceID,
-            claimedBy: PreviewDataFactory.bobID,
-            listingId: listing.id
+            listingId: listing.id,
+            assigneeUserIds: [PreviewDataFactory.bobID]
           )
           task.syncState = .synced
           listing.tasks.append(task)
         }
 
-        // Add claimed activity
+        // Add assigned activity
         let activity = Activity(
           title: "Activity for Listing \(i)",
-          type: .call,
           declaredBy: PreviewDataFactory.aliceID,
-          claimedBy: PreviewDataFactory.bobID,
-          listingId: listing.id
+          listingId: listing.id,
+          assigneeUserIds: [PreviewDataFactory.bobID]
         )
         activity.syncState = .synced
         listing.activities.append(activity)
@@ -401,13 +398,13 @@ struct MenuPageView: View {
 
       let listing = try? context.fetch(FetchDescriptor<Listing>()).first
 
-      // Add claimed items for Bob
+      // Add assigned items for Bob
       let task = TaskItem(
         title: "Schedule Appraisal",
         status: .open,
         declaredBy: PreviewDataFactory.aliceID,
-        claimedBy: PreviewDataFactory.bobID,
-        listingId: listing?.id
+        listingId: listing?.id,
+        assigneeUserIds: [PreviewDataFactory.bobID]
       )
       task.syncState = .synced
       listing?.tasks.append(task)
@@ -438,14 +435,14 @@ struct MenuPageView: View {
 
       let listing = try? context.fetch(FetchDescriptor<Listing>()).first
 
-      // Multiple claimed items
+      // Multiple assigned items
       for i in 1 ... 5 {
         let task = TaskItem(
           title: "Task \(i)",
           status: .open,
           declaredBy: PreviewDataFactory.aliceID,
-          claimedBy: PreviewDataFactory.bobID,
-          listingId: listing?.id
+          listingId: listing?.id,
+          assigneeUserIds: [PreviewDataFactory.bobID]
         )
         task.syncState = .synced
         listing?.tasks.append(task)
