@@ -2,32 +2,19 @@
 //  QuickEntrySheet.swift
 //  Dispatch
 //
-//  Universal quick entry sheet for creating Tasks and Activities
+//  Jobs-Standard sheet for quickly creating Tasks or Activities.
 //
 
 import SwiftData
 import SwiftUI
 
-/// A unified sheet for quickly creating Tasks or Activities.
-///
-/// Design decisions:
-/// 1. Single sheet handles both item types (Task/Activity) with a type picker
-/// 2. Type-specific fields (ActivityType) shown conditionally
-/// 3. All common fields (title, listing, priority) shared
-/// 4. Callback-based save to allow parent view to handle sync
-/// 5. Listings passed as parameter to avoid @Query re-evaluation on keystrokes
-///
-/// Usage:
-/// ```swift
-/// .sheet(isPresented: $showQuickEntry) {
-///     QuickEntrySheet(
-///         defaultItemType: .task,
-///         currentUserId: currentUserId,
-///         listings: listings,
-///         onSave: { syncManager.requestSync() }
-///     )
-/// }
-/// ```
+/// Jobs-Standard sheet for quickly creating Tasks or Activities.
+/// Features:
+/// - Unified type picker (Task/Activity) with segmented control
+/// - Context-aware fields (activity type shown only for activities)
+/// - Optional listing association
+/// - Priority selection with visual indicators
+/// - Callback-based save for parent sync control
 struct QuickEntrySheet: View {
 
   // MARK: Lifecycle
@@ -62,70 +49,15 @@ struct QuickEntrySheet: View {
   var body: some View {
     NavigationStack {
       Form {
-        // Type Selection
-        Section {
-          Picker("Type", selection: $itemType) {
-            ForEach(QuickEntryItemType.allCases) { type in
-              Label(type.displayName, systemImage: type.icon)
-                .tag(type)
-            }
-          }
-          .pickerStyle(.segmented)
-        }
-
-        // Title (required)
-        Section {
-          TextField(titlePlaceholder, text: $title)
-        } header: {
-          Text("Title")
-        } footer: {
-          if title.trimmingCharacters(in: .whitespaces).isEmpty {
-            Text("Required")
-              .foregroundColor(DS.Colors.destructive)
-          }
-        }
-
-        // Activity Type (only for activities)
+        typeSection
+        titleSection
         if itemType == .activity {
-          Section("Activity Type") {
-            Picker("Activity Type", selection: $activityType) {
-              ForEach(ActivityType.allCases, id: \.self) { type in
-                Text(activityTypeLabel(type))
-                  .tag(type)
-              }
-            }
-            .pickerStyle(.menu)
-          }
+          activityTypeSection
         }
-
-        // Listing (optional)
         if !listings.isEmpty {
-          Section("Listing") {
-            Picker("Listing", selection: $selectedListing) {
-              Text("None").tag(nil as Listing?)
-              ForEach(listings) { listing in
-                Text(listing.address).tag(listing as Listing?)
-              }
-            }
-            .pickerStyle(.menu)
-          }
+          listingSection
         }
-
-        // Priority
-        Section("Priority") {
-          Picker("Priority", selection: $priority) {
-            ForEach(Priority.allCases, id: \.self) { priority in
-              HStack {
-                Circle()
-                  .fill(priority.color)
-                  .frame(width: DS.Spacing.priorityDotSize, height: DS.Spacing.priorityDotSize)
-                Text(priority.rawValue.capitalized)
-              }
-              .tag(priority)
-            }
-          }
-          .pickerStyle(.menu)
-        }
+        prioritySection
       }
       .navigationTitle("Quick Add")
       #if os(iOS)
@@ -173,16 +105,73 @@ struct QuickEntrySheet: View {
     }
   }
 
-  private func activityTypeLabel(_ type: ActivityType) -> String {
-    switch type {
-    case .call: "Phone Call"
-    case .email: "Email"
-    case .meeting: "Meeting"
-    case .showProperty: "Show Property"
-    case .followUp: "Follow Up"
-    case .other: "Other"
+  // MARK: - Form Sections
+
+  private var typeSection: some View {
+    Section {
+      Picker("Type", selection: $itemType) {
+        ForEach(QuickEntryItemType.allCases) { type in
+          Label(type.displayName, systemImage: type.icon)
+            .tag(type)
+        }
+      }
+      .pickerStyle(.segmented)
     }
   }
+
+  private var titleSection: some View {
+    Section {
+      TextField(titlePlaceholder, text: $title)
+    } header: {
+      Text("Title")
+    } footer: {
+      if title.trimmingCharacters(in: .whitespaces).isEmpty {
+        Text("Required")
+          .foregroundColor(DS.Colors.destructive)
+      }
+    }
+  }
+
+  private var activityTypeSection: some View {
+    Section("Activity Type") {
+      Picker("Activity Type", selection: $activityType) {
+        ForEach(ActivityType.allCases, id: \.self) { type in
+          Text(type.displayName)
+            .tag(type)
+        }
+      }
+      .pickerStyle(.menu)
+    }
+  }
+
+  private var listingSection: some View {
+    Section("Listing") {
+      Picker("Listing", selection: $selectedListing) {
+        Text("None").tag(nil as Listing?)
+        ForEach(listings) { listing in
+          Text(listing.address).tag(listing as Listing?)
+        }
+      }
+      .pickerStyle(.menu)
+    }
+  }
+
+  private var prioritySection: some View {
+    Section("Priority") {
+      Picker("Priority", selection: $priority) {
+        ForEach(Priority.allCases, id: \.self) { priority in
+          HStack {
+            PriorityDot(priority: priority)
+            Text(priority.rawValue.capitalized)
+          }
+          .tag(priority)
+        }
+      }
+      .pickerStyle(.menu)
+    }
+  }
+
+  // MARK: - Actions
 
   private func saveAndDismiss() {
     let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
@@ -225,7 +214,6 @@ struct QuickEntrySheet: View {
       }
     }
 
-    // TODO: Show toast "Task added" / "Activity added"
     onSave()
     dismiss()
   }
@@ -233,7 +221,35 @@ struct QuickEntrySheet: View {
 
 // MARK: - Preview
 
-#Preview("Quick Entry Sheet - Task") {
+#if DEBUG
+
+#Preview("Quick Entry · Task") {
+  PreviewShell { context in
+    let listings = (try? context.fetch(FetchDescriptor<Listing>())) ?? []
+
+    QuickEntrySheet(
+      defaultItemType: .task,
+      currentUserId: PreviewDataFactory.aliceID,
+      listings: listings,
+      onSave: { }
+    )
+  }
+}
+
+#Preview("Quick Entry · Activity") {
+  PreviewShell { context in
+    let listings = (try? context.fetch(FetchDescriptor<Listing>())) ?? []
+
+    QuickEntrySheet(
+      defaultItemType: .activity,
+      currentUserId: PreviewDataFactory.aliceID,
+      listings: listings,
+      onSave: { }
+    )
+  }
+}
+
+#Preview("Quick Entry · No Listings") {
   QuickEntrySheet(
     defaultItemType: .task,
     currentUserId: UUID(),
@@ -242,11 +258,4 @@ struct QuickEntrySheet: View {
   )
 }
 
-#Preview("Quick Entry Sheet - Activity") {
-  QuickEntrySheet(
-    defaultItemType: .activity,
-    currentUserId: UUID(),
-    listings: [],
-    onSave: { }
-  )
-}
+#endif

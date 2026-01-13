@@ -343,21 +343,6 @@ extension SearchResult {
   }
 }
 
-// MARK: - Activity Type Display Name
-
-extension ActivityType {
-  fileprivate var displayName: String {
-    switch self {
-    case .call: "Call"
-    case .email: "Email"
-    case .meeting: "Meeting"
-    case .showProperty: "Showing"
-    case .followUp: "Follow-up"
-    case .other: "Activity"
-    }
-  }
-}
-
 // MARK: - Search Result Collection Helpers
 
 extension [SearchResult] {
