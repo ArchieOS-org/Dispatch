@@ -48,21 +48,11 @@ struct QuickEntrySheet: View {
 
   var body: some View {
     NavigationStack {
-      Form {
-        typeSection
-        titleSection
-        if itemType == .activity {
-          activityTypeSection
-        }
-        if !listings.isEmpty {
-          listingSection
-        }
-        prioritySection
-      }
-      .navigationTitle("Quick Add")
-      #if os(iOS)
+      formContent
+        .navigationTitle("Quick Add")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-      #endif
+        #endif
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
             Button("Cancel") {
@@ -81,6 +71,94 @@ struct QuickEntrySheet: View {
     .presentationDetents([.medium])
     .presentationDragIndicator(.visible)
     #endif
+  }
+
+  // MARK: - Platform Form Content
+
+  @ViewBuilder
+  private var formContent: some View {
+    #if os(macOS)
+    macOSForm
+    #else
+    iOSForm
+    #endif
+  }
+
+  #if os(macOS)
+  private var macOSForm: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      LabeledContent("Type") {
+        Picker("Type", selection: $itemType) {
+          ForEach(QuickEntryItemType.allCases) { type in
+            Label(type.displayName, systemImage: type.icon)
+              .tag(type)
+          }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+      }
+
+      LabeledContent("Title") {
+        TextField("Title", text: $title, prompt: Text(titlePlaceholder))
+          .labelsHidden()
+          .textFieldStyle(.roundedBorder)
+      }
+
+      if itemType == .activity {
+        LabeledContent("Activity Type") {
+          Picker("Activity Type", selection: $activityType) {
+            ForEach(ActivityType.allCases, id: \.self) { type in
+              Text(type.displayName)
+                .tag(type)
+            }
+          }
+          .labelsHidden()
+        }
+      }
+
+      if !listings.isEmpty {
+        LabeledContent("Listing") {
+          Picker("Listing", selection: $selectedListing) {
+            Text("None").tag(nil as Listing?)
+            ForEach(listings) { listing in
+              Text(listing.address).tag(listing as Listing?)
+            }
+          }
+          .labelsHidden()
+        }
+      }
+
+      LabeledContent("Priority") {
+        Picker("Priority", selection: $priority) {
+          ForEach(Priority.allCases, id: \.self) { p in
+            HStack {
+              PriorityDot(priority: p)
+              Text(p.rawValue.capitalized)
+            }
+            .tag(p)
+          }
+        }
+        .labelsHidden()
+      }
+    }
+    .padding()
+  }
+  #endif
+
+  private var iOSForm: some View {
+    Form {
+      Section {
+        typePicker
+        titleField
+        if itemType == .activity {
+          activityTypePicker
+        }
+        if !listings.isEmpty {
+          listingPicker
+        }
+        priorityPicker
+      }
+    }
   }
 
   // MARK: Private
@@ -105,70 +183,53 @@ struct QuickEntrySheet: View {
     }
   }
 
-  // MARK: - Form Sections
+  // MARK: - Form Rows
 
-  private var typeSection: some View {
-    Section {
-      Picker("Type", selection: $itemType) {
-        ForEach(QuickEntryItemType.allCases) { type in
-          Label(type.displayName, systemImage: type.icon)
-            .tag(type)
-        }
+  private var typePicker: some View {
+    Picker("Type", selection: $itemType) {
+      ForEach(QuickEntryItemType.allCases) { type in
+        Label(type.displayName, systemImage: type.icon)
+          .tag(type)
       }
-      .pickerStyle(.segmented)
     }
+    .pickerStyle(.segmented)
   }
 
-  private var titleSection: some View {
-    Section {
-      TextField(titlePlaceholder, text: $title)
-    } header: {
-      Text("Title")
-    } footer: {
-      if title.trimmingCharacters(in: .whitespaces).isEmpty {
-        Text("Required")
-          .foregroundColor(DS.Colors.destructive)
-      }
-    }
+  private var titleField: some View {
+    TextField("Title", text: $title, prompt: Text(titlePlaceholder))
   }
 
-  private var activityTypeSection: some View {
-    Section("Activity Type") {
-      Picker("Activity Type", selection: $activityType) {
-        ForEach(ActivityType.allCases, id: \.self) { type in
-          Text(type.displayName)
-            .tag(type)
-        }
+  private var activityTypePicker: some View {
+    Picker("Activity Type", selection: $activityType) {
+      ForEach(ActivityType.allCases, id: \.self) { type in
+        Text(type.displayName)
+          .tag(type)
       }
-      .pickerStyle(.menu)
     }
+    .pickerStyle(.menu)
   }
 
-  private var listingSection: some View {
-    Section("Listing") {
-      Picker("Listing", selection: $selectedListing) {
-        Text("None").tag(nil as Listing?)
-        ForEach(listings) { listing in
-          Text(listing.address).tag(listing as Listing?)
-        }
+  private var listingPicker: some View {
+    Picker("Listing", selection: $selectedListing) {
+      Text("None").tag(nil as Listing?)
+      ForEach(listings) { listing in
+        Text(listing.address).tag(listing as Listing?)
       }
-      .pickerStyle(.menu)
     }
+    .pickerStyle(.menu)
   }
 
-  private var prioritySection: some View {
-    Section("Priority") {
-      Picker("Priority", selection: $priority) {
-        ForEach(Priority.allCases, id: \.self) { priority in
-          HStack {
-            PriorityDot(priority: priority)
-            Text(priority.rawValue.capitalized)
-          }
-          .tag(priority)
+  private var priorityPicker: some View {
+    Picker("Priority", selection: $priority) {
+      ForEach(Priority.allCases, id: \.self) { priority in
+        HStack {
+          PriorityDot(priority: priority)
+          Text(priority.rawValue.capitalized)
         }
+        .tag(priority)
       }
-      .pickerStyle(.menu)
     }
+    .pickerStyle(.menu)
   }
 
   // MARK: - Actions
