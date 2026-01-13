@@ -236,6 +236,56 @@ final class SyncManager: ObservableObject {
     debugLog.log("  → Also reset notes watermark", category: .sync)
   }
 
+  /// Refreshes notes for a specific parent (listing, task, or activity).
+  /// Call this when viewing a detail screen to ensure notes are up-to-date.
+  /// This is lightweight - only fetches notes for the specific parent.
+  @MainActor
+  func refreshNotesForParent(parentId: UUID, parentType: ParentType) async {
+    // Skip if a full sync is already in progress (it will fetch notes anyway)
+    guard !isSyncing else { return }
+    guard modelContainer != nil else { return }
+
+    debugLog.log("refreshNotesForParent(\(parentType.rawValue), \(parentId))", category: .sync)
+
+    do {
+      // Fetch notes for this parent from server
+      let dtos: [NoteDTO] = try await supabase
+        .from("notes")
+        .select()
+        .eq("parent_id", value: parentId.uuidString)
+        .eq("parent_type", value: parentType.rawValue)
+        .execute()
+        .value
+
+      debugLog.log("  Fetched \(dtos.count) notes for parent", category: .sync)
+
+      // Get context AFTER async work to avoid stale reference
+      guard let context = modelContainer?.mainContext else { return }
+
+      // Get local note IDs for this parent
+      let localDescriptor = FetchDescriptor<Note>(predicate: #Predicate {
+        $0.parentId == parentId && $0.parentType == parentType
+      })
+      let localNotes = try context.fetch(localDescriptor)
+      let localIds = Set(localNotes.map { $0.id })
+
+      // Apply each note (handles insert/update)
+      var insertedCount = 0
+      var updatedCount = 0
+      for dto in dtos {
+        let wasNew = !localIds.contains(dto.id)
+        try applyRemoteNote(dto: dto, source: .syncDown, context: context)
+        if wasNew { insertedCount += 1 } else { updatedCount += 1 }
+      }
+
+      if insertedCount > 0 || updatedCount > 0 {
+        debugLog.log("  ✓ Applied \(insertedCount) new, \(updatedCount) updated notes", category: .sync)
+      }
+    } catch {
+      debugLog.error("refreshNotesForParent failed: \(error.localizedDescription)")
+    }
+  }
+
   /// Performs a full sync with orphan reconciliation, regardless of lastSyncTime.
   /// This is useful for debugging or when you know data has been deleted on the server.
   func fullSync() async {

@@ -43,6 +43,10 @@ struct ListingDetailView: View {
     } message: {
       Text("This note will be permanently deleted.")
     }
+    .task {
+      // Refresh notes from server when viewing listing
+      await syncManager.refreshNotesForParent(parentId: listing.id, parentType: .listing)
+    }
   }
 
   // MARK: Private

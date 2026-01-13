@@ -32,6 +32,11 @@ struct WorkItemDetailView: View {
     StandardScreen(title: item.title, layout: .column, scroll: .automatic) {
       content
     }
+    .task {
+      // Refresh notes for this work item when view appears
+      let parentType: ParentType = item.isTask ? .task : .activity
+      await syncManager.refreshNotesForParent(parentId: item.id, parentType: parentType)
+    }
   }
 
   // MARK: Private
@@ -47,6 +52,7 @@ struct WorkItemDetailView: View {
 
   /// Environment
   @EnvironmentObject private var lensState: LensState
+  @EnvironmentObject private var syncManager: SyncManager
 
   private var content: some View {
     VStack(alignment: .leading, spacing: DS.Spacing.xl) {
