@@ -46,7 +46,7 @@ struct BottomToolbar: View {
   var onNew: (() -> Void)?
   var onSearch: (() -> Void)?
 
-  // Detail context actions
+  /// Detail context actions
   var onDelete: (() -> Void)?
 
   var body: some View {

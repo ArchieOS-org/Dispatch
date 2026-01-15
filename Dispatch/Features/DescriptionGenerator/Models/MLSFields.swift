@@ -87,11 +87,11 @@ struct MLSFields: Equatable {
   /// Whether all required fields have content
   var isComplete: Bool {
     !propertyType.isEmpty &&
-    !squareFootage.isEmpty &&
-    !bedrooms.isEmpty &&
-    !bathrooms.isEmpty &&
-    !publicRemarks.isEmpty &&
-    !headline.isEmpty
+      !squareFootage.isEmpty &&
+      !bedrooms.isEmpty &&
+      !bathrooms.isEmpty &&
+      !publicRemarks.isEmpty &&
+      !headline.isEmpty
   }
 
   /// Format all fields for bulk copy

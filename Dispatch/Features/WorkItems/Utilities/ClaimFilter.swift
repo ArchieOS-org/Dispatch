@@ -8,6 +8,8 @@
 
 import Foundation
 
+// MARK: - AssignmentFilter
+
 /// Filter options for segmenting work items by assignment.
 /// Used in TaskListView and ActivityListView segmented controls.
 enum AssignmentFilter: String, CaseIterable, Identifiable {

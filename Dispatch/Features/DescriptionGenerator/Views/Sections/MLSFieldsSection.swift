@@ -107,68 +107,6 @@ struct MLSFieldsSection: View {
     }
   }
 
-  @ViewBuilder
-  private func fieldGroupSection(_ group: FieldGroup) -> some View {
-    DisclosureGroup(
-      isExpanded: Binding(
-        get: { expandedSections.contains(group) },
-        set: { isExpanded in
-          if isExpanded {
-            expandedSections.insert(group)
-          } else {
-            expandedSections.remove(group)
-          }
-        }
-      )
-    ) {
-      fieldGroupContent(group)
-        .padding(.top, DS.Spacing.sm)
-    } label: {
-      HStack(spacing: DS.Spacing.sm) {
-        Image(systemName: group.icon)
-          .font(.system(size: 14))
-          .foregroundStyle(DS.Colors.Text.secondary)
-          .frame(width: 20)
-
-        Text(group.title)
-          .font(DS.Typography.callout)
-          .fontWeight(.medium)
-          .foregroundStyle(DS.Colors.Text.primary)
-
-        Spacer()
-
-        // Field count badge
-        Text("\(fieldCount(for: group))")
-          .font(DS.Typography.captionSecondary)
-          .foregroundStyle(DS.Colors.Text.tertiary)
-          .padding(.horizontal, DS.Spacing.xs)
-          .padding(.vertical, 2)
-          .background(DS.Colors.Background.secondary)
-          .clipShape(Capsule())
-      }
-    }
-    .tint(DS.Colors.Text.secondary)
-  }
-
-  @ViewBuilder
-  private func fieldGroupContent(_ group: FieldGroup) -> some View {
-    VStack(spacing: DS.Spacing.sm) {
-      switch group {
-      case .propertyDetails:
-        propertyDetailsFields
-
-      case .features:
-        featuresFields
-
-      case .descriptions:
-        descriptionsFields
-
-      case .marketing:
-        marketingFields
-      }
-    }
-  }
-
   // MARK: - Property Details Fields
 
   @ViewBuilder
@@ -316,14 +254,76 @@ struct MLSFieldsSection: View {
     )
   }
 
+  @ViewBuilder
+  private func fieldGroupSection(_ group: FieldGroup) -> some View {
+    DisclosureGroup(
+      isExpanded: Binding(
+        get: { expandedSections.contains(group) },
+        set: { isExpanded in
+          if isExpanded {
+            expandedSections.insert(group)
+          } else {
+            expandedSections.remove(group)
+          }
+        }
+      )
+    ) {
+      fieldGroupContent(group)
+        .padding(.top, DS.Spacing.sm)
+    } label: {
+      HStack(spacing: DS.Spacing.sm) {
+        Image(systemName: group.icon)
+          .font(.system(size: 14))
+          .foregroundStyle(DS.Colors.Text.secondary)
+          .frame(width: 20)
+
+        Text(group.title)
+          .font(DS.Typography.callout)
+          .fontWeight(.medium)
+          .foregroundStyle(DS.Colors.Text.primary)
+
+        Spacer()
+
+        // Field count badge
+        Text("\(fieldCount(for: group))")
+          .font(DS.Typography.captionSecondary)
+          .foregroundStyle(DS.Colors.Text.tertiary)
+          .padding(.horizontal, DS.Spacing.xs)
+          .padding(.vertical, 2)
+          .background(DS.Colors.Background.secondary)
+          .clipShape(Capsule())
+      }
+    }
+    .tint(DS.Colors.Text.secondary)
+  }
+
+  @ViewBuilder
+  private func fieldGroupContent(_ group: FieldGroup) -> some View {
+    VStack(spacing: DS.Spacing.sm) {
+      switch group {
+      case .propertyDetails:
+        propertyDetailsFields
+
+      case .features:
+        featuresFields
+
+      case .descriptions:
+        descriptionsFields
+
+      case .marketing:
+        marketingFields
+      }
+    }
+  }
+
   // MARK: - Helpers
 
   private func fieldCount(for group: FieldGroup) -> Int {
     switch group {
-    case .propertyDetails: return 9
-    case .features: return 6
-    case .descriptions: return 3
-    case .marketing: return 2
+    case .propertyDetails: 9
+    case .features: 6
+    case .descriptions: 3
+    case .marketing: 2
     }
   }
 
@@ -371,6 +371,8 @@ private enum FieldGroup: String, CaseIterable {
   case features
   case descriptions
   case marketing
+
+  // MARK: Internal
 
   var title: String {
     switch self {

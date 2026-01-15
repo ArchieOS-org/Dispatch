@@ -72,11 +72,11 @@ enum AIServiceError: LocalizedError {
   var errorDescription: String? {
     switch self {
     case .emptyInput:
-      return "Please provide property information to generate a description."
+      "Please provide property information to generate a description."
     case .generationFailed(let reason):
-      return "Generation failed: \(reason)"
+      "Generation failed: \(reason)"
     case .networkUnavailable:
-      return "Unable to connect to AI service. Please check your connection."
+      "Unable to connect to AI service. Please check your connection."
     }
   }
 }
@@ -121,8 +121,8 @@ final class MockAIService: AIServiceProtocol, Sendable {
   /// Generate dual A/B outputs for comparison.
   /// PHASE 3: Replace with real Vercel AI backend
   func generateDualOutput(
-    photos: [UploadedPhoto],
-    documents: [UploadedDocument],
+    photos _: [UploadedPhoto],
+    documents _: [UploadedDocument],
     propertyDetails: PropertyDetails
   ) async throws -> (outputA: GeneratedOutput, outputB: GeneratedOutput) {
     // PHASE 3: Replace with real API call to Vercel AI backend
@@ -319,51 +319,51 @@ final class MockAIService: AIServiceProtocol, Sendable {
     switch propertyType?.lowercased() {
     case "sale":
       return """
-      Welcome to \(address), a stunning residence \(locationPhrase) that perfectly blends modern elegance with timeless comfort.
+        Welcome to \(address), a stunning residence \(locationPhrase) that perfectly blends modern elegance with timeless comfort.
 
-      Step inside to discover an open-concept living space bathed in natural light, featuring hardwood floors throughout and designer finishes at every turn. The gourmet kitchen boasts premium appliances, quartz countertops, and a spacious island perfect for entertaining.
+        Step inside to discover an open-concept living space bathed in natural light, featuring hardwood floors throughout and designer finishes at every turn. The gourmet kitchen boasts premium appliances, quartz countertops, and a spacious island perfect for entertaining.
 
-      The primary suite offers a serene retreat with a spa-inspired ensuite bathroom and generous walk-in closet. Additional bedrooms provide flexibility for family, guests, or a home office.
+        The primary suite offers a serene retreat with a spa-inspired ensuite bathroom and generous walk-in closet. Additional bedrooms provide flexibility for family, guests, or a home office.
 
-      Outside, enjoy your private outdoor space ideal for morning coffee or evening gatherings. This home represents an exceptional opportunity for discerning buyers seeking quality, location, and lifestyle.
+        Outside, enjoy your private outdoor space ideal for morning coffee or evening gatherings. This home represents an exceptional opportunity for discerning buyers seeking quality, location, and lifestyle.
 
-      Schedule your private showing today.
-      """
+        Schedule your private showing today.
+        """
 
     case "lease", "rental":
       return """
-      Now available for lease: \(address), a beautifully appointed residence \(locationPhrase).
+        Now available for lease: \(address), a beautifully appointed residence \(locationPhrase).
 
-      This move-in ready home features an inviting open floor plan with abundant natural light and contemporary finishes throughout. The fully equipped kitchen includes modern appliances and ample storage, while the living areas offer the perfect setting for both relaxation and entertaining.
+        This move-in ready home features an inviting open floor plan with abundant natural light and contemporary finishes throughout. The fully equipped kitchen includes modern appliances and ample storage, while the living areas offer the perfect setting for both relaxation and entertaining.
 
-      The comfortable bedrooms provide peaceful retreats, with the primary suite featuring its own ensuite bathroom. Enjoy the convenience of in-unit laundry and dedicated parking.
+        The comfortable bedrooms provide peaceful retreats, with the primary suite featuring its own ensuite bathroom. Enjoy the convenience of in-unit laundry and dedicated parking.
 
-      Ideally situated near shopping, dining, and major transit routes, this property offers the perfect combination of comfort and convenience.
+        Ideally situated near shopping, dining, and major transit routes, this property offers the perfect combination of comfort and convenience.
 
-      Contact us today to schedule a viewing.
-      """
+        Contact us today to schedule a viewing.
+        """
 
     case "pre-listing":
       return """
-      Coming Soon: \(address), an exceptional property \(locationPhrase).
+        Coming Soon: \(address), an exceptional property \(locationPhrase).
 
-      This highly anticipated listing will offer buyers a rare opportunity to own a meticulously maintained home in one of the area's most desirable locations. With thoughtful updates throughout and move-in ready condition, this property is expected to generate significant interest.
+        This highly anticipated listing will offer buyers a rare opportunity to own a meticulously maintained home in one of the area's most desirable locations. With thoughtful updates throughout and move-in ready condition, this property is expected to generate significant interest.
 
-      Pre-qualified buyers are encouraged to register their interest early for priority viewing access.
+        Pre-qualified buyers are encouraged to register their interest early for priority viewing access.
 
-      Stay tuned for full details and photos. This one won't last long.
-      """
+        Stay tuned for full details and photos. This one won't last long.
+        """
 
     default:
       return """
-      Discover \(address), a remarkable property \(locationPhrase) offering exceptional value and lifestyle appeal.
+        Discover \(address), a remarkable property \(locationPhrase) offering exceptional value and lifestyle appeal.
 
-      This well-maintained home presents an ideal opportunity for those seeking quality living in a prime location. The thoughtfully designed layout maximizes space and natural light, while quality finishes throughout reflect pride of ownership.
+        This well-maintained home presents an ideal opportunity for those seeking quality living in a prime location. The thoughtfully designed layout maximizes space and natural light, while quality finishes throughout reflect pride of ownership.
 
-      Whether you're looking for a place to call home or an investment opportunity, this property deserves your attention.
+        Whether you're looking for a place to call home or an investment opportunity, this property deserves your attention.
 
-      Contact us today for more information or to arrange a private showing.
-      """
+        Contact us today for more information or to arrange a private showing.
+        """
     }
   }
 }

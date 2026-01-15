@@ -61,6 +61,24 @@ struct OutputComparisonSection: View {
   }
 
   @ViewBuilder
+  private var emptyState: some View {
+    VStack(spacing: DS.Spacing.md) {
+      Image(systemName: "sparkles")
+        .font(.system(size: 32))
+        .foregroundStyle(DS.Colors.Text.tertiary)
+
+      Text("Generate descriptions to compare versions")
+        .font(DS.Typography.body)
+        .foregroundStyle(DS.Colors.Text.secondary)
+        .multilineTextAlignment(.center)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, DS.Spacing.xxl)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("No descriptions yet. Generate descriptions to compare versions.")
+  }
+
+  @ViewBuilder
   private func comparisonContent(outputA: GeneratedOutput, outputB: GeneratedOutput) -> some View {
     // Stacked layout - avoids GeometryReader issues in ScrollView
     // Side-by-side handled at parent level via platform layouts
@@ -84,26 +102,9 @@ struct OutputComparisonSection: View {
     .frame(maxWidth: .infinity)
   }
 
-  @ViewBuilder
-  private var emptyState: some View {
-    VStack(spacing: DS.Spacing.md) {
-      Image(systemName: "sparkles")
-        .font(.system(size: 32))
-        .foregroundStyle(DS.Colors.Text.tertiary)
-
-      Text("Generate descriptions to compare versions")
-        .font(DS.Typography.body)
-        .foregroundStyle(DS.Colors.Text.secondary)
-        .multilineTextAlignment(.center)
-    }
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, DS.Spacing.xxl)
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel("No descriptions yet. Generate descriptions to compare versions.")
-  }
 }
 
-// MARK: - Responsive Output Comparison
+// MARK: - ResponsiveOutputComparison
 
 /// Responsive wrapper that handles layout switching automatically.
 struct ResponsiveOutputComparison: View {
@@ -126,7 +127,7 @@ struct ResponsiveOutputComparison: View {
       }
       #else
       // iOS: Based on size class
-      if horizontalSizeClass == .regular && geometry.size.width > 600 {
+      if horizontalSizeClass == .regular, geometry.size.width > 600 {
         sideBySideLayout
       } else {
         stackedLayout

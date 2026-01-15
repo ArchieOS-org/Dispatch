@@ -184,11 +184,12 @@ struct PhotoUploadSection: View {
           .onAppear { draggingPhoto = photo }
         }
         .dropDestination(for: String.self) { items, _ in
-          guard let droppedIdString = items.first,
-                let droppedId = UUID(uuidString: droppedIdString),
-                let sourceIndex = photos.firstIndex(where: { $0.id == droppedId }),
-                let destinationIndex = photos.firstIndex(where: { $0.id == photo.id }),
-                sourceIndex != destinationIndex
+          guard
+            let droppedIdString = items.first,
+            let droppedId = UUID(uuidString: droppedIdString),
+            let sourceIndex = photos.firstIndex(where: { $0.id == droppedId }),
+            let destinationIndex = photos.firstIndex(where: { $0.id == photo.id }),
+            sourceIndex != destinationIndex
           else { return false }
 
           withAnimation(.easeInOut(duration: 0.2)) {
@@ -275,7 +276,7 @@ struct PhotoUploadSection: View {
 // MARK: - Preview Helpers
 
 private func createSamplePhotos() -> [UploadedPhoto] {
-  (0..<5).map { index in
+  (0 ..< 5).map { index in
     UploadedPhoto(
       imageData: createSampleImageData(hue: Double(index) * 0.2),
       filename: "photo_\(index + 1).jpg",

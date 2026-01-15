@@ -44,15 +44,15 @@ struct WorkItemDetailView: View {
 
   // MARK: Private
 
-  @State private var showAssigneePicker = false
-  @State private var selectedAssigneeIds: Set<UUID> = []
-
   private static let detailDateFormatter: DateFormatter = {
     let formatter = DateFormatter()
     formatter.dateStyle = .medium
     formatter.timeStyle = .short
     return formatter
   }()
+
+  @State private var showAssigneePicker = false
+  @State private var selectedAssigneeIds: Set<UUID> = []
 
   /// Environment
   @EnvironmentObject private var lensState: LensState
@@ -269,21 +269,21 @@ struct WorkItemDetailView: View {
       )
       .navigationTitle("Assign Users")
       #if os(iOS)
-      .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.inline)
       #endif
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") {
-            showAssigneePicker = false
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("Cancel") {
+              showAssigneePicker = false
+            }
+          }
+          ToolbarItem(placement: .confirmationAction) {
+            Button("Done") {
+              showAssigneePicker = false
+              onAssigneesChanged?(Array(selectedAssigneeIds))
+            }
           }
         }
-        ToolbarItem(placement: .confirmationAction) {
-          Button("Done") {
-            showAssigneePicker = false
-            onAssigneesChanged?(Array(selectedAssigneeIds))
-          }
-        }
-      }
     }
     #if os(macOS)
     .frame(minWidth: 300, minHeight: 400)
@@ -329,7 +329,12 @@ struct WorkItemDetailView: View {
     let ids = [UUID(), UUID(), UUID()]
     let names = ["Alice Smith", "Bob Jones", "Carol White"]
     for (id, name) in zip(ids, names) {
-      dict[id] = User(id: id, name: name, email: "\(name.lowercased().replacingOccurrences(of: " ", with: "."))@example.com", userType: .realtor)
+      dict[id] = User(
+        id: id,
+        name: name,
+        email: "\(name.lowercased().replacingOccurrences(of: " ", with: "."))@example.com",
+        userType: .realtor
+      )
     }
     return dict
   }()

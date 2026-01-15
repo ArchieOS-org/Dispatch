@@ -42,6 +42,24 @@ enum DocumentType: String, CaseIterable, Identifiable {
 /// PHASE 3: AI will extract text and information from documents.
 struct UploadedDocument: Identifiable, Equatable {
 
+  // MARK: Lifecycle
+
+  // MARK: - Initialization
+
+  init(
+    id: UUID = UUID(),
+    filename: String,
+    fileType: DocumentType,
+    data: Data
+  ) {
+    self.id = id
+    self.filename = filename
+    self.fileType = fileType
+    self.data = data
+  }
+
+  // MARK: Internal
+
   // MARK: - Properties
 
   /// Unique identifier for the document
@@ -63,26 +81,12 @@ struct UploadedDocument: Identifiable, Equatable {
     ByteCountFormatter.string(fromByteCount: Int64(data.count), countStyle: .file)
   }
 
-  // MARK: - Initialization
-
-  init(
-    id: UUID = UUID(),
-    filename: String,
-    fileType: DocumentType,
-    data: Data
-  ) {
-    self.id = id
-    self.filename = filename
-    self.fileType = fileType
-    self.data = data
-  }
-
   // MARK: - Equatable
 
-  static func == (lhs: UploadedDocument, rhs: UploadedDocument) -> Bool {
+  static func ==(lhs: UploadedDocument, rhs: UploadedDocument) -> Bool {
     lhs.id == rhs.id &&
-    lhs.filename == rhs.filename &&
-    lhs.fileType == rhs.fileType &&
-    lhs.data == rhs.data
+      lhs.filename == rhs.filename &&
+      lhs.fileType == rhs.fileType &&
+      lhs.data == rhs.data
   }
 }

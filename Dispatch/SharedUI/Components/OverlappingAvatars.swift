@@ -39,17 +39,17 @@ struct OverlappingAvatars: View {
       avatarStack
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-        #if os(macOS)
+      #if os(macOS)
         .onHover { isHovered = $0 }
         .popover(isPresented: $isHovered, arrowEdge: .bottom) {
           userListPopover
         }
-        #else
+      #else
         .onTapGesture { showPopover = true }
         .popover(isPresented: $showPopover) {
           userListPopover
         }
-        #endif
+      #endif
     }
   }
 
@@ -86,12 +86,6 @@ struct OverlappingAvatars: View {
     }
   }
 
-  @ViewBuilder
-  private func avatarView(for userId: UUID) -> some View {
-    let user = users[userId]
-    UserAvatar(user: user, size: size)
-  }
-
   private var overflowBadge: some View {
     ZStack {
       Circle()
@@ -121,17 +115,6 @@ struct OverlappingAvatars: View {
     .frame(minWidth: 180)
   }
 
-  @ViewBuilder
-  private func userRow(for userId: UUID) -> some View {
-    let user = users[userId]
-    HStack(spacing: DS.Spacing.sm) {
-      UserAvatar(user: user, size: .small)
-      Text(user?.name ?? "Unknown user")
-        .font(DS.Typography.body)
-        .foregroundStyle(user != nil ? DS.Colors.Text.primary : DS.Colors.Text.tertiary)
-    }
-  }
-
   private var accessibilityDescription: String {
     let names = userIds.compactMap { users[$0]?.name }
     let unknownCount = userIds.count - names.count
@@ -158,6 +141,24 @@ struct OverlappingAvatars: View {
 
     return description
   }
+
+  @ViewBuilder
+  private func avatarView(for userId: UUID) -> some View {
+    let user = users[userId]
+    UserAvatar(user: user, size: size)
+  }
+
+  @ViewBuilder
+  private func userRow(for userId: UUID) -> some View {
+    let user = users[userId]
+    HStack(spacing: DS.Spacing.sm) {
+      UserAvatar(user: user, size: .small)
+      Text(user?.name ?? "Unknown user")
+        .font(DS.Typography.body)
+        .foregroundStyle(user != nil ? DS.Colors.Text.primary : DS.Colors.Text.tertiary)
+    }
+  }
+
 }
 
 // MARK: - Preview
@@ -168,7 +169,12 @@ struct OverlappingAvatars: View {
     let ids = [UUID(), UUID(), UUID(), UUID(), UUID()]
     let names = ["Alice Smith", "Bob Jones", "Carol White", "Dave Brown", "Eve Green"]
     for (id, name) in zip(ids, names) {
-      dict[id] = User(id: id, name: name, email: "\(name.lowercased().replacingOccurrences(of: " ", with: "."))@example.com", userType: .realtor)
+      dict[id] = User(
+        id: id,
+        name: name,
+        email: "\(name.lowercased().replacingOccurrences(of: " ", with: "."))@example.com",
+        userType: .realtor
+      )
     }
     return dict
   }()

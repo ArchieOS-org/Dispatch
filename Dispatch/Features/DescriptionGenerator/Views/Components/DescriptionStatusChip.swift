@@ -14,8 +14,6 @@ import SwiftUI
 /// Uses semantic colors from DS.Colors and follows platform conventions.
 struct DescriptionStatusChip: View {
 
-  // MARK: Internal
-
   let status: DescriptionStatus
 
   var body: some View {

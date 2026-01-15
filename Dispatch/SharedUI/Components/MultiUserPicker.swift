@@ -61,7 +61,7 @@ struct MultiUserPicker: View {
     }
   }
 
-  private func assignToMeButton(user: User) -> some View {
+  private func assignToMeButton(user _: User) -> some View {
     Button {
       selectedUserIds.insert(currentUserId)
     } label: {

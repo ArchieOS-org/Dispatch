@@ -36,9 +36,9 @@ struct DescriptionGeneratorView: View {
     // NavigationStacks causes blank screen rendering issues.
     content
       .navigationTitle("Description Generator")
-      #if os(iOS)
+    #if os(iOS)
       .navigationBarTitleDisplayMode(.large)
-      #endif
+    #endif
       .task {
         await loadPreselectedListing()
         await loadListings()
@@ -63,7 +63,7 @@ struct DescriptionGeneratorView: View {
       macOSLayout
       #else
       // iOS/iPadOS: Adaptive based on size class and orientation
-      if horizontalSizeClass == .regular && geometry.size.width > 700 {
+      if horizontalSizeClass == .regular, geometry.size.width > 700 {
         iPadLandscapeLayout
       } else {
         mobileLayout
@@ -196,9 +196,9 @@ struct DescriptionGeneratorView: View {
         if state.isLoading {
           ProgressView()
             .controlSize(.small)
-            #if os(iOS)
+          #if os(iOS)
             .tint(.white)
-            #endif
+          #endif
         }
         Text(state.isLoading ? "Generating..." : "Generate Descriptions")
           .font(DS.Typography.headline)
@@ -307,6 +307,36 @@ struct DescriptionGeneratorView: View {
     .padding(DS.Spacing.cardPadding)
     .background(DS.Colors.Background.card)
     .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusCard))
+  }
+
+  // MARK: - Output Placeholder
+
+  @ViewBuilder
+  private var outputPlaceholder: some View {
+    VStack(spacing: DS.Spacing.lg) {
+      Image(systemName: "sparkles")
+        .font(.system(size: 48))
+        .foregroundStyle(DS.Colors.Text.tertiary)
+
+      Text("Generate a description to see output here")
+        .font(DS.Typography.body)
+        .foregroundStyle(DS.Colors.Text.secondary)
+        .multilineTextAlignment(.center)
+
+      Text("Add photos and property details, then tap Generate")
+        .font(DS.Typography.caption)
+        .foregroundStyle(DS.Colors.Text.tertiary)
+        .multilineTextAlignment(.center)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, DS.Spacing.xxxl)
+    .padding(.horizontal, DS.Spacing.lg)
+    .background(DS.Colors.Background.card)
+    .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusCard))
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(
+      "Output placeholder. Generate a description to see output here. Add photos and property details, then tap Generate."
+    )
   }
 
   @ViewBuilder
@@ -442,34 +472,6 @@ struct DescriptionGeneratorView: View {
     .frame(maxWidth: .infinity)
   }
 
-  // MARK: - Output Placeholder
-
-  @ViewBuilder
-  private var outputPlaceholder: some View {
-    VStack(spacing: DS.Spacing.lg) {
-      Image(systemName: "sparkles")
-        .font(.system(size: 48))
-        .foregroundStyle(DS.Colors.Text.tertiary)
-
-      Text("Generate a description to see output here")
-        .font(DS.Typography.body)
-        .foregroundStyle(DS.Colors.Text.secondary)
-        .multilineTextAlignment(.center)
-
-      Text("Add photos and property details, then tap Generate")
-        .font(DS.Typography.caption)
-        .foregroundStyle(DS.Colors.Text.tertiary)
-        .multilineTextAlignment(.center)
-    }
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, DS.Spacing.xxxl)
-    .padding(.horizontal, DS.Spacing.lg)
-    .background(DS.Colors.Background.card)
-    .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusCard))
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel("Output placeholder. Generate a description to see output here. Add photos and property details, then tap Generate.")
-  }
-
   // MARK: - Error View
 
   @ViewBuilder
@@ -547,7 +549,6 @@ struct DescriptionGeneratorView: View {
 
 #Preview("Description Generator - With Output") {
   PreviewShell { _ in
-    let view = DescriptionGeneratorView()
-    return view
+    DescriptionGeneratorView()
   }
 }

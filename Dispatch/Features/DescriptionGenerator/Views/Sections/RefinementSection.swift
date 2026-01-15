@@ -130,28 +130,6 @@ struct RefinementSection: View {
   }
 
   @ViewBuilder
-  private func suggestionChip(_ text: String) -> some View {
-    Button {
-      prompt = text
-    } label: {
-      Text(text)
-        .font(DS.Typography.caption)
-        .foregroundStyle(DS.Colors.Text.primary)
-        .padding(.horizontal, DS.Spacing.sm)
-        .padding(.vertical, DS.Spacing.xs)
-        .background(DS.Colors.Background.secondary)
-        .clipShape(Capsule())
-        .overlay(
-          Capsule()
-            .stroke(DS.Colors.border, lineWidth: 1)
-        )
-    }
-    .buttonStyle(.plain)
-    .disabled(!hasSelectedOutput)
-    .accessibilityLabel("Use suggestion: \(text)")
-  }
-
-  @ViewBuilder
   private var submitButton: some View {
     Button {
       onSubmit?()
@@ -160,9 +138,9 @@ struct RefinementSection: View {
         if isRefining {
           ProgressView()
             .controlSize(.small)
-            #if os(iOS)
+          #if os(iOS)
             .tint(.white)
-            #endif
+          #endif
         }
         Text(isRefining ? "Refining..." : "Refine")
           .font(DS.Typography.headline)
@@ -184,8 +162,8 @@ struct RefinementSection: View {
 
   private var canSubmit: Bool {
     hasSelectedOutput &&
-    !prompt.trimmingCharacters(in: .whitespaces).isEmpty &&
-    !isRefining
+      !prompt.trimmingCharacters(in: .whitespaces).isEmpty &&
+      !isRefining
   }
 
   @ViewBuilder
@@ -221,6 +199,28 @@ struct RefinementSection: View {
       }
     }
     .tint(DS.Colors.Text.secondary)
+  }
+
+  @ViewBuilder
+  private func suggestionChip(_ text: String) -> some View {
+    Button {
+      prompt = text
+    } label: {
+      Text(text)
+        .font(DS.Typography.caption)
+        .foregroundStyle(DS.Colors.Text.primary)
+        .padding(.horizontal, DS.Spacing.sm)
+        .padding(.vertical, DS.Spacing.xs)
+        .background(DS.Colors.Background.secondary)
+        .clipShape(Capsule())
+        .overlay(
+          Capsule()
+            .stroke(DS.Colors.border, lineWidth: 1)
+        )
+    }
+    .buttonStyle(.plain)
+    .disabled(!hasSelectedOutput)
+    .accessibilityLabel("Use suggestion: \(text)")
   }
 
   @ViewBuilder
@@ -265,12 +265,12 @@ struct FlowLayout: Layout {
 
   var spacing: CGFloat
 
-  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) -> CGSize {
     let result = arrange(proposal: proposal, subviews: subviews)
     return result.size
   }
 
-  func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+  func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
     let arrangement = arrange(proposal: proposal, subviews: subviews)
 
     for (index, subview) in subviews.enumerated() {
@@ -300,7 +300,7 @@ struct FlowLayout: Layout {
     for subview in subviews {
       let size = subview.sizeThatFits(.unspecified)
 
-      if currentX + size.width > maxWidth && currentX > 0 {
+      if currentX + size.width > maxWidth, currentX > 0 {
         currentX = 0
         currentY += rowHeight + spacing
         rowHeight = 0

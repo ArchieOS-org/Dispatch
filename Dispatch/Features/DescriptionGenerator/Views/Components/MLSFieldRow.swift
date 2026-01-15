@@ -131,7 +131,7 @@ struct MLSFieldRow: View {
 
     #if canImport(UIKit)
     UIPasteboard.general.string = value
-    // Haptic feedback on iOS
+    /// Haptic feedback on iOS
     let generator = UIImpactFeedbackGenerator(style: .light)
     generator.impactOccurred()
     // VoiceOver announcement
@@ -157,7 +157,7 @@ struct MLSFieldRow: View {
   }
 }
 
-// MARK: - Compact MLS Field Row
+// MARK: - MLSFieldRowCompact
 
 /// Compact version of MLSFieldRow for inline display without editing.
 struct MLSFieldRowCompact: View {

@@ -246,10 +246,10 @@ struct DescriptionOutputView: View {
   PreviewShell { _ in
     let state = DescriptionGeneratorState()
     state.generatedDescription = """
-    Welcome to 123 Main Street, a stunning residence in the heart of downtown that perfectly blends modern elegance with timeless comfort.
+      Welcome to 123 Main Street, a stunning residence in the heart of downtown that perfectly blends modern elegance with timeless comfort.
 
-    Step inside to discover an open-concept living space bathed in natural light, featuring hardwood floors throughout and designer finishes at every turn.
-    """
+      Step inside to discover an open-concept living space bathed in natural light, featuring hardwood floors throughout and designer finishes at every turn.
+      """
     state.showingOutput = true
     state.status = .draft
 

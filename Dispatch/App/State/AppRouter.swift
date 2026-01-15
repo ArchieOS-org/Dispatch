@@ -38,7 +38,7 @@ enum AppRoute: Hashable, Sendable {
   case realtorsList
   case settingsRoot
 
-  // Feature routes (full-view, not sheet)
+  /// Feature routes (full-view, not sheet)
   case descriptionGenerator(listingId: UUID?)
 }
 

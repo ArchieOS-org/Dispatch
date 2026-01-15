@@ -158,7 +158,7 @@ struct WorkItemRow: View {
 
     // Assignee description
     let assigneeNames = item.assigneeUserIds.compactMap { userLookup[$0]?.name }
-    if assigneeNames.isEmpty && item.assigneeUserIds.isEmpty {
+    if assigneeNames.isEmpty, item.assigneeUserIds.isEmpty {
       parts.append("Unassigned")
     } else if assigneeNames.isEmpty {
       parts.append("Assigned to \(item.assigneeUserIds.count) unknown user\(item.assigneeUserIds.count == 1 ? "" : "s")")
@@ -185,7 +185,12 @@ struct WorkItemRow: View {
     let ids = [UUID(), UUID(), UUID(), UUID(), UUID()]
     let names = ["Alice Smith", "Bob Jones", "Carol White", "Dave Brown", "Eve Green"]
     for (id, name) in zip(ids, names) {
-      dict[id] = User(id: id, name: name, email: "\(name.lowercased().replacingOccurrences(of: " ", with: "."))@example.com", userType: .realtor)
+      dict[id] = User(
+        id: id,
+        name: name,
+        email: "\(name.lowercased().replacingOccurrences(of: " ", with: "."))@example.com",
+        userType: .realtor
+      )
     }
     return dict
   }()

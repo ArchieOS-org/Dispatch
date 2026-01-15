@@ -327,7 +327,6 @@ final class SyncManager: ObservableObject {
     await sync()
   }
 
-
   func sync() async {
     // Increment sync run ID for correlating claim actions with sync results
     syncRunId &+= 1
@@ -876,6 +875,19 @@ final class SyncManager: ObservableObject {
   /// Lightweight DTO for fetching only IDs from Supabase
   private struct IDOnlyDTO: Codable {
     let id: UUID
+  }
+
+  /// Source of remote note changes for logging
+  private enum RemoteNoteSource: CustomStringConvertible {
+    case syncDown
+    case broadcast
+
+    var description: String {
+      switch self {
+      case .syncDown: "syncDown"
+      case .broadcast: "broadcast"
+      }
+    }
   }
 
   private var isShutdown = false // Jobs Standard: Track lifecycle state
@@ -2135,12 +2147,14 @@ final class SyncManager: ObservableObject {
             task.notes.append(newNote)
             debugLog.log("    → Linked note to task \(parentId)", category: .sync)
           }
+
         case .activity:
           let activityDescriptor = FetchDescriptor<Activity>(predicate: #Predicate { $0.id == parentId })
           if let activity = try? context.fetch(activityDescriptor).first {
             activity.notes.append(newNote)
             debugLog.log("    → Linked note to activity \(parentId)", category: .sync)
           }
+
         case .listing:
           let listingDescriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == parentId })
           if let listing = try? context.fetch(listingDescriptor).first {
@@ -2148,19 +2162,6 @@ final class SyncManager: ObservableObject {
             debugLog.log("    → Linked note to listing \(parentId)", category: .sync)
           }
         }
-      }
-    }
-  }
-
-  /// Source of remote note changes for logging
-  private enum RemoteNoteSource: CustomStringConvertible {
-    case syncDown
-    case broadcast
-
-    var description: String {
-      switch self {
-      case .syncDown: "syncDown"
-      case .broadcast: "broadcast"
       }
     }
   }
@@ -2773,7 +2774,10 @@ final class SyncManager: ObservableObject {
   private func syncUpActivityAssignees(context: ModelContext) async throws {
     let descriptor = FetchDescriptor<ActivityAssignee>()
     let allAssignees = try context.fetch(descriptor)
-    debugLog.log("syncUpActivityAssignees() - fetched \(allAssignees.count) total activity assignees from SwiftData", category: .sync)
+    debugLog.log(
+      "syncUpActivityAssignees() - fetched \(allAssignees.count) total activity assignees from SwiftData",
+      category: .sync
+    )
 
     let pendingAssignees = allAssignees.filter { $0.syncState == .pending || $0.syncState == .failed }
     debugLog.logSyncOperation(

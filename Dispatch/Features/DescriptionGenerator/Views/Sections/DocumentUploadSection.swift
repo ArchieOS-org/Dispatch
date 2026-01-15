@@ -148,8 +148,10 @@ struct DocumentUploadSection: View {
   // MARK: - File Handling
 
   private func handleFileImport(_ result: Result<[URL], Error>) {
-    guard case .success(let urls) = result,
-          let url = urls.first else { return }
+    guard
+      case .success(let urls) = result,
+      let url = urls.first
+    else { return }
 
     guard url.startAccessingSecurityScopedResource() else { return }
     defer { url.stopAccessingSecurityScopedResource() }
@@ -181,8 +183,10 @@ struct DocumentUploadSection: View {
   }
 
   private func confirmDocumentUpload() {
-    guard let data = pendingDocumentData,
-          let filename = pendingDocumentFilename else { return }
+    guard
+      let data = pendingDocumentData,
+      let filename = pendingDocumentFilename
+    else { return }
 
     let document = UploadedDocument(
       filename: filename,
@@ -210,8 +214,6 @@ struct DocumentUploadSection: View {
 
 /// Sheet for selecting document type before upload.
 struct DocumentTypePickerSheet: View {
-
-  // MARK: Internal
 
   @Binding var selectedType: DocumentType
   let onConfirm: () -> Void
@@ -257,7 +259,7 @@ struct DocumentTypePickerSheet: View {
       }
       .padding(.horizontal, DS.Spacing.lg)
       #if os(iOS)
-      .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.inline)
       #endif
     }
   }

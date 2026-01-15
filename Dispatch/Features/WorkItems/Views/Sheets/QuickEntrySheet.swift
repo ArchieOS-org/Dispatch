@@ -8,6 +8,8 @@
 import SwiftData
 import SwiftUI
 
+// MARK: - QuickEntrySheet
+
 /// Jobs-Standard sheet for quickly creating Tasks or Activities.
 /// Features:
 /// - Unified type picker (Task/Activity) with segmented control
@@ -57,9 +59,9 @@ struct QuickEntrySheet: View {
     NavigationStack {
       formContent
         .navigationTitle("Quick Add")
-        #if os(iOS)
+      #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        #endif
+      #endif
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
             Button("Cancel") {
@@ -82,6 +84,19 @@ struct QuickEntrySheet: View {
     .presentationDragIndicator(.visible)
     #endif
   }
+
+  // MARK: Private
+
+  @Environment(\.modelContext) private var modelContext
+  @Environment(\.dismiss) private var dismiss
+
+  @State private var itemType: QuickEntryItemType
+  @State private var title = ""
+  @State private var selectedListing: Listing?
+  @State private var hasDueDate = false
+  @State private var dueDate = Date()
+  @State private var selectedAssigneeIds: Set<UUID> = []
+  @State private var showAssigneePicker = false
 
   // MARK: - Platform Form Content
 
@@ -181,19 +196,6 @@ struct QuickEntrySheet: View {
     }
   }
 
-  // MARK: Private
-
-  @Environment(\.modelContext) private var modelContext
-  @Environment(\.dismiss) private var dismiss
-
-  @State private var itemType: QuickEntryItemType
-  @State private var title = ""
-  @State private var selectedListing: Listing?
-  @State private var hasDueDate = false
-  @State private var dueDate = Date()
-  @State private var selectedAssigneeIds: Set<UUID> = []
-  @State private var showAssigneePicker = false
-
   private var canSave: Bool {
     !title.trimmingCharacters(in: .whitespaces).isEmpty
   }
@@ -284,15 +286,15 @@ struct QuickEntrySheet: View {
       )
       .navigationTitle("Assign Users")
       #if os(iOS)
-      .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.inline)
       #endif
-      .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button("Done") {
-            showAssigneePicker = false
+        .toolbar {
+          ToolbarItem(placement: .confirmationAction) {
+            Button("Done") {
+              showAssigneePicker = false
+            }
           }
         }
-      }
     }
     #if os(macOS)
     .frame(minWidth: 300, minHeight: 400)

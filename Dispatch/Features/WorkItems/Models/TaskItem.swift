@@ -135,7 +135,7 @@ final class TaskItem: WorkItemProtocol, NotableProtocol {
   @Relationship(deleteRule: .cascade, inverse: \TaskAssignee.task)
   var assignees = [TaskAssignee]()
 
-  // Inverse relationship (optional)
+  /// Inverse relationship (optional)
   var listing: Listing?
 
   /// Convenience computed property for assignee user IDs

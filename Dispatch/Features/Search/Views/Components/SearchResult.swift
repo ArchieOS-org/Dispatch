@@ -79,29 +79,6 @@ enum SearchResult: Identifiable, Hashable {
     }
   }
 
-  /// Formats due date as relative subtitle text
-  private func dueDateSubtitle(for date: Date) -> String {
-    let calendar = Calendar.current
-    let today = calendar.startOfDay(for: Date())
-    let dueDay = calendar.startOfDay(for: date)
-
-    let daysDiff = calendar.dateComponents([.day], from: today, to: dueDay).day ?? 0
-
-    if daysDiff < 0 {
-      return "Overdue by \(abs(daysDiff)) day\(abs(daysDiff) == 1 ? "" : "s")"
-    } else if daysDiff == 0 {
-      return "Due today"
-    } else if daysDiff == 1 {
-      return "Due tomorrow"
-    } else if daysDiff <= 7 {
-      return "Due in \(daysDiff) days"
-    } else {
-      let formatter = DateFormatter()
-      formatter.dateFormat = "MMM d"
-      return "Due \(formatter.string(from: date))"
-    }
-  }
-
   /// Icon name (SF Symbol)
   var icon: String {
     switch self {
@@ -168,6 +145,32 @@ enum SearchResult: Identifiable, Hashable {
     default: nil
     }
   }
+
+  // MARK: Private
+
+  /// Formats due date as relative subtitle text
+  private func dueDateSubtitle(for date: Date) -> String {
+    let calendar = Calendar.current
+    let today = calendar.startOfDay(for: Date())
+    let dueDay = calendar.startOfDay(for: date)
+
+    let daysDiff = calendar.dateComponents([.day], from: today, to: dueDay).day ?? 0
+
+    if daysDiff < 0 {
+      return "Overdue by \(abs(daysDiff)) day\(abs(daysDiff) == 1 ? "" : "s")"
+    } else if daysDiff == 0 {
+      return "Due today"
+    } else if daysDiff == 1 {
+      return "Due tomorrow"
+    } else if daysDiff <= 7 {
+      return "Due in \(daysDiff) days"
+    } else {
+      let formatter = DateFormatter()
+      formatter.dateFormat = "MMM d"
+      return "Due \(formatter.string(from: date))"
+    }
+  }
+
 }
 
 // MARK: - Previews

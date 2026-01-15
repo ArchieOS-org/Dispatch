@@ -15,8 +15,6 @@ import SwiftUI
 /// Shows address, listing type, and city with clear selection feedback.
 struct ListingPickerRow: View {
 
-  // MARK: Internal
-
   let listing: Listing
   let isSelected: Bool
   let action: () -> Void

@@ -64,18 +64,18 @@ final class AppState: ObservableObject {
 
     // MARK: - Equatable conformance for associated values
 
-    static func == (lhs: SheetState, rhs: SheetState) -> Bool {
+    static func ==(lhs: SheetState, rhs: SheetState) -> Bool {
       switch (lhs, rhs) {
       case (.none, .none):
-        return true
+        true
       case (.quickEntry(let l), .quickEntry(let r)):
-        return l == r
+        l == r
       case (.addListing, .addListing):
-        return true
+        true
       case (.addRealtor, .addRealtor):
-        return true
+        true
       default:
-        return false
+        false
       }
     }
   }

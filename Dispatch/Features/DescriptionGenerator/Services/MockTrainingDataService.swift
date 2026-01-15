@@ -17,7 +17,7 @@ final class MockTrainingDataService: Sendable {
 
   // MARK: Lifecycle
 
-  init() {}
+  init() { }
 
   // MARK: Internal
 
@@ -31,7 +31,9 @@ final class MockTrainingDataService: Sendable {
     // PHASE 3: Submit to backend training pipeline
     // For now, just log to console for debugging
     // swiftlint:disable:next no_direct_standard_out_logs
-    print("[Training] Preference logged: session=\(sessionId.uuidString.prefix(8)), version=\(selectedVersion.rawValue), input=\(inputHash.prefix(8))")
+    print(
+      "[Training] Preference logged: session=\(sessionId.uuidString.prefix(8)), version=\(selectedVersion.rawValue), input=\(inputHash.prefix(8))"
+    )
   }
 
   /// Log a refinement action for training data.
@@ -43,7 +45,9 @@ final class MockTrainingDataService: Sendable {
   ) {
     // PHASE 3: Submit to backend training pipeline
     // swiftlint:disable:next no_direct_standard_out_logs
-    print("[Training] Refinement logged: session=\(sessionId.uuidString.prefix(8)), version=\(selectedVersion.rawValue), prompt=\"\(prompt)\"")
+    print(
+      "[Training] Refinement logged: session=\(sessionId.uuidString.prefix(8)), version=\(selectedVersion.rawValue), prompt=\"\(prompt)\""
+    )
   }
 
   /// Log a field edit for training data.
@@ -51,8 +55,8 @@ final class MockTrainingDataService: Sendable {
   func logFieldEdit(
     sessionId: UUID,
     fieldName: String,
-    originalValue: String,
-    editedValue: String
+    originalValue _: String,
+    editedValue _: String
   ) {
     // PHASE 3: Submit to backend training pipeline
     // swiftlint:disable:next no_direct_standard_out_logs

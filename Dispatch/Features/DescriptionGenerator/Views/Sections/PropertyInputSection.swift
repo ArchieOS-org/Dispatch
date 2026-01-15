@@ -83,61 +83,6 @@ struct PropertyInputSection: View {
   }
 
   @ViewBuilder
-  private func selectedListingCard(_ listing: Listing) -> some View {
-    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-      HStack {
-        VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-          Text(listing.address)
-            .font(DS.Typography.headline)
-            .foregroundStyle(DS.Colors.Text.primary)
-
-          HStack(spacing: DS.Spacing.sm) {
-            if !listing.city.isEmpty {
-              Text(listing.city)
-                .font(DS.Typography.caption)
-                .foregroundStyle(DS.Colors.Text.secondary)
-            }
-            ListingTypePill(type: listing.listingType)
-          }
-        }
-
-        Spacer()
-
-        Button {
-          withAnimation {
-            state.selectedListing = nil
-          }
-        } label: {
-          Image(systemName: "xmark.circle.fill")
-            .font(.system(size: 20))
-            .foregroundStyle(DS.Colors.Text.tertiary)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Clear selection")
-      }
-
-      Divider()
-
-      Button(action: { showingListingPicker = true }) {
-        Text("Change Listing")
-          .font(DS.Typography.caption)
-          .foregroundStyle(DS.Colors.accent)
-      }
-      .buttonStyle(.plain)
-    }
-    .padding(DS.Spacing.md)
-    .background(DS.Colors.Background.secondary)
-    .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall))
-    .sheet(isPresented: $showingListingPicker) {
-      ListingPickerSheet(
-        listings: listings,
-        selectedListing: $state.selectedListing,
-        isPresented: $showingListingPicker
-      )
-    }
-  }
-
-  @ViewBuilder
   private var listingPickerButton: some View {
     if listings.isEmpty {
       // No listings available
@@ -246,6 +191,68 @@ struct PropertyInputSection: View {
   }
 
   @ViewBuilder
+  private var propertyDetailsGrid: some View {
+    // PHASE 3: Add more structured manual entry fields
+    // For now, the free-form text area handles additional details
+    EmptyView()
+  }
+
+  @ViewBuilder
+  private func selectedListingCard(_ listing: Listing) -> some View {
+    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+      HStack {
+        VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+          Text(listing.address)
+            .font(DS.Typography.headline)
+            .foregroundStyle(DS.Colors.Text.primary)
+
+          HStack(spacing: DS.Spacing.sm) {
+            if !listing.city.isEmpty {
+              Text(listing.city)
+                .font(DS.Typography.caption)
+                .foregroundStyle(DS.Colors.Text.secondary)
+            }
+            ListingTypePill(type: listing.listingType)
+          }
+        }
+
+        Spacer()
+
+        Button {
+          withAnimation {
+            state.selectedListing = nil
+          }
+        } label: {
+          Image(systemName: "xmark.circle.fill")
+            .font(.system(size: 20))
+            .foregroundStyle(DS.Colors.Text.tertiary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Clear selection")
+      }
+
+      Divider()
+
+      Button(action: { showingListingPicker = true }) {
+        Text("Change Listing")
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Colors.accent)
+      }
+      .buttonStyle(.plain)
+    }
+    .padding(DS.Spacing.md)
+    .background(DS.Colors.Background.secondary)
+    .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall))
+    .sheet(isPresented: $showingListingPicker) {
+      ListingPickerSheet(
+        listings: listings,
+        selectedListing: $state.selectedListing,
+        isPresented: $showingListingPicker
+      )
+    }
+  }
+
+  @ViewBuilder
   private func manualField(
     title: String,
     placeholder: String,
@@ -270,20 +277,12 @@ struct PropertyInputSection: View {
     }
   }
 
-  @ViewBuilder
-  private var propertyDetailsGrid: some View {
-    // PHASE 3: Add more structured manual entry fields
-    // For now, the free-form text area handles additional details
-    EmptyView()
-  }
 }
 
 // MARK: - ListingPickerSheet
 
 /// Sheet for selecting from available listings.
 struct ListingPickerSheet: View {
-
-  // MARK: Internal
 
   let listings: [Listing]
   @Binding var selectedListing: Listing?
@@ -317,15 +316,15 @@ struct ListingPickerSheet: View {
       .background(DS.Colors.Background.grouped)
       .navigationTitle("Select Listing")
       #if os(iOS)
-      .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.inline)
       #endif
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") {
-            isPresented = false
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("Cancel") {
+              isPresented = false
+            }
           }
         }
-      }
     }
   }
 }

@@ -16,7 +16,7 @@ import UIKit
 import AppKit
 #endif
 
-// MARK: - InputMode
+// MARK: - DescriptionInputMode
 
 /// Determines how property information is provided for description generation.
 enum DescriptionInputMode: String, CaseIterable, Identifiable {
@@ -58,7 +58,7 @@ final class DescriptionGeneratorState {
     preselectedListing: Listing? = nil,
     aiService: AIServiceProtocol = MockAIService()
   ) {
-    self.selectedListing = preselectedListing
+    selectedListing = preselectedListing
     self.aiService = aiService
 
     // If a listing is preselected, start in existing listing mode
@@ -125,7 +125,7 @@ final class DescriptionGeneratorState {
   var selectedVersion: OutputVersion?
 
   /// Session ID for this generation (used for training data correlation)
-  var sessionId: UUID = UUID()
+  var sessionId: UUID = .init()
 
   // MARK: - Phase 2: Refinement
 
@@ -144,9 +144,9 @@ final class DescriptionGeneratorState {
   var canGenerate: Bool {
     switch inputMode {
     case .existingListing:
-      return selectedListing != nil && !isLoading
+      selectedListing != nil && !isLoading
     case .manualEntry:
-      return !manualAddress.trimmingCharacters(in: .whitespaces).isEmpty && !isLoading
+      !manualAddress.trimmingCharacters(in: .whitespaces).isEmpty && !isLoading
     }
   }
 
@@ -154,9 +154,48 @@ final class DescriptionGeneratorState {
   var propertyTitle: String {
     switch inputMode {
     case .existingListing:
-      return selectedListing?.address ?? "No listing selected"
+      selectedListing?.address ?? "No listing selected"
     case .manualEntry:
-      return manualAddress.isEmpty ? "No address entered" : manualAddress
+      manualAddress.isEmpty ? "No address entered" : manualAddress
+    }
+  }
+
+  /// Get the currently selected output
+  var selectedOutput: GeneratedOutput? {
+    switch selectedVersion {
+    case .a: outputA
+    case .b: outputB
+    case .none: nil
+    }
+  }
+
+  // MARK: - Phase 2: MLS Field Management
+
+  /// Get a binding to the selected output's MLS fields
+  /// Returns nil if no output is selected
+  var selectedMLSFields: MLSFields? {
+    get { selectedOutput?.mlsFields }
+    set {
+      guard let newValue else { return }
+      if selectedVersion == .a {
+        outputA?.mlsFields = newValue
+      } else if selectedVersion == .b {
+        outputB?.mlsFields = newValue
+      }
+    }
+  }
+
+  /// Get the original MLS fields for reset functionality
+  var originalMLSFields: MLSFields {
+    // PHASE 3: Store original fields separately for proper reset
+    // For now, return a default set
+    switch selectedVersion {
+    case .a:
+      createMockMLSFields(tone: .a)
+    case .b:
+      createMockMLSFields(tone: .b)
+    case .none:
+      MLSFields()
     }
   }
 
@@ -309,21 +348,14 @@ final class DescriptionGeneratorState {
     logPreference(version)
   }
 
-  /// Get the currently selected output
-  var selectedOutput: GeneratedOutput? {
-    switch selectedVersion {
-    case .a: return outputA
-    case .b: return outputB
-    case .none: return nil
-    }
-  }
-
   // MARK: - Phase 2: Refinement
 
   /// Submit a refinement request for the selected output
   func submitRefinement() async {
-    guard !currentRefinementPrompt.trimmingCharacters(in: .whitespaces).isEmpty,
-          let currentOutput = selectedOutput else { return }
+    guard
+      !currentRefinementPrompt.trimmingCharacters(in: .whitespaces).isEmpty,
+      let currentOutput = selectedOutput
+    else { return }
 
     isRefining = true
 
@@ -400,36 +432,6 @@ final class DescriptionGeneratorState {
     isLoading = false
   }
 
-  // MARK: - Phase 2: MLS Field Management
-
-  /// Get a binding to the selected output's MLS fields
-  /// Returns nil if no output is selected
-  var selectedMLSFields: MLSFields? {
-    get { selectedOutput?.mlsFields }
-    set {
-      guard let newValue = newValue else { return }
-      if selectedVersion == .a {
-        outputA?.mlsFields = newValue
-      } else if selectedVersion == .b {
-        outputB?.mlsFields = newValue
-      }
-    }
-  }
-
-  /// Get the original MLS fields for reset functionality
-  var originalMLSFields: MLSFields {
-    // PHASE 3: Store original fields separately for proper reset
-    // For now, return a default set
-    switch selectedVersion {
-    case .a:
-      return createMockMLSFields(tone: .a)
-    case .b:
-      return createMockMLSFields(tone: .b)
-    case .none:
-      return MLSFields()
-    }
-  }
-
   /// Copy a specific MLS field to clipboard
   func copyFieldToClipboard(_ fieldValue: String) {
     guard !fieldValue.isEmpty else { return }
@@ -458,6 +460,8 @@ final class DescriptionGeneratorState {
   // MARK: Private
 
   private let trainingService = MockTrainingDataService()
+
+  private let aiService: AIServiceProtocol
 
   /// Log preference selection for training data
   /// PHASE 3: Submit to backend training pipeline
@@ -567,8 +571,6 @@ final class DescriptionGeneratorState {
 
     return fields
   }
-
-  private let aiService: AIServiceProtocol
 
   /// Build the prompt input string from current state
   private func buildPromptInput() -> String {

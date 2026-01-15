@@ -191,6 +191,30 @@ struct DescriptionInputView: View {
   }
 
   @ViewBuilder
+  private var generateButton: some View {
+    Button(action: onGenerate) {
+      HStack(spacing: DS.Spacing.sm) {
+        if state.isLoading {
+          ProgressView()
+            .progressViewStyle(.circular)
+          #if os(iOS)
+            .tint(.white)
+          #endif
+        }
+        Text(state.isLoading ? "Generating..." : "Generate Description")
+          .font(DS.Typography.headline)
+      }
+      .frame(maxWidth: .infinity)
+      .frame(height: DS.Spacing.minTouchTarget)
+    }
+    .buttonStyle(.borderedProminent)
+    .disabled(!state.canGenerate)
+    .padding(.top, DS.Spacing.md)
+    .accessibilityLabel(state.isLoading ? "Generating description" : "Generate description")
+    .accessibilityHint(state.canGenerate ? "Double tap to generate AI description" : "Select a listing or enter an address first")
+  }
+
+  @ViewBuilder
   private func errorView(_ message: String) -> some View {
     HStack(spacing: DS.Spacing.sm) {
       Image(systemName: DS.Icons.Alert.warning)
@@ -206,29 +230,6 @@ struct DescriptionInputView: View {
     .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall))
   }
 
-  @ViewBuilder
-  private var generateButton: some View {
-    Button(action: onGenerate) {
-      HStack(spacing: DS.Spacing.sm) {
-        if state.isLoading {
-          ProgressView()
-            .progressViewStyle(.circular)
-            #if os(iOS)
-            .tint(.white)
-            #endif
-        }
-        Text(state.isLoading ? "Generating..." : "Generate Description")
-          .font(DS.Typography.headline)
-      }
-      .frame(maxWidth: .infinity)
-      .frame(height: DS.Spacing.minTouchTarget)
-    }
-    .buttonStyle(.borderedProminent)
-    .disabled(!state.canGenerate)
-    .padding(.top, DS.Spacing.md)
-    .accessibilityLabel(state.isLoading ? "Generating description" : "Generate description")
-    .accessibilityHint(state.canGenerate ? "Double tap to generate AI description" : "Select a listing or enter an address first")
-  }
 }
 
 // MARK: - Preview

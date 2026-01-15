@@ -14,6 +14,24 @@ import SwiftUI
 /// Photos are stored in memory only (PHASE 3: Persist to Supabase Storage).
 struct UploadedPhoto: Identifiable, Equatable {
 
+  // MARK: Lifecycle
+
+  // MARK: - Initialization
+
+  init(
+    id: UUID = UUID(),
+    imageData: Data,
+    filename: String,
+    sortOrder: Int = 0
+  ) {
+    self.id = id
+    self.imageData = imageData
+    self.filename = filename
+    self.sortOrder = sortOrder
+  }
+
+  // MARK: Internal
+
   // MARK: - Properties
 
   /// Unique identifier for the photo
@@ -48,26 +66,12 @@ struct UploadedPhoto: Identifiable, Equatable {
     return nil
   }
 
-  // MARK: - Initialization
-
-  init(
-    id: UUID = UUID(),
-    imageData: Data,
-    filename: String,
-    sortOrder: Int = 0
-  ) {
-    self.id = id
-    self.imageData = imageData
-    self.filename = filename
-    self.sortOrder = sortOrder
-  }
-
   // MARK: - Equatable
 
-  static func == (lhs: UploadedPhoto, rhs: UploadedPhoto) -> Bool {
+  static func ==(lhs: UploadedPhoto, rhs: UploadedPhoto) -> Bool {
     lhs.id == rhs.id &&
-    lhs.imageData == rhs.imageData &&
-    lhs.filename == rhs.filename &&
-    lhs.sortOrder == rhs.sortOrder
+      lhs.imageData == rhs.imageData &&
+      lhs.filename == rhs.filename &&
+      lhs.sortOrder == rhs.sortOrder
   }
 }
