@@ -37,8 +37,9 @@ struct FilterMenu: View {
           .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
+      .accessibilityIdentifier("AudienceFilterButton")
       .accessibilityLabel("Cycle filter")
-      .accessibilityValue(audience.label)
+      .accessibilityValue("\(audience.rawValue)|\(audience.icon)")
 
       // Right: Chevron menu trigger with Picker
       Menu {
