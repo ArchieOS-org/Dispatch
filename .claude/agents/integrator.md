@@ -14,6 +14,17 @@ Run on:
 2) Before any agent declares DONE
 3) On merge/conflict risk
 
+# Sequencing Rule (CRITICAL)
+**Your "DONE" status is only valid if you run AFTER all file-modifying agents complete.**
+
+⚠️ If you are running PARALLEL with ui-polish or feature-owner:
+- Your results are for **early feedback only**
+- Do NOT report "DONE" — report "UNBLOCKED (pending final pass)"
+- A FINAL sequential run is required after all file-modifying agents complete
+
+✅ Valid "DONE": You are the LAST agent to run, after ui-polish finished
+❌ Invalid "DONE": ui-polish is still running or ran after your verification
+
 # Actions per Patchset
 PATCHSET 1:
 - compile/typecheck builds

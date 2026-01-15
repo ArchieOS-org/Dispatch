@@ -136,12 +136,18 @@ dispatch-planner
   │
   ├─ Interface Lock → persisted to .claude/contracts/
   │
-  ├─ feature-owner (vertical slice)
-  │
-  ├─ data-integrity (ONLY if schema changes)
-  │
-  └─ integrator (continuous)
+  ├─ feature-owner (vertical slice) ─────┐
+  │                                      │ parallel OK
+  ├─ data-integrity (ONLY if schema)     │ for feedback
+  │                                      │
+  ├─ ui-polish (near end) ───────────────┘
+  │                                      │
+  │              [WAIT for all above]    │
+  │                                      ▼
+  └─ integrator (FINAL) ─────────────→ DONE
 ```
+
+**Critical**: "DONE" only valid from integrator running AFTER all file-modifying agents complete.
 
 **Principle: "One feature, one owner, one outcome."**
 
@@ -194,6 +200,34 @@ Every agent must stop and escalate when:
 - Lock Version changed mid-run
 - Migration required but data-integrity not assigned
 - Acceptance criteria cannot be met with current contract
+
+#### Rule F: Agent Sequencing (CRITICAL)
+**"DONE" is only valid from a FINAL integrator run after all file-modifying agents complete.**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  VALID SEQUENCING                                           │
+├─────────────────────────────────────────────────────────────┤
+│  feature-owner ──────────────────────┐                      │
+│                                      │                      │
+│  integrator (continuous) ────────────┤  (parallel OK)       │
+│                                      │                      │
+│  ui-polish ──────────────────────────┘                      │
+│                                      │                      │
+│                    WAIT for all to complete                 │
+│                                      ▼                      │
+│                         integrator (FINAL) ──→ DONE         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Why**: Running integrator parallel with ui-polish creates a race condition where integrator may verify a stale snapshot while files are still being modified.
+
+**Enforcement**:
+- Parallel agents during development = ✅ ALLOWED (fast feedback)
+- Integrator "DONE" during parallel runs = ❌ INVALID (stale)
+- Integrator "DONE" after all file-modifying agents complete = ✅ VALID
+
+**The rule**: After ui-polish (or any file-modifying agent) completes, integrator MUST run one final time. Only this final run's "DONE" status is authoritative.
 
 ### Risk Gating
 
