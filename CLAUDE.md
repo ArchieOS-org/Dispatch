@@ -116,3 +116,136 @@ mcp__context7__get-library-docs with context7CompatibleLibraryID="/websites/deve
 ## Dependencies
 
 - **Supabase Swift** (v2.0.0+) - Backend services
+
+---
+
+## Agent Architecture
+
+Dispatch uses a vertical slice agent architecture for multi-agent coordination.
+
+### Architecture Diagram
+
+```
+[Small Change?] ──Yes──→ feature-owner + integrator (immediate)
+       │
+      No
+       ↓
+dispatch-planner
+  │
+  ├─ dispatch-explorer (ONLY if unfamiliar area)
+  │
+  ├─ Interface Lock → persisted to .claude/contracts/
+  │
+  ├─ feature-owner (vertical slice)
+  │
+  ├─ data-integrity (ONLY if schema changes)
+  │
+  └─ integrator (continuous)
+```
+
+**Principle: "One feature, one owner, one outcome."**
+
+### Agents
+
+| Agent | Role | Supabase Access |
+|-------|------|-----------------|
+| `dispatch-planner` | Orchestrator - routes work through fastest safe path | Read only |
+| `dispatch-explorer` | Deep codebase context finder (conditional) | Read only |
+| `feature-owner` | Owns entire vertical slice end-to-end | **Read only** |
+| `integrator` | Verification gatekeeper | None |
+| `data-integrity` | Schema + sync authority | **Write/Execute** |
+| `ui-polish` | UI/UX refinement specialist | None |
+
+### The Five Rules
+
+#### Rule A: Default Execution
+Run feature-owner + integrator immediately unless risk triggers planner.
+
+**Small Change Bypass** (skip planner if ALL true):
+- ≤ 3 files modified
+- No schema/API changes
+- No new UI navigation flow
+- No sync/offline changes
+
+#### Rule B: Interface Lock Required When ANY True
+- New state/action surface
+- DTO changes
+- Schema changes (DDL, indexes, constraints, RLS/policies, triggers, types)
+- New UI navigation
+- Sync/offline involved
+
+#### Rule C: Strict Permissions
+| Agent | Supabase Access | App Code |
+|-------|-----------------|----------|
+| feature-owner | **Read only** | Full edit |
+| data-integrity | **Write/Execute** | Read only |
+| integrator | None | Read only |
+
+#### Rule D: "Done" Definition
+- [ ] Builds on iOS + macOS
+- [ ] Relevant tests pass
+- [ ] Acceptance criteria met
+- [ ] No unresolved TODOs introduced
+- [ ] **Integrator reports DONE**
+
+#### Rule E: Stop Conditions
+Every agent must stop and escalate when:
+- Contract is missing / not locked
+- Lock Version changed mid-run
+- Migration required but data-integrity not assigned
+- Acceptance criteria cannot be met with current contract
+
+### Risk Gating
+
+| Lane | Trigger | Behavior |
+|------|---------|----------|
+| **Fast Lane** | UI/state/model only, no schema | Execute immediately |
+| **Guarded Lane** | Additive migration (new column w/ default, nullable) | Auto-run, must report SQL |
+| **Safe Lane** | Backfills, constraints, deletes, breaking DTOs | Approval required |
+
+### Interface Lock (Contracts)
+
+**Location**: `.claude/contracts/<feature-slug>.md`
+
+Contracts are versioned and committed to the repo. Template available at `.claude/contracts/_template.md`.
+
+```markdown
+## Interface Lock
+
+**Feature**: [name]
+**Status**: [draft | locked | complete]
+**Lock Version**: v1
+
+### Contract
+- New/changed model fields: [list]
+- DTO/API changes: [list]
+- State/actions added: [list]
+- Migration required: Y/N
+
+### Acceptance Criteria (3 max)
+1. [measurable outcome]
+
+### Non-goals
+- [what this feature does NOT include]
+
+### Ownership
+- feature-owner: [scope]
+- data-integrity: [if needed]
+```
+
+### Patchset Protocol
+
+feature-owner emits these markers for integrator verification:
+
+```
+PATCHSET 1: model + DTO compile
+PATCHSET 2: UI wired to state
+PATCHSET 3: sync + persistence
+PATCHSET 4: cleanup + tests
+```
+
+Integrator runs verification on each patchset:
+- PATCHSET 1: compile/typecheck
+- PATCHSET 2: build iOS + macOS
+- PATCHSET 3: full build + targeted tests
+- PATCHSET 4: full test suite + SwiftLint + done checklist
