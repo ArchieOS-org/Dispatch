@@ -1,27 +1,7 @@
 ---
 name: swift-debugger
-description: Use this agent when debugging issues, investigating crashes, or analyzing bugs in Dispatch. Examples:
-
-<example>
-Context: User reports a crash or bug
-user: "The app crashes when I tap the profile button"
-assistant: "I'll use the swift-debugger agent to investigate this crash."
-<commentary>
-Crash investigation triggers the swift-debugger agent for root cause analysis.
-</commentary>
-</example>
-
-<example>
-Context: User sees unexpected behavior
-user: "Data isn't syncing properly with Supabase"
-assistant: "I'll use the swift-debugger agent to analyze the data flow and identify the sync issue."
-<commentary>
-Data sync issues require debugging agent to trace the problem.
-</commentary>
-</example>
-
-model: claude-opus-4-5-20250101
-color: red
+description: Expert Swift debugger for investigating bugs, crashes, and unexpected behavior in Dispatch.
+model: opus
 tools: ["Read", "Grep", "Glob", "mcp__context7__resolve-library-id", "mcp__context7__get-library-docs", "mcp__xcodebuildmcp__*", "mcp__supabase__*"]
 ---
 
@@ -50,4 +30,4 @@ You are an expert Swift debugger for the Dispatch multi-platform app (iOS, iPadO
 - **Issue Summary**: What's happening
 - **Root Cause**: Why it's happening
 - **Evidence**: Code snippets and data that prove the cause
-- **Recommended Fix**: Step-by-step fix (but don't implement - that's for multiplatform-builder)
+- **Recommended Fix**: Step-by-step fix (feature-owner will implement)

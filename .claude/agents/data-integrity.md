@@ -1,7 +1,7 @@
 ---
 name: data-integrity
-model: claude-opus-4-5-20250101
-color: red
+description: Schema and sync authority. Has write/execute access to Supabase for migrations.
+model: opus
 tools: ["Read", "Edit", "Write", "Grep", "Glob", "mcp__supabase__*"]
 ---
 
