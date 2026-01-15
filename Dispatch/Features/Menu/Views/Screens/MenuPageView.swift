@@ -54,6 +54,8 @@ struct MenuPageView: View {
     .background(DS.Colors.Background.primary)
     .pullToSearchTracking()
     #if os(iOS)
+      // Add bottom margin to clear floating buttons on iPhone
+      .contentMargins(.bottom, DS.Spacing.floatingButtonScrollInset, for: .scrollContent)
       .toolbar(.hidden, for: .navigationBar)
     #endif
   }

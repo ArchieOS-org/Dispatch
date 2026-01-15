@@ -140,6 +140,10 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
         ScrollView {
           innerContent
         }
+        #if os(iOS)
+        // Add bottom margin to clear floating buttons on iPhone
+        .contentMargins(.bottom, DS.Spacing.floatingButtonScrollInset, for: .scrollContent)
+        #endif
         .modifier(PullToSearchTrackingConditionalModifier(enabled: pullToSearch && !pullToSearchDisabled))
 
       case .disabled:

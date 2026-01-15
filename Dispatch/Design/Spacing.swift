@@ -222,5 +222,9 @@ extension DS {
     /// Icon size within large floating buttons (56pt)
     static let floatingButtonIconSizeLarge: CGFloat = 24
 
+    /// Bottom inset for scroll content when floating buttons are present (iOS/iPadOS only)
+    /// Combines button size (56pt) + bottom inset (16pt) = 72pt clearance
+    static let floatingButtonScrollInset: CGFloat = floatingButtonSizeLarge + floatingButtonBottomInset
+
   }
 }

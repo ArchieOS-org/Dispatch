@@ -122,6 +122,8 @@ struct DescriptionGeneratorView: View {
       }
       .padding(DS.Spacing.lg)
     }
+    // Add bottom margin to clear floating buttons on iOS
+    .contentMargins(.bottom, DS.Spacing.floatingButtonScrollInset, for: .scrollContent)
     .background(DS.Colors.Background.grouped)
   }
 
