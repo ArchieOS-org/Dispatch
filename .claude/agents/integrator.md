@@ -38,6 +38,37 @@ PATCHSET 3:
 PATCHSET 4:
 - full test suite + SwiftLint + done checklist
 - **Verify Steve Jobs Design Bar checklist is satisfied (explicit yes/no)**
+- **Read contract and verify Jobs Critique verdict (see below)**
+- **Run style enforcement commands (see below)**
+
+# Jobs Critique Gate (PATCHSET 4 - MANDATORY)
+At PATCHSET 4, you MUST read the contract at `.claude/contracts/<feature>.md`:
+1. Find the `## Jobs Critique` section
+2. Check the `Jobs Critique:` field
+
+**BLOCK if:**
+- `Jobs Critique: SHIP NO` → BLOCKED (feature-owner must fix issues)
+- `Jobs Critique: PENDING` → BLOCKED (jobs-critic hasn't run yet)
+- Jobs Critique section missing → BLOCKED (jobs-critic must run first)
+
+**UNBLOCK only if:**
+- `Jobs Critique: SHIP YES` is present
+
+# Style Enforcement Commands (PATCHSET 4)
+Run in this order:
+
+```bash
+# 1. Format check (if swiftformat exists)
+if command -v swiftformat &> /dev/null; then
+  swiftformat . --lint
+fi
+
+# 2. Lint
+swiftlint lint
+```
+
+If either command fails → BLOCKED.
+If swiftformat not found → skip with "N/A", continue to lint.
 
 # Tool Fallback
 If MCP tools unavailable (background mode), use Bash with xcodebuild commands directly.
@@ -52,8 +83,15 @@ If MCP tools unavailable (background mode), use Bash with xcodebuild commands di
 - Build: [PASS/FAIL + key error]
 - Tests: [PASS/FAIL + key error]
 - Lint: [PASS/FAIL + key error]
+- Format: [PASS/FAIL/N/A + key error] (PATCHSET 4 only)
+- **Jobs Critique: [SHIP YES/SHIP NO/PENDING/MISSING]** (PATCHSET 4 only)
 - **Design Bar: [PASS/FAIL + what failed]** (PATCHSET 4 only)
 - Blockers: [list]
-- Status: [UNBLOCKED | BLOCKED]
+- Status: [UNBLOCKED | BLOCKED | DONE]
 
 If BLOCKED, include the smallest next fix.
+
+**DONE is only valid if:**
+1. You are the LAST agent to run (after ui-polish, xcode-pilot complete)
+2. Jobs Critique = SHIP YES
+3. All builds/tests/lint pass

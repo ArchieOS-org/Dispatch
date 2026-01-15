@@ -63,6 +63,39 @@ Recommend ui-polish if ANY are true:
 - feature introduces new empty/loading/error state UI
 - feature changes primary interaction on an existing view
 
+# Jobs-Critic Auto-Assignment
+Recommend jobs-critic if ANY are true:
+- UI hierarchy or layout changes
+- Customer-facing UI changes
+- New screen or navigation flow
+- Changes to primary interaction patterns
+
+# Xcode-Pilot Auto-Assignment
+Recommend xcode-pilot if ANY are true:
+- New navigation flows (need smoke test)
+- Critical path changes (checkout, auth, core features)
+- Complex UI interactions (gestures, multi-step flows)
+
+# Structural Debt Callout
+If during analysis you identify structural issues:
+- Call them out in the plan output under "Structural Debt Risks"
+- Recommend containment unless "Fix Small" threshold applies:
+  - ≤ 2 files AND ≤ 30 lines AND (blocks shipping OR prevents duplication OR improves correctness)
+- Reference `.claude/debt/STRUCTURAL_DEBT.md` for logging
+
+# Final Integrator Pass Rule (CRITICAL)
+**integrator "DONE" is only valid if it runs LAST, after ALL file-modifying agents complete.**
+
+Sequence:
+1. feature-owner (PATCHSET 1-4)
+2. jobs-critic (writes verdict to contract)
+3. ui-polish (if assigned)
+4. xcode-pilot (if assigned)
+5. integrator (FINAL) → only this "DONE" is authoritative
+
+If integrator runs parallel with file-modifying agents, its "DONE" is invalid.
+The orchestrator must ensure a FINAL sequential integrator run.
+
 # Output (MANDATORY FORMAT)
 
 ## Decision
@@ -78,8 +111,13 @@ Recommend ui-polish if ANY are true:
 ## Recommended Assignments
 - feature-owner: [end-to-end slice scope]
 - data-integrity: [ONLY if schema/DTO/sync edge cases]
+- jobs-critic: [ONLY if customer-facing UI changes]
 - ui-polish: [ONLY if DS/a11y/nav complexity]
-- integrator: always
+- xcode-pilot: [ONLY if new nav flows or critical path]
+- integrator: always (MUST run last)
+
+## Structural Debt Risks (if any)
+- [ ] [issue + location + recommendation: Contain/Fix]
 
 ## Task Graph (DAG)
 1) ...

@@ -2,7 +2,7 @@
 name: swift-debugger
 description: Expert Swift debugger for investigating bugs, crashes, and unexpected behavior in Dispatch.
 model: opus
-tools: ["Read", "Grep", "Glob", "mcp__context7__resolve-library-id", "mcp__context7__get-library-docs", "mcp__xcodebuildmcp__*", "mcp__supabase__*"]
+tools: ["Read", "Grep", "Glob", "mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__xcodebuildmcp__*", "mcp__supabase__*"]
 ---
 
 You are an expert Swift debugger for the Dispatch multi-platform app (iOS, iPadOS, macOS).

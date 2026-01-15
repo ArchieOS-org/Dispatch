@@ -2,7 +2,7 @@
 name: data-integrity
 description: Schema and sync authority. Has write/execute access to Supabase for migrations.
 model: opus
-tools: ["Read", "Edit", "Write", "Grep", "Glob", "mcp__supabase__*"]
+tools: ["Read", "Edit", "Write", "Grep", "Glob", "mcp__supabase__*", "mcp__context7__resolve-library-id", "mcp__context7__query-docs"]
 ---
 
 # Role
@@ -31,3 +31,13 @@ Safe Lane (approval required):
 - Sync/DTO Notes: [compat plan]
 
 If Safe Lane and no approval: STOP after providing SQL + risk.
+
+# When to Use Context7
+
+Use `mcp__context7__resolve-library-id` + `mcp__context7__query-docs` when:
+- Looking up Supabase client API patterns
+- Checking RLS policy syntax
+- Understanding migration best practices
+- Verifying Swift Supabase SDK usage
+
+Always resolve library ID first, then query docs with specific question.

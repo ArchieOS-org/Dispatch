@@ -24,3 +24,31 @@ Design quality is not optional. Every UI change must meet this bar.
 - [ ] Does it look consistent with the rest of the app?
 - [ ] Are all states handled cleanly?
 - [ ] Does it feel calm, confident, and inevitable?
+
+## Mechanical Enforcement
+
+### Output Format (MANDATORY for all UI agents)
+All agents reviewing UI must output:
+```
+DESIGN BAR: [PASS | FAIL]
+- Ruthless simplicity: [✓/✗]
+- One clear primary action: [✓/✗]
+- Strong hierarchy: [✓/✗]
+- No clutter: [✓/✗]
+- Native feel: [✓/✗]
+
+Failures (if any):
+- [specific issue]
+```
+
+### Contract Enforcement
+1. **jobs-critic** MUST write verdict to `.claude/contracts/<feature>.md`:
+   - Field: `Jobs Critique: SHIP YES` or `Jobs Critique: SHIP NO`
+   - This is MANDATORY, not optional
+
+2. **integrator** MUST read contract at PATCHSET 4:
+   - If `Jobs Critique: SHIP NO` → BLOCKED
+   - If `Jobs Critique: PENDING` or missing → BLOCKED
+   - Only `Jobs Critique: SHIP YES` allows DONE
+
+3. **ui-polish** MUST report PASS/FAIL explicitly before completing

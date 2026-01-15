@@ -73,7 +73,49 @@ xcodebuild test -project Dispatch.xcodeproj -scheme Dispatch \
 swiftlint lint
 ```
 
-## Using Context7 for Documentation
+### Style Enforcement (Integrator PATCHSET 4)
+
+Integrator must run these commands at PATCHSET 4:
+
+```bash
+# 1. Format check (if swiftformat exists)
+if command -v swiftformat &> /dev/null; then
+  swiftformat . --lint
+fi
+
+# 2. Lint
+swiftlint lint
+```
+
+- If swiftformat not found → skip with "N/A"
+- If either fails → BLOCKED
+- See `.claude/rules/style-enforcement.md` for policy
+
+## MCP Tools
+
+### Available MCP Servers
+
+| Server | Wildcard | Purpose |
+|--------|----------|---------|
+| `mcp__xcodebuildmcp__*` | Xcode build, test, simulator control | Build iOS/macOS, run tests, take screenshots |
+| `mcp__context7__*` | Documentation lookup | Get up-to-date library docs |
+| `mcp__supabase__*` | Database operations | Query, migrate, manage schema |
+| `mcp__github__*` | GitHub operations | PRs, issues, code search |
+
+**IMPORTANT**: Use wildcards (`mcp__xcodebuildmcp__*`) when documenting MCP tools. Don't list specific method names unless you've confirmed they exist - tool names may change between MCP server versions.
+
+### XcodeBuild MCP Usage
+
+Use `mcp__xcodebuildmcp__*` tools for:
+- Building for iOS Simulator and macOS
+- Running unit and UI tests
+- Taking simulator screenshots
+- Booting/managing simulators
+- Getting build settings
+
+**Fallback**: If MCP tools are unavailable, use the bash commands in "Common Commands" section.
+
+### Context7 for Documentation
 
 **Always use Context7 MCP tools to look up current documentation before implementing features.**
 
@@ -82,7 +124,7 @@ swiftlint lint
 mcp__context7__resolve-library-id with libraryName="swiftui"
 
 # Get documentation
-mcp__context7__get-library-docs with context7CompatibleLibraryID="/websites/developer_apple_swiftui" topic="your topic"
+mcp__context7__query-docs with libraryId="/websites/developer_apple_swiftui" query="your question"
 ```
 
 ### Key Library IDs
@@ -136,14 +178,20 @@ dispatch-planner
   │
   ├─ Interface Lock → persisted to .claude/contracts/
   │
-  ├─ feature-owner (vertical slice) ─────┐
-  │                                      │ parallel OK
-  ├─ data-integrity (ONLY if schema)     │ for feedback
-  │                                      │
-  ├─ ui-polish (near end) ───────────────┘
-  │                                      │
-  │              [WAIT for all above]    │
-  │                                      ▼
+  ├─ feature-owner (vertical slice)
+  │       │
+  │       ├─ PATCHSET 1-3 (with integrator feedback)
+  │       │
+  │       └─ PATCHSET 4 triggers jobs-critic
+  │
+  ├─ jobs-critic (after PATCHSET 4) → writes SHIP verdict to contract
+  │
+  ├─ ui-polish (after jobs-critic SHIP: YES)
+  │
+  ├─ xcode-pilot (simulator validation after ui-polish)
+  │
+  │              [WAIT for all above]
+  │                      ▼
   └─ integrator (FINAL) ─────────────→ DONE
 ```
 
@@ -158,9 +206,11 @@ dispatch-planner
 | `dispatch-planner` | Orchestrator - routes work through fastest safe path | Read only |
 | `dispatch-explorer` | Deep codebase context finder (conditional) | Read only |
 | `feature-owner` | Owns entire vertical slice end-to-end | **Read only** |
-| `integrator` | Verification gatekeeper | None |
+| `jobs-critic` | Design bar enforcement - blocks DONE if SHIP: NO | None |
+| `integrator` | Verification gatekeeper - checks jobs-critic verdict | None |
 | `data-integrity` | Schema + sync authority | **Write/Execute** |
-| `ui-polish` | UI/UX refinement specialist | None |
+| `ui-polish` | UI/UX refinement specialist (only after SHIP: YES) | None |
+| `xcode-pilot` | Simulator validation (after ui-polish) | None |
 
 ### The Five Rules
 
@@ -206,28 +256,45 @@ Every agent must stop and escalate when:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  VALID SEQUENCING                                           │
+│  MANDATORY SEQUENCE                                         │
 ├─────────────────────────────────────────────────────────────┤
-│  feature-owner ──────────────────────┐                      │
-│                                      │                      │
-│  integrator (continuous) ────────────┤  (parallel OK)       │
-│                                      │                      │
-│  ui-polish ──────────────────────────┘                      │
-│                                      │                      │
-│                    WAIT for all to complete                 │
-│                                      ▼                      │
-│                         integrator (FINAL) ──→ DONE         │
+│                                                             │
+│  1. feature-owner (PATCHSET 1-4)                            │
+│           │                                                 │
+│           ▼                                                 │
+│  2. jobs-critic → writes "Jobs Critique: SHIP YES/NO"       │
+│           │        to .claude/contracts/<feature>.md        │
+│           │                                                 │
+│           ├── SHIP: NO → STOP (fix issues, re-run critic)   │
+│           │                                                 │
+│           ▼ SHIP: YES                                       │
+│  3. ui-polish (refines UI/UX)                               │
+│           │                                                 │
+│           ▼                                                 │
+│  4. xcode-pilot (simulator validation)                      │
+│           │                                                 │
+│           ▼                                                 │
+│  5. integrator (FINAL)                                      │
+│           │                                                 │
+│           ├── Reads contract, checks "Jobs Critique" field  │
+│           ├── If SHIP: NO or missing → REJECT DONE          │
+│           │                                                 │
+│           ▼ SHIP: YES confirmed                             │
+│        DONE                                                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Why**: Running integrator parallel with ui-polish creates a race condition where integrator may verify a stale snapshot while files are still being modified.
+**Why**:
+- Running integrator parallel with ui-polish creates a race condition (stale snapshot)
+- ui-polish changes what xcode-pilot validates
+- jobs-critic verdict must be mechanically checked, not assumed
 
-**Enforcement**:
-- Parallel agents during development = ✅ ALLOWED (fast feedback)
-- Integrator "DONE" during parallel runs = ❌ INVALID (stale)
-- Integrator "DONE" after all file-modifying agents complete = ✅ VALID
+**Mechanical Enforcement**:
+- jobs-critic MUST write `Jobs Critique: SHIP YES` or `Jobs Critique: SHIP NO` to contract
+- integrator MUST read contract and verify `Jobs Critique: SHIP YES` before reporting DONE
+- If jobs-critic field is missing or NO, integrator MUST reject DONE
 
-**The rule**: After ui-polish (or any file-modifying agent) completes, integrator MUST run one final time. Only this final run's "DONE" status is authoritative.
+**The rule**: After all file-modifying agents complete (feature-owner, ui-polish), integrator MUST run one final time AND verify jobs-critic verdict. Only this final run's "DONE" status is authoritative.
 
 ### Risk Gating
 

@@ -29,3 +29,25 @@
 ### Ownership
 - **feature-owner**: [scope]
 - **data-integrity**: [if needed]
+
+---
+
+### Jobs Critique (written by jobs-critic agent)
+
+**Jobs Critique**: [SHIP YES | SHIP NO | PENDING]
+**Reviewed**: [YYYY-MM-DD HH:MM]
+
+#### Checklist
+- [ ] Ruthless simplicity - nothing can be removed without losing meaning
+- [ ] One clear primary action per screen/state
+- [ ] Strong hierarchy - headline → primary → secondary
+- [ ] No clutter - whitespace is a feature
+- [ ] Native feel - follows platform conventions
+
+#### Verdict Notes
+[jobs-critic writes specific feedback here]
+
+---
+
+**IMPORTANT**: integrator MUST verify `Jobs Critique: SHIP YES` before reporting DONE.
+If this field is missing, says PENDING, or says SHIP NO, integrator MUST reject DONE.

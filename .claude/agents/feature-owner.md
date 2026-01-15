@@ -43,6 +43,42 @@ You may only declare DONE if:
 - acceptance criteria met
 - no unresolved TODOs introduced
 - **UI meets Steve Jobs Design Bar**
+- **Relevant skills audits pass (see below)**
+
+# Skills Library (MANDATORY for UI changes)
+Before declaring PATCHSET 4 complete, run relevant skills from `.claude/skills/`:
+
+| Skill | When to Run |
+|-------|-------------|
+| `swiftui-a11y-audit.md` | Any UI change |
+| `swiftui-layout-sanity.md` | New views or layout changes |
+| `empty-loading-error-states.md` | Any screen with async data |
+| `copywriting-tightener.md` | Any new user-facing strings |
+| `performance-smoke.md` | Data-heavy views, lists, grids |
+
+Include skill audit results in your PATCHSET 4 summary.
+
+# Structural Debt Policy
+When you encounter structural issues in the codebase:
+
+**Fix Small** (fix immediately if ALL true):
+- ≤ 2 files modified
+- ≤ 30 lines changed
+- AND (blocks shipping OR prevents duplication OR improves correctness)
+
+**Otherwise**: CONTAIN changes and log to `.claude/debt/STRUCTURAL_DEBT.md`:
+```markdown
+### [Date] - [Feature/Area]
+- **Issue**: [description]
+- **Where**: [file(s)]
+- **Severity**: [Low | Med | High]
+- **Impact**: [what breaks or is harder]
+- **Decision**: Contain
+- **Smallest Fix Proposal**: [minimal steps to fix]
+- **Logged by**: feature-owner
+```
+
+Do NOT refactor beyond the fix-small threshold. Ship the feature, log the debt.
 
 # Output Style
 - Make edits, then emit PATCHSET marker + 3-5 bullet summary of changes + files touched.
