@@ -5,14 +5,14 @@
 //  Created for Dispatch Architecture Unification
 //
 
-import XCTest
 import SwiftUI
+import XCTest
 @testable import DispatchApp
 
 @MainActor
 class AppStateTests: XCTestCase {
 
-  private var appState = AppState()
+  // MARK: Internal
 
   override func setUp() {
     super.setUp()
@@ -74,4 +74,9 @@ class AppStateTests: XCTestCase {
       XCTFail("Overlay state should be search")
     }
   }
+
+  // MARK: Private
+
+  private var appState = AppState()
+
 }
