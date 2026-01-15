@@ -22,6 +22,20 @@ enum SyncRunMode: Sendable {
   case test // Deterministic mode: no network, timers, or side effects
 }
 
+// MARK: - ProfileUpdateError
+
+/// Errors that can occur when updating user profile
+enum ProfileUpdateError: LocalizedError {
+  case notAuthenticated
+
+  var errorDescription: String? {
+    switch self {
+    case .notAuthenticated:
+      "You must be signed in to update your profile."
+    }
+  }
+}
+
 // MARK: - SyncManager
 
 @MainActor
@@ -163,6 +177,31 @@ final class SyncManager: ObservableObject {
   func updateCurrentUser(_ userId: UUID?) {
     debugLog.log("updateCurrentUser() called: \(userId?.uuidString ?? "nil")", category: .sync)
     currentUserID = userId
+  }
+
+  /// Updates the current user's user type in Supabase and locally
+  /// - Parameter newType: The new user type to set
+  /// - Throws: If the update fails
+  func updateUserType(_ newType: UserType) async throws {
+    guard let user = currentUser else {
+      debugLog.log("updateUserType: No current user", category: .sync)
+      throw ProfileUpdateError.notAuthenticated
+    }
+
+    debugLog.log("updateUserType: Updating to \(newType.rawValue)", category: .sync)
+
+    // Update in Supabase directly (RLS allows user to update their own profile)
+    try await supabase
+      .from("users")
+      .update(["user_type": newType.rawValue, "updated_at": ISO8601DateFormatter().string(from: Date())])
+      .eq("id", value: user.id.uuidString)
+      .execute()
+
+    // Update local model
+    user.userType = newType
+    user.updatedAt = Date()
+
+    debugLog.log("updateUserType: Successfully updated to \(newType.rawValue)", category: .sync)
   }
 
   /// Coalescing sync request - replaces "fire and forget" tasks with a single consumer.
