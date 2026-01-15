@@ -43,6 +43,8 @@ struct DescriptionGeneratorView: View {
         await loadPreselectedListing()
         await loadListings()
       }
+      .onAppear { overlayState.hide(reason: .settingsScreen) }
+      .onDisappear { overlayState.show(reason: .settingsScreen) }
   }
 
   // MARK: Private
@@ -51,6 +53,7 @@ struct DescriptionGeneratorView: View {
 
   @Environment(\.modelContext) private var modelContext
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+  @EnvironmentObject private var overlayState: AppOverlayState
 
   @State private var state = DescriptionGeneratorState()
   @State private var listings: [Listing] = []

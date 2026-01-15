@@ -46,9 +46,12 @@ struct SettingsView: View {
       .padding(.vertical, DS.Spacing.sm)
     }
     .environment(\.pullToSearchDisabled, true)
+    .onAppear { overlayState.hide(reason: .settingsScreen) }
+    .onDisappear { overlayState.show(reason: .settingsScreen) }
   }
 
   @EnvironmentObject private var appState: AppState
+  @EnvironmentObject private var overlayState: AppOverlayState
   @EnvironmentObject private var syncManager: SyncManager
 
 }

@@ -42,6 +42,7 @@ final class AppOverlayState: ObservableObject {
     case keyboard
     case modal
     case searchOverlay
+    case settingsScreen
   }
 
   enum RunMode {
