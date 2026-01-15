@@ -154,7 +154,7 @@ struct AppRouter {
     if selectedDestination == destination {
       popToRoot(for: destination)
     } else {
-      popToRoot(for: destination)  // Reset the destination we're navigating TO
+      popToRoot(for: destination) // Reset the destination we're navigating TO
       selectedDestination = destination
     }
   }

@@ -14,6 +14,9 @@ import SwiftUI
 /// Root Settings view for admins.
 /// Access Control: Only visible to admin users.
 struct SettingsView: View {
+
+  // MARK: Internal
+
   var body: some View {
     StandardScreen(title: "Settings", layout: .column, scroll: .automatic) {
       VStack(spacing: DS.Spacing.lg) {
@@ -49,6 +52,8 @@ struct SettingsView: View {
     .onAppear { overlayState.hide(reason: .settingsScreen) }
     .onDisappear { overlayState.show(reason: .settingsScreen) }
   }
+
+  // MARK: Private
 
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var overlayState: AppOverlayState
@@ -95,11 +100,7 @@ enum SettingsSection: String, Identifiable, CaseIterable {
 /// Summary row that navigates to the full ProfilePageView.
 private struct ProfileRow: View {
 
-  @EnvironmentObject private var syncManager: SyncManager
-
-  private var currentUser: User? {
-    syncManager.currentUser
-  }
+  // MARK: Internal
 
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Spacing.sm) {
@@ -140,6 +141,15 @@ private struct ProfileRow: View {
     .accessibilityLabel("Profile: \(currentUser?.name ?? "Unknown"), \(currentUser?.userType.displayName ?? "")")
     .accessibilityHint("Tap to view and edit profile")
   }
+
+  // MARK: Private
+
+  @EnvironmentObject private var syncManager: SyncManager
+
+  private var currentUser: User? {
+    syncManager.currentUser
+  }
+
 }
 
 // MARK: - SettingsRow

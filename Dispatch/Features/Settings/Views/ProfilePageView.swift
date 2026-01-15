@@ -13,18 +13,7 @@ import SwiftUI
 /// Full profile management page accessible via navigation from Settings.
 struct ProfilePageView: View {
 
-  @EnvironmentObject private var authManager: AuthManager
-  @EnvironmentObject private var syncManager: SyncManager
-
-  @State private var showingLogoutConfirmation = false
-  @State private var showingTypeChangeModal = false
-  @State private var pendingUserType: UserType?
-  @State private var isUpdatingType = false
-  @State private var updateError: Error?
-
-  private var currentUser: User? {
-    syncManager.currentUser
-  }
+  // MARK: Internal
 
   var body: some View {
     ZStack {
@@ -109,6 +98,21 @@ struct ProfilePageView: View {
     } message: {
       Text(updateError?.localizedDescription ?? "An unknown error occurred.")
     }
+  }
+
+  // MARK: Private
+
+  @EnvironmentObject private var authManager: AuthManager
+  @EnvironmentObject private var syncManager: SyncManager
+
+  @State private var showingLogoutConfirmation = false
+  @State private var showingTypeChangeModal = false
+  @State private var pendingUserType: UserType?
+  @State private var isUpdatingType = false
+  @State private var updateError: Error?
+
+  private var currentUser: User? {
+    syncManager.currentUser
   }
 
   // MARK: - Subviews
@@ -233,11 +237,11 @@ struct ProfilePageView: View {
 /// Shows centered card on dimmed backdrop with tap-to-dismiss.
 private struct RoleChangeModal: View {
 
+  // MARK: Internal
+
   let newType: UserType
   let onConfirm: () -> Void
   let onCancel: () -> Void
-
-  @State private var isAppearing = false
 
   var body: some View {
     ZStack {
@@ -316,6 +320,10 @@ private struct RoleChangeModal: View {
     .accessibilityElement(children: .contain)
     .accessibilityAddTraits(.isModal)
   }
+
+  // MARK: Private
+
+  @State private var isAppearing = false
 
   private func dismissWithAnimation(completion: (() -> Void)? = nil) {
     withAnimation(.easeOut(duration: 0.2)) {
