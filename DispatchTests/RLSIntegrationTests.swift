@@ -63,15 +63,12 @@ struct TaskRLSTests {
       title: "User A's Task",
       description: "Test task",
       dueDate: nil,
-      priority: "medium",
       status: "open",
       declaredBy: RLSTestUsers.userA,
-      claimedBy: nil,
       listing: nil,
       createdVia: "dispatch",
       sourceSlackMessages: nil,
       audiences: nil,
-      claimedAt: nil,
       completedAt: nil,
       deletedAt: nil,
       createdAt: Date(),
@@ -80,6 +77,7 @@ struct TaskRLSTests {
 
     // TODO: Insert task as User A, then query as User A
     // Expected: User A should be able to read their own task
+    _ = task // Suppress unused warning
     #expect(true, "Placeholder - implement with authenticated Supabase client")
   }
 
@@ -91,11 +89,11 @@ struct TaskRLSTests {
     #expect(true, "Placeholder - implement with authenticated Supabase client")
   }
 
-  @Test("User can read tasks they claimed", .enabled(if: rlsTestsEnabled))
-  func testReadClaimedTasks() async throws {
-    // Setup: Create task declared by User A, claimed by User B
+  @Test("User can read tasks assigned to them", .enabled(if: rlsTestsEnabled))
+  func testReadAssignedTasks() async throws {
+    // Setup: Create task declared by User A, assigned to User B
     // Action: Query as User B
-    // Expected: User B should see the task they claimed
+    // Expected: User B should see the task assigned to them
     #expect(true, "Placeholder - implement with authenticated Supabase client")
   }
 
@@ -154,8 +152,8 @@ struct ActivityRLSTests {
     #expect(true, "Placeholder - implement with authenticated Supabase client")
   }
 
-  @Test("User can read activities they claimed", .enabled(if: rlsTestsEnabled))
-  func testReadClaimedActivities() async throws {
+  @Test("User can read activities assigned to them", .enabled(if: rlsTestsEnabled))
+  func testReadAssignedActivities() async throws {
     #expect(true, "Placeholder - implement with authenticated Supabase client")
   }
 }
@@ -180,52 +178,22 @@ struct ListingRLSTests {
   }
 }
 
-// MARK: - ClaimEventRLSTests
+// MARK: - AssignmentRLSTests
 
-struct ClaimEventRLSTests {
+struct AssignmentRLSTests {
 
-  @Test("User can read claim events for their tasks", .enabled(if: rlsTestsEnabled))
-  func testReadClaimEventsForOwnTasks() async throws {
+  @Test("User can read assignments for their tasks", .enabled(if: rlsTestsEnabled))
+  func testReadAssignmentsForOwnTasks() async throws {
     #expect(true, "Placeholder - implement with authenticated Supabase client")
   }
 
-  @Test("User cannot read claim events for others' tasks", .enabled(if: rlsTestsEnabled))
-  func testCannotReadClaimEventsForOthersTasks() async throws {
+  @Test("User cannot read assignments for others' tasks", .enabled(if: rlsTestsEnabled))
+  func testCannotReadAssignmentsForOthersTasks() async throws {
     #expect(true, "Placeholder - implement with authenticated Supabase client")
   }
 
-  @Test("User can create claim event when claiming", .enabled(if: rlsTestsEnabled))
-  func testCreateClaimEvent() async throws {
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
-  }
-}
-
-// MARK: - ClaimRaceConditionTests
-
-struct ClaimRaceConditionTests {
-
-  @Test("Concurrent claims should result in only one winner", .enabled(if: rlsTestsEnabled))
-  func testConcurrentClaimsOneWinner() async throws {
-    // Setup: Create unclaimed task
-    // Action: User A and User B simultaneously attempt to claim
-    // Expected: Only one claim should succeed, other should get conflict
-    // This tests the database constraint and realtime handling
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
-  }
-
-  @Test("Claim after another user claimed should fail", .enabled(if: rlsTestsEnabled))
-  func testClaimAlreadyClaimedTask() async throws {
-    // Setup: Create task, have User A claim it
-    // Action: User B attempts to claim
-    // Expected: User B's claim should fail
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
-  }
-
-  @Test("Release by non-claimer should fail", .enabled(if: rlsTestsEnabled))
-  func testReleaseByNonClaimer() async throws {
-    // Setup: Create task claimed by User A
-    // Action: User B attempts to release
-    // Expected: Release should fail (User B is not the claimer)
+  @Test("User can create assignment for their tasks", .enabled(if: rlsTestsEnabled))
+  func testCreateAssignment() async throws {
     #expect(true, "Placeholder - implement with authenticated Supabase client")
   }
 }

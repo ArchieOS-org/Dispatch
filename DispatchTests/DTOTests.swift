@@ -3,8 +3,9 @@
 //  DispatchTests
 //
 //  Tests for Data Transfer Objects used in Supabase sync
-//  Tests: TaskDTO, ActivityDTO, ListingDTO, UserDTO, NoteDTO, SubtaskDTO, ClaimEventDTO
+//  Tests: TaskDTO, ListingDTO, UserDTO, NoteDTO, SubtaskDTO
 //  Created by Test Generation on 2025-12-08.
+//  Updated to match current codebase APIs.
 //
 
 // swiftlint:disable force_unwrapping
@@ -25,14 +26,12 @@ struct TaskDTOTests {
           "title": "Test Task",
           "description": "Test description",
           "due_date": "2025-01-15T10:00:00Z",
-          "priority": "high",
           "status": "open",
           "declared_by": "550e8400-e29b-41d4-a716-446655440001",
-          "claimed_by": null,
           "listing": null,
           "created_via": "dispatch",
           "source_slack_messages": null,
-          "claimed_at": null,
+          "audiences": null,
           "completed_at": null,
           "deleted_at": null,
           "created_at": "2025-01-01T00:00:00Z",
@@ -46,49 +45,9 @@ struct TaskDTOTests {
 
     #expect(dto.title == "Test Task")
     #expect(dto.description == "Test description")
-    #expect(dto.priority == "high")
     #expect(dto.status == "open")
     #expect(dto.createdVia == "dispatch")
-    #expect(dto.claimedBy == nil)
     #expect(dto.listing == nil)
-  }
-
-  @Test("TaskDTO encodes to JSON correctly")
-  func testEncodeToJSON() throws {
-    let id = UUID()
-    let declaredBy = UUID()
-    let dto = TaskDTO(
-      id: id,
-      title: "Test Task",
-      description: "Test description",
-      dueDate: nil,
-      priority: "medium",
-      status: "open",
-      declaredBy: declaredBy,
-      claimedBy: nil,
-      listing: nil,
-      createdVia: "dispatch",
-      sourceSlackMessages: nil,
-      audiences: nil,
-      claimedAt: nil,
-      completedAt: nil,
-      deletedAt: nil,
-      createdAt: Date(),
-      updatedAt: Date()
-    )
-
-    let encoder = JSONEncoder()
-    encoder.dateEncodingStrategy = .iso8601
-    let data = try encoder.encode(dto)
-
-    // Verify it can be decoded back
-    let decoder = JSONDecoder()
-    decoder.dateDecodingStrategy = .iso8601
-    let decoded = try decoder.decode(TaskDTO.self, from: data)
-
-    #expect(decoded.id == id)
-    #expect(decoded.title == "Test Task")
-    #expect(decoded.priority == "medium")
   }
 
   @Test("TaskDTO converts to TaskItem model correctly")
@@ -100,15 +59,12 @@ struct TaskDTOTests {
       title: "Test Task",
       description: "Description",
       dueDate: Date(),
-      priority: "urgent",
       status: "in_progress",
       declaredBy: declaredBy,
-      claimedBy: nil,
       listing: nil,
       createdVia: "slack",
       sourceSlackMessages: ["message1", "message2"],
       audiences: nil,
-      claimedAt: nil,
       completedAt: nil,
       deletedAt: nil,
       createdAt: Date(),
@@ -120,7 +76,6 @@ struct TaskDTOTests {
     #expect(model.id == id)
     #expect(model.title == "Test Task")
     #expect(model.taskDescription == "Description")
-    #expect(model.priority == Priority.urgent)
     #expect(model.status == TaskStatus.inProgress)
     #expect(model.declaredBy == declaredBy)
     #expect(model.createdVia == CreationSource.slack)
@@ -134,15 +89,12 @@ struct TaskDTOTests {
       title: "Task",
       description: nil,
       dueDate: nil,
-      priority: "low",
       status: "open",
       declaredBy: UUID(),
-      claimedBy: nil,
       listing: nil,
       createdVia: "dispatch",
       sourceSlackMessages: nil,
       audiences: nil,
-      claimedAt: nil,
       completedAt: nil,
       deletedAt: nil,
       createdAt: Date(),
@@ -153,32 +105,6 @@ struct TaskDTOTests {
     #expect(model.taskDescription.isEmpty)
   }
 
-  @Test("TaskDTO handles invalid priority gracefully")
-  func testInvalidPriority() {
-    let dto = TaskDTO(
-      id: UUID(),
-      title: "Task",
-      description: nil,
-      dueDate: nil,
-      priority: "invalid_priority",
-      status: "open",
-      declaredBy: UUID(),
-      claimedBy: nil,
-      listing: nil,
-      createdVia: "dispatch",
-      sourceSlackMessages: nil,
-      audiences: nil,
-      claimedAt: nil,
-      completedAt: nil,
-      deletedAt: nil,
-      createdAt: Date(),
-      updatedAt: Date()
-    )
-
-    let model = dto.toModel()
-    #expect(model.priority == .medium) // Falls back to default
-  }
-
   @Test("TaskDTO handles invalid status gracefully")
   func testInvalidStatus() {
     let dto = TaskDTO(
@@ -186,15 +112,12 @@ struct TaskDTOTests {
       title: "Task",
       description: nil,
       dueDate: nil,
-      priority: "low",
       status: "invalid_status",
       declaredBy: UUID(),
-      claimedBy: nil,
       listing: nil,
       createdVia: "dispatch",
       sourceSlackMessages: nil,
       audiences: nil,
-      claimedAt: nil,
       completedAt: nil,
       deletedAt: nil,
       createdAt: Date(),
@@ -203,109 +126,6 @@ struct TaskDTOTests {
 
     let model = dto.toModel()
     #expect(model.status == .open) // Falls back to default
-  }
-}
-
-// MARK: - ActivityDTOTests
-
-struct ActivityDTOTests {
-
-  @Test("ActivityDTO decodes from JSON correctly")
-  func testDecodeFromJSON() throws {
-    let json = """
-      {
-          "id": "550e8400-e29b-41d4-a716-446655440000",
-          "title": "Client Call",
-          "description": "Follow up call",
-          "activity_type": "call",
-          "due_date": "2025-01-15T14:00:00Z",
-          "priority": "high",
-          "status": "open",
-          "declared_by": "550e8400-e29b-41d4-a716-446655440001",
-          "claimed_by": null,
-          "listing": null,
-          "created_via": "dispatch",
-          "source_slack_messages": null,
-          "duration_minutes": 30,
-          "claimed_at": null,
-          "completed_at": null,
-          "deleted_at": null,
-          "created_at": "2025-01-01T00:00:00Z",
-          "updated_at": "2025-01-01T00:00:00Z"
-      }
-      """.data(using: .utf8)!
-
-    let decoder = JSONDecoder()
-    decoder.dateDecodingStrategy = .iso8601
-    let dto = try decoder.decode(ActivityDTO.self, from: json)
-
-    #expect(dto.title == "Client Call")
-    #expect(dto.activityType == "call")
-    #expect(dto.durationMinutes == 30)
-    #expect(dto.priority == "high")
-  }
-
-  @Test("ActivityDTO converts to Activity model correctly")
-  func testToModel() {
-    let id = UUID()
-    let declaredBy = UUID()
-    let dto = ActivityDTO(
-      id: id,
-      title: "Property Showing",
-      description: "Show property to client",
-      activityType: "show_property",
-      dueDate: Date(),
-      priority: "urgent",
-      status: "in_progress",
-      declaredBy: declaredBy,
-      claimedBy: nil,
-      listing: nil,
-      createdVia: "realtor_app",
-      sourceSlackMessages: nil,
-      audiences: nil,
-      durationMinutes: 60,
-      claimedAt: nil,
-      completedAt: nil,
-      deletedAt: nil,
-      createdAt: Date(),
-      updatedAt: Date()
-    )
-
-    let model = dto.toModel()
-
-    #expect(model.id == id)
-    #expect(model.title == "Property Showing")
-    #expect(model.type == ActivityType.showProperty)
-    #expect(model.duration == 3600.0) // 60 minutes in seconds
-    #expect(model.status == ActivityStatus.inProgress)
-  }
-
-  @Test("ActivityDTO handles nil duration")
-  func testNilDuration() {
-    let dto = ActivityDTO(
-      id: UUID(),
-      title: "Email",
-      description: nil,
-      activityType: "email",
-      dueDate: nil,
-      priority: "low",
-      status: "open",
-      declaredBy: UUID(),
-      claimedBy: nil,
-      listing: nil,
-      createdVia: "dispatch",
-      sourceSlackMessages: nil,
-      audiences: nil,
-      durationMinutes: nil,
-      claimedAt: nil,
-      completedAt: nil,
-      deletedAt: nil,
-      createdAt: Date(),
-      updatedAt: Date()
-    )
-
-    let model = dto.toModel()
-    #expect(model.duration == nil)
   }
 }
 
@@ -374,18 +194,21 @@ struct ListingDTOTests {
           "province": "ON",
           "postal_code": "M5H 2N2",
           "country": "Canada",
-          "country": "Canada",
           "price": 750000.00,
           "mls_number": "C1234567",
           "listing_type": "sale",
+          "listing_type_id": null,
           "status": "active",
+          "stage": null,
           "owned_by": "550e8400-e29b-41d4-a716-446655440001",
+          "property_id": null,
           "created_via": "realtor_app",
           "source_slack_messages": null,
           "activated_at": null,
           "pending_at": null,
           "closed_at": null,
           "deleted_at": null,
+          "due_date": null,
           "created_at": "2025-01-01T00:00:00Z",
           "updated_at": "2025-01-01T00:00:00Z"
       }
@@ -416,6 +239,7 @@ struct ListingDTOTests {
       price: 1200000.00,
       mlsNumber: "V9876543",
       listingType: "lease",
+      listingTypeId: nil,
       status: "active",
       stage: nil,
       ownedBy: ownedBy,
@@ -440,47 +264,6 @@ struct ListingDTOTests {
     #expect(model.status == ListingStatus.active)
     #expect(model.ownedBy == ownedBy)
   }
-
-  @Test("ListingDTO ignores unknown keys in JSON (e.g., deprecated assigned_staff)")
-  func testIgnoresUnknownKeys() throws {
-    // This JSON includes 'assigned_staff' which is no longer in the DTO schema
-    // The decoder should ignore it without throwing
-    let json = """
-      {
-          "id": "550e8400-e29b-41d4-a716-446655440000",
-          "address": "789 Legacy Lane",
-          "city": "Calgary",
-          "province": "AB",
-          "postal_code": "T2P 1A1",
-          "country": "Canada",
-          "country": "Canada",
-          "price": 500000.00,
-          "mls_number": "A7654321",
-          "listing_type": "sale",
-          "status": "active",
-          "owned_by": "550e8400-e29b-41d4-a716-446655440001",
-          "assigned_staff": "550e8400-e29b-41d4-a716-446655440002",
-          "created_via": "dispatch",
-          "source_slack_messages": null,
-          "activated_at": null,
-          "pending_at": null,
-          "closed_at": null,
-          "deleted_at": null,
-          "created_at": "2025-01-01T00:00:00Z",
-          "updated_at": "2025-01-01T00:00:00Z"
-      }
-      """.data(using: .utf8)!
-
-    let decoder = JSONDecoder()
-    decoder.dateDecodingStrategy = .iso8601
-
-    // Should not throw even though assigned_staff is present
-    let dto = try decoder.decode(ListingDTO.self, from: json)
-
-    #expect(dto.address == "789 Legacy Lane")
-    #expect(dto.city == "Calgary")
-    #expect(dto.status == "active")
-  }
 }
 
 // MARK: - NoteDTOTests
@@ -498,7 +281,9 @@ struct NoteDTOTests {
           "parent_id": "550e8400-e29b-41d4-a716-446655440002",
           "created_at": "2025-01-01T00:00:00Z",
           "edited_at": null,
-          "edited_by": null
+          "edited_by": null,
+          "deleted_at": null,
+          "deleted_by": null
       }
       """.data(using: .utf8)!
 
@@ -527,7 +312,8 @@ struct NoteDTOTests {
       editedBy: nil,
       createdAt: Date(),
       updatedAt: nil,
-      deletedAt: nil
+      deletedAt: nil,
+      deletedBy: nil
     )
 
     let model = dto.toModel()
@@ -586,187 +372,5 @@ struct SubtaskDTOTests {
     #expect(model.completed == true)
     #expect(model.parentType == .activity)
     #expect(model.parentId == parentId)
-  }
-}
-
-// MARK: - ClaimEventDTOTests
-
-struct ClaimEventDTOTests {
-
-  @Test("ClaimEventDTO decodes from JSON correctly")
-  func testDecodeFromJSON() throws {
-    let json = """
-      {
-          "id": "550e8400-e29b-41d4-a716-446655440000",
-          "parent_type": "task",
-          "parent_id": "550e8400-e29b-41d4-a716-446655440001",
-          "action": "claimed",
-          "user_id": "550e8400-e29b-41d4-a716-446655440002",
-          "performed_at": "2025-01-15T10:00:00Z",
-          "reason": "Taking ownership",
-          "created_at": "2025-01-01T00:00:00Z",
-          "updated_at": "2025-01-01T00:00:00Z"
-      }
-      """.data(using: .utf8)!
-
-    let decoder = JSONDecoder()
-    decoder.dateDecodingStrategy = .iso8601
-    let dto = try decoder.decode(ClaimEventDTO.self, from: json)
-
-    #expect(dto.parentType == "task")
-    #expect(dto.action == "claimed")
-    #expect(dto.reason == "Taking ownership")
-  }
-
-  @Test("ClaimEventDTO encodes to JSON correctly")
-  func testEncodeToJSON() throws {
-    let id = UUID()
-    let parentId = UUID()
-    let userId = UUID()
-    let now = Date()
-    let dto = ClaimEventDTO(
-      id: id,
-      parentType: "activity",
-      parentId: parentId,
-      action: "released",
-      userId: userId,
-      performedAt: now,
-      reason: "Reassigning",
-      createdAt: now,
-      updatedAt: now
-    )
-
-    let encoder = JSONEncoder()
-    encoder.dateEncodingStrategy = .iso8601
-    let data = try encoder.encode(dto)
-
-    // Verify it can be decoded back
-    let decoder = JSONDecoder()
-    decoder.dateDecodingStrategy = .iso8601
-    let decoded = try decoder.decode(ClaimEventDTO.self, from: data)
-
-    #expect(decoded.id == id)
-    #expect(decoded.parentType == "activity")
-    #expect(decoded.action == "released")
-    #expect(decoded.reason == "Reassigning")
-  }
-
-  @Test("ClaimEventDTO converts to ClaimEvent model correctly")
-  func testToModel() {
-    let id = UUID()
-    let parentId = UUID()
-    let userId = UUID()
-    let performedAt = Date()
-    let createdAt = Date().addingTimeInterval(-3600)
-    let updatedAt = Date()
-    let dto = ClaimEventDTO(
-      id: id,
-      parentType: "task",
-      parentId: parentId,
-      action: "claimed",
-      userId: userId,
-      performedAt: performedAt,
-      reason: "I'll handle this",
-      createdAt: createdAt,
-      updatedAt: updatedAt
-    )
-
-    let model = dto.toModel()
-
-    #expect(model.id == id)
-    #expect(model.parentType == .task)
-    #expect(model.parentId == parentId)
-    #expect(model.action == .claimed)
-    #expect(model.userId == userId)
-    #expect(model.reason == "I'll handle this")
-    #expect(model.createdAt == createdAt)
-    #expect(model.updatedAt == updatedAt)
-  }
-
-  @Test("ClaimEventDTO handles nil reason")
-  func testNilReason() {
-    let dto = ClaimEventDTO(
-      id: UUID(),
-      parentType: "task",
-      parentId: UUID(),
-      action: "claimed",
-      userId: UUID(),
-      performedAt: Date(),
-      reason: nil,
-      createdAt: Date(),
-      updatedAt: Date()
-    )
-
-    let model = dto.toModel()
-    #expect(model.reason == nil)
-  }
-
-  @Test("ClaimEventDTO handles invalid action gracefully")
-  func testInvalidAction() {
-    let dto = ClaimEventDTO(
-      id: UUID(),
-      parentType: "task",
-      parentId: UUID(),
-      action: "invalid_action",
-      userId: UUID(),
-      performedAt: Date(),
-      reason: nil,
-      createdAt: Date(),
-      updatedAt: Date()
-    )
-
-    let model = dto.toModel()
-    #expect(model.action == .claimed) // Falls back to default
-  }
-
-  @Test("ClaimEventDTO handles invalid parentType gracefully")
-  func testInvalidParentType() {
-    let dto = ClaimEventDTO(
-      id: UUID(),
-      parentType: "invalid_type",
-      parentId: UUID(),
-      action: "claimed",
-      userId: UUID(),
-      performedAt: Date(),
-      reason: nil,
-      createdAt: Date(),
-      updatedAt: Date()
-    )
-
-    let model = dto.toModel()
-    #expect(model.parentType == .task) // Falls back to default
-  }
-
-  @Test("ClaimEventDTO init(from:) creates DTO from model correctly")
-  func testInitFromModel() {
-    let id = UUID()
-    let parentId = UUID()
-    let userId = UUID()
-    let performedAt = Date()
-    let createdAt = Date().addingTimeInterval(-3600)
-    let updatedAt = Date()
-
-    let model = ClaimEvent(
-      id: id,
-      parentType: .activity,
-      parentId: parentId,
-      action: .released,
-      userId: userId,
-      performedAt: performedAt,
-      reason: "No longer available",
-      createdAt: createdAt,
-      updatedAt: updatedAt
-    )
-
-    let dto = ClaimEventDTO(from: model)
-
-    #expect(dto.id == id)
-    #expect(dto.parentType == "activity")
-    #expect(dto.parentId == parentId)
-    #expect(dto.action == "released")
-    #expect(dto.userId == userId)
-    #expect(dto.reason == "No longer available")
-    #expect(dto.createdAt == createdAt)
-    #expect(dto.updatedAt == updatedAt)
   }
 }

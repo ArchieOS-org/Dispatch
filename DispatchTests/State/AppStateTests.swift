@@ -27,7 +27,8 @@ class AppStateTests: XCTestCase {
     let route = AppRoute.listing(UUID())
     appState.dispatch(.navigate(route))
 
-    XCTAssertEqual(appState.router.path.count, 1)
+    let currentPath = appState.router.paths[appState.router.selectedDestination] ?? []
+    XCTAssertEqual(currentPath.count, 1)
     // Note: checking deep equality on path is tricky in SwiftUI,
     // but verifying count > 0 confirms append happened.
   }
@@ -35,32 +36,37 @@ class AppStateTests: XCTestCase {
   func test_dispatch_popToRoot_clearsRouterPath() {
     let route = AppRoute.listing(UUID())
     appState.dispatch(.navigate(route))
-    XCTAssertFalse(appState.router.path.isEmpty)
+    let pathAfterNavigate = appState.router.paths[appState.router.selectedDestination] ?? []
+    XCTAssertFalse(pathAfterNavigate.isEmpty)
 
-    appState.dispatch(.popToRoot)
-    XCTAssertTrue(appState.router.path.isEmpty)
+    appState.dispatch(.popToRoot(appState.router.selectedDestination))
+    let pathAfterPop = appState.router.paths[appState.router.selectedDestination] ?? []
+    XCTAssertTrue(pathAfterPop.isEmpty)
   }
 
   func test_router_selectSameTab_popsToRoot() {
     appState.router.navigate(to: .listing(UUID()))
-    appState.router.selectedTab = .workspace
+    appState.router.setSelectedDestination(.tab(.workspace))
 
-    // Select same tab
-    appState.router.selectTab(.workspace)
+    // Select same tab via user action (should pop to root)
+    appState.router.userSelectTab(.workspace)
 
-    XCTAssertTrue(appState.router.path.isEmpty)
+    let currentPath = appState.router.paths[appState.router.selectedDestination] ?? []
+    XCTAssertTrue(currentPath.isEmpty)
   }
 
-  func test_router_switchTab_clearsPath() {
+  func test_router_switchTab_maintainsPerTabPaths() {
     // Start at workspace
-    appState.router.selectedTab = .workspace
+    appState.router.setSelectedDestination(.tab(.workspace))
     appState.router.navigate(to: .listing(UUID()))
 
-    // Switch to listings
-    appState.router.selectTab(.listings)
+    // Switch to listings - path is per-destination, so workspace path stays
+    appState.router.setSelectedTab(.listings)
 
     XCTAssertEqual(appState.router.selectedTab, .listings)
-    XCTAssertTrue(appState.router.path.isEmpty)
+    // Listings path should be empty (new destination)
+    let listingsPath = appState.router.paths[.tab(.listings)] ?? []
+    XCTAssertTrue(listingsPath.isEmpty)
   }
 
   // MARK: - Command Tests

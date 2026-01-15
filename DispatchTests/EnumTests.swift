@@ -3,7 +3,7 @@
 //  DispatchTests
 //
 //  Comprehensive tests for all enum types in the Dispatch app
-//  Tests: Priority, TaskStatus, ActivityStatus, UserType, ClaimFilter, DateSection
+//  Tests: TaskStatus, ActivityStatus, UserType, ClaimAction, etc.
 //  Created by Test Generation on 2025-12-08.
 //
 
@@ -12,54 +12,6 @@
 import Foundation
 import Testing
 @testable import DispatchApp
-
-// MARK: - PriorityTests
-
-struct PriorityTests {
-
-  @Test("Priority has all expected cases")
-  func testAllCases() {
-    #expect(Priority.allCases.count == 4)
-    #expect(Priority.allCases.contains(.low))
-    #expect(Priority.allCases.contains(.medium))
-    #expect(Priority.allCases.contains(.high))
-    #expect(Priority.allCases.contains(.urgent))
-  }
-
-  @Test("Priority is Comparable with correct ordering")
-  func testComparable() {
-    #expect(Priority.low < Priority.medium)
-    #expect(Priority.medium < Priority.high)
-    #expect(Priority.high < Priority.urgent)
-    #expect(Priority.low < Priority.urgent)
-    #expect(Priority.urgent > Priority.low)
-  }
-
-  @Test("Priority sorting works correctly")
-  func testSorting() {
-    let unsorted: [Priority] = [.urgent, .low, .high, .medium]
-    let sorted = unsorted.sorted()
-    #expect(sorted == [.low, .medium, .high, .urgent])
-  }
-
-  @Test("Priority raw values are correct")
-  func testRawValues() {
-    #expect(Priority.low.rawValue == "low")
-    #expect(Priority.medium.rawValue == "medium")
-    #expect(Priority.high.rawValue == "high")
-    #expect(Priority.urgent.rawValue == "urgent")
-  }
-
-  @Test("Priority round-trips through Codable")
-  func testCodable() throws {
-    let priorities: [Priority] = [.low, .medium, .high, .urgent]
-    for priority in priorities {
-      let encoded = try JSONEncoder().encode(priority)
-      let decoded = try JSONDecoder().decode(Priority.self, from: encoded)
-      #expect(decoded == priority)
-    }
-  }
-}
 
 // MARK: - TaskStatusTests
 
@@ -262,32 +214,6 @@ struct ListingTypeTests {
     #expect(ListingType.preListing.rawValue == "pre_listing")
     #expect(ListingType.rental.rawValue == "rental")
     #expect(ListingType.other.rawValue == "other")
-  }
-}
-
-// MARK: - ActivityTypeTests
-
-struct ActivityTypeTests {
-
-  @Test("ActivityType has all expected cases")
-  func testAllCases() {
-    #expect(ActivityType.allCases.count == 6)
-    #expect(ActivityType.allCases.contains(.call))
-    #expect(ActivityType.allCases.contains(.email))
-    #expect(ActivityType.allCases.contains(.meeting))
-    #expect(ActivityType.allCases.contains(.showProperty))
-    #expect(ActivityType.allCases.contains(.followUp))
-    #expect(ActivityType.allCases.contains(.other))
-  }
-
-  @Test("ActivityType raw values match database schema")
-  func testRawValues() {
-    #expect(ActivityType.call.rawValue == "call")
-    #expect(ActivityType.email.rawValue == "email")
-    #expect(ActivityType.meeting.rawValue == "meeting")
-    #expect(ActivityType.showProperty.rawValue == "show_property")
-    #expect(ActivityType.followUp.rawValue == "follow_up")
-    #expect(ActivityType.other.rawValue == "other")
   }
 }
 
