@@ -68,6 +68,7 @@ struct OnboardingLoadingView: View {
         .padding(.bottom, DS.Spacing.lg)
       }
     }
+    .tint(DS.Colors.accent)
   }
 
   // MARK: Private

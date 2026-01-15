@@ -333,6 +333,8 @@ struct ContentView: View {
         // Hidden from both tabBar and sidebar; accessed via StageCardsHeader.
         ForEach(ListingStage.allCases, id: \.self) { stage in
           Tab(stage.displayName, systemImage: stage.icon, value: SidebarDestination.stage(stage)) {
+            // NavigationStack structure matches main tabs for consistency.
+            // Tint is applied inside StandardScreen.innerContent for content controls.
             NavigationStack(path: pathBinding(for: .stage(stage))) {
               StagedListingsView(stage: stage)
                 .appDestinations()

@@ -64,12 +64,15 @@ struct DescriptionGeneratorView: View {
       #if os(macOS)
       // macOS: Always use side-by-side layout
       macOSLayout
+        .tint(DS.Colors.accent)
       #else
       // iOS/iPadOS: Adaptive based on size class and orientation
       if horizontalSizeClass == .regular, geometry.size.width > 700 {
         iPadLandscapeLayout
+          .tint(DS.Colors.accent)
       } else {
         mobileLayout
+          .tint(DS.Colors.accent)
       }
       #endif
     }

@@ -26,6 +26,10 @@ struct AppDestinationsModifier: ViewModifier {
     content
       // MARK: - All Routes (ID-based) - SINGLE DESTINATION
       .navigationDestination(for: AppRoute.self) { route in
+        // Note: .tint() is NOT applied here because it would wrap the entire destination
+        // including navigation modifiers, which causes title color issues during
+        // interactive back gesture cancellation. Tint is applied at content level
+        // by StandardScreen.innerContent or individual views.
         routeDestination(for: route)
       }
       // PROBE: Signal that registry is active

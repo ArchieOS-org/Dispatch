@@ -81,6 +81,7 @@ struct LoginView: View {
       }
       .padding(DS.Spacing.lg)
     }
+    .tint(DS.Colors.accent)
   }
 
   // MARK: Private

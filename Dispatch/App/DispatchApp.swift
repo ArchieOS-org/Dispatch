@@ -78,7 +78,6 @@ struct DispatchApp: App {
         }
         .animation(.easeInOut, value: appState.authManager.isAuthenticated)
       }
-      .tint(DS.Colors.accent)
       // Inject Brain & Core Services globally
       .environmentObject(appState)
       .environmentObject(appState.authManager)
@@ -132,17 +131,38 @@ struct DispatchApp: App {
   @State private var showTestHarness = false
   #endif
 
-  /// Configures navigation bar appearance to prevent title color issues during interactive transitions.
-  /// Sets all 4 appearance states so iOS never falls back to tint defaults mid-gesture.
+  /// Configures navigation bar appearance to ensure consistent title colors.
+  ///
+  /// The primary fix for navigation title color issues during interactive back gestures
+  /// is architectural: .tint() is applied ONLY to innerContent/leaf views, not to
+  /// container views that wrap navigation modifiers. This prevents the tint environment
+  /// from affecting navigation bar elements during gesture state restoration.
+  ///
+  /// Key points:
+  /// - StandardScreen applies .tint() to innerContent (inside ScrollView, away from nav bar)
+  /// - AppDestinationsModifier does NOT apply .tint() (destinations use StandardScreen)
+  /// - Views outside StandardScreen (DescriptionGeneratorView) apply tint to their layouts
+  /// - Auth views (LoginView, OnboardingLoadingView) apply tint at ZStack level (no nav bar)
+  ///
+  /// This UIKit configuration provides additional defense-in-depth by
+  /// setting explicit title colors that persist during gesture state restoration.
   private func configureNavigationBarAppearance() {
     #if os(iOS)
     let appearance = UINavigationBarAppearance()
     appearance.configureWithDefaultBackground()
 
-    // Explicit title colors - don't rely on defaults during interactive gestures
+    // Explicit title colors - ensures titles use label color even during transitions
     appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
     appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
 
+    // Configure button appearance separately from title
+    let buttonAppearance = UIBarButtonItemAppearance(style: .plain)
+    buttonAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.tintColor]
+    appearance.buttonAppearance = buttonAppearance
+    appearance.backButtonAppearance = buttonAppearance
+    appearance.doneButtonAppearance = buttonAppearance
+
+    // Apply to all navigation bar appearance states
     let navBar = UINavigationBar.appearance()
     navBar.standardAppearance = appearance
     navBar.scrollEdgeAppearance = appearance
@@ -150,7 +170,9 @@ struct DispatchApp: App {
     if #available(iOS 15.0, *) {
       navBar.compactScrollEdgeAppearance = appearance
     }
-    // NOTE: Button tint handled by SwiftUI .tint(DS.Colors.accent) at app root
+
+    // Explicit tintColor for back button icons
+    navBar.tintColor = UIColor.tintColor
     #endif
   }
 
