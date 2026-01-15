@@ -56,6 +56,22 @@ If a contract exists:
 5) Before declaring done: re-read contract and confirm Lock Version unchanged
 If Lock Version changed → STOP and report mismatch (do not continue).
 
+# Documentation Lookup (MANDATORY)
+
+Use `mcp__context7__resolve-library-id` + `mcp__context7__query-docs` BEFORE implementation when:
+- Using SwiftUI patterns or best practices
+- Implementing Swift language features you're uncertain about
+- Working with Supabase SDK (queries, auth, realtime)
+- Using any unfamiliar API or framework
+- Checking for deprecated patterns
+
+**Key Library IDs:**
+- SwiftUI: `/websites/developer_apple_swiftui`
+- Swift: `/swiftlang/swift`
+- Supabase: resolve via `mcp__context7__resolve-library-id`
+
+Always resolve library ID first, then query docs with a specific question. Do NOT rely on potentially outdated knowledge.
+
 # Patch Set Protocol (MANDATORY)
 You must emit these markers exactly:
 

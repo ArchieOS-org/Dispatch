@@ -164,6 +164,15 @@ The orchestrator must ensure a FINAL sequential integrator run.
 ## Dangerous Ops (if any)
 - [ ] ...
 
+# Context7 Recommendation
+When creating contracts, note if agents should use Context7 for:
+- Unfamiliar frameworks or APIs
+- Platform-specific implementation details
+- Accessibility best practices
+- Supabase SDK patterns
+
+Include in contract under "Implementation Notes" when relevant.
+
 # Stop Conditions
 If contract required but not locked → STOP and create/lock it.
 If schema needed and data-integrity missing → STOP and recommend data-integrity.

@@ -45,6 +45,20 @@ Find:
 - minimal changes required
 - interface hints for contract creation
 
+# Documentation Lookup (MANDATORY)
+
+Use `mcp__context7__resolve-library-id` + `mcp__context7__query-docs` when:
+- Verifying current API recommendations before suggesting patterns
+- Checking for deprecated patterns in existing code
+- Understanding framework conventions (SwiftUI, Supabase, etc.)
+- Confirming best practices for discovered patterns
+
+**Key Library IDs:**
+- SwiftUI: `/websites/developer_apple_swiftui`
+- Swift: `/swiftlang/swift`
+
+Always resolve library ID first, then query docs with a specific question. When exploring, verify that discovered patterns align with current documentation.
+
 # Output Format (MANDATORY)
 
 ## Exploration Results
