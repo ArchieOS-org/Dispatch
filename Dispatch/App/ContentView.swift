@@ -953,28 +953,6 @@ struct ContentView: View {
       note.softDelete(by: currentUserId)
       syncManager.requestSync()
     }
-
-    workItemActions.onToggleSubtask = { [syncManager] subtask in
-      subtask.completed.toggle()
-      syncManager.requestSync()
-    }
-
-    workItemActions.onDeleteSubtask = { [syncManager, modelContext] subtask, item in
-      switch item {
-      case .task(let task, _):
-        task.subtasks.removeAll { $0.id == subtask.id }
-        task.markPending()
-
-      case .activity(let activity, _):
-        activity.subtasks.removeAll { $0.id == subtask.id }
-        activity.markPending()
-      }
-      modelContext.delete(subtask)
-      syncManager.requestSync()
-    }
-
-    // Note: onAddSubtask requires showing a sheet, which is handled by the detail view
-    // The WorkItemActions passes a callback that triggers local state in the resolved view
   }
 
   /// Pure function to derive the current "Screen" (Lens Context) from Router State.

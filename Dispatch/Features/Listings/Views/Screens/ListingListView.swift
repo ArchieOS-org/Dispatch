@@ -41,27 +41,6 @@ struct ListingListView: View {
       } message: {
         Text("This note will be permanently deleted.")
       }
-      .alert("Delete Subtask?", isPresented: $showDeleteSubtaskAlert) {
-        Button("Cancel", role: .cancel) {
-          subtaskToDelete = nil
-          itemForSubtaskDeletion = nil
-        }
-        Button("Delete", role: .destructive) {
-          confirmDeleteSubtask()
-        }
-      } message: {
-        Text("This subtask will be permanently deleted.")
-      }
-      .sheet(isPresented: $showAddSubtaskSheet) {
-        AddSubtaskSheet(title: $newSubtaskTitle) {
-          if let item = itemForSubtaskAdd {
-            addSubtask(to: item, title: newSubtaskTitle)
-          }
-          newSubtaskTitle = ""
-          itemForSubtaskAdd = nil
-          showAddSubtaskSheet = false
-        }
-      }
   }
 
   // MARK: Private
@@ -91,14 +70,6 @@ struct ListingListView: View {
   @State private var showDeleteNoteAlert = false
   @State private var noteToDelete: Note?
   @State private var itemForNoteDeletion: WorkItem?
-
-  @State private var showDeleteSubtaskAlert = false
-  @State private var subtaskToDelete: Subtask?
-  @State private var itemForSubtaskDeletion: WorkItem?
-
-  @State private var showAddSubtaskSheet = false
-  @State private var itemForSubtaskAdd: WorkItem?
-  @State private var newSubtaskTitle = ""
 
   /// Filter out deleted listings
   private var allListings: [Listing] {
@@ -207,17 +178,7 @@ struct ListingListView: View {
         itemForNoteDeletion = item
         showDeleteNoteAlert = true
       },
-      onAddNote: { content, item in addNote(to: item, content: content) },
-      onToggleSubtask: { subtask in toggleSubtask(subtask) },
-      onDeleteSubtask: { subtask, item in
-        subtaskToDelete = subtask
-        itemForSubtaskDeletion = item
-        showDeleteSubtaskAlert = true
-      },
-      onAddSubtask: { item in
-        itemForSubtaskAdd = item
-        showAddSubtaskSheet = true
-      }
+      onAddNote: { content, item in addNote(to: item, content: content) }
     )
   }
 
@@ -307,42 +268,6 @@ struct ListingListView: View {
     syncManager.requestSync()
   }
 
-  private func toggleSubtask(_ subtask: Subtask) {
-    subtask.completed.toggle()
-    syncManager.requestSync()
-  }
-
-  private func confirmDeleteSubtask() {
-    guard let subtask = subtaskToDelete, let item = itemForSubtaskDeletion else { return }
-    switch item {
-    case .task(let task, _):
-      task.subtasks.removeAll { $0.id == subtask.id }
-      task.markPending()
-
-    case .activity(let activity, _):
-      activity.subtasks.removeAll { $0.id == subtask.id }
-      activity.markPending()
-    }
-    modelContext.delete(subtask)
-    subtaskToDelete = nil
-    itemForSubtaskDeletion = nil
-    syncManager.requestSync()
-  }
-
-  private func addSubtask(to item: WorkItem, title: String) {
-    switch item {
-    case .task(let task, _):
-      let subtask = Subtask(title: title, parentType: .task, parentId: item.id)
-      task.subtasks.append(subtask)
-      task.markPending()
-
-    case .activity(let activity, _):
-      let subtask = Subtask(title: title, parentType: .activity, parentId: item.id)
-      activity.subtasks.append(subtask)
-      activity.markPending()
-    }
-    syncManager.requestSync()
-  }
 }
 
 // MARK: - ListingListPreviewContainer

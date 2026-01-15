@@ -63,10 +63,7 @@ struct AppDestinationsModifier: ViewModifier {
         onAssigneesChanged: actions.onAssigneesChanged,
         onEditNote: nil,
         onDeleteNote: actions.onDeleteNote,
-        onAddNote: actions.onAddNote,
-        onToggleSubtask: actions.onToggleSubtask,
-        onDeleteSubtask: actions.onDeleteSubtask,
-        onAddSubtask: actions.onAddSubtask
+        onAddNote: actions.onAddNote
       )
 
     case .settings(let section):

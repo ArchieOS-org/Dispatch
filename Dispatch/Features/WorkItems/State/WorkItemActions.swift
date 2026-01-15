@@ -60,13 +60,4 @@ final class WorkItemActions: ObservableObject {
   /// Add a note to a work item
   @MainActor var onAddNote: (String, WorkItem) -> Void = { _, _ in }
 
-  /// Toggle subtask completion
-  @MainActor var onToggleSubtask: (Subtask) -> Void = { _ in }
-
-  /// Delete a subtask from a work item (triggers confirmation alert)
-  @MainActor var onDeleteSubtask: (Subtask, WorkItem) -> Void = { _, _ in }
-
-  /// Add a subtask to a work item (triggers sheet)
-  @MainActor var onAddSubtask: (WorkItem) -> Void = { _ in }
-
 }

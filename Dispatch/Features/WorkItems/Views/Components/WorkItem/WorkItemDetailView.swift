@@ -24,9 +24,6 @@ struct WorkItemDetailView: View {
   var onEditNote: ((Note) -> Void)?
   var onDeleteNote: ((Note) -> Void)?
   var onAddNote: ((String) -> Void)?
-  var onToggleSubtask: ((Subtask) -> Void)?
-  var onDeleteSubtask: ((Subtask) -> Void)?
-  var onAddSubtask: (() -> Void)?
 
   var body: some View {
     StandardScreen(title: item.title, layout: .column, scroll: .automatic) {
@@ -59,32 +56,36 @@ struct WorkItemDetailView: View {
   @EnvironmentObject private var syncManager: SyncManager
 
   private var content: some View {
-    VStack(alignment: .leading, spacing: DS.Spacing.xl) {
+    VStack(alignment: .leading, spacing: 0) {
       // Header / Due Date
       HStack(spacing: DS.Spacing.sm) {
         DueDateBadge(dueDate: item.dueDate)
         Spacer()
       }
-      .padding(.bottom, DS.Spacing.sm)
+
+      Color.clear.frame(height: DS.Spacing.lg)
 
       // Description Section
       descriptionSection
 
+      Color.clear.frame(height: DS.Spacing.lg)
+
       // Metadata Section
       metadataSection
 
-      // Subtasks Section
-      subtasksSection
+      Color.clear.frame(height: DS.Spacing.lg)
 
       // Notes Section
       notesSection
     }
-    .padding(.vertical, DS.Spacing.md)
+    .padding(.bottom, DS.Spacing.md)
   }
 
   private var descriptionSection: some View {
     VStack(alignment: .leading, spacing: DS.Spacing.sm) {
       sectionHeader("Description")
+
+      Divider().padding(.top, DS.Spacing.sm)
 
       if item.itemDescription.isEmpty {
         Text("No description provided")
@@ -96,96 +97,79 @@ struct WorkItemDetailView: View {
           .font(DS.Typography.body)
           .foregroundColor(DS.Colors.Text.primary)
       }
+
+      Divider().padding(.top, DS.Spacing.sm)
     }
-    .padding(DS.Spacing.md)
-    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-    .background(DS.Colors.Background.card)
-    .cornerRadius(DS.Spacing.radiusCard)
   }
 
   private var metadataSection: some View {
     VStack(alignment: .leading, spacing: DS.Spacing.sm) {
       sectionHeader("Details")
 
-      VStack(spacing: DS.Spacing.sm) {
-        // Type
-        metadataRow(
-          icon: item.typeIcon,
-          label: "Type",
-          value: item.typeLabel
-        )
+      Divider().padding(.top, DS.Spacing.sm)
 
-        Divider()
+      // Type
+      metadataRow(
+        icon: item.typeIcon,
+        label: "Type",
+        value: item.typeLabel
+      )
 
-        // Status
-        metadataRow(
-          icon: item.statusIcon,
-          label: "Status",
-          value: item.statusText,
-          valueColor: item.statusColor
-        )
+      Divider().padding(.top, DS.Spacing.sm)
 
-        Divider()
+      // Status
+      metadataRow(
+        icon: item.statusIcon,
+        label: "Status",
+        value: item.statusText,
+        valueColor: item.statusColor
+      )
 
-        // Assignees
-        assigneesRow
+      Divider().padding(.top, DS.Spacing.sm)
 
-        Divider()
+      // Assignees
+      assigneesRow
 
-        // Created by
-        if let creator = userLookup[item.declaredBy] {
-          HStack {
-            Image(systemName: DS.Icons.Entity.user)
-              .foregroundColor(DS.Colors.Text.secondary)
-              .frame(width: 24)
-            Text("Created by")
-              .font(DS.Typography.bodySecondary)
-              .foregroundColor(DS.Colors.Text.secondary)
-            Spacer()
-            HStack(spacing: DS.Spacing.xs) {
-              UserAvatar(user: creator, size: .small)
-              Text(creator.name)
-                .font(DS.Typography.body)
-            }
+      Divider().padding(.top, DS.Spacing.sm)
+
+      // Created by
+      if let creator = userLookup[item.declaredBy] {
+        HStack {
+          Image(systemName: DS.Icons.Entity.user)
+            .foregroundColor(DS.Colors.Text.secondary)
+            .frame(width: 24)
+          Text("Created by")
+            .font(DS.Typography.bodySecondary)
+            .foregroundColor(DS.Colors.Text.secondary)
+          Spacer()
+          HStack(spacing: DS.Spacing.xs) {
+            UserAvatar(user: creator, size: .small)
+            Text(creator.name)
+              .font(DS.Typography.body)
           }
-
-          Divider()
         }
 
-        // Created at
-        metadataRow(
-          icon: DS.Icons.Time.clock,
-          label: "Created",
-          value: formatDate(item.createdAt)
-        )
-
-        Divider()
-
-        // Updated at
-        metadataRow(
-          icon: DS.Icons.Time.clock,
-          label: "Updated",
-          value: formatDate(item.updatedAt)
-        )
+        Divider().padding(.top, DS.Spacing.sm)
       }
-    }
-    .padding(DS.Spacing.md)
-    .background(DS.Colors.Background.card)
-    .cornerRadius(DS.Spacing.radiusCard)
-  }
 
-  private var subtasksSection: some View {
-    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-      SubtasksList(
-        subtasks: item.subtasks,
-        onToggle: onToggleSubtask,
-        onDelete: onDeleteSubtask,
-        onAdd: onAddSubtask
+      // Created at
+      metadataRow(
+        icon: DS.Icons.Time.clock,
+        label: "Created",
+        value: formatDate(item.createdAt)
       )
+
+      Divider().padding(.top, DS.Spacing.sm)
+
+      // Updated at
+      metadataRow(
+        icon: DS.Icons.Time.clock,
+        label: "Updated",
+        value: formatDate(item.updatedAt)
+      )
+
+      Divider().padding(.top, DS.Spacing.sm)
     }
-    .padding(DS.Spacing.md)
-    .background(DS.Colors.Background.card)
-    .cornerRadius(DS.Spacing.radiusCard)
   }
 
   private var notesSection: some View {
@@ -358,8 +342,7 @@ struct WorkItemDetailView: View {
       availableUsers: Array(users.values),
       onComplete: { },
       onAssigneesChanged: { _ in },
-      onAddNote: { _ in },
-      onAddSubtask: { }
+      onAddNote: { _ in }
     )
   }
   .environmentObject(LensState())

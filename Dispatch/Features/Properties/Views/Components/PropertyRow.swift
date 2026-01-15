@@ -9,7 +9,7 @@ import SwiftUI
 
 /// A list row displaying a property with:
 /// - Address as headline (with optional unit)
-/// - City/province, property type icon, and listing count badge
+/// - City/province, property type pill, and listing count badge
 struct PropertyRow: View {
 
   // MARK: Internal
@@ -19,12 +19,6 @@ struct PropertyRow: View {
 
   var body: some View {
     HStack(spacing: DS.Spacing.sm) {
-      // Property Type Icon
-      Image(systemName: property.propertyType.icon)
-        .font(.system(size: 16))
-        .foregroundColor(DS.Colors.Section.properties)
-        .frame(width: 24)
-
       // Address info
       VStack(alignment: .leading, spacing: 2) {
         Text(property.displayAddress)

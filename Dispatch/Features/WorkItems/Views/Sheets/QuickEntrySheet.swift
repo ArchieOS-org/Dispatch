@@ -34,8 +34,8 @@ struct QuickEntrySheet: View {
     self.availableUsers = availableUsers
     self.onSave = onSave
     _itemType = State(initialValue: defaultItemType)
-    // Default to assigning to current user
-    _selectedAssigneeIds = State(initialValue: [currentUserId])
+    // Start with no assignee - user can tap "Assign to me" for quick self-assignment
+    _selectedAssigneeIds = State(initialValue: [])
   }
 
   // MARK: Internal

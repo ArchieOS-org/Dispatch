@@ -147,12 +147,14 @@ struct AppRouter {
     stackIDs[destination] = UUID()
   }
 
-  /// User tapped destination - pops to root if already selected.
+  /// User tapped destination - always shows root screen.
+  /// Pops to root whether re-selecting current destination or switching to a new one.
   /// Used when user physically taps a sidebar item or tab.
   mutating func userSelectDestination(_ destination: SidebarDestination) {
     if selectedDestination == destination {
       popToRoot(for: destination)
     } else {
+      popToRoot(for: destination)  // Reset the destination we're navigating TO
       selectedDestination = destination
     }
   }

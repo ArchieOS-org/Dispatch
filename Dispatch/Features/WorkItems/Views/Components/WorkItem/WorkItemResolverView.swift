@@ -30,9 +30,6 @@ struct WorkItemResolverView: View {
   var onEditNote: ((Note) -> Void)?
   var onDeleteNote: ((Note, WorkItem) -> Void)?
   var onAddNote: ((String, WorkItem) -> Void)?
-  var onToggleSubtask: ((Subtask) -> Void)?
-  var onDeleteSubtask: ((Subtask, WorkItem) -> Void)?
-  var onAddSubtask: ((WorkItem) -> Void)?
 
   var body: some View {
     switch ref {
@@ -46,10 +43,7 @@ struct WorkItemResolverView: View {
         onAssigneesChanged: onAssigneesChanged,
         onEditNote: onEditNote,
         onDeleteNote: onDeleteNote,
-        onAddNote: onAddNote,
-        onToggleSubtask: onToggleSubtask,
-        onDeleteSubtask: onDeleteSubtask,
-        onAddSubtask: onAddSubtask
+        onAddNote: onAddNote
       )
 
     case .activity(let id):
@@ -62,10 +56,7 @@ struct WorkItemResolverView: View {
         onAssigneesChanged: onAssigneesChanged,
         onEditNote: onEditNote,
         onDeleteNote: onDeleteNote,
-        onAddNote: onAddNote,
-        onToggleSubtask: onToggleSubtask,
-        onDeleteSubtask: onDeleteSubtask,
-        onAddSubtask: onAddSubtask
+        onAddNote: onAddNote
       )
     }
   }
@@ -87,10 +78,7 @@ private struct TaskResolverView: View {
     onAssigneesChanged: ((WorkItem, [UUID]) -> Void)?,
     onEditNote: ((Note) -> Void)?,
     onDeleteNote: ((Note, WorkItem) -> Void)?,
-    onAddNote: ((String, WorkItem) -> Void)?,
-    onToggleSubtask: ((Subtask) -> Void)?,
-    onDeleteSubtask: ((Subtask, WorkItem) -> Void)?,
-    onAddSubtask: ((WorkItem) -> Void)?
+    onAddNote: ((String, WorkItem) -> Void)?
   ) {
     self.taskId = taskId
     self.currentUserId = currentUserId
@@ -101,9 +89,6 @@ private struct TaskResolverView: View {
     self.onEditNote = onEditNote
     self.onDeleteNote = onDeleteNote
     self.onAddNote = onAddNote
-    self.onToggleSubtask = onToggleSubtask
-    self.onDeleteSubtask = onDeleteSubtask
-    self.onAddSubtask = onAddSubtask
 
     // Query for this specific task by ID
     let id = taskId
@@ -122,9 +107,6 @@ private struct TaskResolverView: View {
   var onEditNote: ((Note) -> Void)?
   var onDeleteNote: ((Note, WorkItem) -> Void)?
   var onAddNote: ((String, WorkItem) -> Void)?
-  var onToggleSubtask: ((Subtask) -> Void)?
-  var onDeleteSubtask: ((Subtask, WorkItem) -> Void)?
-  var onAddSubtask: ((WorkItem) -> Void)?
 
   var body: some View {
     if let task = tasks.first {
@@ -138,10 +120,7 @@ private struct TaskResolverView: View {
         onAssigneesChanged: { userIds in onAssigneesChanged?(workItem, userIds) },
         onEditNote: onEditNote,
         onDeleteNote: { note in onDeleteNote?(note, workItem) },
-        onAddNote: { content in onAddNote?(content, workItem) },
-        onToggleSubtask: onToggleSubtask,
-        onDeleteSubtask: { subtask in onDeleteSubtask?(subtask, workItem) },
-        onAddSubtask: { onAddSubtask?(workItem) }
+        onAddNote: { content in onAddNote?(content, workItem) }
       )
     } else {
       notFoundView
@@ -177,10 +156,7 @@ private struct ActivityResolverView: View {
     onAssigneesChanged: ((WorkItem, [UUID]) -> Void)?,
     onEditNote: ((Note) -> Void)?,
     onDeleteNote: ((Note, WorkItem) -> Void)?,
-    onAddNote: ((String, WorkItem) -> Void)?,
-    onToggleSubtask: ((Subtask) -> Void)?,
-    onDeleteSubtask: ((Subtask, WorkItem) -> Void)?,
-    onAddSubtask: ((WorkItem) -> Void)?
+    onAddNote: ((String, WorkItem) -> Void)?
   ) {
     self.activityId = activityId
     self.currentUserId = currentUserId
@@ -191,9 +167,6 @@ private struct ActivityResolverView: View {
     self.onEditNote = onEditNote
     self.onDeleteNote = onDeleteNote
     self.onAddNote = onAddNote
-    self.onToggleSubtask = onToggleSubtask
-    self.onDeleteSubtask = onDeleteSubtask
-    self.onAddSubtask = onAddSubtask
 
     // Query for this specific activity by ID
     let id = activityId
@@ -212,9 +185,6 @@ private struct ActivityResolverView: View {
   var onEditNote: ((Note) -> Void)?
   var onDeleteNote: ((Note, WorkItem) -> Void)?
   var onAddNote: ((String, WorkItem) -> Void)?
-  var onToggleSubtask: ((Subtask) -> Void)?
-  var onDeleteSubtask: ((Subtask, WorkItem) -> Void)?
-  var onAddSubtask: ((WorkItem) -> Void)?
 
   var body: some View {
     if let activity = activities.first {
@@ -228,10 +198,7 @@ private struct ActivityResolverView: View {
         onAssigneesChanged: { userIds in onAssigneesChanged?(workItem, userIds) },
         onEditNote: onEditNote,
         onDeleteNote: { note in onDeleteNote?(note, workItem) },
-        onAddNote: { content in onAddNote?(content, workItem) },
-        onToggleSubtask: onToggleSubtask,
-        onDeleteSubtask: { subtask in onDeleteSubtask?(subtask, workItem) },
-        onAddSubtask: { onAddSubtask?(workItem) }
+        onAddNote: { content in onAddNote?(content, workItem) }
       )
     } else {
       notFoundView
