@@ -36,6 +36,8 @@ tools:
   - Read
   - Grep
   - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__query-docs
   - mcp__xcodebuildmcp__session-set-defaults
   - mcp__xcodebuildmcp__session-show-defaults
   - mcp__xcodebuildmcp__list_sims

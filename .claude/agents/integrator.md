@@ -32,7 +32,7 @@ description: |
   </commentary>
   </example>
 model: opus
-tools: ["Read", "Grep", "Glob", "Bash", "mcp__xcodebuildmcp__*"]
+tools: ["Read", "Grep", "Glob", "Bash", "mcp__context7__*", "mcp__xcodebuildmcp__*"]
 ---
 
 # Role
