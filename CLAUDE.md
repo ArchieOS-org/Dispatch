@@ -165,6 +165,20 @@ mcp__context7__query-docs with libraryId="/websites/developer_apple_swiftui" que
 
 Dispatch uses a vertical slice agent architecture for multi-agent coordination.
 
+### How to Use Agents
+
+**By default**, Claude works directly on tasks (fast, no overhead).
+
+**To activate the agent system**, say any of:
+- "act as a manager"
+- "manager mode"
+- "orchestrate this"
+- "use agents"
+
+This triggers full orchestration: dispatch-planner → contract → feature-owner → verification.
+
+See `.claude/rules/manager-mode.md` for details.
+
 ### Architecture Diagram
 
 ```
