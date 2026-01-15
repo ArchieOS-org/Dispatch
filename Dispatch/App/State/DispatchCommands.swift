@@ -38,11 +38,6 @@ struct DispatchCommands: Commands {
       }
       .keyboardShortcut("f", modifiers: .command)
 
-      Button("Generate Description") {
-        dispatch(.openDescriptionGenerator())
-      }
-      .keyboardShortcut("g", modifiers: .command)
-
       Divider()
 
       Button("My Tasks") {
@@ -59,6 +54,14 @@ struct DispatchCommands: Commands {
         dispatch(.filterUnclaimed)
       }
       .keyboardShortcut("3", modifiers: .command)
+    }
+
+    // Tools menu - AI and productivity features
+    CommandMenu("Tools") {
+      Button("Generate Description") {
+        dispatch(.openDescriptionGenerator())
+      }
+      .keyboardShortcut("g", modifiers: .command)
     }
 
     CommandGroup(after: .toolbar) {

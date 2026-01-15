@@ -187,7 +187,7 @@ struct DescriptionOutputView: View {
       .background(DS.Colors.info.opacity(0.1))
       .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium))
 
-      // PHASE 2: Real agent approval workflow
+      // PHASE 3: Real agent approval workflow
       Text("The agent will review and approve your description")
         .font(DS.Typography.caption)
         .foregroundStyle(DS.Colors.Text.tertiary)

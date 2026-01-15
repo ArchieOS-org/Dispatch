@@ -50,7 +50,6 @@ final class AppState: ObservableObject {
     case quickEntry(type: QuickEntryItemType?)
     case addListing
     case addRealtor
-    case descriptionGenerator(listing: Listing?)
 
     // MARK: Internal
 
@@ -60,7 +59,6 @@ final class AppState: ObservableObject {
       case .quickEntry: "quickEntry"
       case .addListing: "addListing"
       case .addRealtor: "addRealtor"
-      case .descriptionGenerator: "descriptionGenerator"
       }
     }
 
@@ -76,8 +74,6 @@ final class AppState: ObservableObject {
         return true
       case (.addRealtor, .addRealtor):
         return true
-      case (.descriptionGenerator(let l), .descriptionGenerator(let r)):
-        return l?.id == r?.id
       default:
         return false
       }
@@ -180,8 +176,8 @@ final class AppState: ObservableObject {
         sheetState = .addListing
       case .realtors:
         sheetState = .addRealtor
-      case .settings:
-        // Settings doesn't have a "new item" action
+      case .settings, .descriptionGenerator:
+        // Settings and Description Generator don't have a "new item" action
         break
       case .workspace, .search:
         // Default to quick entry for workspace or search
@@ -218,7 +214,11 @@ final class AppState: ObservableObject {
       break
 
     case .openDescriptionGenerator(let listing):
-      sheetState = .descriptionGenerator(listing: listing)
+      // Navigate to full-view instead of presenting sheet
+      let route = AppRoute.descriptionGenerator(listingId: listing?.id)
+      router.navigate(to: route)
+      // Also push on phone path for iPhone support
+      router.phoneNavigate(to: route)
 
     case .debugSimulateCrash:
       fatalError("Debug Crash Triggered")

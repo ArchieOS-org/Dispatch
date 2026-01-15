@@ -37,6 +37,9 @@ enum AppRoute: Hashable, Sendable {
   case listingsList
   case realtorsList
   case settingsRoot
+
+  // Feature routes (full-view, not sheet)
+  case descriptionGenerator(listingId: UUID?)
 }
 
 // MARK: - SidebarDestination
@@ -194,4 +197,5 @@ enum AppTab: String, CaseIterable, Equatable {
   case realtors
   case settings
   case search // Search is overlay, not push destination
+  case descriptionGenerator // AI listing description tool
 }

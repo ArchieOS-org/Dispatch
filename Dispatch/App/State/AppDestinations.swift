@@ -90,6 +90,9 @@ struct AppDestinationsModifier: ViewModifier {
 
     case .settingsRoot:
       SettingsView()
+
+    case .descriptionGenerator(let listingId):
+      DescriptionGeneratorView(preselectedListingId: listingId)
     }
   }
 
