@@ -352,7 +352,7 @@ struct WorkItemDetailView: View {
       currentUserId: currentUserId,
       availableUsers: Array(users.values),
       onComplete: { },
-      onAssigneesChanged: { ids in print("Assignees changed: \(ids)") },
+      onAssigneesChanged: { _ in },
       onAddNote: { _ in },
       onAddSubtask: { }
     )

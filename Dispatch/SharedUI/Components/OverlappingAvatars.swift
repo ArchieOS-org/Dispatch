@@ -147,7 +147,9 @@ struct OverlappingAvatars: View {
       description += "\(names[0]) and \(names[1])"
     } else {
       let allButLast = names.dropLast().joined(separator: ", ")
-      description += "\(allButLast), and \(names.last!)"
+      if let lastName = names.last {
+        description += "\(allButLast), and \(lastName)"
+      }
     }
 
     if unknownCount > 0 {

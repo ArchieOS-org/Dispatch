@@ -168,7 +168,9 @@ struct WorkItemRow: View {
       parts.append("Assigned to \(assigneeNames[0]) and \(assigneeNames[1])")
     } else {
       let allButLast = assigneeNames.dropLast().joined(separator: ", ")
-      parts.append("Assigned to \(allButLast), and \(assigneeNames.last!)")
+      if let lastName = assigneeNames.last {
+        parts.append("Assigned to \(allButLast), and \(lastName)")
+      }
     }
 
     return parts.filter { !$0.isEmpty }.joined(separator: ", ")
