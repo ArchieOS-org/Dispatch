@@ -38,6 +38,11 @@ struct DispatchCommands: Commands {
       }
       .keyboardShortcut("f", modifiers: .command)
 
+      Button("Generate Description") {
+        dispatch(.openDescriptionGenerator())
+      }
+      .keyboardShortcut("g", modifiers: .command)
+
       Divider()
 
       Button("My Tasks") {

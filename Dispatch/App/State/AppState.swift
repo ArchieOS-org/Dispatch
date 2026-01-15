@@ -50,6 +50,9 @@ final class AppState: ObservableObject {
     case quickEntry(type: QuickEntryItemType?)
     case addListing
     case addRealtor
+    case descriptionGenerator(listing: Listing?)
+
+    // MARK: Internal
 
     var id: String {
       switch self {
@@ -57,6 +60,26 @@ final class AppState: ObservableObject {
       case .quickEntry: "quickEntry"
       case .addListing: "addListing"
       case .addRealtor: "addRealtor"
+      case .descriptionGenerator: "descriptionGenerator"
+      }
+    }
+
+    // MARK: - Equatable conformance for associated values
+
+    static func == (lhs: SheetState, rhs: SheetState) -> Bool {
+      switch (lhs, rhs) {
+      case (.none, .none):
+        return true
+      case (.quickEntry(let l), .quickEntry(let r)):
+        return l == r
+      case (.addListing, .addListing):
+        return true
+      case (.addRealtor, .addRealtor):
+        return true
+      case (.descriptionGenerator(let l), .descriptionGenerator(let r)):
+        return l?.id == r?.id
+      default:
+        return false
       }
     }
   }
@@ -193,6 +216,9 @@ final class AppState: ObservableObject {
     case .filterUnclaimed:
       // lensState.audience = .unclaimed
       break
+
+    case .openDescriptionGenerator(let listing):
+      sheetState = .descriptionGenerator(listing: listing)
 
     case .debugSimulateCrash:
       fatalError("Debug Crash Triggered")

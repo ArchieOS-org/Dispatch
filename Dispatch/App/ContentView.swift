@@ -637,6 +637,9 @@ struct ContentView: View {
       case .addRealtor:
         EditRealtorSheet()
 
+      case .descriptionGenerator(let listing):
+        DescriptionGeneratorSheet(preselectedListing: listing)
+
       case .none:
         EmptyView()
       }
@@ -713,6 +716,9 @@ struct ContentView: View {
 
     case .addRealtor:
       EditRealtorSheet()
+
+    case .descriptionGenerator(let listing):
+      DescriptionGeneratorSheet(preselectedListing: listing)
 
     case .none:
       EmptyView()

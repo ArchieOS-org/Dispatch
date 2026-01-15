@@ -101,6 +101,9 @@ extension DS {
       /// Down arrow
       static let down = "chevron.down"
 
+      /// Forward arrow
+      static let forward = "chevron.right"
+
       /// Close/Dismiss
       static let close = "xmark"
 

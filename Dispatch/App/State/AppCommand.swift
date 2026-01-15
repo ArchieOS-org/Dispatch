@@ -77,6 +77,11 @@ enum AppCommand: Equatable {
   case filterOthers
   case filterUnclaimed
 
+  // MARK: - AI Tools
+
+  /// Open the AI description generator, optionally with a preselected listing
+  case openDescriptionGenerator(listing: Listing? = nil)
+
   // MARK: - Debug
 
   case debugSimulateCrash
