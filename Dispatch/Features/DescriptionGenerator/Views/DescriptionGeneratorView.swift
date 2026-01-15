@@ -39,13 +39,6 @@ struct DescriptionGeneratorView: View {
       #if os(iOS)
       .navigationBarTitleDisplayMode(.large)
       #endif
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Close") {
-            dismiss()
-          }
-        }
-      }
       .task {
         await loadPreselectedListing()
         await loadListings()
@@ -56,7 +49,6 @@ struct DescriptionGeneratorView: View {
 
   private let preselectedListingId: UUID?
 
-  @Environment(\.dismiss) private var dismiss
   @Environment(\.modelContext) private var modelContext
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
