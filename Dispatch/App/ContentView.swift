@@ -261,10 +261,7 @@ struct ContentView: View {
       .safeAreaInset(edge: .bottom, spacing: 0) {
         BottomToolbar(
           context: toolbarContext,
-          audience: Binding(
-            get: { appState.lensState.audience },
-            set: { appState.lensState.audience = $0 }
-          ),
+          audience: $appState.lensState.audience,
           onNew: {
             switch appState.router.selectedDestination {
             case .tab(.listings), .stage:

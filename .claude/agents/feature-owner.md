@@ -42,6 +42,14 @@ Own the entire vertical slice end-to-end. One feature, one owner, one outcome.
 The Steve Jobs Design Bar is auto-loaded via `.claude/rules/design-bar.md`.
 Every UI change must pass the "Would Apple ship this?" checklist.
 
+# Framework-First Debugging (MANDATORY)
+The Framework-First rule is auto-loaded via `.claude/rules/framework-first.md`.
+
+When debugging issues during implementation:
+- **Two failed fixes = STOP and research** via Context7
+- Use correct framework patterns, not workarounds
+- If adding `.id()`, manual `Binding(get:set:)`, or `DispatchQueue.main.async` to "fix" something, you're probably fighting the framework
+
 # Hard Constraints
 - Supabase is READ ONLY. Never run schema changes. Never apply migrations.
 - If schema change is required → escalate to data-integrity.
@@ -64,6 +72,7 @@ Use `mcp__context7__resolve-library-id` + `mcp__context7__query-docs` BEFORE imp
 - Working with Supabase SDK (queries, auth, realtime)
 - Using any unfamiliar API or framework
 - Checking for deprecated patterns
+- **Fixing a bug that failed on first attempt**
 
 **Key Library IDs:**
 - SwiftUI: `/websites/developer_apple_swiftui`
