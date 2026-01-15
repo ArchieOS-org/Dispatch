@@ -43,6 +43,7 @@ struct PhotoUploadSection: View {
 
   // MARK: Private
 
+  @State private var showingSourcePicker = false
   @State private var showingPhotoPicker = false
   @State private var showingFileImporter = false
   @State private var selectedPhotoItems: [PhotosPickerItem] = []
@@ -54,60 +55,16 @@ struct PhotoUploadSection: View {
 
   @ViewBuilder
   private var sectionHeader: some View {
-    HStack {
-      VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-        Text("Photos")
-          .font(DS.Typography.headline)
-          .foregroundStyle(DS.Colors.Text.primary)
+    VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+      Text("Photos")
+        .font(DS.Typography.headline)
+        .foregroundStyle(DS.Colors.Text.primary)
 
-        Text("\(photos.count) photo\(photos.count == 1 ? "" : "s")")
-          .font(DS.Typography.caption)
-          .foregroundStyle(DS.Colors.Text.secondary)
-      }
-
-      Spacer()
-
-      // Upload button
-      uploadButton
+      Text("\(photos.count) photo\(photos.count == 1 ? "" : "s")")
+        .font(DS.Typography.caption)
+        .foregroundStyle(DS.Colors.Text.secondary)
     }
-  }
-
-  @ViewBuilder
-  private var uploadButton: some View {
-    #if os(iOS)
-    PhotosPicker(
-      selection: $selectedPhotoItems,
-      maxSelectionCount: 20,
-      matching: .images,
-      photoLibrary: .shared()
-    ) {
-      uploadButtonLabel
-    }
-    .onChange(of: selectedPhotoItems) { _, newItems in
-      Task {
-        await processSelectedPhotos(newItems)
-        selectedPhotoItems = []
-      }
-    }
-    #else
-    Button(action: { showingFileImporter = true }) {
-      uploadButtonLabel
-    }
-    .fileImporter(
-      isPresented: $showingFileImporter,
-      allowedContentTypes: [.image],
-      allowsMultipleSelection: true
-    ) { result in
-      processImportedFiles(result)
-    }
-    #endif
-  }
-
-  @ViewBuilder
-  private var uploadButtonLabel: some View {
-    Label("Add Photos", systemImage: "plus.circle.fill")
-      .font(DS.Typography.caption)
-      .fontWeight(.semibold)
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   @ViewBuilder
@@ -116,6 +73,7 @@ struct PhotoUploadSection: View {
       Image(systemName: "photo.on.rectangle.angled")
         .font(.system(size: 36))
         .foregroundStyle(DS.Colors.Text.tertiary)
+        .accessibilityHidden(true)
 
       Text("Add photos to help generate a better description")
         .font(DS.Typography.body)
@@ -123,23 +81,46 @@ struct PhotoUploadSection: View {
         .multilineTextAlignment(.center)
 
       #if os(iOS)
-      PhotosPicker(
-        selection: $selectedPhotoItems,
-        maxSelectionCount: 20,
-        matching: .images,
-        photoLibrary: .shared()
-      ) {
+      Button(action: { showingSourcePicker = true }) {
         Text("Select Photos")
           .font(DS.Typography.headline)
           .frame(maxWidth: .infinity)
           .frame(height: DS.Spacing.minTouchTarget)
       }
       .buttonStyle(.bordered)
+      .accessibilityHint("Choose from Photo Library or Files")
+      .confirmationDialog(
+        "Choose Photo Source",
+        isPresented: $showingSourcePicker,
+        titleVisibility: .visible
+      ) {
+        Button("Photo Library") {
+          showingPhotoPicker = true
+        }
+        Button("Files") {
+          showingFileImporter = true
+        }
+        Button("Cancel", role: .cancel) { }
+      }
+      .photosPicker(
+        isPresented: $showingPhotoPicker,
+        selection: $selectedPhotoItems,
+        maxSelectionCount: 20,
+        matching: .images,
+        photoLibrary: .shared()
+      )
       .onChange(of: selectedPhotoItems) { _, newItems in
         Task {
           await processSelectedPhotos(newItems)
           selectedPhotoItems = []
         }
+      }
+      .fileImporter(
+        isPresented: $showingFileImporter,
+        allowedContentTypes: [.image],
+        allowsMultipleSelection: true
+      ) { result in
+        processImportedFiles(result)
       }
       #else
       Button(action: { showingFileImporter = true }) {
@@ -149,6 +130,7 @@ struct PhotoUploadSection: View {
           .frame(height: DS.Spacing.minTouchTarget)
       }
       .buttonStyle(.bordered)
+      .accessibilityHint("Opens file browser to select images")
       .fileImporter(
         isPresented: $showingFileImporter,
         allowedContentTypes: [.image],
@@ -199,11 +181,93 @@ struct PhotoUploadSection: View {
           return true
         }
       }
+
+      // Add more photos button
+      addMoreButton
     }
     .onDrop(of: [.text], isTargeted: nil) { _ in
       draggingPhoto = nil
       return false
     }
+  }
+
+  @ViewBuilder
+  private var addMoreButton: some View {
+    #if os(iOS)
+    Button(action: { showingSourcePicker = true }) {
+      VStack(spacing: DS.Spacing.xs) {
+        Image(systemName: "plus")
+          .font(.system(size: 24, weight: .medium))
+        Text("Add")
+          .font(DS.Typography.caption)
+      }
+      .foregroundStyle(DS.Colors.Text.secondary)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .background(DS.Colors.Background.secondary)
+      .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall))
+    }
+    .aspectRatio(1, contentMode: .fit)
+    .buttonStyle(.plain)
+    .accessibilityLabel("Add more photos")
+    .accessibilityHint("Choose from Photo Library or Files")
+    .confirmationDialog(
+      "Choose Photo Source",
+      isPresented: $showingSourcePicker,
+      titleVisibility: .visible
+    ) {
+      Button("Photo Library") {
+        showingPhotoPicker = true
+      }
+      Button("Files") {
+        showingFileImporter = true
+      }
+      Button("Cancel", role: .cancel) { }
+    }
+    .photosPicker(
+      isPresented: $showingPhotoPicker,
+      selection: $selectedPhotoItems,
+      maxSelectionCount: 20,
+      matching: .images,
+      photoLibrary: .shared()
+    )
+    .onChange(of: selectedPhotoItems) { _, newItems in
+      Task {
+        await processSelectedPhotos(newItems)
+        selectedPhotoItems = []
+      }
+    }
+    .fileImporter(
+      isPresented: $showingFileImporter,
+      allowedContentTypes: [.image],
+      allowsMultipleSelection: true
+    ) { result in
+      processImportedFiles(result)
+    }
+    #else
+    Button(action: { showingFileImporter = true }) {
+      VStack(spacing: DS.Spacing.xs) {
+        Image(systemName: "plus")
+          .font(.system(size: 24, weight: .medium))
+        Text("Add")
+          .font(DS.Typography.caption)
+      }
+      .foregroundStyle(DS.Colors.Text.secondary)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .background(DS.Colors.Background.secondary)
+      .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall))
+    }
+    .aspectRatio(1, contentMode: .fit)
+    .buttonStyle(.plain)
+    .accessibilityLabel("Add more photos")
+    .accessibilityHint("Opens file browser to select images")
+    .fileImporter(
+      isPresented: $showingFileImporter,
+      allowedContentTypes: [.image],
+      allowsMultipleSelection: true
+    ) { result in
+      processImportedFiles(result)
+    }
+    #endif
   }
 
   // MARK: - Photo Processing

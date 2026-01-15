@@ -66,33 +66,16 @@ struct DocumentUploadSection: View {
 
   @ViewBuilder
   private var sectionHeader: some View {
-    HStack {
-      VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-        Text("Documents")
-          .font(DS.Typography.headline)
-          .foregroundStyle(DS.Colors.Text.primary)
+    VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+      Text("Documents")
+        .font(DS.Typography.headline)
+        .foregroundStyle(DS.Colors.Text.primary)
 
-        Text("\(documents.count) document\(documents.count == 1 ? "" : "s")")
-          .font(DS.Typography.caption)
-          .foregroundStyle(DS.Colors.Text.secondary)
-      }
-
-      Spacer()
-
-      // Upload button
-      Button(action: { showingFileImporter = true }) {
-        Label("Add Document", systemImage: "plus.circle.fill")
-          .font(DS.Typography.caption)
-          .fontWeight(.semibold)
-      }
-      .fileImporter(
-        isPresented: $showingFileImporter,
-        allowedContentTypes: supportedTypes,
-        allowsMultipleSelection: false
-      ) { result in
-        handleFileImport(result)
-      }
+      Text("\(documents.count) document\(documents.count == 1 ? "" : "s")")
+        .font(DS.Typography.caption)
+        .foregroundStyle(DS.Colors.Text.secondary)
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   @ViewBuilder
@@ -101,6 +84,7 @@ struct DocumentUploadSection: View {
       Image(systemName: "doc.text")
         .font(.system(size: 36))
         .foregroundStyle(DS.Colors.Text.tertiary)
+        .accessibilityHidden(true)
 
       Text("Add documents like seller disclosure, surveys, etc.")
         .font(DS.Typography.body)
@@ -114,6 +98,7 @@ struct DocumentUploadSection: View {
           .frame(height: DS.Spacing.minTouchTarget)
       }
       .buttonStyle(.bordered)
+      .accessibilityHint("Opens file browser, then prompts for document type")
       .fileImporter(
         isPresented: $showingFileImporter,
         allowedContentTypes: supportedTypes,
@@ -128,21 +113,41 @@ struct DocumentUploadSection: View {
 
   @ViewBuilder
   private var documentList: some View {
-    VStack(spacing: 0) {
-      ForEach(documents) { document in
-        DocumentRow(
-          document: document,
-          onDelete: { onRemove(document.id) }
-        )
+    VStack(spacing: DS.Spacing.sm) {
+      VStack(spacing: 0) {
+        ForEach(documents) { document in
+          DocumentRow(
+            document: document,
+            onDelete: { onRemove(document.id) }
+          )
 
-        if document.id != documents.last?.id {
-          Divider()
-            .padding(.leading, 56 + DS.Spacing.md)
+          if document.id != documents.last?.id {
+            Divider()
+              .padding(.leading, 56 + DS.Spacing.md)
+          }
         }
       }
+      .background(DS.Colors.Background.secondary)
+      .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall))
+
+      // Add more documents button
+      Button(action: { showingFileImporter = true }) {
+        Label("Add Document", systemImage: "plus.circle")
+          .font(DS.Typography.body)
+          .frame(maxWidth: .infinity)
+          .frame(height: DS.Spacing.minTouchTarget)
+      }
+      .buttonStyle(.bordered)
+      .accessibilityLabel("Add another document")
+      .accessibilityHint("Opens file browser, then prompts for document type")
+      .fileImporter(
+        isPresented: $showingFileImporter,
+        allowedContentTypes: supportedTypes,
+        allowsMultipleSelection: false
+      ) { result in
+        handleFileImport(result)
+      }
     }
-    .background(DS.Colors.Background.secondary)
-    .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall))
   }
 
   // MARK: - File Handling
@@ -249,11 +254,13 @@ struct DocumentTypePickerSheet: View {
             .buttonStyle(.bordered)
             .frame(maxWidth: .infinity)
             .frame(height: DS.Spacing.minTouchTarget)
+            .accessibilityHint("Discards the document without adding")
 
           Button("Add Document", action: onConfirm)
             .buttonStyle(.borderedProminent)
             .frame(maxWidth: .infinity)
             .frame(height: DS.Spacing.minTouchTarget)
+            .accessibilityHint("Adds the document with the selected type")
         }
         .padding(.bottom, DS.Spacing.lg)
       }
