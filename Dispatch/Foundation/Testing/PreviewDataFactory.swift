@@ -25,7 +25,6 @@ enum PreviewDataFactory {
   /// - 3 Tasks (Open, Claimed, Completed)
   /// - 2 Activities (Call, Email)
   /// - Notes & History
-  @MainActor
   static func seed(_ context: ModelContext) {
     // Users
     let alice = User(
