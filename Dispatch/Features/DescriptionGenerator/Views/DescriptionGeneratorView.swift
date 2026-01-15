@@ -136,6 +136,9 @@ struct DescriptionGeneratorView: View {
       }
       .padding(DS.Spacing.lg)
     }
+    #if os(macOS)
+    .contentMargins(.bottom, DS.Spacing.bottomToolbarHeight, for: .scrollContent)
+    #endif
     .background(DS.Colors.Background.grouped)
   }
 
@@ -151,6 +154,9 @@ struct DescriptionGeneratorView: View {
       }
       .padding(DS.Spacing.lg)
     }
+    #if os(macOS)
+    .contentMargins(.bottom, DS.Spacing.bottomToolbarHeight, for: .scrollContent)
+    #endif
     .background(DS.Colors.Background.primary)
   }
 
