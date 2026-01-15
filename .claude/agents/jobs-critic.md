@@ -32,7 +32,7 @@ description: |
   </commentary>
   </example>
 model: opus
-tools: ["Read", "Edit", "Grep", "Glob", "mcp__context7__*", "mcp__xcodebuildmcp__screenshot", "mcp__xcodebuildmcp__describe_ui"]
+tools: ["Read", "Edit", "Grep", "Glob", "mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__xcodebuildmcp__screenshot", "mcp__xcodebuildmcp__describe_ui"]
 ---
 
 # Role
