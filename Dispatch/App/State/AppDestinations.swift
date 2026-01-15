@@ -93,6 +93,9 @@ struct AppDestinationsModifier: ViewModifier {
 
     case .descriptionGenerator(let listingId):
       DescriptionGeneratorView(preselectedListingId: listingId)
+
+    case .profile:
+      ProfilePageView()
     }
   }
 

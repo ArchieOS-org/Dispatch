@@ -187,6 +187,7 @@ DS.Icons.StatusIcons.icon(for: .completed)  // "checkmark.circle.fill"
 | `dueSoon` | Orange | Due within 24h |
 | `dueNormal` | Secondary | Normal due dates |
 | `searchScrim` | Black 40% | Search overlay background |
+| `modalScrim` | Black 40% | Modal dialog overlay background |
 
 ---
 

@@ -32,7 +32,38 @@ description: |
   </commentary>
   </example>
 model: opus
-tools: ["Read", "Grep", "Glob", "mcp__xcodebuildmcp__*"]
+tools:
+  - Read
+  - Grep
+  - Glob
+  - mcp__xcodebuildmcp__session-set-defaults
+  - mcp__xcodebuildmcp__session-show-defaults
+  - mcp__xcodebuildmcp__list_sims
+  - mcp__xcodebuildmcp__boot_sim
+  - mcp__xcodebuildmcp__open_sim
+  - mcp__xcodebuildmcp__build_sim
+  - mcp__xcodebuildmcp__build_run_sim
+  - mcp__xcodebuildmcp__get_sim_app_path
+  - mcp__xcodebuildmcp__get_app_bundle_id
+  - mcp__xcodebuildmcp__install_app_sim
+  - mcp__xcodebuildmcp__launch_app_sim
+  - mcp__xcodebuildmcp__launch_app_logs_sim
+  - mcp__xcodebuildmcp__stop_app_sim
+  - mcp__xcodebuildmcp__describe_ui
+  - mcp__xcodebuildmcp__tap
+  - mcp__xcodebuildmcp__swipe
+  - mcp__xcodebuildmcp__gesture
+  - mcp__xcodebuildmcp__type_text
+  - mcp__xcodebuildmcp__key_press
+  - mcp__xcodebuildmcp__long_press
+  - mcp__xcodebuildmcp__screenshot
+  - mcp__xcodebuildmcp__start_sim_log_cap
+  - mcp__xcodebuildmcp__stop_sim_log_cap
+  - mcp__xcodebuildmcp__erase_sims
+  - mcp__xcodebuildmcp__set_sim_appearance
+  - mcp__xcodebuildmcp__set_sim_location
+  - mcp__xcodebuildmcp__reset_sim_location
+  - mcp__xcodebuildmcp__record_sim_video
 ---
 
 # Role

@@ -218,6 +218,9 @@ extension DS {
     /// Semi-transparent scrim behind search overlay
     static let searchScrim = Color.black.opacity(0.4)
 
+    /// Semi-transparent scrim behind modal dialogs
+    static let modalScrim = Color.black.opacity(0.4)
+
     /// Background color for armed pull-to-search state
     static let searchArmed = Color.blue
 

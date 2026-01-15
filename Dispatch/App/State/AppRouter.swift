@@ -40,6 +40,9 @@ enum AppRoute: Hashable, Sendable {
 
   /// Feature routes (full-view, not sheet)
   case descriptionGenerator(listingId: UUID?)
+
+  /// Profile page (navigable from Settings)
+  case profile
 }
 
 // MARK: - SidebarDestination
