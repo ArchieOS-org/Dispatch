@@ -43,12 +43,14 @@ Failures (if any):
 
 ### Contract Enforcement
 1. **jobs-critic** MUST write verdict to `.claude/contracts/<feature>.md`:
-   - Field: `Jobs Critique: SHIP YES` or `Jobs Critique: SHIP NO`
-   - This is MANDATORY, not optional
+   - Field: `JOBS CRITIQUE: SHIP YES` or `JOBS CRITIQUE: SHIP NO` (exact format)
+   - This is MANDATORY when `UI Review Required: YES`
 
 2. **integrator** MUST read contract at PATCHSET 4:
-   - If `Jobs Critique: SHIP NO` → BLOCKED
-   - If `Jobs Critique: PENDING` or missing → BLOCKED
-   - Only `Jobs Critique: SHIP YES` allows DONE
+   - If `UI Review Required: NO` → skip Jobs Critique check, report `N/A`
+   - If `UI Review Required: YES`:
+     - If `JOBS CRITIQUE: SHIP NO` → BLOCKED
+     - If `JOBS CRITIQUE: PENDING` or missing → BLOCKED
+     - Only `JOBS CRITIQUE: SHIP YES` allows DONE
 
-3. **ui-polish** MUST report PASS/FAIL explicitly before completing
+3. **ui-polish** MUST report `DESIGN BAR: PASS` or `DESIGN BAR: FAIL` explicitly before completing

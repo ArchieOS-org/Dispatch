@@ -41,18 +41,27 @@ PATCHSET 4:
 - **Read contract and verify Jobs Critique verdict (see below)**
 - **Run style enforcement commands (see below)**
 
-# Jobs Critique Gate (PATCHSET 4 - MANDATORY)
-At PATCHSET 4, you MUST read the contract at `.claude/contracts/<feature>.md`:
-1. Find the `## Jobs Critique` section
-2. Check the `Jobs Critique:` field
+# Jobs Critique Gate (PATCHSET 4 - CONDITIONAL)
+At PATCHSET 4, read the contract at `.claude/contracts/<feature>.md`:
 
-**BLOCK if:**
-- `Jobs Critique: SHIP NO` → BLOCKED (feature-owner must fix issues)
-- `Jobs Critique: PENDING` → BLOCKED (jobs-critic hasn't run yet)
+**Step 1**: Check `UI Review Required` field at top of contract
+
+**If `UI Review Required: NO`**:
+- Skip Jobs Critique check entirely
+- Report: `JOBS CRITIQUE: N/A (UI Review not required)`
+
+**If `UI Review Required: YES`**:
+1. Find the `## Jobs Critique` section
+2. Check the `JOBS CRITIQUE:` field
+
+**BLOCK if (UI Review Required: YES only):**
+- `JOBS CRITIQUE: SHIP NO` → BLOCKED (feature-owner must fix issues)
+- `JOBS CRITIQUE: PENDING` → BLOCKED (jobs-critic hasn't run yet)
 - Jobs Critique section missing → BLOCKED (jobs-critic must run first)
 
 **UNBLOCK only if:**
-- `Jobs Critique: SHIP YES` is present
+- `UI Review Required: NO`, OR
+- `JOBS CRITIQUE: SHIP YES` is present
 
 # Style Enforcement Commands (PATCHSET 4)
 Run in this order:
@@ -84,8 +93,8 @@ If MCP tools unavailable (background mode), use Bash with xcodebuild commands di
 - Tests: [PASS/FAIL + key error]
 - Lint: [PASS/FAIL + key error]
 - Format: [PASS/FAIL/N/A + key error] (PATCHSET 4 only)
-- **Jobs Critique: [SHIP YES/SHIP NO/PENDING/MISSING]** (PATCHSET 4 only)
-- **Design Bar: [PASS/FAIL + what failed]** (PATCHSET 4 only)
+- **JOBS CRITIQUE: [SHIP YES | SHIP NO | PENDING | MISSING | N/A]** (PATCHSET 4 only)
+- **DESIGN BAR: [PASS | FAIL] + what failed** (PATCHSET 4 only)
 - Blockers: [list]
 - Status: [UNBLOCKED | BLOCKED | DONE]
 
@@ -93,5 +102,5 @@ If BLOCKED, include the smallest next fix.
 
 **DONE is only valid if:**
 1. You are the LAST agent to run (after ui-polish, xcode-pilot complete)
-2. Jobs Critique = SHIP YES
+2. Jobs Critique = SHIP YES (if UI Review Required: YES) OR Jobs Critique = N/A (if UI Review Required: NO)
 3. All builds/tests/lint pass

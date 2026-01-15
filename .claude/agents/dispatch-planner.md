@@ -38,6 +38,12 @@ If ANY are true:
 THEN:
 - Create contract file at `.claude/contracts/<slug>.md`
 - Status must be `locked` before implementation
+- Set `UI Review Required: YES` if ANY are true:
+  - Customer-facing UI changes
+  - UI hierarchy or layout changes
+  - Primary interaction changes
+  - New screen or navigation flow
+- Otherwise set `UI Review Required: NO`
 
 # Explorer Recommendation (STRICTLY CONDITIONAL)
 Recommend dispatch-explorer ONLY when:
@@ -87,11 +93,12 @@ If during analysis you identify structural issues:
 **integrator "DONE" is only valid if it runs LAST, after ALL file-modifying agents complete.**
 
 Sequence:
-1. feature-owner (PATCHSET 1-4)
-2. jobs-critic (writes verdict to contract)
-3. ui-polish (if assigned)
-4. xcode-pilot (if assigned)
-5. integrator (FINAL) → only this "DONE" is authoritative
+1. feature-owner (PATCHSET 1-2)
+2. jobs-critic (after PATCHSET 2, writes verdict to contract)
+3. feature-owner (PATCHSET 3-4)
+4. ui-polish (if assigned)
+5. xcode-pilot (if assigned)
+6. integrator (FINAL) → only this "DONE" is authoritative
 
 If integrator runs parallel with file-modifying agents, its "DONE" is invalid.
 The orchestrator must ensure a FINAL sequential integrator run.
@@ -107,6 +114,7 @@ The orchestrator must ensure a FINAL sequential integrator run.
 - Contract file: `.claude/contracts/<slug>.md`
 - Lock Version: v1
 - Status: locked
+- UI Review Required: [YES | NO]
 
 ## Recommended Assignments
 - feature-owner: [end-to-end slice scope]

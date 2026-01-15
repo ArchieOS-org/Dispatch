@@ -4,6 +4,7 @@
 **Created**: [YYYY-MM-DD]
 **Status**: [draft | locked | complete]
 **Lock Version**: v1 (increment on any contract change)
+**UI Review Required**: NO (set YES if customer-facing UI, hierarchy/layout changes, or primary interaction changes)
 
 ### Contract
 - New/changed model fields: [list]
@@ -34,7 +35,7 @@
 
 ### Jobs Critique (written by jobs-critic agent)
 
-**Jobs Critique**: [SHIP YES | SHIP NO | PENDING]
+**JOBS CRITIQUE**: [SHIP YES | SHIP NO | PENDING]
 **Reviewed**: [YYYY-MM-DD HH:MM]
 
 #### Checklist
@@ -49,5 +50,7 @@
 
 ---
 
-**IMPORTANT**: integrator MUST verify `Jobs Critique: SHIP YES` before reporting DONE.
-If this field is missing, says PENDING, or says SHIP NO, integrator MUST reject DONE.
+**IMPORTANT**:
+- If `UI Review Required: YES` → integrator MUST verify `JOBS CRITIQUE: SHIP YES` before reporting DONE
+- If `UI Review Required: NO` → Jobs Critique section is not required; integrator skips this check
+- If UI Review Required but Jobs Critique is missing/PENDING/SHIP NO → integrator MUST reject DONE

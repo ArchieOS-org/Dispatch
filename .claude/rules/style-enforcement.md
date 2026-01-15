@@ -5,6 +5,18 @@
 
 We follow the Airbnb philosophy: rules must be mechanically enforceable.
 
+## Lintable Rules Only (Airbnb Tenet)
+
+A rule is only a rule if it can be checked by a machine:
+- SwiftLint can flag it → it's a rule
+- SwiftFormat can fix it → it's a rule
+- Compiler rejects it → it's a rule
+- Human must judge it → it's a **guideline**, not a rule
+
+**Guidelines are valuable but do NOT block merges.** Discuss in PR, don't gate on.
+
+This keeps enforcement predictable and prevents bike-shedding. If you want something enforced, write a SwiftLint custom rule or accept that it's advisory.
+
 ## Enforcement Chain
 
 ### 1. Formatting (swiftformat)
