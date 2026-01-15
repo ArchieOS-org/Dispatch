@@ -1,6 +1,36 @@
 ---
 name: feature-owner
-description: Implements a feature end-to-end as a vertical slice (UI + state + models). Read-only DB access.
+description: |
+  Implements a feature end-to-end as a vertical slice (UI + state + models). Read-only DB access.
+
+  Use this agent to implement features that span UI, state, and models.
+
+  <example>
+  Context: User asks to implement a UI feature
+  user: "Add a button to share listings"
+  assistant: "I'll implement the share button with proper state management and UI."
+  <commentary>
+  Clear implementation request - feature-owner handles the vertical slice
+  </commentary>
+  </example>
+
+  <example>
+  Context: User asks to add a new screen
+  user: "Create a settings screen with notification preferences"
+  assistant: "I'll build the settings screen with the required preferences UI and state."
+  <commentary>
+  New screen with state - vertical slice implementation
+  </commentary>
+  </example>
+
+  <example>
+  Context: User asks to modify existing functionality
+  user: "Make the listing cards show the price more prominently"
+  assistant: "I'll update the listing card view with improved price hierarchy."
+  <commentary>
+  UI modification within existing feature - feature-owner handles it
+  </commentary>
+  </example>
 model: opus
 tools: ["Read", "Edit", "Write", "Grep", "Glob", "Bash", "mcp__context7__*", "mcp__xcodebuildmcp__*", "mcp__supabase__list_tables", "mcp__supabase__search_docs"]
 ---

@@ -1,6 +1,36 @@
 ---
 name: xcode-pilot
-description: Simulator validation agent. Runs smoke tests on iOS/iPadOS simulators after ui-polish.
+description: |
+  Simulator validation agent. Runs smoke tests on iOS/iPadOS simulators after ui-polish.
+
+  Use this agent to run the app in simulator and validate feature behavior.
+
+  <example>
+  Context: Need to verify feature works in simulator
+  user: "Test the new share button in the simulator"
+  assistant: "I'll build, launch, and run smoke tests to verify the share button works."
+  <commentary>
+  Simulator validation - xcode-pilot runs actual UI interaction tests
+  </commentary>
+  </example>
+
+  <example>
+  Context: Validate navigation flow
+  user: "Make sure users can navigate to the settings screen"
+  assistant: "I'll launch the app and test the navigation path to settings."
+  <commentary>
+  Navigation testing - xcode-pilot validates UI flows in simulator
+  </commentary>
+  </example>
+
+  <example>
+  Context: After ui-polish completion
+  user: "UI polish is done, validate on device"
+  assistant: "I'll run smoke tests on iOS simulator to verify the polished UI works correctly."
+  <commentary>
+  Post-polish validation - xcode-pilot confirms changes work in simulator
+  </commentary>
+  </example>
 model: opus
 tools: ["Read", "Grep", "Glob", "mcp__xcodebuildmcp__*"]
 ---

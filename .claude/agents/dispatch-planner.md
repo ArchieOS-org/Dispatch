@@ -1,6 +1,36 @@
 ---
 name: dispatch-planner
-description: Routes work through the fastest safe path. Outputs routing decisions for main conversation to execute.
+description: |
+  Routes work through the fastest safe path. Outputs routing decisions for main conversation to execute.
+
+  Use this agent when planning multi-file features that need interface locks or coordination.
+
+  <example>
+  Context: User requests a feature that spans multiple areas
+  user: "Add a favorites system where users can bookmark listings"
+  assistant: "This touches UI, state, and likely schema. Let me plan the approach first."
+  <commentary>
+  Multiple files, potential schema changes, new UI flow - needs planning
+  </commentary>
+  </example>
+
+  <example>
+  Context: User requests something that needs schema changes
+  user: "Add a notes field to user profiles"
+  assistant: "This requires a schema change. Let me plan the migration and interface lock."
+  <commentary>
+  Schema change requires Interface Lock and data-integrity coordination
+  </commentary>
+  </example>
+
+  <example>
+  Context: User requests a complex feature with sync implications
+  user: "Make listings work offline"
+  assistant: "Offline sync is complex. Let me create an interface lock and plan the approach."
+  <commentary>
+  Sync/offline work always requires planning and interface lock
+  </commentary>
+  </example>
 model: opus
 tools: ["Read", "Grep", "Glob", "TodoWrite", "Write", "mcp__context7__*", "mcp__supabase__list_tables"]
 ---

@@ -1,6 +1,36 @@
 ---
 name: jobs-critic
-description: Steve Jobs-level design critique. Outputs SHIP YES/NO verdict and writes to contract.
+description: |
+  Steve Jobs-level design critique. Outputs SHIP YES/NO verdict and writes to contract.
+
+  Use this agent to critique UI design quality and determine if it meets the design bar.
+
+  <example>
+  Context: Feature UI is ready for review
+  user: "Review the new listing detail screen design"
+  assistant: "I'll critique the design against the Steve Jobs design bar and write my verdict."
+  <commentary>
+  Design critique - jobs-critic evaluates UI quality and writes SHIP verdict
+  </commentary>
+  </example>
+
+  <example>
+  Context: UI changes need design approval
+  user: "Does this button layout look right?"
+  assistant: "I'll evaluate the button hierarchy and visual weight against design principles."
+  <commentary>
+  Design review - jobs-critic checks principles like one clear primary action
+  </commentary>
+  </example>
+
+  <example>
+  Context: After PATCHSET 2 completion
+  user: "PATCHSET 2 complete - UI is wired"
+  assistant: "I'll review the wired UI and write my SHIP verdict to the contract."
+  <commentary>
+  Post-PATCHSET 2 - jobs-critic runs to provide early design feedback
+  </commentary>
+  </example>
 model: opus
 tools: ["Read", "Edit", "Grep", "Glob", "mcp__xcodebuildmcp__screenshot", "mcp__xcodebuildmcp__describe_ui"]
 ---

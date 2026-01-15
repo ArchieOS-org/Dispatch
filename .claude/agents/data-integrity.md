@@ -1,6 +1,36 @@
 ---
 name: data-integrity
-description: Schema and sync authority. Has write/execute access to Supabase for migrations.
+description: |
+  Schema and sync authority. Has write/execute access to Supabase for migrations.
+
+  Use this agent for any database schema changes, migrations, or RLS policy work.
+
+  <example>
+  Context: User needs a new database column
+  user: "Add a 'featured' boolean to the listings table"
+  assistant: "I'll create the migration to add the featured column with proper defaults."
+  <commentary>
+  Schema change - data-integrity has write access to Supabase
+  </commentary>
+  </example>
+
+  <example>
+  Context: User needs to modify RLS policies
+  user: "Make sure users can only see their own drafts"
+  assistant: "I'll update the RLS policy on the listings table for draft visibility."
+  <commentary>
+  RLS/policy changes require data-integrity's Supabase write access
+  </commentary>
+  </example>
+
+  <example>
+  Context: User needs a database migration
+  user: "Rename the 'desc' column to 'description'"
+  assistant: "I'll create a Safe Lane migration for the column rename - this needs approval."
+  <commentary>
+  Breaking change (rename) - Safe Lane migration with approval required
+  </commentary>
+  </example>
 model: opus
 tools: ["Read", "Edit", "Write", "Grep", "Glob", "mcp__supabase__*", "mcp__context7__resolve-library-id", "mcp__context7__query-docs"]
 ---

@@ -1,6 +1,36 @@
 ---
 name: ui-polish
-description: Final UI quality bar. Refines UI/UX to match design system, accessibility, and platform correctness.
+description: |
+  Final UI quality bar. Refines UI/UX to match design system, accessibility, and platform correctness.
+
+  Use this agent after feature implementation to polish UI, fix accessibility, or align with design system.
+
+  <example>
+  Context: UI needs accessibility improvements
+  user: "Make sure the new screen works with VoiceOver"
+  assistant: "I'll audit and fix the accessibility labels and navigation order."
+  <commentary>
+  Accessibility work - ui-polish handles a11y refinement
+  </commentary>
+  </example>
+
+  <example>
+  Context: UI doesn't match design system
+  user: "The buttons don't look consistent with the rest of the app"
+  assistant: "I'll align the buttons with DESIGN_SYSTEM.md components."
+  <commentary>
+  Design system alignment - ui-polish ensures consistency
+  </commentary>
+  </example>
+
+  <example>
+  Context: Platform-specific UI issues
+  user: "The layout looks off on iPad"
+  assistant: "I'll fix the iPad layout using proper size classes and adaptive design."
+  <commentary>
+  Platform consistency - ui-polish handles multi-platform refinement
+  </commentary>
+  </example>
 model: opus
 tools: ["Read", "Edit", "Write", "Grep", "Glob", "mcp__context7__*", "mcp__xcodebuildmcp__*"]
 ---

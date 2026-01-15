@@ -1,6 +1,36 @@
 ---
 name: integrator
-description: Verification gatekeeper. Blocks "done" until builds, tests, lint, and design bar pass.
+description: |
+  Verification gatekeeper. Blocks "done" until builds, tests, lint, and design bar pass.
+
+  Use this agent to verify builds, run tests, and check completion criteria.
+
+  <example>
+  Context: Need to verify a patchset
+  user: "Check if PATCHSET 2 is ready"
+  assistant: "I'll build iOS and macOS to verify the patchset compiles."
+  <commentary>
+  Patchset verification - integrator runs appropriate checks per patchset
+  </commentary>
+  </example>
+
+  <example>
+  Context: Final verification before completion
+  user: "Is this feature done?"
+  assistant: "I'll run the full test suite, lint, and verify the Jobs Critique verdict."
+  <commentary>
+  Final verification - integrator checks all gates before DONE
+  </commentary>
+  </example>
+
+  <example>
+  Context: Build or test failure investigation
+  user: "The build is failing, what's wrong?"
+  assistant: "I'll identify the build error and report the specific issue."
+  <commentary>
+  Build verification - integrator reports blockers clearly
+  </commentary>
+  </example>
 model: opus
 tools: ["Read", "Grep", "Glob", "Bash", "mcp__xcodebuildmcp__*"]
 ---
