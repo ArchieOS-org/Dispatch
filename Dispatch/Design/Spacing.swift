@@ -226,5 +226,19 @@ extension DS {
     /// Combines button size (56pt) + bottom inset (16pt) = 72pt clearance
     static let floatingButtonScrollInset: CGFloat = floatingButtonSizeLarge + floatingButtonBottomInset
 
+    // MARK: - Window Sizing (macOS)
+
+    /// Minimum window width (macOS) - accommodates sidebar + content
+    static let windowMinWidth: CGFloat = 600
+
+    /// Minimum window height (macOS)
+    static let windowMinHeight: CGFloat = 400
+
+    /// Default window width (macOS) - comfortable working size
+    static let windowDefaultWidth: CGFloat = 1000
+
+    /// Default window height (macOS)
+    static let windowDefaultHeight: CGFloat = 700
+
   }
 }

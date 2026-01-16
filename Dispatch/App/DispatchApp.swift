@@ -72,15 +72,17 @@ struct DispatchApp: App {
         .onOpenURL { url in
           appState.authManager.handleRedirect(url)
         }
+        .frame(minWidth: DS.Spacing.windowMinWidth, minHeight: DS.Spacing.windowMinHeight)
     }
     .modelContainer(sharedModelContainer)
     #if os(macOS)
-      .commands {
-        // Pass the dispatch closure explicitly to avoid Environment lookup issues in menu bar
-        DispatchCommands { cmd in
-          appState.dispatch(cmd)
-        }
+    .defaultSize(width: DS.Spacing.windowDefaultWidth, height: DS.Spacing.windowDefaultHeight)
+    .commands {
+      // Pass the dispatch closure explicitly to avoid Environment lookup issues in menu bar
+      DispatchCommands { cmd in
+        appState.dispatch(cmd)
       }
+    }
     #endif
       // Plumbing: Feed ScenePhase to Coordinator
       .onChange(of: scenePhase) { _, newPhase in
