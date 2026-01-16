@@ -261,11 +261,8 @@ struct DescriptionGeneratorView: View {
         }
       )
 
-      // MLS Fields Section (only when output is selected)
+      // Refinement Section (applies to selected description)
       if state.selectedOutput != nil {
-        mlsFieldsSection
-
-        // Refinement Section
         RefinementSection(
           prompt: $state.currentRefinementPrompt,
           history: state.refinementHistory,
@@ -279,6 +276,10 @@ struct DescriptionGeneratorView: View {
         )
       }
 
+      // MLS Fields Section - ALWAYS at bottom, uses outputA as canonical source
+      // MLS fields are identical between A/B versions, so we use outputA consistently
+      mlsFieldsSection
+
       // Error message
       if let error = state.errorMessage {
         errorView(error)
@@ -288,16 +289,15 @@ struct DescriptionGeneratorView: View {
 
   @ViewBuilder
   private var mlsFieldsSection: some View {
-    if let output = state.selectedOutput {
+    // Use outputA as the canonical MLS fields source
+    // MLS fields are property metadata (beds, baths, etc.) and don't vary between A/B versions
+    if let outputA = state.outputA {
       MLSFieldsSection(
         fields: Binding(
-          get: { output.mlsFields },
+          get: { outputA.mlsFields },
           set: { newFields in
-            if state.selectedVersion == .a {
-              state.outputA?.mlsFields = newFields
-            } else if state.selectedVersion == .b {
-              state.outputB?.mlsFields = newFields
-            }
+            // Update outputA only - it's the canonical source for MLS fields
+            state.outputA?.mlsFields = newFields
           }
         ),
         originalFields: state.originalMLSFields,
