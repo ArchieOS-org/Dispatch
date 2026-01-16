@@ -29,14 +29,18 @@ struct ContentView: View {
       // .environmentObject(quickEntryState) // Removed
       .environmentObject(overlayState)
     #if os(macOS)
-      .background(KeyMonitorView { event in
-        handleGlobalKeyDown(event)
-      })
       .overlay(alignment: .top) {
         quickFindOverlay
       }
       .sheet(item: sheetStateBinding) { state in
         sheetContent(for: state)
+      }
+      // Listen for menu bar Cmd+F notification (per-window handling)
+      // Only respond if THIS window is the key (focused) window
+      .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
+        if controlActiveState == .key {
+          windowUIState.openSearch(initialText: nil)
+        }
       }
     #endif
   }
@@ -49,6 +53,15 @@ struct ContentView: View {
   @EnvironmentObject private var syncManager: SyncManager
   @EnvironmentObject private var appState: AppState // One Boss injection
   @Environment(\.modelContext) private var modelContext
+
+  #if os(macOS)
+  /// Per-window UI state (sidebar, overlays) - each window gets its own instance
+  @Environment(WindowUIState.self) private var windowUIState
+  /// Tracks whether this window is the key (focused) window
+  @Environment(\.controlActiveState) private var controlActiveState
+  /// Focus state for the main content area - enables type-to-search
+  @FocusState private var contentAreaFocused: Bool
+  #endif
 
   #if os(iOS)
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -273,9 +286,41 @@ struct ContentView: View {
             }
           },
           onSearch: {
-            appState.dispatch(.openSearch(initialText: nil))
+            windowUIState.openSearch(initialText: nil)
           }
         )
+      }
+      // Type Travel: alphanumeric keys open search with typed character
+      // Uses SwiftUI's native .onKeyPress() which is inherently window-scoped
+      .focusable()
+      .focused($contentAreaFocused)
+      .onKeyPress(characters: .alphanumerics, phases: .down) { keyPress in
+        // Skip if modifiers are pressed (except Shift for uppercase)
+        guard keyPress.modifiers.subtracting(.shift).isEmpty else {
+          return .ignored
+        }
+
+        // Skip if overlay is already showing
+        guard case .none = windowUIState.overlayState else {
+          return .ignored
+        }
+
+        // Open search with the typed character
+        windowUIState.openSearch(initialText: String(keyPress.characters))
+        return .handled
+      }
+      .onAppear {
+        // Auto-focus content area when view appears
+        contentAreaFocused = true
+      }
+      .onChange(of: windowUIState.overlayState) { oldValue, newValue in
+        // Re-focus content area when overlay closes
+        if case .none = newValue, case .search = oldValue {
+          // Small delay allows overlay dismissal to complete
+          DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            contentAreaFocused = true
+          }
+        }
       }
     }
   }
@@ -666,13 +711,13 @@ struct ContentView: View {
   @ViewBuilder
   private var quickFindOverlay: some View {
     #if os(macOS)
-    if case .search(let initialText) = appState.overlayState {
+    if case .search(let initialText) = windowUIState.overlayState {
       ZStack(alignment: .top) {
         // Dimmer Background (Click to dismiss)
         Color.black.opacity(0.1) // Transparent enough to see content, tangible enough to click
           .edgesIgnoringSafeArea(.all)
           .onTapGesture {
-            appState.overlayState = .none
+            windowUIState.closeOverlay()
           }
 
         // The Popover Itself
@@ -680,7 +725,7 @@ struct ContentView: View {
           searchText: $quickFindText,
           isPresented: Binding(
             get: { true },
-            set: { if !$0 { appState.overlayState = .none } }
+            set: { if !$0 { windowUIState.closeOverlay() } }
           ),
           currentTab: selectedTab,
           onNavigate: { tab in
@@ -689,11 +734,11 @@ struct ContentView: View {
             // Post filters logic
             // TODO: Refine this logic in next step
             appState.dispatch(tab == .listings ? .filterUnclaimed : .filterMine)
-            appState.overlayState = .none
+            windowUIState.closeOverlay()
           },
           onSelectResult: { result in
             selectSearchResult(result)
-            appState.overlayState = .none
+            windowUIState.closeOverlay()
           }
         )
         .padding(.top, 100) // Position it nicely near the top
@@ -784,45 +829,6 @@ struct ContentView: View {
     updateWorkItemActions()
     updateLensState()
   }
-
-  #if os(macOS)
-  /// Global key handler for Type Travel
-  private func handleGlobalKeyDown(_ event: NSEvent) -> NSEvent? {
-    // Ignore if any modifiers are pressed (Cmd, Ctrl, Opt), except Shift
-    let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-    if !flags.isEmpty && flags != .shift {
-      return event
-    }
-
-    // Ignore if a text field is currently focused (handles both TextEditor and TextField)
-    if
-      let window = NSApp.keyWindow,
-      let responder = window.firstResponder
-    {
-      // Check for active field editor (NSTextView)
-      if let textView = responder as? NSTextView, textView.isEditable {
-        return event
-      }
-      // Check for direct NSTextField focus (often covers SwiftUI TextFields)
-      if responder is NSTextField {
-        return event
-      }
-    }
-
-    // Check for alphanumeric characters
-    if
-      let chars = event.charactersIgnoringModifiers,
-      chars.count == 1,
-      let char = chars.first,
-      char.isLetter || char.isNumber
-    {
-      // Trigger Quick Find with this character
-      appState.dispatch(.openSearch(initialText: String(char)))
-      return nil
-    }
-    return event
-  }
-  #endif
 
   /// Handles navigation after selecting a search result
   private func selectSearchResult(_ result: SearchResult) {

@@ -10,6 +10,12 @@ import SwiftUI
 /// The top-level application shell.
 /// Owns the Window Chrome Policy and Global Navigation Containers.
 struct AppShellView: View {
+
+  #if os(macOS)
+  @Environment(\.openWindow) private var openWindow
+  @Environment(\.supportsMultipleWindows) private var supportsMultipleWindows
+  #endif
+
   var body: some View {
     // Phase 0: Wrapping existing ContentView.
     // In Phase 2/3, we will lift the NavigationSplitView/Stack out of ContentView into here.
@@ -20,6 +26,37 @@ struct AppShellView: View {
       .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
       // In full-screen mode, hide toolbar by default; reveal on hover near menu bar
       .windowToolbarFullScreenVisibility(.onHover)
+      .toolbar {
+        ToolbarItem(placement: .automatic) {
+          DuplicateWindowButton(
+            openWindow: openWindow,
+            supportsMultipleWindows: supportsMultipleWindows
+          )
+        }
+      }
     #endif
   }
 }
+
+#if os(macOS)
+// MARK: - Duplicate Window Button
+
+/// Button to create a new window with its own independent state.
+/// Minimal icon, positioned on the right side of the toolbar.
+private struct DuplicateWindowButton: View {
+  let openWindow: OpenWindowAction
+  let supportsMultipleWindows: Bool
+
+  var body: some View {
+    Button {
+      openWindow(id: "main")
+    } label: {
+      Label("New Window", systemImage: "square.on.square")
+    }
+    .buttonStyle(.borderless)
+    .keyboardShortcut("n", modifiers: [.command, .shift])
+    .help("Opens a new window with independent sidebar and search state")
+    .disabled(!supportsMultipleWindows)
+  }
+}
+#endif

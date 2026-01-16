@@ -2,74 +2,12 @@
 //  SidebarState.swift
 //  Dispatch
 //
-//  Manages sidebar state with persistence for macOS
-//  Created for DIS-39: Things 3-style collapsible side menu
+//  NOTE: SidebarState has been superseded by WindowUIState for per-window isolation.
+//  This file is retained only for the Notification.Name extensions used by keyboard shortcuts.
+//  The SidebarState class itself is deprecated.
 //
 
-import Combine
 import SwiftUI
-
-#if os(macOS)
-/// Manages sidebar visibility and width state with persistence.
-/// Uses @AppStorage to remember state across app launches.
-@MainActor
-final class SidebarState: ObservableObject {
-
-  // MARK: Internal
-
-  /// Whether the sidebar is currently visible
-  @AppStorage("sidebarVisible") var isVisible = true
-
-  /// Whether the sidebar is currently being dragged
-  @Published var isDragging = false
-
-  /// Current sidebar width as CGFloat
-  var width: CGFloat {
-    get { CGFloat(storedWidth) }
-    set { storedWidth = Double(clampedWidth(newValue)) }
-  }
-
-  /// Whether to show sidebar based on drag state
-  /// During drag, sidebar always stays in view hierarchy (just shrinks to 0 width)
-  /// This prevents view hierarchy changes mid-drag which cause glitches
-  var shouldShowSidebar: Bool {
-    isDragging || isVisible
-  }
-
-  /// Clamps width for final persist (min...max)
-  func clampedWidth(_ newWidth: CGFloat) -> CGFloat {
-    min(DS.Spacing.sidebarMaxWidth, max(DS.Spacing.sidebarMinWidth, newWidth))
-  }
-
-  /// Clamps width during drag (0...max) - no min enforcement to allow smooth drag from collapsed
-  func clampedWidthDuringDrag(_ newWidth: CGFloat) -> CGFloat {
-    min(DS.Spacing.sidebarMaxWidth, max(0, newWidth))
-  }
-
-  /// Toggle sidebar visibility (animation handled at view level)
-  func toggle() {
-    isVisible.toggle()
-  }
-
-  /// Show sidebar (animation handled at view level)
-  func show() {
-    guard !isVisible else { return }
-    isVisible = true
-  }
-
-  /// Hide sidebar (animation handled at view level)
-  func hide() {
-    guard isVisible else { return }
-    isVisible = false
-  }
-
-  // MARK: Private
-
-  /// Current sidebar width (when visible) - default 240pt
-  @AppStorage("sidebarWidth") private var storedWidth: Double = 240
-
-}
-#endif
 
 // MARK: - Notifications for keyboard shortcuts
 

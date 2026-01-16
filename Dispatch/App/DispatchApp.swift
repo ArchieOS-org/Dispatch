@@ -61,43 +61,17 @@ struct DispatchApp: App {
   }()
 
   var body: some Scene {
-    WindowGroup {
-      Group {
-        ZStack {
-          if appState.authManager.isAuthenticated {
-            if SyncManager.shared.currentUser != nil {
-              AppShellView()
-                .transition(.opacity)
-            } else {
-              OnboardingLoadingView()
-                .transition(.opacity)
-            }
-          } else {
-            LoginView()
-              .transition(.opacity)
-          }
-        }
-        .animation(.easeInOut, value: appState.authManager.isAuthenticated)
-      }
-      // Inject Brain & Core Services globally
-      .environmentObject(appState)
-      .environmentObject(appState.authManager)
-      .environmentObject(SyncManager.shared)
-
-      #if DEBUG
-        .sheet(isPresented: $showTestHarness) {
-          SyncTestHarness()
-            .environmentObject(SyncManager.shared)
-        }
-      #if os(iOS)
-        .onShake {
-          showTestHarness = true
-        }
-      #endif
-      #endif
+    WindowGroup(id: "main") {
+      // WindowContentView holds per-window @State (WindowUIState on macOS)
+      // SwiftUI creates new storage for each window instance
+      WindowContentView(appState: appState, showTestHarness: $showTestHarness)
+        // Inject Brain & Core Services globally (shared across windows)
+        .environmentObject(appState)
+        .environmentObject(appState.authManager)
+        .environmentObject(SyncManager.shared)
         .onOpenURL { url in
-        appState.authManager.handleRedirect(url)
-      }
+          appState.authManager.handleRedirect(url)
+        }
     }
     .modelContainer(sharedModelContainer)
     #if os(macOS)

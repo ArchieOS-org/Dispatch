@@ -34,7 +34,8 @@ struct DispatchCommands: Commands {
       .keyboardShortcut("n", modifiers: .command)
 
       Button("Search") {
-        dispatch(.openSearch())
+        // Post notification for per-window handling (WindowUIState)
+        NotificationCenter.default.post(name: .openSearch, object: nil)
       }
       .keyboardShortcut("f", modifiers: .command)
 

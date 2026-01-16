@@ -4,6 +4,11 @@ import SwiftUI
 
 /// The entire dropdown panel containing search + navigation list.
 /// Unifies "Quick Find" navigation and "Search" results.
+///
+/// **Focus Management:**
+/// - Owns its own `@FocusState` for keyboard control
+/// - Auto-focuses the search field after popover animation completes
+/// - Passes external focus binding to SearchBar for proper text input
 struct NavigationPopover: View {
 
   // MARK: Lifecycle
@@ -33,9 +38,10 @@ struct NavigationPopover: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      // Unifed Search Bar (replaces QuickFindField)
+      // Unified Search Bar with external focus binding
       SearchBar(
         text: $searchText,
+        externalFocus: $searchFieldFocused,
         showCancelButton: false,
         onCancel: {
           searchText = ""
@@ -75,9 +81,18 @@ struct NavigationPopover: View {
       RoundedRectangle(cornerRadius: 12)
         .stroke(Color.primary.opacity(0.1), lineWidth: 1)
     )
+    .task {
+      // Wait for popover animation to complete before focusing
+      // This ensures the text field is fully in the view hierarchy
+      try? await Task.sleep(for: .milliseconds(100))
+      searchFieldFocused = true
+    }
   }
 
   // MARK: Private
+
+  /// Focus state for the search field - enables immediate typing
+  @FocusState private var searchFieldFocused: Bool
 
   /// Search Data Queries
   @Query(sort: \TaskItem.title)
