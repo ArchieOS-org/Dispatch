@@ -87,6 +87,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
 
     /// Debug environment
     @Environment(\.layoutMetrics) var layoutMetrics
+    @Environment(\.isFullScreen) private var isFullScreen
 
     let title: String
     let layout: LayoutMode
@@ -146,12 +147,27 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
             return 0
         case .column:
             #if os(iOS)
-                // Use Apple’s platform default inset so content aligns with the system large title.
+                // Use Apple's platform default inset so content aligns with the system large title.
                 return nil
             #else
                 return DS.Spacing.Layout.pageMargin
             #endif
         }
+    }
+
+    /// Top padding for macOS content header.
+    /// In full-screen mode with hidden toolbar, we need extra padding to prevent
+    /// content from being too close to the top of the screen.
+    private var macOSTopPadding: CGFloat {
+        #if os(macOS)
+        // When in full-screen mode, the toolbar hides by default (onHover visibility).
+        // Add extra padding to account for the missing titlebar area (~20pt extra).
+        // Normal mode: 8pt (DS.Spacing.sm)
+        // Full-screen mode: 28pt (8pt + 20pt for hidden titlebar)
+        isFullScreen ? DS.Spacing.sm + DS.Spacing.Layout.topHeaderPadding : DS.Spacing.sm
+        #else
+        DS.Spacing.sm
+        #endif
     }
 
     private var mainContent: some View {
@@ -188,7 +204,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
                     .fontWeight(.bold)
                     .foregroundColor(DS.Colors.Text.primary)
                     .padding(.horizontal, horizontalPadding)
-                    .padding(.top, DS.Spacing.sm)
+                    .padding(.top, macOSTopPadding)
                     .padding(.bottom, DS.Spacing.Layout.titleContentSpacing)
             #endif
 

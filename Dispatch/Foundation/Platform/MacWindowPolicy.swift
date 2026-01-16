@@ -10,6 +10,85 @@ import SwiftUI
 #if os(macOS)
 import AppKit
 
+// MARK: - FullScreenObserver
+
+/// Observable object that tracks whether the main window is in full-screen mode.
+/// Uses NSWindow notifications to detect full-screen state changes.
+@Observable
+@MainActor
+final class FullScreenObserver {
+  private(set) var isFullScreen = false
+
+  // Store observers in a nonisolated class to allow cleanup in deinit
+  nonisolated private let observerStorage = ObserverStorage()
+
+  // Thread-safety: ObserverStorage is only accessed from main thread (via main queue observers)
+  // and deinit (which happens after all references are released). @unchecked is needed because
+  // NSObjectProtocol is not Sendable, but our usage is safe.
+  // swiftlint:disable:next no_unchecked_sendable
+  private final class ObserverStorage: @unchecked Sendable {
+    var willEnterObserver: NSObjectProtocol?
+    var didExitObserver: NSObjectProtocol?
+
+    func removeObservers() {
+      if let observer = willEnterObserver {
+        NotificationCenter.default.removeObserver(observer)
+        willEnterObserver = nil
+      }
+      if let observer = didExitObserver {
+        NotificationCenter.default.removeObserver(observer)
+        didExitObserver = nil
+      }
+    }
+  }
+
+  init() {
+    // Observe full-screen entry
+    observerStorage.willEnterObserver = NotificationCenter.default.addObserver(
+      forName: NSWindow.willEnterFullScreenNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      Task { @MainActor [weak self] in
+        self?.isFullScreen = true
+      }
+    }
+
+    // Observe full-screen exit
+    observerStorage.didExitObserver = NotificationCenter.default.addObserver(
+      forName: NSWindow.didExitFullScreenNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      Task { @MainActor [weak self] in
+        self?.isFullScreen = false
+      }
+    }
+  }
+
+  deinit {
+    observerStorage.removeObservers()
+  }
+}
+
+// MARK: - FullScreenEnvironmentKey
+
+/// Environment key to expose full-screen state to SwiftUI views
+private struct FullScreenEnvironmentKey: EnvironmentKey {
+  static let defaultValue = false
+}
+
+extension EnvironmentValues {
+  /// Whether the window is currently in macOS full-screen mode.
+  /// Returns false on non-macOS platforms.
+  var isFullScreen: Bool {
+    get { self[FullScreenEnvironmentKey.self] }
+    set { self[FullScreenEnvironmentKey.self] = newValue }
+  }
+}
+
+// MARK: - MacWindowPolicy
+
 /// A minimal window configuration policy that respects native macOS behavior
 /// while enabling the standard modern "transparent titlebar" look.
 ///
@@ -59,14 +138,40 @@ struct MacWindowPolicy: NSViewRepresentable {
   }
 }
 
+// MARK: - FullScreenModifier
+
+/// View modifier that injects full-screen state into the environment.
+/// Creates and owns the FullScreenObserver.
+private struct FullScreenModifier: ViewModifier {
+  @State private var observer = FullScreenObserver()
+
+  func body(content: Content) -> some View {
+    content
+      .environment(\.isFullScreen, observer.isFullScreen)
+  }
+}
+
 extension View {
-  /// Applies the standard Mac Window Policy.
+  /// Applies the standard Mac Window Policy and full-screen state observation.
   /// Should only be called once from the AppShell.
   func applyMacWindowPolicy() -> some View {
     background(MacWindowPolicy())
+      .modifier(FullScreenModifier())
   }
 }
 #else
+// MARK: - Non-macOS Environment Extension
+
+extension EnvironmentValues {
+  /// Whether the window is currently in macOS full-screen mode.
+  /// Always returns false on non-macOS platforms.
+  var isFullScreen: Bool {
+    get { false }
+    // swiftlint:disable:next unused_setter_value
+    set { }
+  }
+}
+
 extension View {
   func applyMacWindowPolicy() -> some View {
     self
