@@ -62,8 +62,8 @@ struct DescriptionGeneratorView: View {
   private var content: some View {
     GeometryReader { geometry in
       #if os(macOS)
-      // macOS: Always use side-by-side layout
-      macOSLayout
+      // macOS: Use vertical layout consistent with iOS
+      mobileLayout
         .tint(DS.Colors.accent)
       #else
       // iOS/iPadOS: Adaptive based on size class and orientation
@@ -128,8 +128,14 @@ struct DescriptionGeneratorView: View {
       }
       .padding(DS.Spacing.lg)
     }
-    // Add bottom margin to clear floating buttons on iOS
+    // Maintain scroll position at top when content is added (e.g., photos)
+    .defaultScrollAnchor(.top)
+    // Add bottom margin to clear floating buttons (iOS) or bottom toolbar (macOS)
+    #if os(macOS)
+    .contentMargins(.bottom, DS.Spacing.bottomToolbarHeight, for: .scrollContent)
+    #else
     .contentMargins(.bottom, DS.Spacing.floatingButtonScrollInset, for: .scrollContent)
+    #endif
     .background(DS.Colors.Background.grouped)
   }
 
