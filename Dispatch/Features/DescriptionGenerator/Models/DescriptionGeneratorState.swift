@@ -138,6 +138,23 @@ final class DescriptionGeneratorState {
   /// Whether refinement is in progress
   var isRefining: Bool = false
 
+  // MARK: - Report Integration
+
+  /// Whether to fetch GEOWarehouse report during generation
+  var enableGeoWarehouse: Bool = false
+
+  /// Whether to fetch MPAC report during generation
+  var enableMPAC: Bool = false
+
+  /// Current phase of the generation process
+  var generationPhase: GenerationPhase = .idle
+
+  /// Reports that were fetched during generation
+  var fetchedReports: [FetchedReport] = []
+
+  /// Whether information was extracted from uploaded photos
+  var extractedFromImages: Bool = false
+
   // MARK: - Computed Properties
 
   /// Whether the generate button should be enabled
@@ -167,6 +184,14 @@ final class DescriptionGeneratorState {
     case .b: outputB
     case .none: nil
     }
+  }
+
+  /// Returns which report types are enabled
+  var enabledReports: Set<ReportType> {
+    var reports: Set<ReportType> = []
+    if enableGeoWarehouse { reports.insert(.geoWarehouse) }
+    if enableMPAC { reports.insert(.mpac) }
+    return reports
   }
 
   // MARK: - Phase 2: MLS Field Management
@@ -273,6 +298,11 @@ final class DescriptionGeneratorState {
     refinementHistory = []
     currentRefinementPrompt = ""
     sessionId = UUID()
+    // Report integration state
+    generationPhase = .idle
+    fetchedReports = []
+    extractedFromImages = false
+    // Note: enableGeoWarehouse and enableMPAC are NOT reset (user preferences)
   }
 
   // MARK: - Phase 2: Photo Management
@@ -404,6 +434,31 @@ final class DescriptionGeneratorState {
     isLoading = true
     errorMessage = nil
     sessionId = UUID()
+    fetchedReports = []
+    extractedFromImages = false
+
+    // Phase 1: Fetch enabled reports with mock delays
+    if enableGeoWarehouse {
+      generationPhase = .fetchingReport(.geoWarehouse)
+      try? await Task.sleep(for: .milliseconds(800))
+      fetchedReports.append(FetchedReport(type: .geoWarehouse))
+    }
+
+    if enableMPAC {
+      generationPhase = .fetchingReport(.mpac)
+      try? await Task.sleep(for: .milliseconds(800))
+      fetchedReports.append(FetchedReport(type: .mpac))
+    }
+
+    // Phase 2: Extract from photos if any
+    if !photos.isEmpty {
+      generationPhase = .extractingFromImages
+      try? await Task.sleep(for: .milliseconds(600))
+      extractedFromImages = true
+    }
+
+    // Phase 3: Generate descriptions
+    generationPhase = .generatingDescriptions
 
     // Build property details for AI service
     let propertyDetails = buildPropertyDetails()
@@ -425,8 +480,10 @@ final class DescriptionGeneratorState {
 
       showingOutput = true
       status = .draft
+      generationPhase = .complete
     } catch {
       errorMessage = "Generation failed: \(error.localizedDescription)"
+      generationPhase = .idle
     }
 
     isLoading = false

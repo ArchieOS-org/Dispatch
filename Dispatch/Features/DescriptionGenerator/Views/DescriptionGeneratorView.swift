@@ -200,6 +200,12 @@ struct DescriptionGeneratorView: View {
         state: state,
         listings: listings
       )
+
+      // Report toggle section
+      ReportToggleSection(
+        enableGeoWarehouse: $state.enableGeoWarehouse,
+        enableMPAC: $state.enableMPAC
+      )
     }
   }
 
@@ -214,21 +220,18 @@ struct DescriptionGeneratorView: View {
     } label: {
       HStack(spacing: DS.Spacing.sm) {
         if state.isLoading {
-          ProgressView()
-            .controlSize(.small)
-          #if os(iOS)
-            .tint(.white)
-          #endif
+          GenerationProgressView(phase: state.generationPhase)
+        } else {
+          Text("Generate Descriptions")
+            .font(DS.Typography.headline)
         }
-        Text(state.isLoading ? "Generating..." : "Generate Descriptions")
-          .font(DS.Typography.headline)
       }
       .frame(maxWidth: .infinity)
       .frame(height: DS.Spacing.minTouchTarget)
     }
     .buttonStyle(.borderedProminent)
     .disabled(!state.canGenerate || state.isLoading)
-    .accessibilityLabel(state.isLoading ? "Generating descriptions" : "Generate descriptions")
+    .accessibilityLabel(state.isLoading ? state.generationPhase.displayText : "Generate descriptions")
     .accessibilityHint(
       state.canGenerate
         ? "Double tap to generate AI descriptions"
@@ -244,6 +247,11 @@ struct DescriptionGeneratorView: View {
   @ViewBuilder
   private var outputSections: some View {
     VStack(spacing: DS.Spacing.sectionSpacing) {
+      // Fetched reports section (at top of output)
+      if !state.fetchedReports.isEmpty || state.extractedFromImages {
+        fetchedDataSection
+      }
+
       // A/B Comparison Section
       OutputComparisonSection(
         outputA: state.outputA,
@@ -304,6 +312,55 @@ struct DescriptionGeneratorView: View {
         sessionId: state.sessionId
       )
     }
+  }
+
+  @ViewBuilder
+  private var fetchedDataSection: some View {
+    VStack(alignment: .leading, spacing: DS.Spacing.md) {
+      // Section header
+      Text("Sources")
+        .font(DS.Typography.headline)
+        .foregroundStyle(DS.Colors.Text.primary)
+
+      // Photo extraction indicator
+      if state.extractedFromImages {
+        HStack(spacing: DS.Spacing.sm) {
+          Image(systemName: "checkmark.circle.fill")
+            .font(.system(size: 16, weight: .regular))
+            .foregroundStyle(DS.Colors.success)
+            .accessibilityHidden(true)
+
+          Image(systemName: "photo.on.rectangle.angled")
+            .font(.system(size: 14, weight: .regular))
+            .foregroundStyle(DS.Colors.Text.secondary)
+            .accessibilityHidden(true)
+
+          Text("Extracted from \(state.photos.count) photo\(state.photos.count == 1 ? "" : "s")")
+            .font(DS.Typography.body)
+            .foregroundStyle(DS.Colors.Text.primary)
+        }
+        .padding(DS.Spacing.md)
+        .background(DS.Colors.Background.secondary)
+        .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Information extracted from \(state.photos.count) photos")
+      }
+
+      // Fetched reports
+      ForEach(state.fetchedReports.indices, id: \.self) { index in
+        FetchedReportRow(
+          report: state.fetchedReports[index],
+          onToggleExpand: {
+            withAnimation(.easeInOut(duration: 0.2)) {
+              state.fetchedReports[index].isExpanded.toggle()
+            }
+          }
+        )
+      }
+    }
+    .padding(DS.Spacing.cardPadding)
+    .background(DS.Colors.Background.card)
+    .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusCard))
   }
 
   @ViewBuilder
