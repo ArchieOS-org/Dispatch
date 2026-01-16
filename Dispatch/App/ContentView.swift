@@ -182,7 +182,7 @@ struct ContentView: View {
         .taskList // Settings uses default toolbar
       case .workspace, .search:
         .taskList // Re-use task actions for now
-      case .descriptionGenerator:
+      case .listingGenerator:
         .taskList // Description Generator uses default toolbar
       }
 
@@ -199,7 +199,7 @@ struct ContentView: View {
     case .properties: activeProperties.count
     case .listings: activeListings.count
     case .realtors: activeRealtors.count
-    case .settings, .search, .descriptionGenerator: 0
+    case .settings, .search, .listingGenerator: 0
     }
   }
 
@@ -317,8 +317,8 @@ struct ContentView: View {
       SettingsView()
     case .search:
       MyWorkspaceView()
-    case .descriptionGenerator:
-      DescriptionGeneratorView()
+    case .listingGenerator:
+      ListingGeneratorView()
     }
   }
   #else
@@ -380,15 +380,15 @@ struct ContentView: View {
         // MARK: - Tools section (AI and productivity features)
         TabSection("Tools") {
           Tab(
-            "AI Descriptions",
+            "Listing Generator",
             systemImage: "sparkles",
-            value: SidebarDestination.tab(.descriptionGenerator)
+            value: SidebarDestination.tab(.listingGenerator)
           ) {
-            NavigationStack(path: pathBinding(for: .tab(.descriptionGenerator))) {
-              DescriptionGeneratorView()
+            NavigationStack(path: pathBinding(for: .tab(.listingGenerator))) {
+              ListingGeneratorView()
                 .appDestinations()
             }
-            .id(appState.router.stackIDs[.tab(.descriptionGenerator)] ?? UUID())
+            .id(appState.router.stackIDs[.tab(.listingGenerator)] ?? UUID())
           }
         }
 
@@ -486,8 +486,8 @@ struct ContentView: View {
       SettingsView()
     case .search:
       MyWorkspaceView() // Search is overlay, shouldn't be a tab destination
-    case .descriptionGenerator:
-      DescriptionGeneratorView()
+    case .listingGenerator:
+      ListingGeneratorView()
     }
   }
 
@@ -502,7 +502,7 @@ struct ContentView: View {
       activeProperties.count
     case .realtors:
       activeRealtors.count
-    case .settings, .search, .descriptionGenerator:
+    case .settings, .search, .listingGenerator:
       0
     }
   }
@@ -769,7 +769,7 @@ struct ContentView: View {
     case .properties: activeProperties.count
     case .listings: activeListings.count
     case .realtors: activeRealtors.count
-    case .settings, .search, .descriptionGenerator: 0
+    case .settings, .search, .listingGenerator: 0
     }
   }
 
@@ -851,7 +851,7 @@ struct ContentView: View {
           case .realtors: .realtorsList
           case .settings: .settingsRoot
           case .search: .workspace
-          case .descriptionGenerator: .descriptionGenerator(listingId: nil)
+          case .listingGenerator: .listingGenerator(listingId: nil)
           }
         appState.dispatch(.phoneNavigateTo(route))
       } else {
@@ -1004,7 +1004,7 @@ struct ContentView: View {
         case .search:
           .other
 
-        case .descriptionGenerator:
+        case .listingGenerator:
           // Description Generator has no filtering
           .other
         }

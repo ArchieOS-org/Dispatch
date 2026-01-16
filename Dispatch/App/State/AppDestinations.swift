@@ -92,8 +92,11 @@ struct AppDestinationsModifier: ViewModifier {
     case .settingsRoot:
       SettingsView()
 
-    case .descriptionGenerator(let listingId):
-      DescriptionGeneratorView(preselectedListingId: listingId)
+    case .listingGenerator(let listingId):
+      ListingGeneratorView(preselectedListingId: listingId)
+
+    case .listingGeneratorDraft(let draftId):
+      ListingGeneratorView(preselectedDraftId: draftId)
 
     case .profile:
       ProfilePageView()

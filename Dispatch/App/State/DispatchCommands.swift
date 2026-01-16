@@ -58,8 +58,8 @@ struct DispatchCommands: Commands {
 
     // Tools menu - AI and productivity features
     CommandMenu("Tools") {
-      Button("Generate Description") {
-        dispatch(.openDescriptionGenerator())
+      Button("Generate Listing") {
+        dispatch(.openListingGenerator())
       }
       .keyboardShortcut("g", modifiers: .command)
     }

@@ -176,8 +176,8 @@ final class AppState: ObservableObject {
         sheetState = .addListing
       case .realtors:
         sheetState = .addRealtor
-      case .settings, .descriptionGenerator:
-        // Settings and Description Generator don't have a "new item" action
+      case .settings, .listingGenerator:
+        // Settings and Listing Generator don't have a "new item" action
         break
       case .workspace, .search:
         // Default to quick entry for workspace or search
@@ -213,9 +213,9 @@ final class AppState: ObservableObject {
       // lensState.audience = .unclaimed
       break
 
-    case .openDescriptionGenerator(let listing):
+    case .openListingGenerator(let listing):
       // Navigate to full-view instead of presenting sheet
-      let route = AppRoute.descriptionGenerator(listingId: listing?.id)
+      let route = AppRoute.listingGenerator(listingId: listing?.id)
       router.navigate(to: route)
       // Also push on phone path for iPhone support
       router.phoneNavigate(to: route)

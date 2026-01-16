@@ -1,5 +1,5 @@
 //
-//  DescriptionStatus.swift
+//  GeneratorStatus.swift
 //  Dispatch
 //
 //  Status states for AI-generated listing descriptions.
@@ -8,10 +8,11 @@
 
 import SwiftUI
 
-// MARK: - DescriptionStatus
+// MARK: - GeneratorStatus
 
 /// Represents the lifecycle state of a generated listing description.
-enum DescriptionStatus: String, CaseIterable, Identifiable {
+/// Named GeneratorStatus to avoid conflict with ListingStatus (listing entity status).
+enum GeneratorStatus: String, CaseIterable, Identifiable {
   /// Just generated, not yet sent for review
   case draft
   /// Sent to agent for approval

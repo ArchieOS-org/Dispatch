@@ -66,6 +66,7 @@ struct OutputComparisonSection: View {
       Image(systemName: "sparkles")
         .font(.system(size: 32))
         .foregroundStyle(DS.Colors.Text.tertiary)
+        .accessibilityHidden(true)
 
       Text("Generate descriptions to compare versions")
         .font(DS.Typography.body)
@@ -75,7 +76,7 @@ struct OutputComparisonSection: View {
     .frame(maxWidth: .infinity)
     .padding(.vertical, DS.Spacing.xxl)
     .accessibilityElement(children: .combine)
-    .accessibilityLabel("No descriptions yet. Generate descriptions to compare versions.")
+    .accessibilityLabel("Comparison area. Generate descriptions to compare versions.")
   }
 
   @ViewBuilder

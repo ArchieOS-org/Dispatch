@@ -1,22 +1,22 @@
 //
-//  DescriptionOutputView.swift
+//  ListingOutputView.swift
 //  Dispatch
 //
-//  Screen 2 of the Description Generator: Result display.
-//  Shows generated description, status, and action buttons.
+//  Screen 2 of the Listing Generator: Result display.
+//  Shows generated listing, status, and action buttons.
 //
 
 import SwiftUI
 
-// MARK: - DescriptionOutputView
+// MARK: - ListingOutputView
 
-/// Second screen of the description generator flow.
-/// Displays the generated description with status and actions.
-struct DescriptionOutputView: View {
+/// Second screen of the listing generator flow.
+/// Displays the generated listing with status and actions.
+struct ListingOutputView: View {
 
   // MARK: Internal
 
-  @Bindable var state: DescriptionGeneratorState
+  @Bindable var state: ListingGeneratorState
   let onDismiss: () -> Void
 
   var body: some View {
@@ -25,8 +25,8 @@ struct DescriptionOutputView: View {
         // Property header
         propertyHeader
 
-        // Description content
-        descriptionContent
+        // Listing content
+        listingContent
 
         // Actions
         actionsSection
@@ -62,7 +62,7 @@ struct DescriptionOutputView: View {
 
       Spacer()
 
-      DescriptionStatusChip(status: state.status)
+      GeneratorStatusChip(status: state.status)
     }
     .padding(DS.Spacing.md)
     .background(DS.Colors.Background.card)
@@ -70,10 +70,10 @@ struct DescriptionOutputView: View {
   }
 
   @ViewBuilder
-  private var descriptionContent: some View {
+  private var listingContent: some View {
     VStack(alignment: .leading, spacing: DS.Spacing.md) {
       HStack {
-        Text("Generated Description")
+        Text("Generated Listing")
           .font(DS.Typography.headline)
           .foregroundStyle(DS.Colors.Text.primary)
 
@@ -114,8 +114,8 @@ struct DescriptionOutputView: View {
       .foregroundStyle(showCopiedFeedback ? DS.Colors.success : DS.Colors.accent)
     }
     .buttonStyle(.plain)
-    .accessibilityLabel(showCopiedFeedback ? "Copied to clipboard" : "Copy description")
-    .accessibilityHint("Copies the generated description to your clipboard")
+    .accessibilityLabel(showCopiedFeedback ? "Copied to clipboard" : "Copy listing")
+    .accessibilityHint("Copies the generated listing to your clipboard")
   }
 
   @ViewBuilder
@@ -188,7 +188,7 @@ struct DescriptionOutputView: View {
       .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium))
 
       // PHASE 3: Real agent approval workflow
-      Text("The agent will review and approve your description")
+      Text("The agent will review and approve your listing")
         .font(DS.Typography.caption)
         .foregroundStyle(DS.Colors.Text.tertiary)
     }
@@ -218,7 +218,7 @@ struct DescriptionOutputView: View {
         Image(systemName: "checkmark.circle.fill")
           .foregroundStyle(DS.Colors.success)
 
-        Text("Description posted successfully")
+        Text("Listing posted successfully")
           .font(DS.Typography.body)
           .foregroundStyle(DS.Colors.Text.primary)
       }
@@ -244,7 +244,7 @@ struct DescriptionOutputView: View {
 
 #Preview("Output View - Draft") {
   PreviewShell { _ in
-    let state = DescriptionGeneratorState()
+    let state = ListingGeneratorState()
     state.generatedDescription = """
       Welcome to 123 Main Street, a stunning residence in the heart of downtown that perfectly blends modern elegance with timeless comfort.
 
@@ -253,28 +253,28 @@ struct DescriptionOutputView: View {
     state.showingOutput = true
     state.status = .draft
 
-    return DescriptionOutputView(state: state, onDismiss: { })
+    return ListingOutputView(state: state, onDismiss: { })
   }
 }
 
 #Preview("Output View - Ready") {
   PreviewShell { _ in
-    let state = DescriptionGeneratorState()
-    state.generatedDescription = "Sample description text..."
+    let state = ListingGeneratorState()
+    state.generatedDescription = "Sample listing text..."
     state.showingOutput = true
     state.status = .ready
 
-    return DescriptionOutputView(state: state, onDismiss: { })
+    return ListingOutputView(state: state, onDismiss: { })
   }
 }
 
 #Preview("Output View - Posted") {
   PreviewShell { _ in
-    let state = DescriptionGeneratorState()
-    state.generatedDescription = "Sample description text..."
+    let state = ListingGeneratorState()
+    state.generatedDescription = "Sample listing text..."
     state.showingOutput = true
     state.status = .posted
 
-    return DescriptionOutputView(state: state, onDismiss: { })
+    return ListingOutputView(state: state, onDismiss: { })
   }
 }

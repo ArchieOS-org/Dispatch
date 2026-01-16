@@ -1,23 +1,23 @@
 //
-//  DescriptionInputView.swift
+//  ListingInputView.swift
 //  Dispatch
 //
-//  Screen 1 of the Description Generator: Input collection.
+//  Screen 1 of the Listing Generator: Input collection.
 //  Supports both existing listing selection and manual property entry.
 //
 
 import SwiftData
 import SwiftUI
 
-// MARK: - DescriptionInputView
+// MARK: - ListingInputView
 
-/// First screen of the description generator flow.
+/// First screen of the listing generator flow.
 /// Users can either select an existing listing or manually enter property details.
-struct DescriptionInputView: View {
+struct ListingInputView: View {
 
   // MARK: Internal
 
-  @Bindable var state: DescriptionGeneratorState
+  @Bindable var state: ListingGeneratorState
   let listings: [Listing]
   let onGenerate: () -> Void
 
@@ -55,11 +55,11 @@ struct DescriptionInputView: View {
   @ViewBuilder
   private var headerSection: some View {
     VStack(spacing: DS.Spacing.sm) {
-      Text("Generate Description")
+      Text("Generate Listing")
         .font(DS.Typography.title)
         .foregroundStyle(DS.Colors.Text.primary)
 
-      Text("Create a compelling listing description powered by AI")
+      Text("Create a compelling listing powered by AI")
         .font(DS.Typography.body)
         .foregroundStyle(DS.Colors.Text.secondary)
         .multilineTextAlignment(.center)
@@ -71,7 +71,7 @@ struct DescriptionInputView: View {
   @ViewBuilder
   private var modePickerSection: some View {
     Picker("Input Mode", selection: $state.inputMode) {
-      ForEach(DescriptionInputMode.allCases) { mode in
+      ForEach(ListingInputMode.allCases) { mode in
         Label(mode.title, systemImage: mode.icon)
           .tag(mode)
       }
@@ -201,7 +201,7 @@ struct DescriptionInputView: View {
             .tint(.white)
           #endif
         }
-        Text(state.isLoading ? "Generating..." : "Generate Description")
+        Text(state.isLoading ? "Generating..." : "Generate Listing")
           .font(DS.Typography.headline)
       }
       .frame(maxWidth: .infinity)
@@ -210,8 +210,8 @@ struct DescriptionInputView: View {
     .buttonStyle(.borderedProminent)
     .disabled(!state.canGenerate)
     .padding(.top, DS.Spacing.md)
-    .accessibilityLabel(state.isLoading ? "Generating description" : "Generate description")
-    .accessibilityHint(state.canGenerate ? "Double tap to generate AI description" : "Select a listing or enter an address first")
+    .accessibilityLabel(state.isLoading ? "Generating listing" : "Generate listing")
+    .accessibilityHint(state.canGenerate ? "Double tap to generate AI listing" : "Select a listing or enter an address first")
   }
 
   @ViewBuilder
@@ -237,9 +237,9 @@ struct DescriptionInputView: View {
 #Preview("Input View - Existing Listing") {
   PreviewShell { context in
     let listings = (try? context.fetch(FetchDescriptor<Listing>())) ?? []
-    let state = DescriptionGeneratorState()
+    let state = ListingGeneratorState()
 
-    DescriptionInputView(
+    ListingInputView(
       state: state,
       listings: listings,
       onGenerate: { }
@@ -249,10 +249,10 @@ struct DescriptionInputView: View {
 
 #Preview("Input View - Manual Entry") {
   PreviewShell { _ in
-    let state = DescriptionGeneratorState()
+    let state = ListingGeneratorState()
     state.inputMode = .manualEntry
 
-    return DescriptionInputView(
+    return ListingInputView(
       state: state,
       listings: [],
       onGenerate: { }

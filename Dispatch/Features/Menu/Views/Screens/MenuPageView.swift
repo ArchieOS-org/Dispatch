@@ -116,7 +116,7 @@ struct MenuPageView: View {
     case .properties: activeProperties.count
     case .listings: activeListings.count
     case .realtors: activeRealtors.count
-    case .settings, .search, .descriptionGenerator: 0
+    case .settings, .search, .listingGenerator: 0
     }
   }
 
@@ -129,7 +129,7 @@ struct MenuPageView: View {
     case .realtors: .realtorsList
     case .settings: .settingsRoot
     case .search: .workspace // Search is overlay, shouldn't be pushed
-    case .descriptionGenerator: .descriptionGenerator(listingId: nil)
+    case .listingGenerator: .listingGenerator(listingId: nil)
     }
   }
 

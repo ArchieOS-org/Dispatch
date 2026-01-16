@@ -2,7 +2,7 @@
 //  PropertyInputSection.swift
 //  Dispatch
 //
-//  Property input section for the description generator.
+//  Property input section for the listing generator.
 //  Supports both existing listing selection and manual property entry.
 //
 
@@ -17,7 +17,7 @@ struct PropertyInputSection: View {
 
   // MARK: Internal
 
-  @Bindable var state: DescriptionGeneratorState
+  @Bindable var state: ListingGeneratorState
   let listings: [Listing]
 
   var body: some View {
@@ -61,7 +61,7 @@ struct PropertyInputSection: View {
   @ViewBuilder
   private var modePicker: some View {
     Picker("Input Mode", selection: $state.inputMode) {
-      ForEach(DescriptionInputMode.allCases) { mode in
+      ForEach(ListingInputMode.allCases) { mode in
         Label(mode.title, systemImage: mode.icon)
           .tag(mode)
       }
@@ -333,7 +333,7 @@ struct ListingPickerSheet: View {
 
 #Preview("Property Input - Empty Listing Selection") {
   PreviewShell { _ in
-    let state = DescriptionGeneratorState()
+    let state = ListingGeneratorState()
 
     PropertyInputSection(
       state: state,
@@ -346,7 +346,7 @@ struct ListingPickerSheet: View {
 
 #Preview("Property Input - Manual Entry") {
   PreviewShell { _ in
-    let state = DescriptionGeneratorState()
+    let state = ListingGeneratorState()
     state.inputMode = .manualEntry
     state.manualAddress = "123 Main Street"
     state.manualPropertyType = "Single Family Home"

@@ -1,20 +1,20 @@
 //
-//  DescriptionStatusChip.swift
+//  GeneratorStatusChip.swift
 //  Dispatch
 //
-//  Subtle status badge for displaying description workflow state.
+//  Subtle status badge for displaying generator workflow state.
 //  Follows ListingTypePill pattern from DESIGN_SYSTEM.md.
 //
 
 import SwiftUI
 
-// MARK: - DescriptionStatusChip
+// MARK: - GeneratorStatusChip
 
-/// A subtle, pill-style badge displaying the current description status.
+/// A subtle, pill-style badge displaying the current generator status.
 /// Uses semantic colors from DS.Colors and follows platform conventions.
-struct DescriptionStatusChip: View {
+struct GeneratorStatusChip: View {
 
-  let status: DescriptionStatus
+  let status: GeneratorStatus
 
   var body: some View {
     HStack(spacing: DS.Spacing.xs) {
@@ -38,12 +38,12 @@ struct DescriptionStatusChip: View {
 
 #Preview("All Status States") {
   VStack(spacing: DS.Spacing.md) {
-    ForEach(DescriptionStatus.allCases) { status in
+    ForEach(GeneratorStatus.allCases) { status in
       HStack {
         Text(status.title)
           .font(DS.Typography.body)
           .frame(width: 80, alignment: .leading)
-        DescriptionStatusChip(status: status)
+        GeneratorStatusChip(status: status)
         Spacer()
       }
     }
@@ -56,7 +56,7 @@ struct DescriptionStatusChip: View {
     Text("123 Main Street")
       .font(DS.Typography.headline)
     Spacer()
-    DescriptionStatusChip(status: .ready)
+    GeneratorStatusChip(status: .ready)
   }
   .padding()
 }

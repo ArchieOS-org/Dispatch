@@ -1,14 +1,15 @@
 //
-//  DescriptionGeneratorState.swift
+//  ListingGeneratorState.swift
 //  Dispatch
 //
-//  Observable state for the AI Listing Description Generator.
+//  Observable state for the AI Listing Generator.
 //  Manages input mode, generation status, output handling,
 //  photo/document uploads, A/B comparison, and refinement.
 //
 
 import Foundation
 import Observation
+import SwiftData
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
@@ -16,10 +17,20 @@ import UIKit
 import AppKit
 #endif
 
-// MARK: - DescriptionInputMode
+// MARK: - GeneratorNavigationPhase
 
-/// Determines how property information is provided for description generation.
-enum DescriptionInputMode: String, CaseIterable, Identifiable {
+/// Tracks the current screen in the two-screen listing generator flow.
+enum GeneratorNavigationPhase: String, Hashable {
+  /// Input screen: property selection, photo/document upload, report toggles
+  case input
+  /// Output screen: A/B comparison, refinement, MLS fields
+  case output
+}
+
+// MARK: - ListingInputMode
+
+/// Determines how property information is provided for listing generation.
+enum ListingInputMode: String, CaseIterable, Identifiable {
   /// Select from existing listings in the system
   case existingListing
   /// Manually enter property details
@@ -44,13 +55,13 @@ enum DescriptionInputMode: String, CaseIterable, Identifiable {
   }
 }
 
-// MARK: - DescriptionGeneratorState
+// MARK: - ListingGeneratorState
 
-/// Central state for the Description Generator feature.
+/// Central state for the Listing Generator feature.
 /// Manages the two-screen flow: Input -> Output
 @Observable
 @MainActor
-final class DescriptionGeneratorState {
+final class ListingGeneratorState {
 
   // MARK: Lifecycle
 
@@ -72,7 +83,7 @@ final class DescriptionGeneratorState {
   // MARK: - Input State
 
   /// Current input mode
-  var inputMode: DescriptionInputMode = .existingListing
+  var inputMode: ListingInputMode = .existingListing
 
   /// Selected listing (when using existing listing mode)
   var selectedListing: Listing?
@@ -86,13 +97,18 @@ final class DescriptionGeneratorState {
   /// Manual property details (free-form text)
   var manualDetails: String = ""
 
+  // MARK: - Navigation State
+
+  /// Current screen in the two-screen flow (Input -> Output)
+  var navigationPhase: GeneratorNavigationPhase = .input
+
   // MARK: - Output State
 
   /// The generated description text
   var generatedDescription: String = ""
 
-  /// Current status of the description
-  var status: DescriptionStatus = .draft
+  /// Current status of the listing
+  var status: GeneratorStatus = .draft
 
   /// Whether generation is in progress
   var isLoading: Bool = false
@@ -100,7 +116,7 @@ final class DescriptionGeneratorState {
   /// Error message if generation failed
   var errorMessage: String?
 
-  /// Whether we're showing the output screen
+  /// Whether we're showing the output screen (kept for backward compatibility)
   var showingOutput: Bool = false
 
   // MARK: - Phase 2: Photo & Document State
@@ -154,6 +170,11 @@ final class DescriptionGeneratorState {
 
   /// Whether information was extracted from uploaded photos
   var extractedFromImages: Bool = false
+
+  // MARK: - Draft Persistence
+
+  /// ID of the current draft (if loaded from or saved to persistence)
+  var currentDraftId: UUID?
 
   // MARK: - Computed Properties
 
@@ -289,6 +310,7 @@ final class DescriptionGeneratorState {
     status = .draft
     errorMessage = nil
     showingOutput = false
+    navigationPhase = .input
     // Phase 2: Reset additional state
     photos = []
     documents = []
@@ -302,7 +324,20 @@ final class DescriptionGeneratorState {
     generationPhase = .idle
     fetchedReports = []
     extractedFromImages = false
+    // Draft persistence state
+    currentDraftId = nil
     // Note: enableGeoWarehouse and enableMPAC are NOT reset (user preferences)
+  }
+
+  /// Navigate back to input screen (preserves all state)
+  func navigateToInput() {
+    navigationPhase = .input
+  }
+
+  /// Navigate to output screen (only if generation complete)
+  func navigateToOutput() {
+    guard showingOutput else { return }
+    navigationPhase = .output
   }
 
   // MARK: - Phase 2: Photo Management
@@ -481,6 +516,7 @@ final class DescriptionGeneratorState {
       showingOutput = true
       status = .draft
       generationPhase = .complete
+      navigationPhase = .output
     } catch {
       errorMessage = "Generation failed: \(error.localizedDescription)"
       generationPhase = .idle
@@ -512,6 +548,93 @@ final class DescriptionGeneratorState {
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString(formattedText, forType: .string)
     #endif
+  }
+
+  // MARK: - Draft Persistence Methods
+
+  /// Save the current state as a draft to SwiftData.
+  /// Updates existing draft if `currentDraftId` is set, otherwise creates new.
+  func saveDraft(to modelContext: ModelContext) throws {
+    let inputSnapshot = createInputSnapshot()
+    let outputSnapshot = showingOutput ? createOutputSnapshot() : nil
+
+    let inputData = try JSONEncoder().encode(inputSnapshot)
+    let outputData = try outputSnapshot.map { try JSONEncoder().encode($0) }
+
+    let draftName = computeDraftName()
+
+    if let draftId = currentDraftId {
+      // Update existing draft
+      let predicate = #Predicate<ListingGeneratorDraft> { $0.id == draftId }
+      let descriptor = FetchDescriptor<ListingGeneratorDraft>(predicate: predicate)
+
+      if let existingDraft = try modelContext.fetch(descriptor).first {
+        existingDraft.update(
+          inputStateData: inputData,
+          outputStateData: outputData,
+          hasOutput: showingOutput
+        )
+        existingDraft.updateName(draftName)
+      }
+    } else {
+      // Create new draft
+      let newDraft = ListingGeneratorDraft(
+        name: draftName,
+        inputStateData: inputData,
+        outputStateData: outputData,
+        hasOutput: showingOutput
+      )
+      modelContext.insert(newDraft)
+      currentDraftId = newDraft.id
+    }
+
+    try modelContext.save()
+  }
+
+  /// Load state from a draft.
+  /// Replaces current state with the draft's saved state.
+  func loadDraft(_ draft: ListingGeneratorDraft, modelContext: ModelContext) throws {
+    // Decode input snapshot
+    let inputSnapshot = try JSONDecoder().decode(
+      ListingGeneratorInputSnapshot.self,
+      from: draft.inputStateData
+    )
+
+    // Apply input state
+    applyInputSnapshot(inputSnapshot, modelContext: modelContext)
+
+    // Decode and apply output snapshot if present
+    if let outputData = draft.outputStateData {
+      let outputSnapshot = try JSONDecoder().decode(
+        ListingGeneratorOutputSnapshot.self,
+        from: outputData
+      )
+      applyOutputSnapshot(outputSnapshot)
+    } else {
+      // Reset output state
+      resetOutputState()
+    }
+
+    // Track the draft ID
+    currentDraftId = draft.id
+  }
+
+  /// Create a new ListingGeneratorState instance from a draft.
+  /// Useful for creating a fresh state object initialized from persistence.
+  static func createFromDraft(
+    _ draft: ListingGeneratorDraft,
+    modelContext: ModelContext,
+    aiService: AIServiceProtocol = MockAIService()
+  ) throws -> ListingGeneratorState {
+    let state = ListingGeneratorState(aiService: aiService)
+    try state.loadDraft(draft, modelContext: modelContext)
+    return state
+  }
+
+  /// Delete a draft from persistence
+  static func deleteDraft(_ draft: ListingGeneratorDraft, from modelContext: ModelContext) throws {
+    modelContext.delete(draft)
+    try modelContext.save()
   }
 
   // MARK: Private
@@ -656,6 +779,132 @@ final class DescriptionGeneratorState {
       }
       return components.joined(separator: "\n")
     }
+  }
+
+  // MARK: - Draft Snapshot Helpers
+
+  /// Create a snapshot of the current input state
+  private func createInputSnapshot() -> ListingGeneratorInputSnapshot {
+    ListingGeneratorInputSnapshot(
+      inputMode: inputMode.rawValue,
+      selectedListingId: selectedListing?.id,
+      selectedListingAddress: selectedListing?.address,
+      manualAddress: manualAddress,
+      manualPropertyType: manualPropertyType,
+      manualDetails: manualDetails,
+      photos: photos.map { PhotoSnapshot(from: $0) },
+      documents: documents.map { DocumentSnapshot(from: $0) },
+      enableGeoWarehouse: enableGeoWarehouse,
+      enableMPAC: enableMPAC
+    )
+  }
+
+  /// Create a snapshot of the current output state
+  private func createOutputSnapshot() -> ListingGeneratorOutputSnapshot {
+    ListingGeneratorOutputSnapshot(
+      outputA: outputA.map { GeneratedOutputSnapshot(from: $0) },
+      outputB: outputB.map { GeneratedOutputSnapshot(from: $0) },
+      selectedVersion: selectedVersion?.rawValue,
+      refinementHistory: refinementHistory.map { RefinementSnapshot(from: $0) },
+      generatedDescription: generatedDescription,
+      status: status.rawValue,
+      sessionId: sessionId,
+      fetchedReports: fetchedReports.map { FetchedReportSnapshot(from: $0) },
+      extractedFromImages: extractedFromImages
+    )
+  }
+
+  /// Apply an input snapshot to restore state
+  private func applyInputSnapshot(_ snapshot: ListingGeneratorInputSnapshot, modelContext: ModelContext) {
+    // Restore input mode
+    inputMode = ListingInputMode(rawValue: snapshot.inputMode) ?? .existingListing
+
+    // Restore listing selection
+    if let listingId = snapshot.selectedListingId {
+      // Try to fetch the listing from SwiftData
+      let predicate = #Predicate<Listing> { $0.id == listingId }
+      let descriptor = FetchDescriptor<Listing>(predicate: predicate)
+      selectedListing = try? modelContext.fetch(descriptor).first
+    } else {
+      selectedListing = nil
+    }
+
+    // Restore manual entry fields
+    manualAddress = snapshot.manualAddress
+    manualPropertyType = snapshot.manualPropertyType
+    manualDetails = snapshot.manualDetails
+
+    // Restore photos and documents
+    photos = snapshot.photos.map { $0.toUploadedPhoto() }
+    documents = snapshot.documents.map { $0.toUploadedDocument() }
+
+    // Restore report settings
+    enableGeoWarehouse = snapshot.enableGeoWarehouse
+    enableMPAC = snapshot.enableMPAC
+
+    // Reset navigation to input
+    navigationPhase = .input
+  }
+
+  /// Apply an output snapshot to restore state
+  private func applyOutputSnapshot(_ snapshot: ListingGeneratorOutputSnapshot) {
+    // Restore outputs
+    outputA = snapshot.outputA?.toGeneratedOutput()
+    outputB = snapshot.outputB?.toGeneratedOutput()
+
+    // Restore selection
+    if let versionRaw = snapshot.selectedVersion {
+      selectedVersion = versionRaw == OutputVersion.a.rawValue ? .a : .b
+    } else {
+      selectedVersion = nil
+    }
+
+    // Restore refinement history
+    refinementHistory = snapshot.refinementHistory.map { $0.toRefinementRequest() }
+
+    // Restore legacy fields
+    generatedDescription = snapshot.generatedDescription
+    status = GeneratorStatus(rawValue: snapshot.status) ?? .draft
+
+    // Restore session
+    sessionId = snapshot.sessionId
+
+    // Restore report data
+    fetchedReports = snapshot.fetchedReports.map { $0.toFetchedReport() }
+    extractedFromImages = snapshot.extractedFromImages
+
+    // Mark as having output
+    showingOutput = true
+    generationPhase = .complete
+  }
+
+  /// Reset output state when loading a draft without output
+  private func resetOutputState() {
+    outputA = nil
+    outputB = nil
+    selectedVersion = nil
+    refinementHistory = []
+    generatedDescription = ""
+    status = .draft
+    showingOutput = false
+    generationPhase = .idle
+    fetchedReports = []
+    extractedFromImages = false
+  }
+
+  /// Compute a meaningful name for the draft
+  private func computeDraftName() -> String {
+    switch inputMode {
+    case .existingListing:
+      if let address = selectedListing?.address, !address.isEmpty {
+        return address
+      }
+    case .manualEntry:
+      if !manualAddress.isEmpty {
+        return manualAddress
+      }
+    }
+    return "Untitled Draft"
   }
 }
 

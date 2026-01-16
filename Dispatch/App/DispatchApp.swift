@@ -35,7 +35,8 @@ struct DispatchApp: App {
       Subtask.self,
       StatusChange.self,
       ListingTypeDefinition.self,
-      ActivityTemplate.self
+      ActivityTemplate.self,
+      ListingGeneratorDraft.self
     ])
     let modelConfiguration = ModelConfiguration(
       schema: schema,
@@ -141,7 +142,7 @@ struct DispatchApp: App {
   /// Key points:
   /// - StandardScreen applies .tint() to innerContent (inside ScrollView, away from nav bar)
   /// - AppDestinationsModifier does NOT apply .tint() (destinations use StandardScreen)
-  /// - Views outside StandardScreen (DescriptionGeneratorView) apply tint to their layouts
+  /// - Views outside StandardScreen (ListingGeneratorView) apply tint to their layouts
   /// - Auth views (LoginView, OnboardingLoadingView) apply tint at ZStack level (no nav bar)
   ///
   /// This UIKit configuration provides additional defense-in-depth by

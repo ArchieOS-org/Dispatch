@@ -79,8 +79,8 @@ enum AppCommand: Equatable {
 
   // MARK: - AI Tools
 
-  /// Open the AI description generator, optionally with a preselected listing
-  case openDescriptionGenerator(listing: Listing? = nil)
+  /// Open the AI listing generator, optionally with a preselected listing
+  case openListingGenerator(listing: Listing? = nil)
 
   // MARK: - Debug
 

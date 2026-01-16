@@ -1,31 +1,32 @@
 //
-//  DescriptionGeneratorView.swift
+//  ListingGeneratorView.swift
 //  Dispatch
 //
-//  Main full-view workspace for AI listing description generation.
-//  Replaces the sheet-based DescriptionGeneratorSheet with a
-//  navigation-based full-screen experience.
+//  Main full-view workspace for AI listing generation.
+//  Implements a two-screen navigation flow:
+//  - Screen 1 (Input): Property selection, photo/document upload, report toggles
+//  - Screen 2 (Output): A/B comparison, refinement, MLS fields
 //
 //  Platform-adaptive layout:
-//  - macOS: Side-by-side input/output panels
-//  - iPad landscape: Two-column adaptive
-//  - iOS/iPad portrait: Stacked sections
+//  - macOS/iPad landscape: Side-by-side panels (both screens visible)
+//  - iOS/iPad portrait: Navigation-based two-screen flow
 //
 
 import SwiftData
 import SwiftUI
 
-// MARK: - DescriptionGeneratorView
+// MARK: - ListingGeneratorView
 
-/// Full-view workspace for AI listing description generation.
-/// Provides photo/document upload, property input, A/B output comparison,
-/// and prompt-based refinement.
-struct DescriptionGeneratorView: View {
+/// Full-view workspace for AI listing generation.
+/// Two-screen navigation: Input -> Output (via Generate button).
+/// State is preserved when navigating back from output to input.
+struct ListingGeneratorView: View {
 
   // MARK: Lifecycle
 
-  init(preselectedListingId: UUID? = nil) {
+  init(preselectedListingId: UUID? = nil, preselectedDraftId: UUID? = nil) {
     self.preselectedListingId = preselectedListingId
+    self.preselectedDraftId = preselectedDraftId
   }
 
   // MARK: Internal
@@ -35,102 +36,144 @@ struct DescriptionGeneratorView: View {
     // the parent NavigationStack via AppDestinationsModifier. Nesting
     // NavigationStacks causes blank screen rendering issues.
     content
-      .navigationTitle("Description Generator")
+      .navigationTitle(navigationTitle)
     #if os(iOS)
       .navigationBarTitleDisplayMode(.large)
     #endif
       .task {
+        await loadPreselectedDraft()
         await loadPreselectedListing()
         await loadListings()
       }
       .onAppear { overlayState.hide(reason: .settingsScreen) }
       .onDisappear { overlayState.show(reason: .settingsScreen) }
+      .onChange(of: state.showingOutput) { _, showingOutput in
+        // Auto-save draft after successful generation
+        if showingOutput {
+          saveDraftAfterGeneration()
+        }
+      }
   }
 
   // MARK: Private
 
   private let preselectedListingId: UUID?
+  private let preselectedDraftId: UUID?
 
   @Environment(\.modelContext) private var modelContext
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @EnvironmentObject private var overlayState: AppOverlayState
 
-  @State private var state = DescriptionGeneratorState()
+  @State private var state = ListingGeneratorState()
   @State private var listings: [Listing] = []
+
+  /// Dynamic navigation title based on current phase
+  private var navigationTitle: String {
+    switch state.navigationPhase {
+    case .input:
+      "Listing Generator"
+    case .output:
+      "Generated Listing"
+    }
+  }
+
+  /// Whether to use split-view layout (both screens visible)
+  private var useSplitLayout: Bool {
+    #if os(macOS)
+    true
+    #else
+    horizontalSizeClass == .regular
+    #endif
+  }
 
   @ViewBuilder
   private var content: some View {
     GeometryReader { geometry in
       #if os(macOS)
-      // macOS: Use vertical layout consistent with iOS
-      mobileLayout
+      // macOS: Always use split layout
+      splitLayout
         .tint(DS.Colors.accent)
       #else
       // iOS/iPadOS: Adaptive based on size class and orientation
       if horizontalSizeClass == .regular, geometry.size.width > 700 {
-        iPadLandscapeLayout
+        // iPad landscape: Split layout
+        splitLayout
           .tint(DS.Colors.accent)
       } else {
-        mobileLayout
+        // iPhone / iPad portrait: Two-screen navigation flow
+        navigationLayout
           .tint(DS.Colors.accent)
       }
       #endif
     }
   }
 
-  // MARK: - Platform Layouts
-
-  #if os(macOS)
-  @ViewBuilder
-  private var macOSLayout: some View {
-    HSplitView {
-      // Input panel
-      inputPanel
-        .frame(minWidth: 350, idealWidth: 450, maxWidth: 550)
-
-      // Output panel
-      outputPanel
-        .frame(minWidth: 400)
-    }
-  }
-  #endif
+  // MARK: - Split Layout (macOS / iPad Landscape)
 
   @ViewBuilder
-  private var iPadLandscapeLayout: some View {
+  private var splitLayout: some View {
     HStack(alignment: .top, spacing: 0) {
-      // Input panel
-      inputPanel
+      // Input panel (always visible)
+      inputScreen
         .frame(maxWidth: 450)
 
       Divider()
 
-      // Output panel
-      outputPanel
+      // Output panel (shows placeholder until generation complete)
+      if state.showingOutput {
+        outputScreen
+      } else {
+        outputPlaceholder
+          .frame(maxWidth: .infinity)
+      }
     }
   }
 
+  // MARK: - Navigation Layout (iPhone / iPad Portrait)
+
   @ViewBuilder
-  private var mobileLayout: some View {
+  private var navigationLayout: some View {
+    // Show the appropriate screen based on navigation phase
+    switch state.navigationPhase {
+    case .input:
+      inputScreen
+        .transition(.move(edge: .leading))
+
+    case .output:
+      outputScreen
+        .transition(.move(edge: .trailing))
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button {
+              withAnimation(.easeInOut(duration: 0.25)) {
+                state.navigateToInput()
+              }
+            } label: {
+              HStack(spacing: DS.Spacing.xs) {
+                Image(systemName: "chevron.left")
+                  .fontWeight(.semibold)
+                Text("Edit")
+              }
+            }
+            .accessibilityLabel("Back to input")
+            .accessibilityHint("Return to edit property details and photos")
+          }
+        }
+    }
+  }
+
+  // MARK: - Input Screen
+
+  @ViewBuilder
+  private var inputScreen: some View {
     ScrollView {
       VStack(spacing: DS.Spacing.sectionSpacing) {
-        // Input sections
         inputSections
-
-        // Generate button
         generateButton
-
-        // Output section
-        if state.showingOutput {
-          outputSections
-        } else {
-          outputPlaceholder
-        }
       }
       .padding(DS.Spacing.lg)
     }
-    // Maintain scroll position at top when content is added (e.g., photos)
     .defaultScrollAnchor(.top)
-    // Add bottom margin to clear floating buttons (iOS) or bottom toolbar (macOS)
     #if os(macOS)
     .contentMargins(.bottom, DS.Spacing.bottomToolbarHeight, for: .scrollContent)
     #else
@@ -139,37 +182,21 @@ struct DescriptionGeneratorView: View {
     .background(DS.Colors.Background.grouped)
   }
 
-  // MARK: - Panels (for split layouts)
+  // MARK: - Output Screen
 
   @ViewBuilder
-  private var inputPanel: some View {
+  private var outputScreen: some View {
     ScrollView {
       VStack(spacing: DS.Spacing.sectionSpacing) {
-        inputSections
-        generateButton
+        outputSections
       }
       .padding(DS.Spacing.lg)
     }
+    .defaultScrollAnchor(.top)
     #if os(macOS)
     .contentMargins(.bottom, DS.Spacing.bottomToolbarHeight, for: .scrollContent)
-    #endif
-    .background(DS.Colors.Background.grouped)
-  }
-
-  @ViewBuilder
-  private var outputPanel: some View {
-    ScrollView {
-      VStack(spacing: DS.Spacing.sectionSpacing) {
-        if state.showingOutput {
-          outputSections
-        } else {
-          outputPlaceholder
-        }
-      }
-      .padding(DS.Spacing.lg)
-    }
-    #if os(macOS)
-    .contentMargins(.bottom, DS.Spacing.bottomToolbarHeight, for: .scrollContent)
+    #else
+    .contentMargins(.bottom, DS.Spacing.floatingButtonScrollInset, for: .scrollContent)
     #endif
     .background(DS.Colors.Background.primary)
   }
@@ -222,7 +249,7 @@ struct DescriptionGeneratorView: View {
         if state.isLoading {
           GenerationProgressView(phase: state.generationPhase)
         } else {
-          Text("Generate Descriptions")
+          Text("Generate Listing")
             .font(DS.Typography.headline)
         }
       }
@@ -231,10 +258,10 @@ struct DescriptionGeneratorView: View {
     }
     .buttonStyle(.borderedProminent)
     .disabled(!state.canGenerate || state.isLoading)
-    .accessibilityLabel(state.isLoading ? state.generationPhase.displayText : "Generate descriptions")
+    .accessibilityLabel(state.isLoading ? state.generationPhase.displayText : "Generate listing")
     .accessibilityHint(
       state.canGenerate
-        ? "Double tap to generate AI descriptions"
+        ? "Double tap to generate AI listing"
         : "Select a listing or enter an address first"
     )
     #if os(macOS)
@@ -285,7 +312,6 @@ struct DescriptionGeneratorView: View {
       }
 
       // MLS Fields Section - ALWAYS at bottom, uses outputA as canonical source
-      // MLS fields are identical between A/B versions, so we use outputA consistently
       mlsFieldsSection
 
       // Error message
@@ -363,190 +389,39 @@ struct DescriptionGeneratorView: View {
     .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusCard))
   }
 
-  @ViewBuilder
-  private var versionSelectorSection: some View {
-    VStack(alignment: .leading, spacing: DS.Spacing.md) {
-      Text("Compare Versions")
-        .font(DS.Typography.headline)
-        .foregroundStyle(DS.Colors.Text.primary)
-
-      Text("Select your preferred tone and style")
-        .font(DS.Typography.caption)
-        .foregroundStyle(DS.Colors.Text.secondary)
-
-      if let outputA = state.outputA, let outputB = state.outputB {
-        HStack(spacing: DS.Spacing.md) {
-          versionCard(output: outputA)
-          versionCard(output: outputB)
-        }
-      }
-    }
-    .padding(DS.Spacing.cardPadding)
-    .background(DS.Colors.Background.card)
-    .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusCard))
-  }
-
   // MARK: - Output Placeholder
 
   @ViewBuilder
   private var outputPlaceholder: some View {
-    VStack(spacing: DS.Spacing.lg) {
-      Image(systemName: "sparkles")
-        .font(.system(size: 48))
-        .foregroundStyle(DS.Colors.Text.tertiary)
+    ScrollView {
+      VStack(spacing: DS.Spacing.lg) {
+        Spacer(minLength: DS.Spacing.xxxl)
 
-      Text("Generate a description to see output here")
-        .font(DS.Typography.body)
-        .foregroundStyle(DS.Colors.Text.secondary)
-        .multilineTextAlignment(.center)
+        Image(systemName: "sparkles")
+          .font(.system(size: 48))
+          .foregroundStyle(DS.Colors.Text.tertiary)
+          .accessibilityHidden(true)
 
-      Text("Add photos and property details, then tap Generate")
-        .font(DS.Typography.caption)
-        .foregroundStyle(DS.Colors.Text.tertiary)
-        .multilineTextAlignment(.center)
-    }
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, DS.Spacing.xxxl)
-    .padding(.horizontal, DS.Spacing.lg)
-    .background(DS.Colors.Background.card)
-    .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusCard))
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel(
-      "Output placeholder. Generate a description to see output here. Add photos and property details, then tap Generate."
-    )
-  }
-
-  @ViewBuilder
-  private func versionCard(output: GeneratedOutput) -> some View {
-    Button {
-      withAnimation(.easeInOut(duration: 0.2)) {
-        state.selectVersion(output.version)
-      }
-    } label: {
-      VStack(spacing: DS.Spacing.sm) {
-        // Version label
-        Text(output.version.shortLabel)
-          .font(DS.Typography.largeTitle)
-          .fontWeight(.bold)
-          .foregroundStyle(output.isSelected ? DS.Colors.accent : DS.Colors.Text.primary)
-
-        // Tone description
-        Text(output.version.toneDescription)
-          .font(DS.Typography.caption)
+        Text("Generate a listing to see output here")
+          .font(DS.Typography.body)
           .foregroundStyle(DS.Colors.Text.secondary)
           .multilineTextAlignment(.center)
 
-        // Selection indicator
-        if output.isSelected {
-          HStack(spacing: DS.Spacing.xxs) {
-            Image(systemName: "checkmark.circle.fill")
-              .font(.system(size: 14))
-            Text("Selected")
-              .font(DS.Typography.captionSecondary)
-              .fontWeight(.semibold)
-          }
-          .foregroundStyle(DS.Colors.accent)
-        }
+        Text("Add photos and property details, then tap Generate")
+          .font(DS.Typography.caption)
+          .foregroundStyle(DS.Colors.Text.tertiary)
+          .multilineTextAlignment(.center)
+
+        Spacer(minLength: DS.Spacing.xxxl)
       }
       .frame(maxWidth: .infinity)
       .padding(DS.Spacing.lg)
-      .background(output.isSelected ? DS.Colors.accent.opacity(0.08) : DS.Colors.Background.secondary)
-      .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium))
-      .overlay(
-        RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium)
-          .stroke(output.isSelected ? DS.Colors.accent : DS.Colors.border, lineWidth: output.isSelected ? 2 : 1)
-      )
     }
-    .buttonStyle(.plain)
-    .accessibilityLabel("\(output.version.rawValue), \(output.version.toneDescription)")
-    .accessibilityHint(output.isSelected ? "Currently selected" : "Double tap to select")
-    .accessibilityAddTraits(output.isSelected ? .isSelected : [])
-  }
-
-  @ViewBuilder
-  private func selectedOutputPreview(_ output: GeneratedOutput) -> some View {
-    VStack(alignment: .leading, spacing: DS.Spacing.md) {
-      // Header
-      HStack {
-        Text("Preview")
-          .font(DS.Typography.headline)
-          .foregroundStyle(DS.Colors.Text.primary)
-
-        Spacer()
-
-        DescriptionStatusChip(status: state.status)
-      }
-
-      // Headline
-      Text(output.mlsFields.headline)
-        .font(DS.Typography.title3)
-        .foregroundStyle(DS.Colors.Text.primary)
-
-      // Tagline
-      if !output.mlsFields.tagline.isEmpty {
-        Text(output.mlsFields.tagline)
-          .font(DS.Typography.callout)
-          .foregroundStyle(DS.Colors.Text.secondary)
-          .italic()
-      }
-
-      Divider()
-
-      // Public remarks preview
-      VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-        Text("Public Remarks")
-          .font(DS.Typography.caption)
-          .foregroundStyle(DS.Colors.Text.tertiary)
-
-        Text(output.mlsFields.publicRemarks)
-          .font(DS.Typography.body)
-          .foregroundStyle(DS.Colors.Text.primary)
-          .lineLimit(8)
-      }
-
-      // Property details summary
-      propertyDetailsSummary(output.mlsFields)
-    }
-    .padding(DS.Spacing.cardPadding)
-    .background(DS.Colors.Background.card)
-    .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusCard))
-  }
-
-  @ViewBuilder
-  private func propertyDetailsSummary(_ fields: MLSFields) -> some View {
-    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-      Divider()
-
-      Text("Property Details")
-        .font(DS.Typography.caption)
-        .foregroundStyle(DS.Colors.Text.tertiary)
-
-      // Quick stats row
-      HStack(spacing: DS.Spacing.lg) {
-        detailPill(icon: "bed.double", value: fields.bedrooms, label: "Beds")
-        detailPill(icon: "shower", value: fields.bathrooms, label: "Baths")
-        detailPill(icon: "square.dashed", value: fields.squareFootage, label: "Sq Ft")
-        detailPill(icon: "calendar", value: fields.yearBuilt, label: "Built")
-      }
-    }
-  }
-
-  @ViewBuilder
-  private func detailPill(icon: String, value: String, label: String) -> some View {
-    VStack(spacing: DS.Spacing.xxs) {
-      Image(systemName: icon)
-        .font(.system(size: 16))
-        .foregroundStyle(DS.Colors.Text.secondary)
-
-      Text(value)
-        .font(DS.Typography.headline)
-        .foregroundStyle(DS.Colors.Text.primary)
-
-      Text(label)
-        .font(DS.Typography.captionSecondary)
-        .foregroundStyle(DS.Colors.Text.tertiary)
-    }
-    .frame(maxWidth: .infinity)
+    .background(DS.Colors.Background.primary)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(
+      "Output area. Generate a listing to see results here. Add photos and property details, then tap Generate."
+    )
   }
 
   // MARK: - Error View
@@ -614,18 +489,47 @@ struct DescriptionGeneratorView: View {
       print("Failed to fetch listings: \(error)")
     }
   }
+
+  private func loadPreselectedDraft() async {
+    guard let draftId = preselectedDraftId else { return }
+
+    let descriptor = FetchDescriptor<ListingGeneratorDraft>(
+      predicate: #Predicate { $0.id == draftId }
+    )
+
+    do {
+      let results = try modelContext.fetch(descriptor)
+      if let draft = results.first {
+        try state.loadDraft(draft, modelContext: modelContext)
+      }
+    } catch {
+      // PHASE 3: Handle error appropriately - add proper error logging
+      // swiftlint:disable:next no_direct_standard_out_logs
+      print("Failed to load draft: \(error)")
+    }
+  }
+
+  private func saveDraftAfterGeneration() {
+    do {
+      try state.saveDraft(to: modelContext)
+    } catch {
+      // PHASE 3: Handle error appropriately - add proper error logging
+      // swiftlint:disable:next no_direct_standard_out_logs
+      print("Failed to save draft: \(error)")
+    }
+  }
 }
 
 // MARK: - Preview
 
-#Preview("Description Generator - Empty") {
+#Preview("Listing Generator - Input") {
   PreviewShell { _ in
-    DescriptionGeneratorView()
+    ListingGeneratorView()
   }
 }
 
-#Preview("Description Generator - With Output") {
+#Preview("Listing Generator - Output") {
   PreviewShell { _ in
-    DescriptionGeneratorView()
+    ListingGeneratorView()
   }
 }

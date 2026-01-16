@@ -60,7 +60,10 @@ struct MLSFieldRow: View {
                 .foregroundStyle(DS.Colors.Text.tertiary)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Reset to generated value")
+            .frame(minWidth: DS.Spacing.minTouchTarget, minHeight: DS.Spacing.minTouchTarget)
+            .contentShape(Rectangle())
+            .accessibilityLabel("Reset \(label) to generated value")
+            .accessibilityHint("Double tap to restore the original generated text")
           }
 
           // Copy button
@@ -72,6 +75,8 @@ struct MLSFieldRow: View {
               .foregroundStyle(showCopied ? DS.Colors.success : DS.Colors.Text.secondary)
           }
           .buttonStyle(.plain)
+          .frame(minWidth: DS.Spacing.minTouchTarget, minHeight: DS.Spacing.minTouchTarget)
+          .contentShape(Rectangle())
           .accessibilityLabel("Copy \(label)")
           .accessibilityHint("Double tap to copy to clipboard")
         }
@@ -188,7 +193,10 @@ struct MLSFieldRowCompact: View {
           .foregroundStyle(showCopied ? DS.Colors.success : DS.Colors.Text.secondary)
       }
       .buttonStyle(.plain)
+      .frame(minWidth: DS.Spacing.minTouchTarget, minHeight: DS.Spacing.minTouchTarget)
+      .contentShape(Rectangle())
       .accessibilityLabel("Copy \(label)")
+      .accessibilityHint("Double tap to copy to clipboard")
     }
     .padding(.vertical, DS.Spacing.xs)
   }
