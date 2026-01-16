@@ -10,67 +10,6 @@ import SwiftUI
 #if os(macOS)
 import AppKit
 
-// MARK: - FullScreenObserver
-
-/// Observable object that tracks whether the main window is in full-screen mode.
-/// Uses NSWindow notifications to detect full-screen state changes.
-@Observable
-@MainActor
-final class FullScreenObserver {
-  private(set) var isFullScreen = false
-
-  // Store observers in a nonisolated class to allow cleanup in deinit
-  nonisolated private let observerStorage = ObserverStorage()
-
-  // Thread-safety: ObserverStorage is only accessed from main thread (via main queue observers)
-  // and deinit (which happens after all references are released). @unchecked is needed because
-  // NSObjectProtocol is not Sendable, but our usage is safe.
-  // swiftlint:disable:next no_unchecked_sendable
-  private final class ObserverStorage: @unchecked Sendable {
-    var willEnterObserver: NSObjectProtocol?
-    var didExitObserver: NSObjectProtocol?
-
-    func removeObservers() {
-      if let observer = willEnterObserver {
-        NotificationCenter.default.removeObserver(observer)
-        willEnterObserver = nil
-      }
-      if let observer = didExitObserver {
-        NotificationCenter.default.removeObserver(observer)
-        didExitObserver = nil
-      }
-    }
-  }
-
-  init() {
-    // Observe full-screen entry
-    observerStorage.willEnterObserver = NotificationCenter.default.addObserver(
-      forName: NSWindow.willEnterFullScreenNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      Task { @MainActor [weak self] in
-        self?.isFullScreen = true
-      }
-    }
-
-    // Observe full-screen exit
-    observerStorage.didExitObserver = NotificationCenter.default.addObserver(
-      forName: NSWindow.didExitFullScreenNotification,
-      object: nil,
-      queue: .main
-    ) { [weak self] _ in
-      Task { @MainActor [weak self] in
-        self?.isFullScreen = false
-      }
-    }
-  }
-
-  deinit {
-    observerStorage.removeObservers()
-  }
-}
-
 // MARK: - FullScreenEnvironmentKey
 
 /// Environment key to expose full-screen state to SwiftUI views
@@ -135,19 +74,414 @@ struct MacWindowPolicy: NSViewRepresentable {
     if !window.styleMask.contains(.fullSizeContentView) {
       window.styleMask.insert(.fullSizeContentView)
     }
+
+    // 4. Remove titlebar separator line
+    // This eliminates the thin line between titlebar and content for a cleaner look.
+    window.titlebarSeparatorStyle = .none
+  }
+
+  /// Sets the visibility of the traffic light buttons (close, minimize, zoom).
+  /// - Parameters:
+  ///   - hidden: Whether to hide the traffic lights
+  ///   - window: The window containing the traffic lights
+  static func setTrafficLightsHidden(_ hidden: Bool, for window: NSWindow) {
+    [NSWindow.ButtonType.closeButton,
+     NSWindow.ButtonType.miniaturizeButton,
+     NSWindow.ButtonType.zoomButton].forEach { buttonType in
+      window.standardWindowButton(buttonType)?.isHidden = hidden
+    }
+  }
+}
+
+// MARK: - FullScreenTrafficLightController
+
+/// Coordinator that manages traffic light visibility based on mouse position in full-screen mode.
+/// Also handles making the toolbar background transparent in full-screen to match windowed mode.
+/// Uses local event monitor to track mouse movement within the app's windows.
+// swiftlint:disable no_direct_standard_out_logs
+private final class FullScreenTrafficLightCoordinator {
+
+  // MARK: Lifecycle
+
+  init() {
+    setupNotifications()
+  }
+
+  deinit {
+    NotificationCenter.default.removeObserver(self)
+    stopMouseMonitoring()
+  }
+
+  // MARK: Internal
+
+  /// Height of the titlebar hover zone (from top of window)
+  static let titlebarHoverHeight: CGFloat = 52
+
+  weak var window: NSWindow?
+
+  func attach(to window: NSWindow) {
+    self.window = window
+    updateForFullScreenState()
+  }
+
+  // MARK: Private
+
+  private var isFullScreen = false
+  private var trafficLightsVisible = true
+  private var mouseMonitor: Any?
+  /// Tracks NSVisualEffectViews we've modified so we can restore them
+  private var modifiedEffectViews: [NSVisualEffectView] = []
+
+  private func setupNotifications() {
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(windowWillEnterFullScreen),
+      name: NSWindow.willEnterFullScreenNotification,
+      object: nil
+    )
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(windowDidEnterFullScreen),
+      name: NSWindow.didEnterFullScreenNotification,
+      object: nil
+    )
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(windowDidExitFullScreen),
+      name: NSWindow.didExitFullScreenNotification,
+      object: nil
+    )
+  }
+
+  @objc private func windowWillEnterFullScreen(_ notification: Notification) {
+    guard let notificationWindow = notification.object as? NSWindow,
+          notificationWindow == window else { return }
+    isFullScreen = true
+    // Hide traffic lights when entering full-screen
+    setTrafficLightsVisible(false)
+    startMouseMonitoring()
+  }
+
+  @objc private func windowDidEnterFullScreen(_ notification: Notification) {
+    guard let notificationWindow = notification.object as? NSWindow,
+          notificationWindow == window else { return }
+    // Make toolbar background transparent after full-screen transition completes
+    // Try multiple delays to catch any late view hierarchy changes
+
+    // APPROACH 4: Try different delays
+    // First attempt at 0.5s
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+      if Self.debugLogging {
+        print("DEBUG: --- ATTEMPT 1 (0.5s delay) ---")
+      }
+      self?.makeToolbarBackgroundTransparent()
+    }
+
+    // Second attempt at 1.0s in case views are created later
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+      if Self.debugLogging {
+        print("DEBUG: --- ATTEMPT 2 (1.0s delay) ---")
+      }
+      self?.makeToolbarBackgroundTransparent()
+    }
+  }
+
+  @objc private func windowDidExitFullScreen(_ notification: Notification) {
+    guard let notificationWindow = notification.object as? NSWindow,
+          notificationWindow == window else { return }
+    isFullScreen = false
+    // Show traffic lights when exiting full-screen
+    setTrafficLightsVisible(true)
+    stopMouseMonitoring()
+    // Restore toolbar background (the window reconfiguration typically handles this,
+    // but we clear our tracking array to be safe)
+    restoreToolbarBackground()
+  }
+
+  private func updateForFullScreenState() {
+    guard let window else { return }
+    isFullScreen = window.styleMask.contains(.fullScreen)
+    if isFullScreen {
+      setTrafficLightsVisible(false)
+      startMouseMonitoring()
+    } else {
+      setTrafficLightsVisible(true)
+      stopMouseMonitoring()
+    }
+  }
+
+  private func startMouseMonitoring() {
+    guard mouseMonitor == nil else { return }
+
+    // Use local monitor for events within our app
+    mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
+      self?.handleMouseMoved(event)
+      return event
+    }
+  }
+
+  private func stopMouseMonitoring() {
+    if let monitor = mouseMonitor {
+      NSEvent.removeMonitor(monitor)
+      mouseMonitor = nil
+    }
+  }
+
+  private func handleMouseMoved(_ event: NSEvent) {
+    guard isFullScreen, let window, event.window == window else { return }
+
+    let locationInWindow = event.locationInWindow
+    let windowHeight = window.frame.height
+    let titlebarMinY = windowHeight - Self.titlebarHoverHeight
+
+    let mouseInTitlebar = locationInWindow.y >= titlebarMinY
+
+    if mouseInTitlebar && !trafficLightsVisible {
+      setTrafficLightsVisible(true)
+    } else if !mouseInTitlebar && trafficLightsVisible {
+      setTrafficLightsVisible(false)
+    }
+  }
+
+  private func setTrafficLightsVisible(_ visible: Bool) {
+    guard let window, trafficLightsVisible != visible else { return }
+    trafficLightsVisible = visible
+    MacWindowPolicy.setTrafficLightsHidden(!visible, for: window)
+  }
+
+  // MARK: - Toolbar Background Transparency (Experimental)
+
+  /// Debug flag - set to true to see view hierarchy in console
+  private static let debugLogging = true
+
+  /// Makes the toolbar background transparent in full-screen mode.
+  /// This is an experimental approach that manipulates NSVisualEffectView instances
+  /// in the titlebar/toolbar area. May break with future macOS updates.
+  private func makeToolbarBackgroundTransparent() {
+    guard let window else { return }
+
+    if Self.debugLogging {
+      print("DEBUG: ========== FULL-SCREEN TOOLBAR TRANSPARENCY ==========")
+      print("DEBUG: Window frame: \(window.frame)")
+      print("DEBUG: Window styleMask: \(window.styleMask)")
+      print("DEBUG: Window toolbar: \(String(describing: window.toolbar))")
+      print("DEBUG: Window toolbarStyle: \(window.toolbarStyle.rawValue)")
+      print("DEBUG: Content view: \(String(describing: window.contentView))")
+
+      // Print the entire view hierarchy from themeFrame
+      if let themeFrame = window.contentView?.superview {
+        print("DEBUG: --- FULL VIEW HIERARCHY FROM THEME FRAME ---")
+        printViewHierarchy(themeFrame, indent: 0)
+      }
+    }
+
+    // Clear any previously tracked views
+    modifiedEffectViews.removeAll()
+
+    // APPROACH 1: Set toolbarStyle (may affect full-screen rendering)
+    // Try .unified which integrates toolbar with titlebar
+    window.toolbarStyle = .unified
+
+    // APPROACH 2a: Original approach - from close button
+    if let closeButton = window.standardWindowButton(.closeButton),
+       let titlebarContainer = closeButton.superview?.superview {
+      if Self.debugLogging {
+        print("DEBUG: --- APPROACH 2a: From close button ---")
+        print("DEBUG: Close button: \(closeButton)")
+        print("DEBUG: Close button superview: \(String(describing: closeButton.superview))")
+        print("DEBUG: Titlebar container (superview.superview): \(titlebarContainer)")
+      }
+      makeVisualEffectsTransparent(in: titlebarContainer, approach: "2a-closeButton")
+    }
+
+    // APPROACH 2b: Traverse from contentView's superview (themeFrame)
+    if let themeFrame = window.contentView?.superview {
+      if Self.debugLogging {
+        print("DEBUG: --- APPROACH 2b: From theme frame ---")
+        print("DEBUG: Theme frame: \(themeFrame) - type: \(type(of: themeFrame))")
+      }
+      // Look for titlebar container by class name
+      if let titlebarContainer = findTitlebarContainer(in: themeFrame) {
+        if Self.debugLogging {
+          print("DEBUG: Found titlebar container: \(titlebarContainer) - type: \(type(of: titlebarContainer))")
+        }
+        makeVisualEffectsTransparent(in: titlebarContainer, approach: "2b-titlebarContainer")
+      }
+    }
+
+    // APPROACH 2c: Find ALL visual effect views in the entire window
+    if let themeFrame = window.contentView?.superview {
+      let allEffectViews = findAllVisualEffectViews(in: themeFrame)
+      if Self.debugLogging {
+        print("DEBUG: --- APPROACH 2c: All NSVisualEffectViews in window ---")
+        print("DEBUG: Found \(allEffectViews.count) NSVisualEffectViews total")
+        for (index, view) in allEffectViews.enumerated() {
+          print("DEBUG:   [\(index)] frame: \(view.frame), material: \(view.material.rawValue), blendingMode: \(view.blendingMode.rawValue)")
+        }
+      }
+
+      // Only modify views that appear to be in the titlebar area (top of window)
+      let windowHeight = window.frame.height
+      for effectView in allEffectViews {
+        let frameInWindow = effectView.convert(effectView.bounds, to: nil)
+        let isInTitlebarArea = frameInWindow.minY > (windowHeight - 100)
+
+        if Self.debugLogging {
+          print("DEBUG:   Checking view at \(frameInWindow), isInTitlebarArea: \(isInTitlebarArea)")
+        }
+
+        if isInTitlebarArea {
+          // APPROACH 3: Try setting material instead of alpha
+          // This may work better than hiding the view entirely
+          effectView.material = .windowBackground
+          effectView.blendingMode = .behindWindow
+          effectView.state = .inactive
+          effectView.isEmphasized = false
+
+          // Also try alpha = 0 as backup
+          effectView.alphaValue = 0
+
+          modifiedEffectViews.append(effectView)
+
+          if Self.debugLogging {
+            print("DEBUG:   MODIFIED view at \(frameInWindow)")
+          }
+        }
+      }
+    }
+
+    if Self.debugLogging {
+      print("DEBUG: Total modified views: \(modifiedEffectViews.count)")
+      print("DEBUG: ========== END TOOLBAR TRANSPARENCY ==========")
+    }
+  }
+
+  /// Finds the titlebar container view by traversing the hierarchy and looking for class names containing "Titlebar"
+  private func findTitlebarContainer(in view: NSView) -> NSView? {
+    let typeName = String(describing: type(of: view))
+    if typeName.contains("Titlebar") {
+      return view
+    }
+    for subview in view.subviews {
+      if let found = findTitlebarContainer(in: subview) {
+        return found
+      }
+    }
+    return nil
+  }
+
+  /// Finds all NSVisualEffectView instances in the view hierarchy
+  private func findAllVisualEffectViews(in view: NSView) -> [NSVisualEffectView] {
+    var effectViews: [NSVisualEffectView] = []
+    if let effectView = view as? NSVisualEffectView {
+      effectViews.append(effectView)
+    }
+    for subview in view.subviews {
+      effectViews.append(contentsOf: findAllVisualEffectViews(in: subview))
+    }
+    return effectViews
+  }
+
+  /// Debug: Print the view hierarchy
+  private func printViewHierarchy(_ view: NSView, indent: Int) {
+    let prefix = String(repeating: "  ", count: indent)
+    let typeName = String(describing: type(of: view))
+    var extras = ""
+    if let effectView = view as? NSVisualEffectView {
+      extras = " [material:\(effectView.material.rawValue), blending:\(effectView.blendingMode.rawValue), alpha:\(effectView.alphaValue)]"
+    }
+    print("\(prefix)\(typeName) - frame: \(view.frame)\(extras)")
+    for subview in view.subviews {
+      printViewHierarchy(subview, indent: indent + 1)
+    }
+  }
+
+  /// Recursively traverses the view hierarchy and makes NSVisualEffectView instances transparent.
+  private func makeVisualEffectsTransparent(in view: NSView, approach: String) {
+    if let effectView = view as? NSVisualEffectView {
+      if Self.debugLogging {
+        print("DEBUG: [\(approach)] Found NSVisualEffectView: frame=\(effectView.frame), material=\(effectView.material.rawValue)")
+      }
+      effectView.alphaValue = 0
+      modifiedEffectViews.append(effectView)
+    }
+    for subview in view.subviews {
+      makeVisualEffectsTransparent(in: subview, approach: approach)
+    }
+  }
+
+  /// Restores the toolbar background after exiting full-screen.
+  /// The window reconfiguration typically handles this, but we track modified views
+  /// in case manual restoration is needed.
+  private func restoreToolbarBackground() {
+    for effectView in modifiedEffectViews {
+      effectView.alphaValue = 1
+      effectView.state = .followsWindowActiveState
+    }
+    modifiedEffectViews.removeAll()
+  }
+}
+// swiftlint:enable no_direct_standard_out_logs
+
+// MARK: - FullScreenTrafficLightView
+
+/// NSView that hosts the traffic light coordinator and attaches it to the window.
+private final class FullScreenTrafficLightView: NSView {
+
+  // MARK: Lifecycle
+
+  override init(frame frameRect: NSRect) {
+    coordinator = FullScreenTrafficLightCoordinator()
+    super.init(frame: frameRect)
+  }
+
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  // MARK: Internal
+
+  let coordinator: FullScreenTrafficLightCoordinator
+
+  override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    if let window {
+      coordinator.attach(to: window)
+    }
+  }
+}
+
+// MARK: - FullScreenTrafficLightModifier
+
+/// NSViewRepresentable that embeds the traffic light controller.
+private struct FullScreenTrafficLightModifier: NSViewRepresentable {
+  func makeNSView(context _: Context) -> FullScreenTrafficLightView {
+    FullScreenTrafficLightView(frame: .zero)
+  }
+
+  func updateNSView(_: FullScreenTrafficLightView, context _: Context) {
+    // No updates needed - the coordinator manages itself via notifications
   }
 }
 
 // MARK: - FullScreenModifier
 
 /// View modifier that injects full-screen state into the environment.
-/// Creates and owns the FullScreenObserver.
+/// Uses onReceive for notification-driven state updates that properly trigger SwiftUI view invalidation.
 private struct FullScreenModifier: ViewModifier {
-  @State private var observer = FullScreenObserver()
+  @State private var isFullScreen = false
 
   func body(content: Content) -> some View {
     content
-      .environment(\.isFullScreen, observer.isFullScreen)
+      .environment(\.isFullScreen, isFullScreen)
+      .background(FullScreenTrafficLightModifier())
+      .onReceive(NotificationCenter.default.publisher(for: NSWindow.willEnterFullScreenNotification)) { _ in
+        isFullScreen = true
+      }
+      .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { _ in
+        isFullScreen = false
+      }
   }
 }
 

@@ -24,8 +24,9 @@ struct AppShellView: View {
     #if os(macOS)
       // Hide toolbar background so column backgrounds extend to top
       .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-      // In full-screen mode, hide toolbar by default; reveal on hover near menu bar
-      .windowToolbarFullScreenVisibility(.onHover)
+      // Keep toolbar visible in full-screen (we make the background transparent via NSVisualEffectView)
+      // Traffic lights appear on hover via FullScreenTrafficLightCoordinator
+      .windowToolbarFullScreenVisibility(.visible)
       .toolbar {
         ToolbarItem(placement: .automatic) {
           DuplicateWindowButton(
