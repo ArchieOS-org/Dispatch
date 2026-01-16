@@ -223,40 +223,56 @@ struct ContentView: View {
   }
 
   /// macOS: Things 3-style resizable sidebar with native selection.
-  /// Stage cards appear above the List (not inside it).
-  /// Settings uses SettingsLink via SidebarDestinationList.
+  /// Stage cards and tabs scroll together as a single unified List.
+  /// Settings uses SettingsLink via inline row.
   private var sidebarNavigation: some View {
     ResizableSidebar {
-      VStack(spacing: 0) {
-        // Stage cards header (NOT in List - Reminders-style)
-        // Tapping a stage card uses programmatic selection (never pops)
-        StageCardsHeader(
-          stageCounts: stageCounts,
-          onSelectStage: { stage in
-            appState.dispatch(.setSelectedDestination(.stage(stage)))
-          }
-        )
+      // Unified scrolling: stage cards + tabs in single List
+      List(selection: $sidebarSelection) {
+        // Stage cards section (scrolls with tabs)
+        Section {
+          StageCardsSection(
+            stageCounts: stageCounts,
+            onSelectStage: { stage in
+              appState.dispatch(.setSelectedDestination(.stage(stage)))
+            }
+          )
+        }
+        .listRowInsets(EdgeInsets(top: DS.Spacing.sm, leading: DS.Spacing.md, bottom: DS.Spacing.md, trailing: DS.Spacing.md))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Listing stages")
 
-        // Destination list (tabs only - stages accessed via cards above)
-        SidebarDestinationList(
-          selection: $sidebarSelection,
-          tabCounts: macTabCounts,
-          overdueCount: sidebarOverdueCount
-        )
-        .onAppear {
-          // Only sync tab selections to sidebar; stages are nil
-          sidebarSelection = appState.router.selectedDestination.isStage
-            ? nil
-            : appState.router.selectedDestination
+        // Navigation tabs section
+        Section {
+          ForEach(AppTab.sidebarTabs) { tab in
+            SidebarMenuRow(
+              tab: tab,
+              itemCount: macTabCounts[tab] ?? 0,
+              overdueCount: tab == .workspace ? sidebarOverdueCount : 0
+            )
+            .tag(SidebarDestination.tab(tab))
+          }
         }
-        .onChange(of: sidebarSelection) { _, newValue in
-          guard let dest = newValue, dest != appState.router.selectedDestination else { return }
-          appState.dispatch(.userSelectedDestination(dest))
-        }
-        .onChange(of: appState.router.selectedDestination) { _, newValue in
-          // Only sync tab selections to sidebar; stages show as nil (deselected)
-          sidebarSelection = newValue.isStage ? nil : newValue
-        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Navigation")
+      }
+      .listStyle(.sidebar)
+      .scrollContentBackground(.hidden)
+      .onAppear {
+        // Only sync tab selections to sidebar; stages are nil
+        sidebarSelection = appState.router.selectedDestination.isStage
+          ? nil
+          : appState.router.selectedDestination
+      }
+      .onChange(of: sidebarSelection) { _, newValue in
+        guard let dest = newValue, dest != appState.router.selectedDestination else { return }
+        appState.dispatch(.userSelectedDestination(dest))
+      }
+      .onChange(of: appState.router.selectedDestination) { _, newValue in
+        // Only sync tab selections to sidebar; stages show as nil (deselected)
+        sidebarSelection = newValue.isStage ? nil : newValue
       }
     } content: {
       NavigationStack(path: pathBinding(for: appState.router.selectedDestination)) {
