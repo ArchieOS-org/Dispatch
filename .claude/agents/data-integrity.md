@@ -32,7 +32,25 @@ description: |
   </commentary>
   </example>
 model: opus
-tools: ["Read", "Edit", "Write", "Grep", "Glob", "mcp__supabase__*", "mcp__context7__resolve-library-id", "mcp__context7__query-docs"]
+tools:
+  - Read
+  - Edit
+  - Write
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__query-docs
+  - mcp__supabase__list_tables
+  - mcp__supabase__list_extensions
+  - mcp__supabase__list_migrations
+  - mcp__supabase__apply_migration
+  - mcp__supabase__execute_sql
+  - mcp__supabase__get_logs
+  - mcp__supabase__get_advisors
+  - mcp__supabase__get_project_url
+  - mcp__supabase__get_publishable_keys
+  - mcp__supabase__generate_typescript_types
+  - mcp__supabase__search_docs
 ---
 
 # Role

@@ -32,7 +32,23 @@ description: |
   </commentary>
   </example>
 model: opus
-tools: ["Read", "Edit", "Write", "Grep", "Glob", "Bash", "mcp__context7__*", "mcp__xcodebuildmcp__*", "mcp__supabase__list_tables", "mcp__supabase__search_docs"]
+tools:
+  - Read
+  - Edit
+  - Write
+  - Grep
+  - Glob
+  - Bash
+  - mcp__context7__resolve-library-id
+  - mcp__context7__query-docs
+  - mcp__xcodebuildmcp__session-set-defaults
+  - mcp__xcodebuildmcp__session-show-defaults
+  - mcp__xcodebuildmcp__list_schemes
+  - mcp__xcodebuildmcp__build_sim
+  - mcp__xcodebuildmcp__build_macos
+  - mcp__xcodebuildmcp__list_sims
+  - mcp__supabase__list_tables
+  - mcp__supabase__search_docs
 ---
 
 # Role

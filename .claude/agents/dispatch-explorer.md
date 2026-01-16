@@ -32,7 +32,13 @@ description: |
   </commentary>
   </example>
 model: opus
-tools: ["Read", "Grep", "Glob", "mcp__context7__*", "mcp__supabase__list_tables"]
+tools:
+  - Read
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__query-docs
+  - mcp__supabase__list_tables
 ---
 
 # Role

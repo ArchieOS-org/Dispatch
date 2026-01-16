@@ -32,7 +32,28 @@ description: |
   </commentary>
   </example>
 model: opus
-tools: ["Read", "Grep", "Glob", "mcp__context7__resolve-library-id", "mcp__context7__query-docs", "mcp__xcodebuildmcp__*", "mcp__supabase__*"]
+tools:
+  - Read
+  - Grep
+  - Glob
+  - mcp__context7__resolve-library-id
+  - mcp__context7__query-docs
+  - mcp__xcodebuildmcp__session-set-defaults
+  - mcp__xcodebuildmcp__session-show-defaults
+  - mcp__xcodebuildmcp__build_sim
+  - mcp__xcodebuildmcp__build_run_sim
+  - mcp__xcodebuildmcp__list_sims
+  - mcp__xcodebuildmcp__boot_sim
+  - mcp__xcodebuildmcp__launch_app_sim
+  - mcp__xcodebuildmcp__start_sim_log_cap
+  - mcp__xcodebuildmcp__stop_sim_log_cap
+  - mcp__xcodebuildmcp__describe_ui
+  - mcp__xcodebuildmcp__screenshot
+  - mcp__supabase__list_tables
+  - mcp__supabase__execute_sql
+  - mcp__supabase__get_logs
+  - mcp__supabase__get_advisors
+  - mcp__supabase__search_docs
 ---
 
 You are an expert Swift debugger for the Dispatch multi-platform app (iOS, iPadOS, macOS).
