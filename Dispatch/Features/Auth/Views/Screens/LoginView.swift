@@ -61,7 +61,7 @@ struct LoginView: View {
           if let error = authManager.error {
             Text(error.localizedDescription)
               .font(DS.Typography.caption)
-              .foregroundStyle(Color.red)
+              .foregroundStyle(DS.Colors.destructive)
               .multilineTextAlignment(.center)
               .padding(.top, DS.Spacing.sm)
               .transition(.opacity)

@@ -60,7 +60,7 @@ struct WorkItemRow: View {
               Text(overdueText)
             }
             .font(DS.Typography.caption)
-            .foregroundStyle(.red)
+            .foregroundStyle(DS.Colors.overdue)
           } else {
             // Normal: date pill
             DatePill(date: date)

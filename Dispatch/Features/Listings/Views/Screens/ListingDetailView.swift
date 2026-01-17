@@ -216,7 +216,7 @@ struct ListingDetailView: View {
                 Text(overdueText)
               }
               .font(DS.Typography.caption)
-              .foregroundStyle(.red)
+              .foregroundStyle(DS.Colors.overdue)
             } else {
               DatePill(date: date)
             }

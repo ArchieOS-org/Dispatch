@@ -142,7 +142,7 @@ struct FilterMenu: View {
     }
   }
   .padding(DS.Spacing.xl)
-  .background(Color.gray.opacity(0.1))
+  .background(DS.Colors.Background.secondary)
 }
 
 // MARK: Color Schemes
@@ -176,7 +176,7 @@ struct FilterMenu: View {
   @Previewable @State var audience: AudienceLens = .marketing
 
   VStack(spacing: 0) {
-    Color.gray.opacity(0.1)
+    DS.Colors.Background.secondary
       .frame(height: 200)
 
     HStack(spacing: 0) {

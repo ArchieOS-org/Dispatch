@@ -55,13 +55,9 @@ struct FloatingActionButton: View {
   /// Haptic trigger - increments on each tap
   @State private var tapCount = 0
 
-  /// System blue for proper dark mode / accessibility behavior
+  /// Accent color for proper dark mode / accessibility behavior
   private var backgroundColor: Color {
-    #if os(iOS)
-    Color(uiColor: .systemBlue)
-    #else
-    Color.blue
-    #endif
+    DS.Colors.accent
   }
 
   /// Icon size scales with button size
