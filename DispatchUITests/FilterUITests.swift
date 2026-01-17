@@ -22,11 +22,21 @@ final class FilterUITests: XCTestCase {
     @MainActor
     func testAudienceFilterCycle() throws {
         let app = XCUIApplication()
+        app.launchArguments.append("--uitesting")
         app.launch()
-        
-        // Locate the filter button
+
+        // On iPhone, app launches to MenuPageView - navigate to Workspace first
+        // Find "My Workspace" menu item and tap it
+        let workspaceButton = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "My Workspace")
+        ).element
+        if workspaceButton.waitForExistence(timeout: 5) {
+            workspaceButton.tap()
+        }
+
+        // Locate the filter button (now visible on Workspace screen)
         let filterButton = app.buttons["AudienceFilterButton"]
-        XCTAssertTrue(filterButton.waitForExistence(timeout: 5), "Audience Filter Button should exist on launch")
+        XCTAssertTrue(filterButton.waitForExistence(timeout: 5), "Audience Filter Button should exist on Workspace screen")
         
         // Helper to verify current state
         func verifyState(_ lens: String, icon: String) {

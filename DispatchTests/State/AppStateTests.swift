@@ -27,8 +27,8 @@ class AppStateTests: XCTestCase {
     let route = AppRoute.listing(UUID())
     appState.dispatch(.navigate(route))
 
-    let currentPath = appState.router.paths[appState.router.selectedDestination] ?? []
-    XCTAssertEqual(currentPath.count, 1)
+    // Legacy .navigate command writes to phonePath (iPhone single-stack navigation)
+    XCTAssertEqual(appState.router.phonePath.count, 1)
     // Note: checking deep equality on path is tricky in SwiftUI,
     // but verifying count > 0 confirms append happened.
   }
@@ -36,12 +36,12 @@ class AppStateTests: XCTestCase {
   func test_dispatch_popToRoot_clearsRouterPath() {
     let route = AppRoute.listing(UUID())
     appState.dispatch(.navigate(route))
-    let pathAfterNavigate = appState.router.paths[appState.router.selectedDestination] ?? []
-    XCTAssertFalse(pathAfterNavigate.isEmpty)
+    // Legacy .navigate writes to phonePath
+    XCTAssertFalse(appState.router.phonePath.isEmpty)
 
-    appState.dispatch(.popToRoot(appState.router.selectedDestination))
-    let pathAfterPop = appState.router.paths[appState.router.selectedDestination] ?? []
-    XCTAssertTrue(pathAfterPop.isEmpty)
+    // Use phonePopToRoot to clear phonePath (matches the navigation model)
+    appState.dispatch(.phonePopToRoot)
+    XCTAssertTrue(appState.router.phonePath.isEmpty)
   }
 
   func test_router_selectSameTab_popsToRoot() {

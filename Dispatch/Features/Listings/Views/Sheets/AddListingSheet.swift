@@ -226,5 +226,5 @@ struct AddListingSheet: View {
     currentUserId: UUID(),
     onSave: { }
   )
-  .environmentObject(SyncManager.shared)
+  .environmentObject(SyncManager.preview)
 }

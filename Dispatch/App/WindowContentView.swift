@@ -41,8 +41,8 @@ struct WindowContentView: View {
   var body: some View {
     Group {
       ZStack {
-        if appState.authManager.isAuthenticated {
-          if syncManager.currentUser != nil {
+        if DispatchApp.isUITesting || appState.authManager.isAuthenticated {
+          if DispatchApp.isUITesting || syncManager.currentUser != nil {
             AppShellView()
               .transition(.opacity)
           } else {
