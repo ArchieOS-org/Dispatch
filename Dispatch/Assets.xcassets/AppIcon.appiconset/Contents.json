@@ -19,18 +19,6 @@
       "size": "1024x1024"
     },
     {
-      "appearances": [
-        {
-          "appearance": "luminosity",
-          "value": "tinted"
-        }
-      ],
-      "filename": "1024x1024 3.png",
-      "idiom": "universal",
-      "platform": "ios",
-      "size": "1024x1024"
-    },
-    {
       "filename": "16x16.png",
       "idiom": "mac",
       "scale": "1x",
