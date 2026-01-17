@@ -45,7 +45,7 @@ struct LayoutWitnessModifier: ViewModifier {
             .padding(4)
             .background(Color.red.opacity(0.8))
             .foregroundColor(.white)
-            .cornerRadius(4)
+            .cornerRadius(DS.Spacing.radiusSmall)
             .padding()
           }
         }

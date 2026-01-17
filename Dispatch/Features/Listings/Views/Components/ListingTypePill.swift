@@ -21,7 +21,7 @@ struct ListingTypePill: View {
       .padding(.horizontal, 6)
       .padding(.vertical, 2)
       .background(color.opacity(0.12)) // Subtle tinted background
-      .clipShape(RoundedRectangle(cornerRadius: 4))
+      .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall))
   }
 
   // MARK: Private

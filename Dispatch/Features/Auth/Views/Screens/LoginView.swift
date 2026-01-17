@@ -113,12 +113,12 @@ private struct GoogleSignInButton: View {
       .frame(maxWidth: .infinity)
       .frame(height: 50)
       .background(
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
+        RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium, style: .continuous)
           .fill(colorScheme == .dark ? Color.white : Color.black)
       )
       .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
       .overlay(
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
+        RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium, style: .continuous)
           .stroke(Color.black.opacity(0.1), lineWidth: 0.5)
       )
       .dsShadow(DS.Shadows.small)

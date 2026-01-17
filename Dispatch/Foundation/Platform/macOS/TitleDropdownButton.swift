@@ -23,7 +23,7 @@ struct TitleDropdownButton: View {
       .padding(.horizontal, 8)
       .padding(.vertical, 4)
       .background(
-        RoundedRectangle(cornerRadius: 6)
+        RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall)
           .fill(isHovering ? Color.secondary.opacity(0.1) : Color.clear)
       )
     }
