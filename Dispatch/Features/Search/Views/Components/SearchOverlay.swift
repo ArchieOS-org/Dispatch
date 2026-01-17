@@ -17,27 +17,61 @@ import SwiftUI
 /// - Dimmed backdrop (tappable to dismiss)
 /// - Modal panel respects the device safe area (Dynamic Island / notch)
 /// - Floating modal panel with:
-///   - Search bar (auto-focused)
+///   - Search bar (auto-focused via defaultFocus)
 ///   - Results list (sectioned by type)
 ///
-/// **Animations:**
-/// - Spring animation for modal appearance
-/// - Respects `accessibilityReduceMotion`
+/// **Focus Management (Framework-Correct Pattern):**
+/// - Uses `defaultFocus` modifier for instant focus when view appears
+/// - View is conditionally rendered in parent (standard `if` statement)
+/// - No delays needed - SwiftUI handles focus timing automatically
+/// - Clean view lifecycle enables proper keyboard/focus coordination
 ///
 /// **Navigation:**
-/// - Selecting a result dismisses the overlay and triggers navigation
-/// - Navigation is deferred to prevent "push while presenting" issues
-///
-/// **Focus & Overlay Management:**
-/// - Owns its own `@FocusState` for keyboard control
-/// - Registers `.searchOverlay` reason with `AppOverlayState` on appear
-/// - Clears focus and overlay reason in `dismiss()` (suspenders) + `onDisappear` (belt)
+/// - Selecting a result dismisses overlay and triggers navigation immediately
+/// - No artificial delays - view removal is instant
 struct SearchOverlay: View {
+
+  // MARK: Lifecycle
+
+  /// Initialize SearchOverlay with pre-fetched data from parent.
+  ///
+  /// This pattern (same as QuickEntrySheet) avoids duplicate @Query properties
+  /// and ensures data is only fetched once at the ContentView level.
+  ///
+  /// - Parameters:
+  ///   - isPresented: Binding controlling overlay visibility
+  ///   - searchText: Binding to the search query text
+  ///   - tasks: Pre-fetched active tasks from parent
+  ///   - activities: Pre-fetched active activities from parent
+  ///   - listings: Pre-fetched active listings from parent
+  ///   - onSelectResult: Callback when user selects a search result
+  init(
+    isPresented: Binding<Bool>,
+    searchText: Binding<String>,
+    tasks: [TaskItem],
+    activities: [Activity],
+    listings: [Listing],
+    onSelectResult: @escaping (SearchResult) -> Void
+  ) {
+    self._isPresented = isPresented
+    self._searchText = searchText
+    self.tasks = tasks
+    self.activities = activities
+    self.listings = listings
+    self.onSelectResult = onSelectResult
+  }
 
   // MARK: Internal
 
   @Binding var isPresented: Bool
   @Binding var searchText: String
+
+  /// Pre-fetched active tasks from ContentView (no @Query needed)
+  let tasks: [TaskItem]
+  /// Pre-fetched active activities from ContentView (no @Query needed)
+  let activities: [Activity]
+  /// Pre-fetched active listings from ContentView (no @Query needed)
+  let listings: [Listing]
 
   var onSelectResult: (SearchResult) -> Void
 
@@ -60,37 +94,16 @@ struct SearchOverlay: View {
         Spacer()
       }
     }
-    // Phase 1: Visual fade-out (immediate)
-    .opacity(isDismissing ? 0 : 1)
-    .animation(.easeOut(duration: 0.2), value: isDismissing)
-    .allowsHitTesting(!isDismissing)
-    .transition(.opacity)
-    .task {
-      // Wait one frame for view hierarchy to stabilize before any state changes.
-      // This prevents NavigationAuthority warnings from cascading updates.
-      try? await Task.sleep(for: .milliseconds(16))
-      guard !Task.isCancelled, !isDismissing else { return }
-
+    // Use defaultFocus for instant focus when view appears (framework-correct pattern)
+    // No delays needed - SwiftUI handles keyboard timing automatically
+    .defaultFocus($isFocused, true)
+    .onAppear {
       // Register overlay reason (hides GlobalFloatingButtons)
       overlayState.hide(reason: .searchOverlay)
-
-      // Wait for text input system to fully initialize before focusing.
-      // iOS text input requires the RTIInputSystemSession to be established.
-      // 300ms allows for: text system init (~100-150ms) + emoji keyboard (~100ms) + buffer
-      try? await Task.sleep(for: .milliseconds(300))
-      guard !Task.isCancelled, !isDismissing else { return }
-      isFocused = true
     }
     .onDisappear {
-      // Belt: ensure reason is cleared even if dismiss() was bypassed
+      // Clean up overlay state when view is removed from hierarchy
       overlayState.show(reason: .searchOverlay)
-    }
-    // Phase 2: Wait for keyboard to finish hiding before removing from hierarchy
-    .onChange(of: overlayState.activeReasons) { _, reasons in
-      // If we're dismissing and keyboard reason is now cleared, finalize
-      if isDismissing, !reasons.contains(.keyboard) {
-        finalizeDismiss()
-      }
     }
   }
 
@@ -98,37 +111,6 @@ struct SearchOverlay: View {
 
   @FocusState private var isFocused: Bool
   @EnvironmentObject private var overlayState: AppOverlayState
-
-  /// Phase 1 state: overlay is visually fading out
-  @State private var isDismissing = false
-
-  /// Stored result for deferred navigation
-  @State private var pendingResult: SearchResult?
-
-  /// Fallback dismiss ID to prevent stale timeouts
-  @State private var dismissID: UUID?
-
-  @Query(sort: \TaskItem.title)
-  private var tasks: [TaskItem]
-  @Query(sort: \Activity.title)
-  private var activities: [Activity]
-  @Query(sort: \Listing.address)
-  private var listings: [Listing]
-
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-  /// Filter out deleted items
-  private var activeTasks: [TaskItem] {
-    tasks.filter { $0.status != .deleted }
-  }
-
-  private var activeActivities: [Activity] {
-    activities.filter { $0.status != .deleted }
-  }
-
-  private var activeListings: [Listing] {
-    listings.filter { $0.status != .deleted }
-  }
 
   private var backdrop: some View {
     DS.Colors.searchScrim
@@ -151,9 +133,9 @@ struct SearchOverlay: View {
       // Results list
       SearchResultsList(
         searchText: searchText,
-        tasks: activeTasks,
-        activities: activeActivities,
-        listings: activeListings,
+        tasks: tasks,
+        activities: activities,
+        listings: listings,
         onSelectResult: { result in
           selectResult(result)
         }
@@ -163,73 +145,20 @@ struct SearchOverlay: View {
   }
 
   private func dismiss() {
-    guard !isDismissing else { return }
-
-    // Phase 1: Clear focus (keyboard starts hiding) + visual fade
+    // Clear focus first (triggers keyboard dismissal)
     isFocused = false
-    overlayState.show(reason: .searchOverlay)
-    isDismissing = true
-
-    // If keyboard isn't active, finalize immediately
-    #if os(iOS)
-    if !overlayState.isReasonActive(.keyboard) {
-      finalizeDismiss()
-    } else {
-      // Fallback timeout in case notification is missed
-      let currentDismissID = UUID()
-      dismissID = currentDismissID
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
-        guard isDismissing, dismissID == currentDismissID else { return }
-        finalizeDismiss()
-      }
-    }
-    #else
-    finalizeDismiss()
-    #endif
+    searchText = ""
+    // Remove from hierarchy - parent controls via isPresented binding
+    isPresented = false
   }
 
   private func selectResult(_ result: SearchResult) {
-    guard !isDismissing else { return }
-
-    // Phase 1: Clear focus (keyboard starts hiding) + visual fade
+    // Clear focus and dismiss
     isFocused = false
-    overlayState.show(reason: .searchOverlay)
-    isDismissing = true
-    pendingResult = result
-
-    // If keyboard isn't active, finalize immediately
-    #if os(iOS)
-    if !overlayState.isReasonActive(.keyboard) {
-      finalizeDismiss()
-    } else {
-      // Fallback timeout in case notification is missed
-      let currentDismissID = UUID()
-      dismissID = currentDismissID
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
-        guard isDismissing, dismissID == currentDismissID else { return }
-        finalizeDismiss()
-      }
-    }
-    #else
-    finalizeDismiss()
-    #endif
-  }
-
-  private func finalizeDismiss() {
-    let result = pendingResult
-    pendingResult = nil
-    dismissID = nil
     searchText = ""
-
-    // Phase 2: Actually remove from hierarchy
     isPresented = false
-
-    // Trigger navigation if we had a pending result
-    if let result {
-      DispatchQueue.main.async {
-        onSelectResult(result)
-      }
-    }
+    // Trigger navigation immediately - no delay needed with clean view lifecycle
+    onSelectResult(result)
   }
 }
 
@@ -288,6 +217,22 @@ private struct SearchOverlayPreviewHost: View {
   @State var isPresented: Bool
   @State var searchText: String
 
+  @Query private var tasks: [TaskItem]
+  @Query private var activities: [Activity]
+  @Query private var listings: [Listing]
+
+  private var activeTasks: [TaskItem] {
+    tasks.filter { $0.status != .deleted }
+  }
+
+  private var activeActivities: [Activity] {
+    activities.filter { $0.status != .deleted }
+  }
+
+  private var activeListings: [Listing] {
+    listings.filter { $0.status != .deleted }
+  }
+
   var body: some View {
     ZStack {
       Color.blue.opacity(0.2)
@@ -297,6 +242,9 @@ private struct SearchOverlayPreviewHost: View {
         SearchOverlay(
           isPresented: $isPresented,
           searchText: $searchText,
+          tasks: activeTasks,
+          activities: activeActivities,
+          listings: activeListings,
           onSelectResult: { _ in }
         )
       }
