@@ -73,6 +73,10 @@ build.log
 build_output.txt
 *.log
 
+# EXCEPTION: Track .claude/ logs for system improvement
+!.claude/logs/*.log
+!.claude/logs/**/*.log
+
 # CI Mirror artifacts
 artifacts/
 

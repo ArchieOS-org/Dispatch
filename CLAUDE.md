@@ -94,6 +94,24 @@ See `.claude/rules/style-enforcement.md` for full policy.
 
 ### Context7 for Documentation
 
+Use `mcp__xcodebuildmcp__*` tools for:
+- Building for iOS Simulator and macOS
+- Running unit and UI tests
+- Taking simulator screenshots
+- Booting/managing simulators
+- Getting build settings
+
+**Fallback**: If MCP tools are unavailable, use the bash commands in "Common Commands" section.
+
+### Context7 for Documentation (MANDATORY - VERIFIED)
+
+> **CRITICAL: Your training data is OUTDATED. Context7 is the source of truth.**
+>
+> All agents MUST:
+> 1. Use Context7 before writing framework/library code
+> 2. Record attestation in contract (feature-owner at PATCHSET 1)
+> 3. **Integrator BLOCKS DONE if attestation missing or NO**
+>
 > See `.claude/rules/context7-mandatory.md` for full policy.
 
 **Always use Context7 MCP tools to look up current documentation before implementing features.**

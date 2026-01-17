@@ -168,6 +168,20 @@ struct AppRouter {
       phonePath.removeAll()
     }
   }
+
+  // MARK: - Route Cleanup
+
+  /// Remove a specific route from all navigation paths.
+  /// Used after entity deletion to prevent navigation back to deleted items.
+  mutating func removeRoute(_ route: AppRoute) {
+    // Remove from phonePath (iPhone)
+    phonePath.removeAll { $0 == route }
+
+    // Remove from all destination paths (iPad/macOS)
+    for destination in paths.keys {
+      paths[destination]?.removeAll { $0 == route }
+    }
+  }
 }
 
 // MARK: - AppTab

@@ -327,7 +327,9 @@ private struct RoleChangeModal: View {
     withAnimation(.easeOut(duration: 0.2)) {
       isAppearing = false
     }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+    // Use Task for delay - proper SwiftUI pattern for post-animation work
+    Task { @MainActor in
+      try? await Task.sleep(for: .milliseconds(200))
       if let completion {
         completion()
       } else {

@@ -72,6 +72,19 @@ Log all Context7 lookups here (see `.claude/rules/context7-mandatory.md`):
 
 ---
 
+### Context7 Attestation (written by feature-owner at PATCHSET 1)
+
+**CONTEXT7 CONSULTED**: [YES | NO | N/A]
+**Libraries Queried**: [list or "N/A"]
+
+| Query | Pattern Used |
+|-------|--------------|
+| [what was asked] | [what was applied] |
+
+**N/A**: Only valid for pure refactors with no framework/library usage.
+
+---
+
 ### Jobs Critique (written by jobs-critic agent)
 
 **JOBS CRITIQUE**: [SHIP YES | SHIP NO | PENDING]
@@ -91,11 +104,9 @@ Log all Context7 lookups here (see `.claude/rules/context7-mandatory.md`):
 
 ---
 
-### Enforcement Summary
-
-| Check | Enforced By | Consequence |
-|-------|-------------|-------------|
-| UI Review Required: YES → Jobs Critique | integrator | Blocks DONE if SHIP NO/PENDING |
-| Lock Version changed | all agents | Must stop and re-read contract |
-| Acceptance criteria met | integrator | Required for DONE |
-| Context7 Queries logged | integrator | Warning if missing (not blocking) |
+**IMPORTANT**:
+- If `UI Review Required: YES` → integrator MUST verify `JOBS CRITIQUE: SHIP YES` before reporting DONE
+- If `UI Review Required: NO` → Jobs Critique section is not required; integrator skips this check
+- If UI Review Required but Jobs Critique is missing/PENDING/SHIP NO → integrator MUST reject DONE
+- **Context7 Attestation**: integrator MUST verify `CONTEXT7 CONSULTED: YES` (or `N/A` for pure refactors) before reporting DONE
+- If Context7 Attestation is missing or `NO` → integrator MUST reject DONE

@@ -101,3 +101,9 @@ Root Cause: Why it's happening (framework deviation if applicable)
 Evidence: Code snippets and data that prove the cause
 Recommended Fix: Step-by-step fix aligned with framework patterns
 ```
+
+# Stop Conditions
+Stop and escalate if:
+- **Two consecutive fix attempts failed without Context7 research** → STOP, use Context7 to research the correct pattern, then retry
+- Root cause cannot be determined after thorough investigation
+- Issue requires schema changes (escalate to data-integrity)

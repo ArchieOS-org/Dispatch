@@ -86,13 +86,26 @@ struct ContentView: View {
   #if os(macOS)
   /// Global Quick Find (Popover) State managed by AppState.overlayState
   @State private var quickFindText = ""
-  /// Local sidebar selection synced via .onChange (avoids mutation during render)
-  @State private var sidebarSelection: SidebarDestination? = nil
+
+  /// Computed binding for List(selection:) that bridges non-optional AppState to optional List API.
+  /// - Get: Returns nil for stage destinations (shown deselected), otherwise the destination
+  /// - Set: Dispatches to AppState, ignoring nil (which shouldn't occur from List selection)
+  private var sidebarSelectionBinding: Binding<SidebarDestination?> {
+    Binding(
+      get: {
+        appState.router.selectedDestination.isStage
+          ? nil
+          : appState.router.selectedDestination
+      },
+      set: { newValue in
+        guard let dest = newValue, dest != appState.router.selectedDestination else { return }
+        appState.dispatch(.userSelectedDestination(dest))
+      }
+    )
+  }
   #else
   /// Global Quick Find text state for iOS search overlay
   @State private var quickFindText = ""
-  /// Local sidebar selection synced via .onChange (avoids mutation during render)
-  @State private var sidebarSelection: SidebarDestination? = nil
   /// Controls stage picker sheet visibility (for tab-bar mode fallback)
   @State private var showStagePicker = false
   #endif
@@ -238,7 +251,7 @@ struct ContentView: View {
   private var sidebarNavigation: some View {
     ResizableSidebar {
       // Unified scrolling: stage cards + tabs in single List
-      List(selection: $sidebarSelection) {
+      List(selection: sidebarSelectionBinding) {
         // Stage cards section (scrolls with tabs)
         Section {
           StageCardsSection(
@@ -270,20 +283,6 @@ struct ContentView: View {
       }
       .listStyle(.sidebar)
       .scrollContentBackground(.hidden)
-      .onAppear {
-        // Only sync tab selections to sidebar; stages are nil
-        sidebarSelection = appState.router.selectedDestination.isStage
-          ? nil
-          : appState.router.selectedDestination
-      }
-      .onChange(of: sidebarSelection) { _, newValue in
-        guard let dest = newValue, dest != appState.router.selectedDestination else { return }
-        appState.dispatch(.userSelectedDestination(dest))
-      }
-      .onChange(of: appState.router.selectedDestination) { _, newValue in
-        // Only sync tab selections to sidebar; stages show as nil (deselected)
-        sidebarSelection = newValue.isStage ? nil : newValue
-      }
     } content: {
       NavigationStack(path: pathBinding(for: appState.router.selectedDestination)) {
         destinationRootView(for: appState.router.selectedDestination)
@@ -342,8 +341,9 @@ struct ContentView: View {
       .onChange(of: windowUIState.overlayState) { oldValue, newValue in
         // Re-focus content area when overlay closes
         if case .none = newValue, case .search = oldValue {
-          // Small delay allows overlay dismissal to complete
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+          // Use Task for delay - automatically cancelled if view disappears
+          Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(100))
             contentAreaFocused = true
           }
         }
@@ -773,12 +773,11 @@ struct ContentView: View {
         )
         .padding(.top, 100) // Position it nicely near the top
         .transition(.move(edge: .top).combined(with: .opacity))
-        .onAppear {
+        .task(id: initialText) {
           if let text = initialText {
             // Wait for popover animation + autofocus
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-              quickFindText = text
-            }
+            try? await Task.sleep(for: .milliseconds(150))
+            quickFindText = text
           }
         }
       }

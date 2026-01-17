@@ -37,6 +37,7 @@ struct PropertyDetailView: View {
 
   // MARK: Private
 
+  @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var syncManager: SyncManager
   @Environment(\.modelContext) private var modelContext
   @Environment(\.dismiss) private var dismiss
@@ -175,6 +176,8 @@ struct PropertyDetailView: View {
     property.markPending()
     syncManager.requestSync()
     dismiss()
+    // Clean up navigation path to prevent navigating back to deleted property
+    appState.dispatch(.removeRoute(.property(property.id)))
   }
 
 }
