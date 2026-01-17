@@ -176,6 +176,11 @@ final class ListingGeneratorState {
   /// ID of the current draft (if loaded from or saved to persistence)
   var currentDraftId: UUID?
 
+  // MARK: - Task Management
+
+  /// Task for the agent send workflow (auto-transition after delay)
+  private var sendToAgentTask: Task<Void, Never>?
+
   /// Whether the generate button should be enabled
   var canGenerate: Bool {
     switch inputMode {
@@ -287,16 +292,27 @@ final class ListingGeneratorState {
     // PHASE 3: Real agent approval workflow
     status = .sent
 
+    // Cancel any existing send task before starting a new one
+    sendToAgentTask?.cancel()
+
     // PHASE 3: Mock auto-transition to ready after delay
     // In production, this would be triggered by agent action
-    Task {
+    sendToAgentTask = Task { [weak self] in
       try? await Task.sleep(for: .seconds(2))
-      await MainActor.run {
-        if status == .sent {
-          status = .ready
+      guard !Task.isCancelled else { return }
+      await MainActor.run { [weak self] in
+        guard let self else { return }
+        if self.status == .sent {
+          self.status = .ready
         }
       }
     }
+  }
+
+  /// Cancel any pending agent send task
+  func cancelPendingAgentTask() {
+    sendToAgentTask?.cancel()
+    sendToAgentTask = nil
   }
 
   /// Mark the description as posted to MLS
@@ -320,6 +336,9 @@ final class ListingGeneratorState {
 
   /// Reset state for a new generation
   func reset() {
+    // Cancel any pending tasks first
+    cancelPendingAgentTask()
+
     generatedDescription = ""
     status = .draft
     errorMessage = nil
