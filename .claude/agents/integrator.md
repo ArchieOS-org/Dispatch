@@ -110,6 +110,23 @@ At PATCHSET 4, read the contract at `.claude/contracts/<feature>.md`:
 - `UI Review Required: NO`, OR
 - `JOBS CRITIQUE: SHIP YES` is present
 
+# Context7 Gate (PATCHSET 4 - MANDATORY)
+At PATCHSET 4, verify Context7 attestation in the contract.
+
+**Step 1**: Determine if Context7 was required:
+- Feature uses SwiftUI patterns? → Required
+- Feature uses Supabase SDK? → Required
+- Feature uses Swift concurrency? → Required
+- Pure refactor with no framework code? → N/A
+
+**Step 2**: Read contract's "Context7 Attestation" section:
+- `CONTEXT7 CONSULTED: YES` with populated table → PASS
+- `CONTEXT7 CONSULTED: N/A` (for pure refactors) → PASS
+- `CONTEXT7 CONSULTED: NO` → BLOCKED
+- Section missing → BLOCKED (feature-owner must fill in)
+
+Report: `CONTEXT7: [PASS | BLOCKED | N/A] + reason`
+
 # Style Enforcement Commands (PATCHSET 4)
 Run in this order:
 
@@ -141,6 +158,7 @@ If MCP tools unavailable (background mode), use Bash with xcodebuild commands di
 - Lint: [PASS/FAIL + key error]
 - Format: [PASS/FAIL/N/A + key error] (PATCHSET 4 only)
 - **JOBS CRITIQUE: [SHIP YES | SHIP NO | PENDING | MISSING | N/A]** (PATCHSET 4 only)
+- **CONTEXT7: [PASS | BLOCKED | N/A] + reason** (PATCHSET 4 only)
 - **DESIGN BAR: [PASS | FAIL] + what failed** (PATCHSET 4 only)
 - Blockers: [list]
 - Status: [UNBLOCKED | BLOCKED | DONE]
@@ -150,4 +168,5 @@ If BLOCKED, include the smallest next fix.
 **DONE is only valid if:**
 1. You are the LAST agent to run (after ui-polish, xcode-pilot complete)
 2. Jobs Critique = SHIP YES (if UI Review Required: YES) OR Jobs Critique = N/A (if UI Review Required: NO)
-3. All builds/tests/lint pass
+3. Context7 = PASS (or N/A for pure refactors)
+4. All builds/tests/lint pass
