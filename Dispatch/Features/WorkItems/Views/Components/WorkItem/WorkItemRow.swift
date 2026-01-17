@@ -118,8 +118,6 @@ struct WorkItemRow: View {
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-  // MARK: - Computed Properties
-
   private var isOverdue: Bool {
     guard let date = item.dueDate else { return false }
     // An item is overdue if its due date is before the start of today

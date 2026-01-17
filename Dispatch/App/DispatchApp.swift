@@ -72,11 +72,11 @@ struct DispatchApp: App {
         .onOpenURL { url in
           appState.authManager.handleRedirect(url)
         }
-        #if os(macOS)
+      #if os(macOS)
         // Apply frame constraints to content view (not Scene) to set minimum window size
         // This works with the default .windowResizability(.automatic) which uses contentMinSize
         .frame(minWidth: DS.Spacing.windowMinWidth, minHeight: DS.Spacing.windowMinHeight)
-        #endif
+      #endif
     }
     .modelContainer(sharedModelContainer)
     #if os(macOS)

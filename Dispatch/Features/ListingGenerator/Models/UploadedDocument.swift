@@ -60,8 +60,6 @@ struct UploadedDocument: Identifiable, Equatable {
 
   // MARK: Internal
 
-  // MARK: - Properties
-
   /// Unique identifier for the document
   let id: UUID
 
@@ -73,8 +71,6 @@ struct UploadedDocument: Identifiable, Equatable {
 
   /// Raw document data
   let data: Data
-
-  // MARK: - Computed Properties
 
   /// File size formatted for display
   var formattedSize: String {

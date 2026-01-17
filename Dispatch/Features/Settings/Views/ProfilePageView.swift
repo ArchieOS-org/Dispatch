@@ -205,8 +205,6 @@ struct ProfilePageView: View {
     .accessibilityHint("You will need to sign in again")
   }
 
-  // MARK: - Actions
-
   private func requestTypeChange(to newType: UserType) {
     guard newType != currentUser?.userType else { return }
     pendingUserType = newType

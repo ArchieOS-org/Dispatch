@@ -30,8 +30,6 @@ struct RefinementRequest: Identifiable, Equatable {
 
   // MARK: Internal
 
-  // MARK: - Properties
-
   /// Unique identifier for this request
   let id: UUID
 

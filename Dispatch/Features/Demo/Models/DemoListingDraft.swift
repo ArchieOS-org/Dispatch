@@ -133,8 +133,6 @@ final class DemoListingDraft {
     DemoListingDraft()
   }
 
-  // MARK: - Actions
-
   func markDirty() {
     isDirty = true
   }

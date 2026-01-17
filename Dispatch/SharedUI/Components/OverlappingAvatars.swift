@@ -70,6 +70,33 @@ struct OverlappingAvatars: View {
     max(0, userIds.count - maxVisible)
   }
 
+  private var accessibilityDescription: String {
+    let names = userIds.compactMap { users[$0]?.name }
+    let unknownCount = userIds.count - names.count
+
+    if names.isEmpty {
+      return "Assigned to \(unknownCount) unknown user\(unknownCount == 1 ? "" : "s")"
+    }
+
+    var description = "Assigned to "
+    if names.count == 1 {
+      description += names[0]
+    } else if names.count == 2 {
+      description += "\(names[0]) and \(names[1])"
+    } else {
+      let allButLast = names.dropLast().joined(separator: ", ")
+      if let lastName = names.last {
+        description += "\(allButLast), and \(lastName)"
+      }
+    }
+
+    if unknownCount > 0 {
+      description += ", and \(unknownCount) more"
+    }
+
+    return description
+  }
+
   private var avatarStack: some View {
     HStack(spacing: overlapOffset) {
       ForEach(visibleUserIds, id: \.self) { userId in
@@ -113,33 +140,6 @@ struct OverlappingAvatars: View {
     }
     .padding(DS.Spacing.md)
     .frame(minWidth: 180)
-  }
-
-  private var accessibilityDescription: String {
-    let names = userIds.compactMap { users[$0]?.name }
-    let unknownCount = userIds.count - names.count
-
-    if names.isEmpty {
-      return "Assigned to \(unknownCount) unknown user\(unknownCount == 1 ? "" : "s")"
-    }
-
-    var description = "Assigned to "
-    if names.count == 1 {
-      description += names[0]
-    } else if names.count == 2 {
-      description += "\(names[0]) and \(names[1])"
-    } else {
-      let allButLast = names.dropLast().joined(separator: ", ")
-      if let lastName = names.last {
-        description += "\(allButLast), and \(lastName)"
-      }
-    }
-
-    if unknownCount > 0 {
-      description += ", and \(unknownCount) more"
-    }
-
-    return description
   }
 
   @ViewBuilder

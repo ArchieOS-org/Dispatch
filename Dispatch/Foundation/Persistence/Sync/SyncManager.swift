@@ -45,7 +45,7 @@ final class SyncManager: ObservableObject {
 
   init(mode: SyncRunMode = .live) {
     self.mode = mode
-    self.realtimeManager = RealtimeManager(mode: mode)
+    realtimeManager = RealtimeManager(mode: mode)
 
     // Only load expensive state in live mode
     if mode == .live {
@@ -60,7 +60,7 @@ final class SyncManager: ObservableObject {
 
     // Initialize entity sync handler AFTER self is fully initialized
     // so closures can safely capture weak self
-    self.entitySyncHandler = EntitySyncHandler(
+    entitySyncHandler = EntitySyncHandler(
       mode: mode,
       conflictResolver: conflictResolver,
       getCurrentUserID: { [weak self] in self?.currentUserID },
@@ -111,12 +111,6 @@ final class SyncManager: ObservableObject {
   /// Realtime manager for channel lifecycle and event handling
   private(set) var realtimeManager: RealtimeManager
 
-  /// Conflict resolver for in-flight tracking and conflict decisions
-  private let conflictResolver = ConflictResolver()
-
-  /// Entity sync handler for all sync operations
-  private var entitySyncHandler: EntitySyncHandler!
-
   /// Core Tasks
   var syncLoopTask: Task<Void, Never>?
 
@@ -129,6 +123,9 @@ final class SyncManager: ObservableObject {
   /// Allows testing the coalescing loop logic without actual network syncs
   var _simulateCoalescingInTest = false
   #endif
+
+  /// Model container - internal for RealtimeManagerDelegate access
+  private(set) var modelContainer: ModelContainer?
 
   @Published private(set) var lastSyncTime: Date? {
     didSet {
@@ -580,10 +577,15 @@ final class SyncManager: ObservableObject {
 
   // MARK: Private
 
+  /// Conflict resolver for in-flight tracking and conflict decisions
+  private let conflictResolver = ConflictResolver()
+
+  /// Entity sync handler for all sync operations
+  // swiftlint:disable:next implicitly_unwrapped_optional
+  private var entitySyncHandler: EntitySyncHandler!
+
   private var isShutdown = false // Jobs Standard: Track lifecycle state
 
-  /// Model container - internal for RealtimeManagerDelegate access
-  private(set) var modelContainer: ModelContainer?
   private var syncRequestedDuringSync = false
   private var wasDisconnected = false // Track disconnection for reconnect sync
 
@@ -807,11 +809,11 @@ final class SyncManager: ObservableObject {
 
 }
 
-// MARK: - RealtimeManagerDelegate
+// MARK: RealtimeManagerDelegate
 
 extension SyncManager: RealtimeManagerDelegate {
 
-  func realtimeManager(_ manager: RealtimeManager, didReceiveTaskDTO dto: TaskDTO) {
+  func realtimeManager(_: RealtimeManager, didReceiveTaskDTO dto: TaskDTO) {
     guard let context = modelContainer?.mainContext else { return }
     do {
       try entitySyncHandler.upsertTask(dto: dto, context: context)
@@ -820,7 +822,7 @@ extension SyncManager: RealtimeManagerDelegate {
     }
   }
 
-  func realtimeManager(_ manager: RealtimeManager, didReceiveActivityDTO dto: ActivityDTO) {
+  func realtimeManager(_: RealtimeManager, didReceiveActivityDTO dto: ActivityDTO) {
     guard let context = modelContainer?.mainContext else { return }
     do {
       try entitySyncHandler.upsertActivity(dto: dto, context: context)
@@ -829,7 +831,7 @@ extension SyncManager: RealtimeManagerDelegate {
     }
   }
 
-  func realtimeManager(_ manager: RealtimeManager, didReceiveListingDTO dto: ListingDTO) {
+  func realtimeManager(_: RealtimeManager, didReceiveListingDTO dto: ListingDTO) {
     guard let context = modelContainer?.mainContext else { return }
     do {
       try entitySyncHandler.upsertListing(dto: dto, context: context)
@@ -838,7 +840,7 @@ extension SyncManager: RealtimeManagerDelegate {
     }
   }
 
-  func realtimeManager(_ manager: RealtimeManager, didReceiveUserDTO dto: UserDTO) {
+  func realtimeManager(_: RealtimeManager, didReceiveUserDTO dto: UserDTO) {
     guard let context = modelContainer?.mainContext else { return }
     Task {
       do {
@@ -849,7 +851,7 @@ extension SyncManager: RealtimeManagerDelegate {
     }
   }
 
-  func realtimeManager(_ manager: RealtimeManager, didReceiveNoteDTO dto: NoteDTO) {
+  func realtimeManager(_: RealtimeManager, didReceiveNoteDTO dto: NoteDTO) {
     guard let context = modelContainer?.mainContext else { return }
 
     // Check pending protection before applying
@@ -869,7 +871,7 @@ extension SyncManager: RealtimeManagerDelegate {
     }
   }
 
-  func realtimeManager(_ manager: RealtimeManager, didReceiveDeleteFor table: BroadcastTable, id: UUID) {
+  func realtimeManager(_: RealtimeManager, didReceiveDeleteFor table: BroadcastTable, id: UUID) {
     guard let context = modelContainer?.mainContext else { return }
     do {
       switch table {
@@ -894,19 +896,19 @@ extension SyncManager: RealtimeManagerDelegate {
     }
   }
 
-  func realtimeManager(_ manager: RealtimeManager, statusDidChange status: SyncStatus) {
+  func realtimeManager(_: RealtimeManager, statusDidChange status: SyncStatus) {
     syncStatus = status
   }
 
-  func realtimeManager(_ manager: RealtimeManager, isInFlightTaskId id: UUID) -> Bool {
+  func realtimeManager(_: RealtimeManager, isInFlightTaskId id: UUID) -> Bool {
     conflictResolver.isTaskInFlight(id)
   }
 
-  func realtimeManager(_ manager: RealtimeManager, isInFlightActivityId id: UUID) -> Bool {
+  func realtimeManager(_: RealtimeManager, isInFlightActivityId id: UUID) -> Bool {
     conflictResolver.isActivityInFlight(id)
   }
 
-  func realtimeManager(_ manager: RealtimeManager, isInFlightNoteId id: UUID) -> Bool {
+  func realtimeManager(_: RealtimeManager, isInFlightNoteId id: UUID) -> Bool {
     conflictResolver.isNoteInFlight(id)
   }
 }

@@ -26,6 +26,7 @@ struct MultiUserPicker: View {
   // MARK: Internal
 
   @Binding var selectedUserIds: Set<UUID>
+
   let availableUsers: [User]
   let currentUserId: UUID
 

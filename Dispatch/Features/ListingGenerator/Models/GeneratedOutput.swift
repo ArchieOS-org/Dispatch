@@ -62,8 +62,6 @@ struct GeneratedOutput: Identifiable, Equatable {
 
   // MARK: Internal
 
-  // MARK: - Properties
-
   /// Unique identifier for this output
   let id: UUID
 
@@ -115,8 +113,6 @@ struct PreferenceLog: Identifiable, Equatable {
   }
 
   // MARK: Internal
-
-  // MARK: - Properties
 
   /// Unique identifier for this preference log
   let id: UUID

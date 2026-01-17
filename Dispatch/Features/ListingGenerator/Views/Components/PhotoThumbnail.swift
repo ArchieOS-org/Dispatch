@@ -53,6 +53,14 @@ struct PhotoThumbnail: View {
 
   // MARK: Private
 
+  private var accessibilityLabel: String {
+    var label = photo.filename
+    if photo.isHero {
+      label = "Hero photo: \(label)"
+    }
+    return label
+  }
+
   @ViewBuilder
   private var imageContent: some View {
     if let image = photo.image {
@@ -134,13 +142,6 @@ struct PhotoThumbnail: View {
     }
   }
 
-  private var accessibilityLabel: String {
-    var label = photo.filename
-    if photo.isHero {
-      label = "Hero photo: \(label)"
-    }
-    return label
-  }
 }
 
 // MARK: - Preview

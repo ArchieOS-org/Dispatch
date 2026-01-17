@@ -18,6 +18,7 @@ struct ListingInputView: View {
   // MARK: Internal
 
   @Bindable var state: ListingGeneratorState
+
   let listings: [Listing]
   let onGenerate: () -> Void
 

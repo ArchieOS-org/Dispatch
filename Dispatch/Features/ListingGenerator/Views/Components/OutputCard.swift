@@ -51,6 +51,15 @@ struct OutputCard: View {
 
   // MARK: Private
 
+  private var accessibilityLabel: String {
+    var label = "\(output.version.rawValue), \(output.version.toneDescription). "
+    label += "Headline: \(output.mlsFields.headline). "
+    if !output.mlsFields.tagline.isEmpty {
+      label += "Tagline: \(output.mlsFields.tagline). "
+    }
+    return label
+  }
+
   @ViewBuilder
   private var cardContent: some View {
     VStack(alignment: .leading, spacing: DS.Spacing.md) {
@@ -142,14 +151,6 @@ struct OutputCard: View {
     .padding(.top, DS.Spacing.xs)
   }
 
-  private var accessibilityLabel: String {
-    var label = "\(output.version.rawValue), \(output.version.toneDescription). "
-    label += "Headline: \(output.mlsFields.headline). "
-    if !output.mlsFields.tagline.isEmpty {
-      label += "Tagline: \(output.mlsFields.tagline). "
-    }
-    return label
-  }
 }
 
 // MARK: - Preview
