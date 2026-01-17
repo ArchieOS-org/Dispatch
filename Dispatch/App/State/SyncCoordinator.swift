@@ -96,8 +96,11 @@ class SyncCoordinator: ObservableObject {
     if status == .satisfied, lastNetworkStatus != .satisfied {
       // Network restored
       if authManager.isAuthenticated {
-        Self.logger.info("Network restored - requesting sync")
-        syncManager.requestSync()
+        Self.logger.info("Network restored - requesting sync and retrying failed entities")
+        // Retry failed entities with exponential backoff
+        Task {
+          await syncManager.retryFailedEntities()
+        }
       }
     }
     lastNetworkStatus = status
@@ -124,12 +127,19 @@ class SyncCoordinator: ObservableObject {
 
       guard !Task.isCancelled else { return }
 
-      // 3. Initial Sync
+      // 3. Retry failed entities with exponential backoff (on app foreground)
+      // This also triggers a sync internally
+      Self.logger.info("App foregrounded - retrying failed entities")
+      await syncManager.retryFailedEntities()
+
+      guard !Task.isCancelled else { return }
+
+      // 4. Initial Sync (if retryFailedEntities didn't run one, or to catch other changes)
       await syncManager.sync()
 
       guard !Task.isCancelled else { return }
 
-      // 4. Start Realtime Listening
+      // 5. Start Realtime Listening
       if !isListening {
         await syncManager.startListening()
         isListening = true
