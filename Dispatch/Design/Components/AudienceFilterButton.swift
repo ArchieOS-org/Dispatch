@@ -32,11 +32,11 @@ struct AudienceFilterButton: View {
         .foregroundStyle(lens == .all ? .secondary : lens.tintColor)
         .font(.system(size: 17, weight: .semibold)) // Legible Toolbar Weight
         .imageScale(.medium) // Balance within frame
-        #if os(macOS)
+      #if os(macOS)
         .frame(width: DS.Spacing.bottomToolbarButtonSize, height: DS.Spacing.bottomToolbarButtonSize)
-        #else
+      #else
         .frame(width: DS.Spacing.minTouchTarget, height: DS.Spacing.minTouchTarget)
-        #endif
+      #endif
         .background {
           #if os(macOS)
           RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall)
