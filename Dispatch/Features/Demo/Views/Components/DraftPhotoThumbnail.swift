@@ -32,6 +32,17 @@ struct DraftPhotoThumbnail: View {
 
   // MARK: Private
 
+  private var gradientColor: Color {
+    let colors: [Color] = [
+      .blue, .purple, .pink, .red, .orange,
+      .yellow, .green, .teal, .cyan, .indigo,
+      .mint, .brown, .gray, .blue, .purple,
+      .green, .orange, .teal, .pink, .indigo
+    ]
+    let index = (photo.index - 1) % colors.count
+    return colors[index]
+  }
+
   @ViewBuilder
   private var photoContent: some View {
     // Try to load bundled image, fallback to gradient placeholder
@@ -79,17 +90,6 @@ struct DraftPhotoThumbnail: View {
     }
     .padding(DS.Spacing.sm)
     .contentShape(Rectangle())
-  }
-
-  private var gradientColor: Color {
-    let colors: [Color] = [
-      .blue, .purple, .pink, .red, .orange,
-      .yellow, .green, .teal, .cyan, .indigo,
-      .mint, .brown, .gray, .blue, .purple,
-      .green, .orange, .teal, .pink, .indigo
-    ]
-    let index = (photo.index - 1) % colors.count
-    return colors[index]
   }
 
   private func hasImage(named name: String) -> Bool {

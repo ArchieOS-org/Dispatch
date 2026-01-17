@@ -82,8 +82,6 @@ struct MLSFields: Equatable {
   /// One-liner marketing hook
   var tagline: String = ""
 
-  // MARK: - Computed Properties
-
   /// Whether all required fields have content
   var isComplete: Bool {
     !propertyType.isEmpty &&

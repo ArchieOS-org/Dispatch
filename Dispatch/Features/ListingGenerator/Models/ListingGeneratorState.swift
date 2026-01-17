@@ -176,8 +176,6 @@ final class ListingGeneratorState {
   /// ID of the current draft (if loaded from or saved to persistence)
   var currentDraftId: UUID?
 
-  // MARK: - Computed Properties
-
   /// Whether the generate button should be enabled
   var canGenerate: Bool {
     switch inputMode {
@@ -262,8 +260,6 @@ final class ListingGeneratorState {
     modelContext.delete(draft)
     try modelContext.save()
   }
-
-  // MARK: - Actions
 
   /// Generate a description based on current input
   func generateDescription() async {

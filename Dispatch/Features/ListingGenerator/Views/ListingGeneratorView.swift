@@ -57,15 +57,15 @@ struct ListingGeneratorView: View {
 
   // MARK: Private
 
-  private let preselectedListingId: UUID?
-  private let preselectedDraftId: UUID?
-
   @Environment(\.modelContext) private var modelContext
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @EnvironmentObject private var overlayState: AppOverlayState
 
   @State private var state = ListingGeneratorState()
   @State private var listings: [Listing] = []
+
+  private let preselectedListingId: UUID?
+  private let preselectedDraftId: UUID?
 
   /// Dynamic navigation title based on current phase
   private var navigationTitle: String {

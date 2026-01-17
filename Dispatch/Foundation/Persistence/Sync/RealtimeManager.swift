@@ -17,6 +17,12 @@ import SwiftData
 /// SyncManager implements this to apply DTOs to the local database.
 @MainActor
 protocol RealtimeManagerDelegate: AnyObject {
+  /// Current user ID for self-echo filtering
+  var currentUserID: UUID? { get }
+
+  /// Model container for context access
+  var modelContainer: ModelContainer? { get }
+
   func realtimeManager(_ manager: RealtimeManager, didReceiveTaskDTO dto: TaskDTO)
   func realtimeManager(_ manager: RealtimeManager, didReceiveActivityDTO dto: ActivityDTO)
   func realtimeManager(_ manager: RealtimeManager, didReceiveListingDTO dto: ListingDTO)
@@ -30,11 +36,6 @@ protocol RealtimeManagerDelegate: AnyObject {
   func realtimeManager(_ manager: RealtimeManager, isInFlightActivityId id: UUID) -> Bool
   func realtimeManager(_ manager: RealtimeManager, isInFlightNoteId id: UUID) -> Bool
 
-  /// Current user ID for self-echo filtering
-  var currentUserID: UUID? { get }
-
-  /// Model container for context access
-  var modelContainer: ModelContainer? { get }
 }
 
 // MARK: - RealtimeManager
@@ -83,12 +84,6 @@ final class RealtimeManager {
   var listingsSubscriptionTask: Task<Void, Never>?
   var usersSubscriptionTask: Task<Void, Never>?
   var notesSubscriptionTask: Task<Void, Never>?
-
-  #if DEBUG
-  /// Track recently processed IDs to detect duplicate processing (DEBUG only)
-  /// Used during Phase 1 to log when both postgres_changes and broadcast process same event
-  private var recentlyProcessedIds = Set<UUID>()
-  #endif
 
   // MARK: - Public API
 
@@ -170,7 +165,8 @@ final class RealtimeManager {
         debugLog.log("Realtime Status: \(status)", category: .realtime)
         await MainActor.run {
           let mappedStatus = self?.mapRealtimeStatus(status) ?? .idle
-          self?.delegate?.realtimeManager(self!, statusDidChange: mappedStatus)
+          guard let self else { return }
+          self.delegate?.realtimeManager(self, statusDidChange: mappedStatus)
         }
       }
     }
@@ -362,6 +358,14 @@ final class RealtimeManager {
     notesSubscriptionTask = nil
   }
 
+  // MARK: Private
+
+  #if DEBUG
+  /// Track recently processed IDs to detect duplicate processing (DEBUG only)
+  /// Used during Phase 1 to log when both postgres_changes and broadcast process same event
+  private var recentlyProcessedIds = Set<UUID>()
+  #endif
+
   // MARK: - Private: Broadcast Listening
 
   /// Starts listening to broadcast channel (v2 pattern).
@@ -529,7 +533,7 @@ final class RealtimeManager {
   }
 
   /// Handles task broadcast - converts payload to TaskDTO and notifies delegate
-  private func handleTaskBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+  private func handleTaskBroadcast(payload: BroadcastChangePayload, context _: ModelContext) async throws {
     if payload.type == .delete {
       if
         let oldRecord = payload.cleanedOldRecord(),
@@ -561,7 +565,7 @@ final class RealtimeManager {
   }
 
   /// Handles activity broadcast - converts payload to ActivityDTO and notifies delegate
-  private func handleActivityBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+  private func handleActivityBroadcast(payload: BroadcastChangePayload, context _: ModelContext) async throws {
     if payload.type == .delete {
       if
         let oldRecord = payload.cleanedOldRecord(),
@@ -592,7 +596,7 @@ final class RealtimeManager {
   }
 
   /// Handles listing broadcast - converts payload to ListingDTO and notifies delegate
-  private func handleListingBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+  private func handleListingBroadcast(payload: BroadcastChangePayload, context _: ModelContext) async throws {
     if payload.type == .delete {
       if
         let oldRecord = payload.cleanedOldRecord(),
@@ -618,7 +622,7 @@ final class RealtimeManager {
   }
 
   /// Handles user broadcast - converts payload to UserDTO and notifies delegate
-  private func handleUserBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+  private func handleUserBroadcast(payload: BroadcastChangePayload, context _: ModelContext) async throws {
     if payload.type == .delete {
       if
         let oldRecord = payload.cleanedOldRecord(),
@@ -644,7 +648,7 @@ final class RealtimeManager {
   }
 
   /// Handles note broadcast - converts payload to NoteDTO and notifies delegate
-  private func handleNoteBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+  private func handleNoteBroadcast(payload: BroadcastChangePayload, context _: ModelContext) async throws {
     if payload.type == .delete {
       // Hard delete on server = notify delegate to hard delete locally
       if

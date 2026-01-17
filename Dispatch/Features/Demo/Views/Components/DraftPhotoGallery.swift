@@ -13,6 +13,7 @@ struct DraftPhotoGallery: View {
   // MARK: Internal
 
   @Binding var photos: [DemoPhoto]
+
   let onAddPhoto: () -> Void
 
   var body: some View {

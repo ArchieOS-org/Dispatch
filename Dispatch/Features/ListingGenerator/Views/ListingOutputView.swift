@@ -17,6 +17,7 @@ struct ListingOutputView: View {
   // MARK: Internal
 
   @Bindable var state: ListingGeneratorState
+
   let onDismiss: () -> Void
 
   var body: some View {

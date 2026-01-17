@@ -74,8 +74,9 @@ struct PullToSearchHost<Content: View>: View {
   }
   #endif
 
-  @ViewBuilder private let content: () -> Content
   @State private var pullState = PullToSearchStateKey.Value()
+
+  @ViewBuilder private let content: () -> Content
 }
 
 // MARK: - Preview

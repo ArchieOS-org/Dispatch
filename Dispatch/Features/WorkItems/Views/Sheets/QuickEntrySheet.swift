@@ -98,6 +98,21 @@ struct QuickEntrySheet: View {
   @State private var selectedAssigneeIds: Set<UUID> = []
   @State private var showAssigneePicker = false
 
+  private var canSave: Bool {
+    !title.trimmingCharacters(in: .whitespaces).isEmpty
+  }
+
+  private var titlePlaceholder: String {
+    switch itemType {
+    case .task: "What needs to be done?"
+    case .activity: "Activity title"
+    }
+  }
+
+  private var userLookup: [UUID: User] {
+    Dictionary(uniqueKeysWithValues: availableUsers.map { ($0.id, $0) })
+  }
+
   // MARK: - Platform Form Content
 
   @ViewBuilder
@@ -196,21 +211,6 @@ struct QuickEntrySheet: View {
     }
   }
 
-  private var canSave: Bool {
-    !title.trimmingCharacters(in: .whitespaces).isEmpty
-  }
-
-  private var titlePlaceholder: String {
-    switch itemType {
-    case .task: "What needs to be done?"
-    case .activity: "Activity title"
-    }
-  }
-
-  private var userLookup: [UUID: User] {
-    Dictionary(uniqueKeysWithValues: availableUsers.map { ($0.id, $0) })
-  }
-
   // MARK: - Form Rows
 
   private var typePicker: some View {
@@ -300,8 +300,6 @@ struct QuickEntrySheet: View {
     .frame(minWidth: 300, minHeight: 400)
     #endif
   }
-
-  // MARK: - Actions
 
   private func saveAndDismiss() {
     let trimmedTitle = title.trimmingCharacters(in: .whitespaces)

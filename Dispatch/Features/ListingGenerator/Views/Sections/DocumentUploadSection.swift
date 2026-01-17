@@ -18,6 +18,7 @@ struct DocumentUploadSection: View {
   // MARK: Internal
 
   @Binding var documents: [UploadedDocument]
+
   let onAdd: (UploadedDocument) -> Void
   let onRemove: (UUID) -> Void
 
@@ -221,6 +222,7 @@ struct DocumentUploadSection: View {
 struct DocumentTypePickerSheet: View {
 
   @Binding var selectedType: DocumentType
+
   let onConfirm: () -> Void
   let onCancel: () -> Void
 

@@ -19,6 +19,7 @@ struct PhotoUploadSection: View {
   // MARK: Internal
 
   @Binding var photos: [UploadedPhoto]
+
   let onAdd: (UploadedPhoto) -> Void
   let onRemove: (UUID) -> Void
   let onReorder: (IndexSet, Int) -> Void

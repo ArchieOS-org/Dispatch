@@ -18,6 +18,7 @@ struct PropertyInputSection: View {
   // MARK: Internal
 
   @Bindable var state: ListingGeneratorState
+
   let listings: [Listing]
 
   var body: some View {

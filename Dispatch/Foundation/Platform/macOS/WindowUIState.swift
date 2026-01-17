@@ -48,8 +48,6 @@ final class WindowUIState {
   /// Search overlay state for this window only
   var overlayState: OverlayState = .none
 
-  // MARK: - Computed Properties
-
   /// Whether to show sidebar based on drag state.
   /// During drag, sidebar always stays in view hierarchy (just shrinks to 0 width).
   /// This prevents view hierarchy changes mid-drag which cause glitches.

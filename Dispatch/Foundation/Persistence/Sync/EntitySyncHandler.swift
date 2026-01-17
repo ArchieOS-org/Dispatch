@@ -39,6 +39,25 @@ final class EntitySyncHandler {
 
   // MARK: Internal
 
+  /// Source of remote note changes for logging
+  enum RemoteNoteSource: CustomStringConvertible {
+    case syncDown
+    case broadcast
+
+    var description: String {
+      switch self {
+      case .syncDown: "syncDown"
+      case .broadcast: "broadcast"
+      }
+    }
+  }
+
+  // MARK: - UserDefaults Keys
+
+  static let lastSyncListingTypesKey = "dispatch.lastSyncListingTypes"
+  static let lastSyncActivityTemplatesKey = "dispatch.lastSyncActivityTemplates"
+  static let lastSyncNotesKey = "dispatch.lastSyncNotes"
+
   nonisolated let mode: SyncRunMode
 
   // MARK: - Dependencies
@@ -48,12 +67,6 @@ final class EntitySyncHandler {
   let getCurrentUser: () -> User?
   let fetchCurrentUser: (UUID) -> Void
   let updateListingConfigReady: (Bool) -> Void
-
-  // MARK: - UserDefaults Keys
-
-  static let lastSyncListingTypesKey = "dispatch.lastSyncListingTypes"
-  static let lastSyncActivityTemplatesKey = "dispatch.lastSyncActivityTemplates"
-  static let lastSyncNotesKey = "dispatch.lastSyncNotes"
 
   // MARK: - SyncDown Operations
 
@@ -1868,24 +1881,13 @@ final class EntitySyncHandler {
     }
   }
 
+  // MARK: Private
+
   // MARK: - Private Helpers
 
   /// Lightweight DTO for fetching only IDs from Supabase
   private struct IDOnlyDTO: Codable {
     let id: UUID
-  }
-
-  /// Source of remote note changes for logging
-  enum RemoteNoteSource: CustomStringConvertible {
-    case syncDown
-    case broadcast
-
-    var description: String {
-      switch self {
-      case .syncDown: "syncDown"
-      case .broadcast: "broadcast"
-      }
-    }
   }
 
   /// Extracted helper for clarity and isolation

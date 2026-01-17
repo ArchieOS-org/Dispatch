@@ -32,8 +32,6 @@ struct UploadedPhoto: Identifiable, Equatable {
 
   // MARK: Internal
 
-  // MARK: - Properties
-
   /// Unique identifier for the photo
   let id: UUID
 
@@ -45,8 +43,6 @@ struct UploadedPhoto: Identifiable, Equatable {
 
   /// Sort order for drag-to-reorder (0 = hero photo)
   var sortOrder: Int
-
-  // MARK: - Computed Properties
 
   /// Whether this is the hero (primary) photo
   var isHero: Bool { sortOrder == 0 }

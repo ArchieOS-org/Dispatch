@@ -48,6 +48,7 @@ struct SearchBar: View {
   // MARK: Internal
 
   @Binding var text: String
+
   var showCancelButton = true
   var onCancel: () -> Void
 
@@ -105,11 +106,11 @@ struct SearchBar: View {
 
   // MARK: Private
 
-  /// External focus binding (nil = use internal)
-  private let externalFocus: FocusState<Bool>.Binding?
-
   /// Internal focus for standalone usage
   @FocusState private var internalFocus: Bool
+
+  /// External focus binding (nil = use internal)
+  private let externalFocus: FocusState<Bool>.Binding?
 
 }
 

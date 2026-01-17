@@ -55,6 +55,11 @@ struct WorkItemDetailView: View {
   @EnvironmentObject private var lensState: LensState
   @EnvironmentObject private var syncManager: SyncManager
 
+  /// Whether current user is assigned to this item
+  private var isAssignedToMe: Bool {
+    item.assigneeUserIds.contains(currentUserId)
+  }
+
   private var content: some View {
     VStack(alignment: .leading, spacing: 0) {
       // Header / Due Date
@@ -179,11 +184,6 @@ struct WorkItemDetailView: View {
       onSave: { content in onAddNote?(content) },
       onDelete: onDeleteNote
     )
-  }
-
-  /// Whether current user is assigned to this item
-  private var isAssignedToMe: Bool {
-    item.assigneeUserIds.contains(currentUserId)
   }
 
   private var assigneesRow: some View {

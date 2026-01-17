@@ -70,6 +70,12 @@ struct RefinementSection: View {
     "Focus on investment potential"
   ]
 
+  private var canSubmit: Bool {
+    hasSelectedOutput &&
+      !prompt.trimmingCharacters(in: .whitespaces).isEmpty &&
+      !isRefining
+  }
+
   @ViewBuilder
   private var headerSection: some View {
     VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
@@ -158,12 +164,6 @@ struct RefinementSection: View {
           ? "Enter refinement instructions first"
           : "Select an output version first"
     )
-  }
-
-  private var canSubmit: Bool {
-    hasSelectedOutput &&
-      !prompt.trimmingCharacters(in: .whitespaces).isEmpty &&
-      !isRefining
   }
 
   @ViewBuilder
