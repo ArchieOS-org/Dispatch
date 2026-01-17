@@ -55,7 +55,7 @@ struct FloatingFilterButton: View {
       Circle()
         .fill(.ultraThinMaterial)
         .frame(width: DS.Spacing.floatingButtonSize, height: DS.Spacing.floatingButtonSize)
-        .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+        .dsShadow(DS.Shadows.medium)
 
       // Icon
       Image(systemName: audience.icon)

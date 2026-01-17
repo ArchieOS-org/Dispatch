@@ -42,20 +42,20 @@ struct RoleDot: View {
     .accessibilityLabel(accessibilityDescription)
   }
 
+  // MARK: Private
+
   /// Generates a descriptive label for VoiceOver based on audiences
   private var accessibilityDescription: String {
     if audiences.contains(.admin), audiences.contains(.marketing) {
-      return "Visible to admin and marketing"
+      "Visible to admin and marketing"
     } else if audiences.contains(.admin) {
-      return "Visible to admin only"
+      "Visible to admin only"
     } else if audiences.contains(.marketing) {
-      return "Visible to marketing only"
+      "Visible to marketing only"
     } else {
-      return "No audience assigned"
+      "No audience assigned"
     }
   }
-
-  // MARK: Private
 
   /// Split dot using Circle().trim() for clean half-circles
   private var splitDot: some View {
