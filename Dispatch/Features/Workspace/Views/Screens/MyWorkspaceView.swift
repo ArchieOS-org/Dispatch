@@ -13,9 +13,12 @@ import SwiftUI
 
 /// Grouping structure moved to file scope (or public) to be accessible by child views
 struct WorkspaceGroup: Identifiable {
-  let id: UUID // Listing ID (or UUID() for general)
+  let id: UUID // Listing ID (or stable generalGroupID for general)
   let listing: Listing?
   var items: [WorkItem]
+
+  /// Stable ID for the General/Unassigned section (avoids UUID() instability)
+  static let generalGroupID = UUID()
 }
 
 // MARK: - MyWorkspaceView
@@ -35,7 +38,10 @@ struct MyWorkspaceView: View {
   }
 
   var body: some View {
-    StandardScreen(title: "My Workspace", layout: .column, scroll: .automatic) {
+    // Compute once to ensure stable values across the body
+    let groups = groupedItems
+
+    return StandardScreen(title: "My Workspace", layout: .column, scroll: .automatic) {
       VStack(spacing: DS.Spacing.sectionSpacing) {
         // Filter Bar
         SegmentedFilterBar(selection: $selectedFilter)
@@ -43,7 +49,7 @@ struct MyWorkspaceView: View {
           .padding(.bottom, DS.Spacing.sm)
 
         // Content
-        if groupedItems.isEmpty {
+        if groups.isEmpty {
           ContentUnavailableView {
             Label(emptyTitle, systemImage: emptyIcon)
           } description: {
@@ -52,12 +58,10 @@ struct MyWorkspaceView: View {
           .padding(.top, 40)
         } else {
           LazyVStack(spacing: 24) {
-            ForEach(groupedItems) { group in
+            ForEach(groups) { group in
               ListingWorkspaceSection(group: group)
             }
           }
-          // Force refresh when filter changes to prevent stale groups
-          .id(selectedFilter)
         }
       }
       .padding(.bottom, DS.Spacing.xxl)
@@ -170,7 +174,7 @@ struct MyWorkspaceView: View {
     if !generalItems.isEmpty {
       // Sort general items by due date too
       let sortedGeneral = generalItems.sorted { ($0.dueDate ?? Date.distantFuture) < ($1.dueDate ?? Date.distantFuture) }
-      result.append(WorkspaceGroup(id: UUID(), listing: nil, items: sortedGeneral))
+      result.append(WorkspaceGroup(id: WorkspaceGroup.generalGroupID, listing: nil, items: sortedGeneral))
     }
 
     return result
