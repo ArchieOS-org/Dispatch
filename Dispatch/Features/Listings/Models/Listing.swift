@@ -91,6 +91,10 @@ final class Listing: NotableProtocol {
   var syncStateRaw: EntitySyncState?
   var lastSyncError: String?
 
+  /// Tracks retry attempts for failed sync operations. Persisted across app restarts.
+  /// Reset to 0 on successful sync.
+  var retryCount: Int = 0
+
   /// Relationships
   @Relationship(deleteRule: .cascade)
   var tasks = [TaskItem]()
@@ -146,6 +150,7 @@ extension Listing: RealtimeSyncable {
     syncState = .synced
     lastSyncError = nil
     syncedAt = Date()
+    retryCount = 0
   }
 
   /// Mark as failed with error message

@@ -368,19 +368,18 @@ final class SyncManager: ObservableObject {
   @discardableResult
   func retryTask(_ task: TaskItem) async -> Bool {
     let entityId = task.id
-    let currentRetryCount = retryCount(for: entityId)
 
-    // Check if max retries exceeded
-    if currentRetryCount >= RetryPolicy.maxRetries {
-      debugLog.log("retryTask() for \(entityId): max retries exceeded (\(currentRetryCount)), leaving in .failed state", category: .sync)
+    // Check if max retries exceeded (using persisted retryCount)
+    if task.retryCount >= RetryPolicy.maxRetries {
+      debugLog.log("retryTask() for \(entityId): max retries exceeded (\(task.retryCount)), leaving in .failed state", category: .sync)
       return false
     }
 
-    // Increment retry count and calculate delay
-    let newRetryCount = incrementRetry(for: entityId)
-    let delay = RetryPolicy.delay(for: newRetryCount - 1) // 0-indexed for delay calculation
+    // Increment retry count (persisted on entity) and calculate delay
+    task.retryCount += 1
+    let delay = RetryPolicy.delay(for: task.retryCount - 1) // 0-indexed for delay calculation
 
-    debugLog.log("retryTask() for \(entityId): attempt \(newRetryCount)/\(RetryPolicy.maxRetries), delay: \(delay)s", category: .sync)
+    debugLog.log("retryTask() for \(entityId): attempt \(task.retryCount)/\(RetryPolicy.maxRetries), delay: \(delay)s", category: .sync)
 
     // Apply backoff delay
     do {
@@ -402,19 +401,18 @@ final class SyncManager: ObservableObject {
   @discardableResult
   func retryActivity(_ activity: Activity) async -> Bool {
     let entityId = activity.id
-    let currentRetryCount = retryCount(for: entityId)
 
-    // Check if max retries exceeded
-    if currentRetryCount >= RetryPolicy.maxRetries {
-      debugLog.log("retryActivity() for \(entityId): max retries exceeded (\(currentRetryCount)), leaving in .failed state", category: .sync)
+    // Check if max retries exceeded (using persisted retryCount)
+    if activity.retryCount >= RetryPolicy.maxRetries {
+      debugLog.log("retryActivity() for \(entityId): max retries exceeded (\(activity.retryCount)), leaving in .failed state", category: .sync)
       return false
     }
 
-    // Increment retry count and calculate delay
-    let newRetryCount = incrementRetry(for: entityId)
-    let delay = RetryPolicy.delay(for: newRetryCount - 1)
+    // Increment retry count (persisted on entity) and calculate delay
+    activity.retryCount += 1
+    let delay = RetryPolicy.delay(for: activity.retryCount - 1)
 
-    debugLog.log("retryActivity() for \(entityId): attempt \(newRetryCount)/\(RetryPolicy.maxRetries), delay: \(delay)s", category: .sync)
+    debugLog.log("retryActivity() for \(entityId): attempt \(activity.retryCount)/\(RetryPolicy.maxRetries), delay: \(delay)s", category: .sync)
 
     // Apply backoff delay
     do {
@@ -436,19 +434,18 @@ final class SyncManager: ObservableObject {
   @discardableResult
   func retryListing(_ listing: Listing) async -> Bool {
     let entityId = listing.id
-    let currentRetryCount = retryCount(for: entityId)
 
-    // Check if max retries exceeded
-    if currentRetryCount >= RetryPolicy.maxRetries {
-      debugLog.log("retryListing() for \(entityId): max retries exceeded (\(currentRetryCount)), leaving in .failed state", category: .sync)
+    // Check if max retries exceeded (using persisted retryCount)
+    if listing.retryCount >= RetryPolicy.maxRetries {
+      debugLog.log("retryListing() for \(entityId): max retries exceeded (\(listing.retryCount)), leaving in .failed state", category: .sync)
       return false
     }
 
-    // Increment retry count and calculate delay
-    let newRetryCount = incrementRetry(for: entityId)
-    let delay = RetryPolicy.delay(for: newRetryCount - 1)
+    // Increment retry count (persisted on entity) and calculate delay
+    listing.retryCount += 1
+    let delay = RetryPolicy.delay(for: listing.retryCount - 1)
 
-    debugLog.log("retryListing() for \(entityId): attempt \(newRetryCount)/\(RetryPolicy.maxRetries), delay: \(delay)s", category: .sync)
+    debugLog.log("retryListing() for \(entityId): attempt \(listing.retryCount)/\(RetryPolicy.maxRetries), delay: \(delay)s", category: .sync)
 
     // Apply backoff delay
     do {
@@ -506,10 +503,10 @@ final class SyncManager: ObservableObject {
 
     debugLog.log("retryFailedEntities(): Found \(totalFailed) failed entities (\(failedTasks.count) tasks, \(failedActivities.count) activities, \(failedListings.count) listings)", category: .sync)
 
-    // Filter to only entities that haven't exceeded max retries
-    let retriableTasks = failedTasks.filter { retryCount(for: $0.id) < RetryPolicy.maxRetries }
-    let retriableActivities = failedActivities.filter { retryCount(for: $0.id) < RetryPolicy.maxRetries }
-    let retriableListings = failedListings.filter { retryCount(for: $0.id) < RetryPolicy.maxRetries }
+    // Filter to only entities that haven't exceeded max retries (using persisted retryCount)
+    let retriableTasks = failedTasks.filter { $0.retryCount < RetryPolicy.maxRetries }
+    let retriableActivities = failedActivities.filter { $0.retryCount < RetryPolicy.maxRetries }
+    let retriableListings = failedListings.filter { $0.retryCount < RetryPolicy.maxRetries }
 
     let totalRetriable = retriableTasks.count + retriableActivities.count + retriableListings.count
     if totalRetriable == 0 {
@@ -519,19 +516,19 @@ final class SyncManager: ObservableObject {
 
     debugLog.log("retryFailedEntities(): \(totalRetriable) entities eligible for retry", category: .sync)
 
-    // Mark all retriable entities as pending (reset their state)
+    // Mark all retriable entities as pending (increment persisted retryCount and reset state)
     for task in retriableTasks {
-      _ = incrementRetry(for: task.id)
+      task.retryCount += 1
       task.syncState = .pending
       task.lastSyncError = nil
     }
     for activity in retriableActivities {
-      _ = incrementRetry(for: activity.id)
+      activity.retryCount += 1
       activity.syncState = .pending
       activity.lastSyncError = nil
     }
     for listing in retriableListings {
-      _ = incrementRetry(for: listing.id)
+      listing.retryCount += 1
       listing.syncState = .pending
       listing.lastSyncError = nil
     }
@@ -769,32 +766,16 @@ final class SyncManager: ObservableObject {
   private var observerTokens = [NSObjectProtocol]()
 
   // MARK: - Retry Tracking
+  // Note: Retry counts are now persisted on entities (TaskItem.retryCount, Activity.retryCount,
+  // Listing.retryCount) instead of in-memory. The markSynced() method on each entity resets
+  // retryCount to 0 when sync succeeds.
 
-  /// In-memory retry count per entity ID. Resets on successful sync.
-  private var retryCountByEntity: [UUID: Int] = [:]
-
-  /// Increment retry count for an entity and return the new count.
-  func incrementRetry(for entityId: UUID) -> Int {
-    let count = (retryCountByEntity[entityId] ?? 0) + 1
-    retryCountByEntity[entityId] = count
-    debugLog.log("Retry count for \(entityId): \(count)", category: .sync)
-    return count
-  }
-
-  /// Reset retry count for an entity (called on successful sync).
-  func resetRetry(for entityId: UUID) {
-    retryCountByEntity[entityId] = nil
-  }
-
-  /// Get current retry count for an entity.
-  func retryCount(for entityId: UUID) -> Int {
-    retryCountByEntity[entityId] ?? 0
-  }
-
-  /// Reset all retry counts (called when full sync succeeds).
+  /// Legacy method for compatibility - retry counts are now reset via markSynced() on each entity.
+  /// This is a no-op since entities reset their own retryCount when successfully synced.
   func resetAllRetryCounts() {
-    retryCountByEntity.removeAll()
-    debugLog.log("All retry counts reset", category: .sync)
+    // Retry counts are now persisted on entities and reset via markSynced().
+    // This method is kept for API compatibility but is effectively a no-op.
+    debugLog.log("Retry counts managed via entity.retryCount (persisted)", category: .sync)
   }
 
   private var isAuthenticated: Bool {
