@@ -19,8 +19,6 @@ import SwiftUI
 /// body - they must be in a View. This wrapper view solves that.
 struct WindowContentView: View {
 
-  // MARK: Internal
-
   // MARK: - Properties
 
   /// Reference to the shared app state (injected, not per-window)
@@ -31,6 +29,12 @@ struct WindowContentView: View {
 
   /// Observed sync manager for currentUser changes
   @EnvironmentObject private var syncManager: SyncManager
+
+  #if os(macOS)
+  /// Per-window UI state - each window gets its own instance
+  /// This is the key to multi-window state isolation
+  @State private var windowUIState = WindowUIState()
+  #endif
 
   // MARK: - Body
 
@@ -69,13 +73,5 @@ struct WindowContentView: View {
     #endif
     #endif
   }
-
-  // MARK: Private
-
-  #if os(macOS)
-  /// Per-window UI state - each window gets its own instance
-  /// This is the key to multi-window state isolation
-  @State private var windowUIState = WindowUIState()
-  #endif
 
 }
