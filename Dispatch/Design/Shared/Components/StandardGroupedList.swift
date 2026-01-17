@@ -121,9 +121,9 @@ struct StandardGroupedList<
 
 #if DEBUG
 /// Fire-once state for StandardGroupedList contract assertion.
-/// Ensures assertion only fires once per app lifecycle.
+@MainActor
 private enum StandardGroupedListAssertionState {
-  nonisolated(unsafe) static var didAssert = false
+  static var didAssert = false
 }
 #endif
 
