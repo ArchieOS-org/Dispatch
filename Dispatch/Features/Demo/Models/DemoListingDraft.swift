@@ -67,6 +67,26 @@ enum DemoListingType: String, CaseIterable, Identifiable {
 @Observable
 final class DemoListingDraft {
 
+  // MARK: - Snapshot (for dirty tracking)
+
+  private struct Snapshot: Equatable {
+    let address: String
+    let unit: String
+    let city: String
+    let province: String
+    let postalCode: String
+    let price: Decimal
+    let listingType: DemoListingType
+    let bedrooms: Int
+    let bathrooms: Int
+    let squareFeet: Int
+    let headline: String
+    let description: String
+    let features: [String]
+    let photoIDs: [UUID]
+    let stage: ListingStage
+  }
+
   // MARK: - Property Details
 
   var address: String = "1847 Lakeshore Boulevard West"
@@ -125,38 +145,57 @@ final class DemoListingDraft {
 
   // MARK: - Edit State
 
-  var isDirty: Bool = false
+  private var originalSnapshot: Snapshot?
+
+  var isDirty: Bool {
+    guard let original = originalSnapshot else { return false }
+    return currentSnapshot != original
+  }
+
+  private var currentSnapshot: Snapshot {
+    Snapshot(
+      address: address,
+      unit: unit,
+      city: city,
+      province: province,
+      postalCode: postalCode,
+      price: price,
+      listingType: listingType,
+      bedrooms: bedrooms,
+      bathrooms: bathrooms,
+      squareFeet: squareFeet,
+      headline: headline,
+      description: description,
+      features: features,
+      photoIDs: photos.map(\.id),
+      stage: stage
+    )
+  }
 
   // MARK: - Factory
 
   static func sample() -> DemoListingDraft {
-    DemoListingDraft()
-  }
-
-  func markDirty() {
-    isDirty = true
+    let draft = DemoListingDraft()
+    draft.originalSnapshot = draft.currentSnapshot
+    return draft
   }
 
   func addFeature(_ feature: String) {
     features.append(feature)
-    markDirty()
   }
 
   func removeFeature(at index: Int) {
     guard features.indices.contains(index) else { return }
     features.remove(at: index)
-    markDirty()
   }
 
   func removePhoto(at index: Int) {
     guard photos.indices.contains(index) else { return }
     photos.remove(at: index)
-    markDirty()
   }
 
   func movePhotos(from source: IndexSet, to destination: Int) {
     photos.move(fromOffsets: source, toOffset: destination)
-    markDirty()
   }
 
 }

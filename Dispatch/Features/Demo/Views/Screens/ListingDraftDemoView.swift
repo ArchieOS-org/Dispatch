@@ -42,17 +42,6 @@ struct ListingDraftDemoView: View {
         }
       }
     }
-    .onChange(of: draft.address) { _, _ in draft.markDirty() }
-    .onChange(of: draft.unit) { _, _ in draft.markDirty() }
-    .onChange(of: draft.city) { _, _ in draft.markDirty() }
-    .onChange(of: draft.province) { _, _ in draft.markDirty() }
-    .onChange(of: draft.price) { _, _ in draft.markDirty() }
-    .onChange(of: draft.listingType) { _, _ in draft.markDirty() }
-    .onChange(of: draft.bedrooms) { _, _ in draft.markDirty() }
-    .onChange(of: draft.bathrooms) { _, _ in draft.markDirty() }
-    .onChange(of: draft.squareFeet) { _, _ in draft.markDirty() }
-    .onChange(of: draft.description) { _, _ in draft.markDirty() }
-    .onChange(of: draft.stage) { _, _ in draft.markDirty() }
     .alert("Add Feature", isPresented: $showAddFeatureAlert) {
       TextField("Feature", text: $newFeatureText)
       Button("Cancel", role: .cancel) {
@@ -117,12 +106,7 @@ struct ListingDraftDemoView: View {
 
   private var photosSection: some View {
     DraftPhotoGallery(
-      photos: Binding(
-        get: { draft.photos },
-        set: { draft.photos = $0
-          draft.markDirty()
-        }
-      ),
+      photos: $draft.photos,
       onAddPhoto: {
         // Demo only - no actual photo picker
       }
