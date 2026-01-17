@@ -70,7 +70,18 @@ struct DispatchApp: App {
         .environmentObject(appState.authManager)
         .environmentObject(SyncManager.shared)
         .onOpenURL { url in
-          appState.authManager.handleRedirect(url)
+          // Route based on URL scheme:
+          // - OAuth callbacks (com.googleusercontent.apps.*) -> AuthManager
+          // - Deep links (dispatch://) -> AppState via dispatch command
+          if DeepLinkHandler.isOAuthCallback(url) {
+            appState.authManager.handleRedirect(url)
+          } else if DeepLinkHandler.isDeepLink(url) {
+            appState.dispatch(.deepLink(url))
+          } else {
+            // Unknown URL scheme - log and ignore
+            // (AuthManager may still want to handle it for backwards compatibility)
+            appState.authManager.handleRedirect(url)
+          }
         }
       #if os(macOS)
         // Apply frame constraints to content view (not Scene) to set minimum window size
