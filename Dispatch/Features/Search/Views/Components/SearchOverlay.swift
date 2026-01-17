@@ -34,10 +34,47 @@ import SwiftUI
 /// - Clears focus and overlay reason in `dismiss()` (suspenders) + `onDisappear` (belt)
 struct SearchOverlay: View {
 
+  // MARK: Lifecycle
+
+  /// Initialize SearchOverlay with pre-fetched data from parent.
+  ///
+  /// This pattern (same as QuickEntrySheet) avoids duplicate @Query properties
+  /// and ensures data is only fetched once at the ContentView level.
+  ///
+  /// - Parameters:
+  ///   - isPresented: Binding controlling overlay visibility
+  ///   - searchText: Binding to the search query text
+  ///   - tasks: Pre-fetched active tasks from parent
+  ///   - activities: Pre-fetched active activities from parent
+  ///   - listings: Pre-fetched active listings from parent
+  ///   - onSelectResult: Callback when user selects a search result
+  init(
+    isPresented: Binding<Bool>,
+    searchText: Binding<String>,
+    tasks: [TaskItem],
+    activities: [Activity],
+    listings: [Listing],
+    onSelectResult: @escaping (SearchResult) -> Void
+  ) {
+    self._isPresented = isPresented
+    self._searchText = searchText
+    self.tasks = tasks
+    self.activities = activities
+    self.listings = listings
+    self.onSelectResult = onSelectResult
+  }
+
   // MARK: Internal
 
   @Binding var isPresented: Bool
   @Binding var searchText: String
+
+  /// Pre-fetched active tasks from ContentView (no @Query needed)
+  let tasks: [TaskItem]
+  /// Pre-fetched active activities from ContentView (no @Query needed)
+  let activities: [Activity]
+  /// Pre-fetched active listings from ContentView (no @Query needed)
+  let listings: [Listing]
 
   var onSelectResult: (SearchResult) -> Void
 
@@ -116,27 +153,7 @@ struct SearchOverlay: View {
   /// Fallback dismiss ID to prevent stale timeouts
   @State private var dismissID: UUID?
 
-  @Query(sort: \TaskItem.title)
-  private var tasks: [TaskItem]
-  @Query(sort: \Activity.title)
-  private var activities: [Activity]
-  @Query(sort: \Listing.address)
-  private var listings: [Listing]
-
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-  /// Filter out deleted items
-  private var activeTasks: [TaskItem] {
-    tasks.filter { $0.status != .deleted }
-  }
-
-  private var activeActivities: [Activity] {
-    activities.filter { $0.status != .deleted }
-  }
-
-  private var activeListings: [Listing] {
-    listings.filter { $0.status != .deleted }
-  }
 
   private var backdrop: some View {
     DS.Colors.searchScrim
@@ -159,9 +176,9 @@ struct SearchOverlay: View {
       // Results list
       SearchResultsList(
         searchText: searchText,
-        tasks: activeTasks,
-        activities: activeActivities,
-        listings: activeListings,
+        tasks: tasks,
+        activities: activities,
+        listings: listings,
         onSelectResult: { result in
           selectResult(result)
         }
@@ -299,6 +316,22 @@ private struct SearchOverlayPreviewHost: View {
   @State var isPresented: Bool
   @State var searchText: String
 
+  @Query private var tasks: [TaskItem]
+  @Query private var activities: [Activity]
+  @Query private var listings: [Listing]
+
+  private var activeTasks: [TaskItem] {
+    tasks.filter { $0.status != .deleted }
+  }
+
+  private var activeActivities: [Activity] {
+    activities.filter { $0.status != .deleted }
+  }
+
+  private var activeListings: [Listing] {
+    listings.filter { $0.status != .deleted }
+  }
+
   var body: some View {
     ZStack {
       Color.blue.opacity(0.2)
@@ -308,6 +341,9 @@ private struct SearchOverlayPreviewHost: View {
         SearchOverlay(
           isPresented: $isPresented,
           searchText: $searchText,
+          tasks: activeTasks,
+          activities: activeActivities,
+          listings: activeListings,
           onSelectResult: { _ in }
         )
       }

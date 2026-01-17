@@ -164,6 +164,16 @@ struct ContentView: View {
     allListings.filter { $0.status != .deleted }
   }
 
+  /// Active tasks (not deleted) for search overlay - includes all users
+  private var activeTasks: [TaskItem] {
+    allTasksRaw.filter { $0.status != .deleted }
+  }
+
+  /// Active activities (not deleted) for search overlay - includes all users
+  private var activeActivities: [Activity] {
+    allActivitiesRaw.filter { $0.status != .deleted }
+  }
+
   /// Active realtors
   private var activeRealtors: [User] {
     allRealtorsRaw.filter { $0.userType == .realtor }
@@ -664,12 +674,20 @@ struct ContentView: View {
         // Search overlay - Always present for stable view identity (focus registration)
         // Visibility controlled via opacity + hit testing to ensure @FocusState is
         // properly registered before onAppear fires
+        //
+        // Data is passed from ContentView's @Query properties to avoid duplicate queries.
+        // SearchOverlay previously had its own @Query which caused:
+        // 1. Double-querying (ContentView + SearchOverlay both query same data)
+        // 2. Queries running even when overlay has opacity(0)
         SearchOverlay(
           isPresented: Binding(
             get: { appState.overlayState.isSearch },
             set: { if !$0 { appState.overlayState = .none } }
           ),
           searchText: $quickFindText,
+          tasks: activeTasks,
+          activities: activeActivities,
+          listings: activeListings,
           onSelectResult: { result in
             selectSearchResult(result)
             // DO NOT set appState.overlayState = .none here
