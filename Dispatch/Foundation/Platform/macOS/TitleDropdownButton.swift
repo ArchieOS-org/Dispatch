@@ -13,7 +13,7 @@ struct TitleDropdownButton: View {
     Button(action: action) {
       HStack(spacing: 4) {
         Text(title)
-          .font(.headline)
+          .font(DS.Typography.headline)
           .foregroundColor(.primary)
 
         Image(systemName: "chevron.down")
@@ -44,7 +44,7 @@ struct TitleDropdownButton: View {
 
   VStack(spacing: DS.Spacing.lg) {
     Text("Hover over the button")
-      .font(.caption)
+      .font(DS.Typography.caption)
       .foregroundStyle(.secondary)
 
     TitleDropdownButton(
@@ -53,7 +53,7 @@ struct TitleDropdownButton: View {
     ) { }
 
     Text(isHovering ? "Hovering" : "Not hovering")
-      .font(.caption2)
+      .font(DS.Typography.captionSecondary)
       .foregroundStyle(.tertiary)
   }
   .padding(DS.Spacing.xl)
@@ -170,14 +170,14 @@ struct TitleDropdownButton: View {
     HStack(spacing: DS.Spacing.xl) {
       VStack(alignment: .leading, spacing: DS.Spacing.xs) {
         Text("Default")
-          .font(.caption2)
+          .font(DS.Typography.captionSecondary)
           .foregroundStyle(.tertiary)
         TitleDropdownButton(title: "Inbox", isHovering: .constant(false)) { }
       }
 
       VStack(alignment: .leading, spacing: DS.Spacing.xs) {
         Text("Hover")
-          .font(.caption2)
+          .font(DS.Typography.captionSecondary)
           .foregroundStyle(.tertiary)
         TitleDropdownButton(title: "Inbox", isHovering: .constant(true)) { }
       }

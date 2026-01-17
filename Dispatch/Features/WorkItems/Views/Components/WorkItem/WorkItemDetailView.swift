@@ -209,7 +209,7 @@ struct WorkItemDetailView: View {
               size: .small
             )
             Image(systemName: "chevron.right")
-              .font(.caption)
+              .font(DS.Typography.caption)
               .foregroundColor(DS.Colors.Text.tertiary)
           }
         }

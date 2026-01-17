@@ -186,7 +186,7 @@ struct QuickEntrySheet: View {
             }
             Spacer()
             Image(systemName: "chevron.right")
-              .font(.caption)
+              .font(DS.Typography.caption)
               .foregroundColor(DS.Colors.Text.tertiary)
           }
         }
@@ -270,7 +270,7 @@ struct QuickEntrySheet: View {
           )
         }
         Image(systemName: "chevron.right")
-          .font(.caption)
+          .font(DS.Typography.caption)
           .foregroundColor(DS.Colors.Text.tertiary)
       }
     }

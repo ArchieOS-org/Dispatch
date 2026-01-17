@@ -58,7 +58,7 @@ struct SearchBar: View {
       HStack(spacing: DS.Spacing.sm) {
         Image(systemName: "magnifyingglass")
           .foregroundColor(DS.Colors.Text.tertiary)
-          .font(.body)
+          .font(DS.Typography.body)
 
         TextField("Search tasks, activities, listings...", text: $text)
           .textFieldStyle(.plain)
@@ -79,7 +79,7 @@ struct SearchBar: View {
             #else
               .foregroundColor(Color.secondary)
             #endif
-              .font(.body)
+              .font(DS.Typography.body)
           }
           .buttonStyle(.plain)
           .accessibilityLabel("Clear search")

@@ -33,14 +33,14 @@ struct LayoutWitnessModifier: ViewModifier {
             Spacer()
             HStack {
               Text("LayoutWitness")
-                .font(.caption2)
+                .font(DS.Typography.captionSecondary)
                 .bold()
               Divider()
               Text("Margin: \(DS.Spacing.Layout.pageMargin)")
-                .font(.caption2)
+                .font(DS.Typography.captionSecondary)
               Divider()
               Text("MaxW: \(DS.Spacing.Layout.maxContentWidth)")
-                .font(.caption2)
+                .font(DS.Typography.captionSecondary)
             }
             .padding(4)
             .background(Color.red.opacity(0.8))

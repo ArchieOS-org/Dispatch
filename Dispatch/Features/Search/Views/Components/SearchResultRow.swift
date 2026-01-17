@@ -28,13 +28,13 @@ struct SearchResultRow: View {
       // Text content
       VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
         Text(result.title)
-          .font(.body)
+          .font(DS.Typography.body)
           .foregroundColor(result.isCompleted ? DS.Colors.Text.secondary : DS.Colors.Text.primary)
           .lineLimit(1)
           .strikethrough(result.isCompleted)
 
         Text(result.subtitle)
-          .font(.subheadline)
+          .font(DS.Typography.bodySecondary)
           .foregroundColor(DS.Colors.Text.tertiary)
           .lineLimit(1)
       }
@@ -44,7 +44,7 @@ struct SearchResultRow: View {
       // Badge (if exists)
       if let badge = result.badgeCount, badge > 0 {
         Text("\(badge)")
-          .font(.caption)
+          .font(DS.Typography.caption)
           .fontWeight(.medium)
           .foregroundColor(DS.Colors.Text.secondary)
           .padding(.horizontal, 6)

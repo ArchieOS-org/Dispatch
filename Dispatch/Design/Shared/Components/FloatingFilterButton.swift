@@ -82,13 +82,13 @@ struct FloatingFilterButton: View {
 
     VStack(spacing: DS.Spacing.lg) {
       Text("Current: \(audience.label)")
-        .font(.headline)
+        .font(DS.Typography.headline)
         .foregroundStyle(.secondary)
 
       FloatingFilterButton(audience: $audience)
 
       Text("Tap to cycle • Hold for menu")
-        .font(.caption)
+        .font(DS.Typography.caption)
         .foregroundStyle(.tertiary)
     }
   }
@@ -104,7 +104,7 @@ struct FloatingFilterButton: View {
 
     VStack(spacing: DS.Spacing.xl) {
       Text("Filter States")
-        .font(.headline)
+        .font(DS.Typography.headline)
         .foregroundStyle(.secondary)
 
       HStack(spacing: DS.Spacing.xl) {
@@ -112,7 +112,7 @@ struct FloatingFilterButton: View {
           VStack(spacing: DS.Spacing.sm) {
             FloatingFilterButton(audience: .constant(lens))
             Text(lens.label)
-              .font(.caption)
+              .font(DS.Typography.caption)
               .foregroundStyle(.secondary)
           }
         }
@@ -243,7 +243,7 @@ struct FloatingFilterButton: View {
 
     VStack(spacing: DS.Spacing.xl) {
       Text("Hit Area (56pt) vs Visual (44pt)")
-        .font(.caption)
+        .font(DS.Typography.caption)
         .foregroundStyle(.secondary)
 
       ZStack {
@@ -265,13 +265,13 @@ struct FloatingFilterButton: View {
           .fill(Color.red.opacity(0.5))
           .frame(width: 12, height: 12)
         Text("56pt tap target")
-          .font(.caption2)
+          .font(DS.Typography.captionSecondary)
 
         Circle()
           .fill(Color.blue.opacity(0.5))
           .frame(width: 12, height: 12)
         Text("44pt visual")
-          .font(.caption2)
+          .font(DS.Typography.captionSecondary)
       }
       .foregroundStyle(.secondary)
     }
@@ -288,14 +288,14 @@ struct FloatingFilterButton: View {
 
     VStack(spacing: DS.Spacing.xl) {
       Text("Accessibility Test")
-        .font(.headline)
+        .font(DS.Typography.headline)
 
       HStack(spacing: DS.Spacing.xl) {
         ForEach(AudienceLens.allCases, id: \.self) { lens in
           VStack(spacing: DS.Spacing.sm) {
             FloatingFilterButton(audience: .constant(lens))
             Text(lens.label)
-              .font(.caption)
+              .font(DS.Typography.caption)
           }
         }
       }
@@ -312,7 +312,7 @@ struct FloatingFilterButton: View {
 
     VStack(spacing: DS.Spacing.xl) {
       Text("Bold Text: ON")
-        .font(.caption)
+        .font(DS.Typography.caption)
         .foregroundStyle(.secondary)
 
       HStack(spacing: DS.Spacing.xl) {
