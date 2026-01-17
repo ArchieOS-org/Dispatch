@@ -671,36 +671,32 @@ struct ContentView: View {
         .appDestinations()
       }
       .overlay {
-        // Search overlay - Always present for stable view identity (focus registration)
-        // Visibility controlled via opacity + hit testing to ensure @FocusState is
-        // properly registered before onAppear fires
+        // Search overlay - Conditional rendering per SwiftUI best practices
+        // View is added/removed from hierarchy cleanly, enabling proper focus management
+        // via defaultFocus modifier (no delays needed)
         //
         // Data is passed from ContentView's @Query properties to avoid duplicate queries.
-        // SearchOverlay previously had its own @Query which caused:
-        // 1. Double-querying (ContentView + SearchOverlay both query same data)
-        // 2. Queries running even when overlay has opacity(0)
-        SearchOverlay(
-          isPresented: Binding(
-            get: { appState.overlayState.isSearch },
-            set: { if !$0 { appState.overlayState = .none } }
-          ),
-          searchText: $quickFindText,
-          tasks: activeTasks,
-          activities: activeActivities,
-          listings: activeListings,
-          onSelectResult: { result in
-            selectSearchResult(result)
-            // DO NOT set appState.overlayState = .none here
-            // SearchOverlay.finalizeDismiss() handles this via isPresented binding
-          }
-        )
-        .opacity(appState.overlayState.isSearch ? 1 : 0)
-        .allowsHitTesting(appState.overlayState.isSearch)
-        .onChange(of: appState.overlayState) { _, newState in
-          // Update quickFindText when search opens with initial text
-          if case .search(let initialText) = newState {
-            quickFindText = initialText ?? ""
-          }
+        if appState.overlayState.isSearch {
+          SearchOverlay(
+            isPresented: Binding(
+              get: { appState.overlayState.isSearch },
+              set: { if !$0 { appState.overlayState = .none } }
+            ),
+            searchText: $quickFindText,
+            tasks: activeTasks,
+            activities: activeActivities,
+            listings: activeListings,
+            onSelectResult: { result in
+              selectSearchResult(result)
+            }
+          )
+          .transition(.opacity.animation(.easeOut(duration: 0.2)))
+        }
+      }
+      .onChange(of: appState.overlayState) { _, newState in
+        // Update quickFindText when search opens with initial text
+        if case .search(let initialText) = newState {
+          quickFindText = initialText ?? ""
         }
       }
 
