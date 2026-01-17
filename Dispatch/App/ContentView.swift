@@ -279,7 +279,6 @@ struct ContentView: View {
         destinationRootView(for: appState.router.selectedDestination)
           .appDestinations()
       }
-      .id(appState.router.stackIDs[appState.router.selectedDestination] ?? UUID())
       .toolbar {
         // FORCE the NSToolbar to exist at all times.
         // This prevents the window corner radius from flickering (Large vs Small) when navigating between views.
@@ -408,7 +407,6 @@ struct ContentView: View {
                   }
                 }
             }
-            .id(appState.router.stackIDs[.stage(stage)] ?? UUID())
           }
           .defaultVisibility(.hidden, for: .tabBar)
           .defaultVisibility(.hidden, for: .sidebar)
@@ -433,7 +431,6 @@ struct ContentView: View {
                     }
                   }
               }
-              .id(appState.router.stackIDs[.tab(tab)] ?? UUID())
             }
             .badge(badgeCount(for: tab))
           }
@@ -450,7 +447,6 @@ struct ContentView: View {
               ListingGeneratorView()
                 .appDestinations()
             }
-            .id(appState.router.stackIDs[.tab(.listingGenerator)] ?? UUID())
           }
         }
 
@@ -664,7 +660,6 @@ struct ContentView: View {
         }
         .appDestinations()
       }
-      .id(appState.router.phoneStackID)
       .overlay {
         // Search overlay - Driven by AppState Intent
         if case .search(let initialText) = appState.overlayState {

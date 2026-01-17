@@ -58,13 +58,6 @@ enum SidebarDestination: Hashable {
 
   // MARK: Internal
 
-  /// All possible destinations (tabs + stages) for pre-seeding stackIDs
-  static var allDestinations: [SidebarDestination] {
-    let tabs = AppTab.allCases.map { SidebarDestination.tab($0) }
-    let stages = ListingStage.allCases.map { SidebarDestination.stage($0) }
-    return tabs + stages
-  }
-
   /// For backward compatibility with code expecting AppTab
   var asTab: AppTab? {
     if case .tab(let tab) = self { return tab }
@@ -104,24 +97,10 @@ struct AppRouter {
   /// Each destination maintains its own navigation stack, preserving state when switching.
   var paths: [SidebarDestination: [AppRoute]] = [:]
 
-  /// Stable stack IDs - pre-seeded for all destinations at init.
-  /// Used to force NavigationStack rebuild when popping to root.
-  /// Pre-seeding ensures stackIDs[destination]! is always safe.
-  var stackIDs: [SidebarDestination: UUID] = {
-    var ids: [SidebarDestination: UUID] = [:]
-    for destination in SidebarDestination.allDestinations {
-      ids[destination] = UUID()
-    }
-    return ids
-  }()
-
   // MARK: - iPhone Single Stack
 
   /// iPhone's single navigation path (phone isn't tabbed, uses MenuPageView → push).
   var phonePath: [AppRoute] = []
-
-  /// iPhone stack ID for forced resets.
-  var phoneStackID = UUID()
 
   /// Computed property for backward compatibility with tab-based code
   var selectedTab: AppTab {
@@ -137,17 +116,12 @@ struct AppRouter {
   }
 
   /// Pop to root for a specific destination (or current destination if nil).
+  /// SwiftUI NavigationStack observes path changes and animates pop naturally.
   mutating func popToRoot(for destination: SidebarDestination? = nil) {
     let target = destination ?? selectedDestination
     if !(paths[target]?.isEmpty ?? true) {
       paths[target]?.removeAll()
-      stackIDs[target] = UUID()
     }
-  }
-
-  /// Force stack ID reset for a destination (triggers NavigationStack rebuild).
-  mutating func resetStackID(for destination: SidebarDestination) {
-    stackIDs[destination] = UUID()
   }
 
   /// User tapped destination - always shows root screen.
@@ -188,10 +162,10 @@ struct AppRouter {
   }
 
   /// Pop to root on iPhone.
+  /// SwiftUI NavigationStack observes path changes and animates pop naturally.
   mutating func phonePopToRoot() {
     if !phonePath.isEmpty {
       phonePath.removeAll()
-      phoneStackID = UUID()
     }
   }
 }

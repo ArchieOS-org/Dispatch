@@ -141,9 +141,6 @@ final class AppState: ObservableObject {
     case .popToRoot(let destination):
       router.popToRoot(for: destination)
 
-    case .resetStackID(let destination):
-      router.resetStackID(for: destination)
-
     // MARK: - iPhone Navigation (single stack)
 
     case .phoneNavigateTo(let route):

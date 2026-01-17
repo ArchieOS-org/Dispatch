@@ -42,9 +42,6 @@ enum AppCommand: Equatable {
   /// Pop to root for a specific destination.
   case popToRoot(SidebarDestination)
 
-  /// Force stack ID reset (triggers NavigationStack rebuild).
-  case resetStackID(SidebarDestination)
-
   // MARK: - iPhone Navigation (single stack)
 
   /// Navigate to a route on iPhone's single stack.
