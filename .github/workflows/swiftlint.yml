@@ -44,6 +44,7 @@ jobs:
             echo "Downloading SwiftFormat ${SWIFTFORMAT_VERSION} for Linux..."
             curl -sL "https://github.com/nicklockwood/SwiftFormat/releases/download/${SWIFTFORMAT_VERSION}/swiftformat_linux.zip" -o /tmp/swiftformat.zip
             unzip -q /tmp/swiftformat.zip -d tools/
+            mv tools/swiftformat_linux tools/swiftformat
             chmod +x tools/swiftformat
           fi
 
