@@ -101,10 +101,9 @@ struct ListingOutputView: View {
       withAnimation {
         showCopiedFeedback = true
       }
-      DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-        withAnimation {
-          showCopiedFeedback = false
-        }
+      // Reset after delay using proper async pattern
+      Task { @MainActor in
+        await CopyFeedback.resetFeedbackFlag($showCopiedFeedback, after: CopyFeedback.longDelay)
       }
     } label: {
       HStack(spacing: DS.Spacing.xs) {

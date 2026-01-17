@@ -342,8 +342,9 @@ struct ContentView: View {
       .onChange(of: windowUIState.overlayState) { oldValue, newValue in
         // Re-focus content area when overlay closes
         if case .none = newValue, case .search = oldValue {
-          // Small delay allows overlay dismissal to complete
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+          // Use Task for delay - automatically cancelled if view disappears
+          Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(100))
             contentAreaFocused = true
           }
         }
@@ -773,12 +774,11 @@ struct ContentView: View {
         )
         .padding(.top, 100) // Position it nicely near the top
         .transition(.move(edge: .top).combined(with: .opacity))
-        .onAppear {
+        .task(id: initialText) {
           if let text = initialText {
             // Wait for popover animation + autofocus
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-              quickFindText = text
-            }
+            try? await Task.sleep(for: .milliseconds(150))
+            quickFindText = text
           }
         }
       }
