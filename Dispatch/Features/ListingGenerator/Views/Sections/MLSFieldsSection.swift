@@ -349,10 +349,9 @@ struct MLSFieldsSection: View {
       showCopyAllSuccess = true
     }
 
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-      withAnimation(.easeInOut(duration: 0.2)) {
-        showCopyAllSuccess = false
-      }
+    // Reset after delay using proper async pattern
+    Task { @MainActor in
+      await CopyFeedback.resetFeedbackFlag($showCopyAllSuccess, after: CopyFeedback.longDelay)
     }
   }
 

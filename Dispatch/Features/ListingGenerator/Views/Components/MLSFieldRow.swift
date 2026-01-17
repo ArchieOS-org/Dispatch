@@ -7,11 +7,6 @@
 //
 
 import SwiftUI
-#if canImport(UIKit)
-import UIKit
-#elseif canImport(AppKit)
-import AppKit
-#endif
 
 // MARK: - MLSFieldRow
 
@@ -134,17 +129,7 @@ struct MLSFieldRow: View {
   private func copyToClipboard() {
     guard !value.isEmpty else { return }
 
-    #if canImport(UIKit)
-    UIPasteboard.general.string = value
-    /// Haptic feedback on iOS
-    let generator = UIImpactFeedbackGenerator(style: .light)
-    generator.impactOccurred()
-    // VoiceOver announcement
-    UIAccessibility.post(notification: .announcement, argument: "\(label) copied")
-    #elseif canImport(AppKit)
-    NSPasteboard.general.clearContents()
-    NSPasteboard.general.setString(value, forType: .string)
-    #endif
+    CopyFeedback.copyToClipboard(value, label: label)
 
     // Show feedback
     withAnimation(.easeInOut(duration: 0.2)) {
@@ -153,11 +138,9 @@ struct MLSFieldRow: View {
 
     onCopy?()
 
-    // Reset after delay
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-      withAnimation(.easeInOut(duration: 0.2)) {
-        showCopied = false
-      }
+    // Reset after delay using proper async pattern
+    Task { @MainActor in
+      await CopyFeedback.resetFeedbackFlag($showCopied, after: CopyFeedback.standardDelay)
     }
   }
 }
@@ -208,14 +191,7 @@ struct MLSFieldRowCompact: View {
   private func copyToClipboard() {
     guard !value.isEmpty else { return }
 
-    #if canImport(UIKit)
-    UIPasteboard.general.string = value
-    let generator = UIImpactFeedbackGenerator(style: .light)
-    generator.impactOccurred()
-    #elseif canImport(AppKit)
-    NSPasteboard.general.clearContents()
-    NSPasteboard.general.setString(value, forType: .string)
-    #endif
+    CopyFeedback.copyToClipboard(value, label: label)
 
     withAnimation(.easeInOut(duration: 0.2)) {
       showCopied = true
@@ -223,10 +199,9 @@ struct MLSFieldRowCompact: View {
 
     onCopy?()
 
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-      withAnimation(.easeInOut(duration: 0.2)) {
-        showCopied = false
-      }
+    // Reset after delay using proper async pattern
+    Task { @MainActor in
+      await CopyFeedback.resetFeedbackFlag($showCopied, after: CopyFeedback.standardDelay)
     }
   }
 }

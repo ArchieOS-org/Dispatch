@@ -181,9 +181,22 @@ private final class FullScreenTrafficLightCoordinator {
     else { return }
     // Make toolbar background transparent after full-screen transition completes
     // Try multiple delays to catch any late view hierarchy changes
+    //
+    // NOTE: DispatchQueue.main.asyncAfter is INTENTIONALLY used here.
+    // This is legitimate AppKit/NSWindow interop, NOT a SwiftUI timing hack.
+    //
+    // Why we cannot use Task.sleep or SwiftUI patterns:
+    // 1. Full-screen transitions involve window server coordination that SwiftUI cannot observe
+    // 2. NSWindow view hierarchy is rebuilt asynchronously during full-screen transition
+    // 3. The toolbar's NSVisualEffectView instances are created/destroyed by AppKit, not SwiftUI
+    // 4. No notification or delegate callback exists for "toolbar view hierarchy settled"
+    // 5. Multiple attempts are needed because AppKit may create views at different times
+    //
+    // This code runs in an NSNotification observer (Objective-C runtime context),
+    // and the delays are coordinated with AppKit's internal window management.
 
     // APPROACH 4: Try different delays
-    // First attempt at 0.5s
+    // First attempt at 0.5s - catches most transitions
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
       if Self.debugLogging {
         print("DEBUG: --- ATTEMPT 1 (0.5s delay) ---")
@@ -191,7 +204,7 @@ private final class FullScreenTrafficLightCoordinator {
       self?.makeToolbarBackgroundTransparent()
     }
 
-    // Second attempt at 1.0s in case views are created later
+    // Second attempt at 1.0s in case views are created later by AppKit
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
       if Self.debugLogging {
         print("DEBUG: --- ATTEMPT 2 (1.0s delay) ---")
