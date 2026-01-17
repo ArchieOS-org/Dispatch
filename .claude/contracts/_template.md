@@ -33,6 +33,19 @@
 
 ---
 
+### Context7 Attestation (written by feature-owner at PATCHSET 1)
+
+**CONTEXT7 CONSULTED**: [YES | NO | N/A]
+**Libraries Queried**: [list or "N/A"]
+
+| Query | Pattern Used |
+|-------|--------------|
+| [what was asked] | [what was applied] |
+
+**N/A**: Only valid for pure refactors with no framework/library usage.
+
+---
+
 ### Jobs Critique (written by jobs-critic agent)
 
 **JOBS CRITIQUE**: [SHIP YES | SHIP NO | PENDING]
@@ -54,3 +67,5 @@
 - If `UI Review Required: YES` → integrator MUST verify `JOBS CRITIQUE: SHIP YES` before reporting DONE
 - If `UI Review Required: NO` → Jobs Critique section is not required; integrator skips this check
 - If UI Review Required but Jobs Critique is missing/PENDING/SHIP NO → integrator MUST reject DONE
+- **Context7 Attestation**: integrator MUST verify `CONTEXT7 CONSULTED: YES` (or `N/A` for pure refactors) before reporting DONE
+- If Context7 Attestation is missing or `NO` → integrator MUST reject DONE

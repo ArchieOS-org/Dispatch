@@ -107,6 +107,30 @@ PATCHSET 4: cleanup + tests
 
 Integrator triggers on each.
 
+# Context7 Attestation (MANDATORY at PATCHSET 1)
+At PATCHSET 1, you MUST update the contract's "Context7 Attestation" section:
+
+1. **Before writing any framework/library code**, use Context7:
+   - `mcp__context7__resolve-library-id` to find the library
+   - `mcp__context7__query-docs` to get current patterns
+
+2. **Update the contract** at `.claude/contracts/<feature>.md`:
+   ```markdown
+   ### Context7 Attestation (written by feature-owner at PATCHSET 1)
+
+   **CONTEXT7 CONSULTED**: YES
+   **Libraries Queried**: SwiftUI, Supabase
+
+   | Query | Pattern Used |
+   |-------|--------------|
+   | How to bind state to TextField | Direct $property binding |
+   | Supabase realtime subscription | .channel().on().subscribe() |
+   ```
+
+3. **N/A is only valid** for pure refactors with zero framework/library code changes.
+
+**Integrator BLOCKS DONE if attestation is missing or NO.**
+
 # Done Checklist (MANDATORY)
 You may only declare DONE if:
 - iOS + macOS builds pass (via integrator)
@@ -160,3 +184,4 @@ Stop and escalate if:
 - contract not locked
 - migration required
 - acceptance criteria can't be met without changing contract
+- **Two consecutive fix attempts failed without Context7 research** → STOP, use Context7, then retry
