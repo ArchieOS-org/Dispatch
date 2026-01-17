@@ -65,25 +65,29 @@ struct SearchOverlay: View {
     .animation(.easeOut(duration: 0.2), value: isDismissing)
     .allowsHitTesting(!isDismissing)
     .transition(.opacity)
-    .task {
-      // Wait one frame for view hierarchy to stabilize before any state changes.
-      // This prevents NavigationAuthority warnings from cascading updates.
-      try? await Task.sleep(for: .milliseconds(16))
-      guard !Task.isCancelled, !isDismissing else { return }
-
-      // Register overlay reason (hides GlobalFloatingButtons)
-      overlayState.hide(reason: .searchOverlay)
-
-      // Wait for text input system to fully initialize before focusing.
-      // iOS text input requires the RTIInputSystemSession to be established.
-      // 300ms allows for: text system init (~100-150ms) + emoji keyboard (~100ms) + buffer
-      try? await Task.sleep(for: .milliseconds(300))
-      guard !Task.isCancelled, !isDismissing else { return }
-      isFocused = true
+    // Respond to isPresented changes (view is always in hierarchy for stable identity)
+    .onChange(of: isPresented) { _, presented in
+      if presented {
+        // Register overlay reason (hides GlobalFloatingButtons)
+        overlayState.hide(reason: .searchOverlay)
+        // Reset dismissing state for fresh presentation
+        isDismissing = false
+        // Set focus - view identity is stable so @FocusState binding is registered
+        isFocused = true
+      } else {
+        // Belt: ensure reason is cleared when dismissed
+        overlayState.show(reason: .searchOverlay)
+        isFocused = false
+      }
     }
-    .onDisappear {
-      // Belt: ensure reason is cleared even if dismiss() was bypassed
-      overlayState.show(reason: .searchOverlay)
+    .task(id: isPresented) {
+      // Fallback: If something interrupted focus, ensure it's set
+      guard isPresented else { return }
+      try? await Task.sleep(for: .milliseconds(16))
+      guard !Task.isCancelled, !isDismissing, isPresented else { return }
+      if !isFocused {
+        isFocused = true
+      }
     }
     // Phase 2: Wait for keyboard to finish hiding before removing from hierarchy
     .onChange(of: overlayState.activeReasons) { _, reasons in

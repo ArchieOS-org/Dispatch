@@ -661,22 +661,25 @@ struct ContentView: View {
         .appDestinations()
       }
       .overlay {
-        // Search overlay - Driven by AppState Intent
-        if case .search(let initialText) = appState.overlayState {
-          SearchOverlay(
-            isPresented: Binding(
-              get: { true },
-              set: { if !$0 { appState.overlayState = .none } }
-            ),
-            searchText: $quickFindText,
-            onSelectResult: { result in
-              selectSearchResult(result)
-              appState.overlayState = .none
-            }
-          )
-          .task(id: initialText) {
-            // Defer text update to avoid NavigationAuthority warnings.
-            // Setting state during .onAppear can cause cascading updates.
+        // Search overlay - Always present for stable view identity (focus registration)
+        // Visibility controlled via opacity + hit testing to ensure @FocusState is
+        // properly registered before onAppear fires
+        SearchOverlay(
+          isPresented: Binding(
+            get: { appState.overlayState.isSearch },
+            set: { if !$0 { appState.overlayState = .none } }
+          ),
+          searchText: $quickFindText,
+          onSelectResult: { result in
+            selectSearchResult(result)
+            appState.overlayState = .none
+          }
+        )
+        .opacity(appState.overlayState.isSearch ? 1 : 0)
+        .allowsHitTesting(appState.overlayState.isSearch)
+        .onChange(of: appState.overlayState) { _, newState in
+          // Update quickFindText when search opens with initial text
+          if case .search(let initialText) = newState {
             quickFindText = initialText ?? ""
           }
         }

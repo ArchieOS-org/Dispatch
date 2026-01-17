@@ -81,12 +81,7 @@ struct NavigationPopover: View {
       RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium)
         .stroke(Color.primary.opacity(0.1), lineWidth: 1)
     )
-    .task {
-      // Wait for popover animation to complete before focusing
-      // This ensures the text field is fully in the view hierarchy
-      try? await Task.sleep(for: .milliseconds(100))
-      searchFieldFocused = true
-    }
+    .defaultFocus($searchFieldFocused, true)
   }
 
   // MARK: Private

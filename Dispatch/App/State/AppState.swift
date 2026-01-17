@@ -43,6 +43,12 @@ final class AppState: ObservableObject {
     case none
     case search(initialText: String?) // Canonical Intent
     case settings
+
+    /// Returns true if the overlay state is search (regardless of initial text)
+    var isSearch: Bool {
+      if case .search = self { return true }
+      return false
+    }
   }
 
   enum SheetState: Equatable, Identifiable {
