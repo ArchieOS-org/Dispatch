@@ -8,25 +8,63 @@
 //  NOTE: These tests require a live Supabase instance with test users configured.
 //  They are disabled by default - enable with DISPATCH_RLS_TESTS=1 environment variable.
 //
-//  Test User Setup (in Supabase):
-//  - User A: id = 00000000-0000-0000-0000-000000000001 (test_user_a@example.com)
-//  - User B: id = 00000000-0000-0000-0000-000000000002 (test_user_b@example.com)
-//  - Exec User: id = 00000000-0000-0000-0000-000000000003 (exec@example.com, user_type = 'exec')
+//  Test User Setup (in Supabase Auth):
+//  - User A: test_user_a@dispatch.test (password: TestPassword123!)
+//  - User B: test_user_b@dispatch.test (password: TestPassword123!)
+//
+//  The tests use service role to set up data, then authenticate as users to verify RLS.
 //
 
 // swiftlint:disable force_unwrapping
+// swiftlint:disable function_body_length
 
 import Foundation
+import Supabase
 import Testing
 @testable import DispatchApp
 
-// MARK: - RLSTestUsers
+// MARK: - RLSTestConfig
 
-/// Test user IDs (must match users in Supabase)
-enum RLSTestUsers {
-  static let userA = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
-  static let userB = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
-  static let execUser = UUID(uuidString: "00000000-0000-0000-0000-000000000003")!
+/// Configuration for RLS integration tests
+private enum RLSTestConfig {
+  /// Test user A credentials
+  static let userAEmail = "test_user_a@dispatch.test"
+  static let userAPassword = "TestPassword123!"
+
+  /// Test user B credentials
+  static let userBEmail = "test_user_b@dispatch.test"
+  static let userBPassword = "TestPassword123!"
+
+  /// Test data prefix for cleanup
+  static let testDataPrefix = "RLS_TEST_"
+
+  /// Deterministic UUIDs for test data (pattern: 00000000-0000-0000-XXXX-YYYYYYYYYYYY)
+  /// XXXX = entity type, YYYYYYYYYYYY = sequential index
+  enum TestUUIDs {
+    // Listings (type = 0001)
+    static let listingA = UUID(uuidString: "00000000-0000-0000-0001-000000000001")!
+    static let listingB = UUID(uuidString: "00000000-0000-0000-0001-000000000002")!
+
+    // Notes (type = 0005)
+    static let noteOnListingA = UUID(uuidString: "00000000-0000-0000-0005-000000000001")!
+    static let noteOnListingB = UUID(uuidString: "00000000-0000-0000-0005-000000000002")!
+    static let deletedNote = UUID(uuidString: "00000000-0000-0000-0005-000000000003")!
+
+    // Listing Types (type = 0006)
+    static let listingTypeA = UUID(uuidString: "00000000-0000-0000-0006-000000000001")!
+    static let listingTypeB = UUID(uuidString: "00000000-0000-0000-0006-000000000002")!
+
+    // Properties (type = 0007)
+    static let propertyA = UUID(uuidString: "00000000-0000-0000-0007-000000000001")!
+    static let propertyB = UUID(uuidString: "00000000-0000-0000-0007-000000000002")!
+
+    // Tasks (type = 0002)
+    static let taskA = UUID(uuidString: "00000000-0000-0000-0002-000000000001")!
+    static let taskB = UUID(uuidString: "00000000-0000-0000-0002-000000000002")!
+
+    // Task Assignees (type = 0008)
+    static let taskAssigneeA = UUID(uuidString: "00000000-0000-0000-0008-000000000001")!
+  }
 }
 
 /// Check if RLS tests are enabled via environment variable
@@ -34,216 +72,582 @@ private var rlsTestsEnabled: Bool {
   ProcessInfo.processInfo.environment["DISPATCH_RLS_TESTS"] == "1"
 }
 
-// MARK: - UserRLSTests
+// MARK: - RLSTestClient
 
-struct UserRLSTests {
+/// Helper to create authenticated Supabase clients for RLS testing
+@MainActor
+final class RLSTestClient {
 
-  @Test("Sync Manager handles User creation RLS failure", .enabled(if: rlsTestsEnabled))
-  func testUserSyncWithRLS() async throws {
-    // Setup: Try to create a User as a non-admin (e.g. User B creating a new user)
-    // Action: Call syncUpUsers
-    // Expected: Supabase should return 403/42501
-    //           SyncManager should catch error
-    //           User entity syncState should become .failed
-    //           User entity error message should be "Permission denied..."
-    #expect(true, "Placeholder - implement with authenticated Supabase client and SyncManager")
+  // MARK: Internal
+
+  /// Get an authenticated client for test user A
+  static func clientAsUserA() async throws -> (client: SupabaseClient, userId: UUID) {
+    try await authenticatedClient(
+      email: RLSTestConfig.userAEmail,
+      password: RLSTestConfig.userAPassword
+    )
   }
-}
 
-// MARK: - TaskRLSTests
+  /// Get an authenticated client for test user B
+  static func clientAsUserB() async throws -> (client: SupabaseClient, userId: UUID) {
+    try await authenticatedClient(
+      email: RLSTestConfig.userBEmail,
+      password: RLSTestConfig.userBPassword
+    )
+  }
 
-struct TaskRLSTests {
+  /// Get the shared service-role client (bypasses RLS)
+  static var serviceClient: SupabaseClient {
+    supabase
+  }
 
-  @Test("User can read their own declared tasks", .enabled(if: rlsTestsEnabled))
-  func testReadOwnDeclaredTasks() async throws {
-    // Setup: Create task declared by User A
-    let taskId = UUID()
-    let task = TaskDTO(
-      id: taskId,
-      title: "User A's Task",
-      description: "Test task",
-      dueDate: nil,
-      status: "open",
-      declaredBy: RLSTestUsers.userA,
-      listing: nil,
-      createdVia: "dispatch",
-      sourceSlackMessages: nil,
-      audiences: nil,
-      completedAt: nil,
-      deletedAt: nil,
-      createdAt: Date(),
-      updatedAt: Date()
+  /// Clean up test data using deterministic UUIDs
+  static func cleanupTestData() async throws {
+    // Delete in reverse FK order
+    // Notes
+    try? await supabase
+      .from("notes")
+      .delete()
+      .like("id", pattern: "00000000-0000-0000-0005-%")
+      .execute()
+
+    // Task assignees
+    try? await supabase
+      .from("task_assignees")
+      .delete()
+      .like("id", pattern: "00000000-0000-0000-0008-%")
+      .execute()
+
+    // Tasks
+    try? await supabase
+      .from("tasks")
+      .delete()
+      .like("id", pattern: "00000000-0000-0000-0002-%")
+      .execute()
+
+    // Listings
+    try? await supabase
+      .from("listings")
+      .delete()
+      .like("id", pattern: "00000000-0000-0000-0001-%")
+      .execute()
+
+    // Listing types
+    try? await supabase
+      .from("listing_types")
+      .delete()
+      .like("id", pattern: "00000000-0000-0000-0006-%")
+      .execute()
+
+    // Properties
+    try? await supabase
+      .from("properties")
+      .delete()
+      .like("id", pattern: "00000000-0000-0000-0007-%")
+      .execute()
+  }
+
+  // MARK: Private
+
+  private static var cachedClients: [String: (SupabaseClient, UUID)] = [:]
+
+  private static func authenticatedClient(
+    email: String,
+    password: String
+  ) async throws -> (client: SupabaseClient, userId: UUID) {
+    // Check cache first
+    if let cached = cachedClients[email] {
+      return cached
+    }
+
+    // Create a new client with same config
+    let client = SupabaseClient(
+      supabaseURL: URL(string: Secrets.supabaseURL)!,
+      supabaseKey: Secrets.supabaseAnonKey
     )
 
-    // TODO: Insert task as User A, then query as User A
-    // Expected: User A should be able to read their own task
-    _ = task // Suppress unused warning
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
-  }
+    // Sign in
+    let session = try await client.auth.signIn(email: email, password: password)
+    let result = (client, session.user.id)
 
-  @Test("User cannot read tasks declared by others (without claim)", .enabled(if: rlsTestsEnabled))
-  func testCannotReadOthersDeclaredTasks() async throws {
-    // Setup: Create task declared by User A
-    // Action: Query as User B (who is not declarer, claimer, or related to listing)
-    // Expected: User B should NOT see User A's task
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
-  }
+    // Cache for reuse
+    cachedClients[email] = result
 
-  @Test("User can read tasks assigned to them", .enabled(if: rlsTestsEnabled))
-  func testReadAssignedTasks() async throws {
-    // Setup: Create task declared by User A, assigned to User B
-    // Action: Query as User B
-    // Expected: User B should see the task assigned to them
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
-  }
-
-  @Test("Exec user can read all tasks", .enabled(if: rlsTestsEnabled))
-  func testExecCanReadAllTasks() async throws {
-    // Setup: Create tasks by User A and User B
-    // Action: Query as Exec User (user_type = 'exec')
-    // Expected: Exec should see all tasks
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
-  }
-
-  @Test("User can update their own declared tasks", .enabled(if: rlsTestsEnabled))
-  func testUpdateOwnDeclaredTasks() async throws {
-    // Setup: Create task declared by User A
-    // Action: Update task as User A
-    // Expected: Update should succeed
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
-  }
-
-  @Test("User cannot update tasks declared by others", .enabled(if: rlsTestsEnabled))
-  func testCannotUpdateOthersTasks() async throws {
-    // Setup: Create task declared by User A
-    // Action: Attempt to update as User B
-    // Expected: Update should fail (RLS violation)
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
-  }
-
-  @Test("User can delete their own declared tasks", .enabled(if: rlsTestsEnabled))
-  func testDeleteOwnDeclaredTasks() async throws {
-    // Setup: Create task declared by User A
-    // Action: Delete task as User A
-    // Expected: Delete should succeed
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
-  }
-
-  @Test("User cannot delete tasks declared by others", .enabled(if: rlsTestsEnabled))
-  func testCannotDeleteOthersTasks() async throws {
-    // Setup: Create task declared by User A
-    // Action: Attempt to delete as User B
-    // Expected: Delete should fail (RLS violation)
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
+    return result
   }
 }
 
-// MARK: - ActivityRLSTests
+// MARK: - NotesRLSTests
 
-struct ActivityRLSTests {
+/// Tests for notes table RLS policies
+/// Notes inherit access from their parent entity (listing, task, or activity)
+struct NotesRLSTests {
 
-  @Test("User can read their own declared activities", .enabled(if: rlsTestsEnabled))
-  func testReadOwnDeclaredActivities() async throws {
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
+  @Test("User can read notes on listings they own", .enabled(if: rlsTestsEnabled))
+  func testCanReadOwnListingNotes() async throws {
+    // Setup: Create listing owned by User A, then create note on that listing
+    let (clientA, userIdA) = try await RLSTestClient.clientAsUserA()
+
+    // Create listing via service client (to bypass RLS on insert)
+    let listingId = RLSTestConfig.TestUUIDs.listingA
+    try await RLSTestClient.serviceClient
+      .from("listings")
+      .upsert([
+        "id": listingId.uuidString,
+        "address": "RLS_TEST_123 Test St",
+        "listing_type": "sale",
+        "status": "active",
+        "owned_by": userIdA.uuidString,
+        "created_via": "dispatch",
+      ])
+      .execute()
+
+    // Create note on that listing via service client
+    let noteId = RLSTestConfig.TestUUIDs.noteOnListingA
+    try await RLSTestClient.serviceClient
+      .from("notes")
+      .upsert([
+        "id": noteId.uuidString,
+        "content": "RLS_TEST_Note for User A's listing",
+        "created_by": userIdA.uuidString,
+        "parent_type": "listing",
+        "parent_id": listingId.uuidString,
+      ])
+      .execute()
+
+    // Action: Query notes as User A
+    let notes: [NoteDTO] = try await clientA
+      .from("notes")
+      .select()
+      .eq("id", value: noteId.uuidString)
+      .execute()
+      .value
+
+    // Assert: User A should see their note
+    #expect(notes.count == 1, "User A should be able to read notes on their own listing")
+    #expect(notes.first?.id == noteId, "Note ID should match")
   }
 
-  @Test("User cannot read activities declared by others", .enabled(if: rlsTestsEnabled))
-  func testCannotReadOthersDeclaredActivities() async throws {
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
+  @Test("User cannot read notes on listings owned by others", .enabled(if: rlsTestsEnabled))
+  func testCannotReadOthersListingNotes() async throws {
+    // Setup: User A owns listing, User B tries to read notes
+    let (_, userIdA) = try await RLSTestClient.clientAsUserA()
+    let (clientB, _) = try await RLSTestClient.clientAsUserB()
+
+    // Create listing owned by User A
+    let listingId = RLSTestConfig.TestUUIDs.listingA
+    try await RLSTestClient.serviceClient
+      .from("listings")
+      .upsert([
+        "id": listingId.uuidString,
+        "address": "RLS_TEST_456 Private Ave",
+        "listing_type": "sale",
+        "status": "active",
+        "owned_by": userIdA.uuidString,
+        "created_via": "dispatch",
+      ])
+      .execute()
+
+    // Create note on User A's listing
+    let noteId = RLSTestConfig.TestUUIDs.noteOnListingA
+    try await RLSTestClient.serviceClient
+      .from("notes")
+      .upsert([
+        "id": noteId.uuidString,
+        "content": "RLS_TEST_Private note on User A's listing",
+        "created_by": userIdA.uuidString,
+        "parent_type": "listing",
+        "parent_id": listingId.uuidString,
+      ])
+      .execute()
+
+    // Action: Query notes as User B
+    let notes: [NoteDTO] = try await clientB
+      .from("notes")
+      .select()
+      .eq("id", value: noteId.uuidString)
+      .execute()
+      .value
+
+    // Assert: User B should NOT see notes on User A's listing
+    #expect(notes.isEmpty, "User B should NOT be able to read notes on User A's listing")
   }
 
-  @Test("User can read activities assigned to them", .enabled(if: rlsTestsEnabled))
-  func testReadAssignedActivities() async throws {
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
+  @Test("Deleted notes are not visible to owner", .enabled(if: rlsTestsEnabled))
+  func testDeletedNotesNotVisible() async throws {
+    // Setup: Create listing and soft-deleted note
+    let (clientA, userIdA) = try await RLSTestClient.clientAsUserA()
+
+    let listingId = RLSTestConfig.TestUUIDs.listingA
+    try await RLSTestClient.serviceClient
+      .from("listings")
+      .upsert([
+        "id": listingId.uuidString,
+        "address": "RLS_TEST_789 Deleted Lane",
+        "listing_type": "sale",
+        "status": "active",
+        "owned_by": userIdA.uuidString,
+        "created_via": "dispatch",
+      ])
+      .execute()
+
+    // Create soft-deleted note (deleted more than 10 minutes ago)
+    let noteId = RLSTestConfig.TestUUIDs.deletedNote
+    let oldDeletedAt = Date().addingTimeInterval(-3600) // 1 hour ago
+    try await RLSTestClient.serviceClient
+      .from("notes")
+      .upsert([
+        "id": noteId.uuidString,
+        "content": "RLS_TEST_This note was deleted",
+        "created_by": userIdA.uuidString,
+        "parent_type": "listing",
+        "parent_id": listingId.uuidString,
+        "deleted_at": ISO8601DateFormatter().string(from: oldDeletedAt),
+        "deleted_by": userIdA.uuidString,
+      ])
+      .execute()
+
+    // Action: Query notes as User A
+    let notes: [NoteDTO] = try await clientA
+      .from("notes")
+      .select()
+      .eq("id", value: noteId.uuidString)
+      .execute()
+      .value
+
+    // Assert: Deleted note should not be visible (RLS filters deleted_at)
+    #expect(notes.isEmpty, "Soft-deleted notes should NOT be visible via RLS")
   }
 }
 
-// MARK: - ListingRLSTests
+// MARK: - ListingTypesRLSTests
 
-struct ListingRLSTests {
+/// Tests for listing_types table RLS policies
+/// Users can only see listing types they own (or admins can see all)
+struct ListingTypesRLSTests {
 
-  @Test("User can read their own listings", .enabled(if: rlsTestsEnabled))
-  func testReadOwnListings() async throws {
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
+  @Test("User can read their own listing types", .enabled(if: rlsTestsEnabled))
+  func testCanReadOwnListingTypes() async throws {
+    let (clientA, userIdA) = try await RLSTestClient.clientAsUserA()
+
+    // Create listing type owned by User A
+    let listingTypeId = RLSTestConfig.TestUUIDs.listingTypeA
+    try await RLSTestClient.serviceClient
+      .from("listing_types")
+      .upsert([
+        "id": listingTypeId.uuidString,
+        "name": "RLS_TEST_User A's Custom Type",
+        "owned_by": userIdA.uuidString,
+      ])
+      .execute()
+
+    // Query as User A
+    struct ListingTypeRow: Decodable {
+      let id: UUID
+      let name: String
+    }
+    let types: [ListingTypeRow] = try await clientA
+      .from("listing_types")
+      .select()
+      .eq("id", value: listingTypeId.uuidString)
+      .execute()
+      .value
+
+    #expect(types.count == 1, "User A should see their own listing type")
+    #expect(types.first?.name == "RLS_TEST_User A's Custom Type")
   }
 
-  @Test("User cannot read listings owned by others", .enabled(if: rlsTestsEnabled))
-  func testCannotReadOthersListings() async throws {
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
+  @Test("User cannot read other users' listing types", .enabled(if: rlsTestsEnabled))
+  func testCannotReadOthersListingTypes() async throws {
+    let (_, userIdA) = try await RLSTestClient.clientAsUserA()
+    let (clientB, _) = try await RLSTestClient.clientAsUserB()
+
+    // Create listing type owned by User A
+    let listingTypeId = RLSTestConfig.TestUUIDs.listingTypeA
+    try await RLSTestClient.serviceClient
+      .from("listing_types")
+      .upsert([
+        "id": listingTypeId.uuidString,
+        "name": "RLS_TEST_User A's Private Type",
+        "owned_by": userIdA.uuidString,
+      ])
+      .execute()
+
+    // Query as User B
+    struct ListingTypeRow: Decodable {
+      let id: UUID
+    }
+    let types: [ListingTypeRow] = try await clientB
+      .from("listing_types")
+      .select()
+      .eq("id", value: listingTypeId.uuidString)
+      .execute()
+      .value
+
+    #expect(types.isEmpty, "User B should NOT see User A's listing types")
+  }
+}
+
+// MARK: - PropertiesRLSTests
+
+/// Tests for properties table RLS policies
+/// Properties are owned by users and scoped accordingly
+struct PropertiesRLSTests {
+
+  @Test("User can read their own properties", .enabled(if: rlsTestsEnabled))
+  func testCanReadOwnProperties() async throws {
+    let (clientA, userIdA) = try await RLSTestClient.clientAsUserA()
+
+    // Create property owned by User A
+    let propertyId = RLSTestConfig.TestUUIDs.propertyA
+    try await RLSTestClient.serviceClient
+      .from("properties")
+      .upsert([
+        "id": propertyId.uuidString,
+        "address": "RLS_TEST_100 Property Lane",
+        "owned_by": userIdA.uuidString,
+      ])
+      .execute()
+
+    // Query as User A
+    struct PropertyRow: Decodable {
+      let id: UUID
+      let address: String
+    }
+    let properties: [PropertyRow] = try await clientA
+      .from("properties")
+      .select()
+      .eq("id", value: propertyId.uuidString)
+      .execute()
+      .value
+
+    #expect(properties.count == 1, "User A should see their own property")
   }
 
-  @Test("Exec user can read all listings", .enabled(if: rlsTestsEnabled))
-  func testExecCanReadAllListings() async throws {
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
+  @Test("User cannot update other users' properties", .enabled(if: rlsTestsEnabled))
+  func testCannotUpdateOthersProperties() async throws {
+    let (_, userIdA) = try await RLSTestClient.clientAsUserA()
+    let (clientB, _) = try await RLSTestClient.clientAsUserB()
+
+    // Create property owned by User A
+    let propertyId = RLSTestConfig.TestUUIDs.propertyA
+    try await RLSTestClient.serviceClient
+      .from("properties")
+      .upsert([
+        "id": propertyId.uuidString,
+        "address": "RLS_TEST_200 Owned by A",
+        "owned_by": userIdA.uuidString,
+      ])
+      .execute()
+
+    // Attempt to update as User B
+    var updateFailed = false
+    do {
+      try await clientB
+        .from("properties")
+        .update(["address": "RLS_TEST_Hacked by B"])
+        .eq("id", value: propertyId.uuidString)
+        .execute()
+    } catch {
+      // Expected: RLS should block this update
+      updateFailed = true
+    }
+
+    // Verify the address wasn't changed
+    struct PropertyRow: Decodable {
+      let address: String
+    }
+    let properties: [PropertyRow] = try await RLSTestClient.serviceClient
+      .from("properties")
+      .select()
+      .eq("id", value: propertyId.uuidString)
+      .execute()
+      .value
+
+    // RLS may silently filter (no rows updated) rather than throw an error
+    let addressUnchanged = properties.first?.address == "RLS_TEST_200 Owned by A"
+    #expect(
+      updateFailed || addressUnchanged,
+      "User B should NOT be able to update User A's property"
+    )
   }
 }
 
-// MARK: - AssignmentRLSTests
+// MARK: - TaskAssigneesRLSTests
 
-struct AssignmentRLSTests {
+/// Tests for task_assignees table RLS policies
+/// Users can see assignees if: they are the assignee, they declared the task, or they own the listing
+struct TaskAssigneesRLSTests {
 
-  @Test("User can read assignments for their tasks", .enabled(if: rlsTestsEnabled))
-  func testReadAssignmentsForOwnTasks() async throws {
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
+  @Test("User can see task assignees for tasks they declared", .enabled(if: rlsTestsEnabled))
+  func testCanSeeAssigneesForOwnTasks() async throws {
+    let (clientA, userIdA) = try await RLSTestClient.clientAsUserA()
+    let (_, userIdB) = try await RLSTestClient.clientAsUserB()
+
+    // Create task declared by User A
+    let taskId = RLSTestConfig.TestUUIDs.taskA
+    try await RLSTestClient.serviceClient
+      .from("tasks")
+      .upsert([
+        "id": taskId.uuidString,
+        "title": "RLS_TEST_Task by User A",
+        "status": "open",
+        "declared_by": userIdA.uuidString,
+        "created_via": "dispatch",
+      ])
+      .execute()
+
+    // Assign User B to the task (via service client)
+    let assigneeId = RLSTestConfig.TestUUIDs.taskAssigneeA
+    try await RLSTestClient.serviceClient
+      .from("task_assignees")
+      .upsert([
+        "id": assigneeId.uuidString,
+        "task_id": taskId.uuidString,
+        "user_id": userIdB.uuidString,
+      ])
+      .execute()
+
+    // Query assignees as User A (task declarer)
+    struct AssigneeRow: Decodable {
+      let id: UUID
+      // swiftlint:disable:next identifier_name
+      let user_id: UUID
+    }
+    let assignees: [AssigneeRow] = try await clientA
+      .from("task_assignees")
+      .select()
+      .eq("task_id", value: taskId.uuidString)
+      .execute()
+      .value
+
+    #expect(assignees.count == 1, "Task declarer should see assignees on their task")
+    #expect(assignees.first?.user_id == userIdB, "Assignee should be User B")
   }
 
-  @Test("User cannot read assignments for others' tasks", .enabled(if: rlsTestsEnabled))
-  func testCannotReadAssignmentsForOthersTasks() async throws {
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
-  }
+  @Test("Assignee can see their own assignment", .enabled(if: rlsTestsEnabled))
+  func testAssigneeCanSeeOwnAssignment() async throws {
+    let (_, userIdA) = try await RLSTestClient.clientAsUserA()
+    let (clientB, userIdB) = try await RLSTestClient.clientAsUserB()
 
-  @Test("User can create assignment for their tasks", .enabled(if: rlsTestsEnabled))
-  func testCreateAssignment() async throws {
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
+    // Create task declared by User A
+    let taskId = RLSTestConfig.TestUUIDs.taskA
+    try await RLSTestClient.serviceClient
+      .from("tasks")
+      .upsert([
+        "id": taskId.uuidString,
+        "title": "RLS_TEST_Task with assignment",
+        "status": "open",
+        "declared_by": userIdA.uuidString,
+        "created_via": "dispatch",
+      ])
+      .execute()
+
+    // Assign User B
+    let assigneeId = RLSTestConfig.TestUUIDs.taskAssigneeA
+    try await RLSTestClient.serviceClient
+      .from("task_assignees")
+      .upsert([
+        "id": assigneeId.uuidString,
+        "task_id": taskId.uuidString,
+        "user_id": userIdB.uuidString,
+      ])
+      .execute()
+
+    // Query as User B (the assignee)
+    struct AssigneeRow: Decodable {
+      let id: UUID
+    }
+    let assignees: [AssigneeRow] = try await clientB
+      .from("task_assignees")
+      .select()
+      .eq("id", value: assigneeId.uuidString)
+      .execute()
+      .value
+
+    #expect(assignees.count == 1, "Assignee should see their own assignment")
   }
 }
 
-// MARK: - CrossEntityAccessTests
+// MARK: - UnauthenticatedAccessTests
 
-struct CrossEntityAccessTests {
+/// Tests verifying that unauthenticated/anon access is properly restricted
+struct UnauthenticatedAccessTests {
 
-  @Test("Task access through listing relationship", .enabled(if: rlsTestsEnabled))
-  func testTaskAccessViaListing() async throws {
-    // Setup: User A owns listing, task is associated with listing
-    // Action: User A queries tasks
-    // Expected: User A should see task associated with their listing
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
+  @Test("Anon cannot insert into notes table", .enabled(if: rlsTestsEnabled))
+  func testAnonCannotInsertNotes() async throws {
+    // Create anon client (not signed in)
+    let anonClient = SupabaseClient(
+      supabaseURL: URL(string: Secrets.supabaseURL)!,
+      supabaseKey: Secrets.supabaseAnonKey
+    )
+
+    // Attempt to insert a note as anon
+    var insertFailed = false
+    do {
+      try await anonClient
+        .from("notes")
+        .insert([
+          "id": UUID().uuidString,
+          "content": "RLS_TEST_Anon trying to insert",
+          "created_by": UUID().uuidString,
+          "parent_type": "listing",
+          "parent_id": UUID().uuidString,
+        ])
+        .execute()
+    } catch {
+      // Expected: RLS should block anon inserts
+      insertFailed = true
+    }
+
+    #expect(insertFailed, "Anon users should NOT be able to insert notes")
   }
 
-  @Test("Notes inherit parent entity access", .enabled(if: rlsTestsEnabled))
-  func testNotesInheritParentAccess() async throws {
-    // Setup: Create task by User A with notes
-    // Action: User B queries notes for that task
-    // Expected: User B should NOT see notes (no access to parent task)
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
-  }
+  @Test("Anon cannot read listing_types", .enabled(if: rlsTestsEnabled))
+  func testAnonCannotReadListingTypes() async throws {
+    let anonClient = SupabaseClient(
+      supabaseURL: URL(string: Secrets.supabaseURL)!,
+      supabaseKey: Secrets.supabaseAnonKey
+    )
 
-  @Test("Subtasks inherit parent entity access", .enabled(if: rlsTestsEnabled))
-  func testSubtasksInheritParentAccess() async throws {
-    // Setup: Create task by User A with subtasks
-    // Action: User B queries subtasks
-    // Expected: User B should NOT see subtasks (no access to parent)
-    #expect(true, "Placeholder - implement with authenticated Supabase client")
+    // Create a listing type via service client
+    let (_, userIdA) = try await RLSTestClient.clientAsUserA()
+    let listingTypeId = RLSTestConfig.TestUUIDs.listingTypeA
+    try await RLSTestClient.serviceClient
+      .from("listing_types")
+      .upsert([
+        "id": listingTypeId.uuidString,
+        "name": "RLS_TEST_Should not be visible to anon",
+        "owned_by": userIdA.uuidString,
+      ])
+      .execute()
+
+    // Query as anon
+    struct ListingTypeRow: Decodable {
+      let id: UUID
+    }
+    let types: [ListingTypeRow] = try await anonClient
+      .from("listing_types")
+      .select()
+      .eq("id", value: listingTypeId.uuidString)
+      .execute()
+      .value
+
+    #expect(types.isEmpty, "Anon users should NOT be able to read listing_types")
   }
 }
 
-// MARK: - RLSTestHelper
+// MARK: - RLSCleanupTests
 
-/// Helper to run tests with specific user authentication
-@MainActor
-final class RLSTestHelper {
-  static let shared = RLSTestHelper()
+/// Cleanup test to run after all RLS tests
+struct RLSCleanupTests {
 
-  /// Creates an authenticated Supabase client for a test user
-  /// NOTE: In production tests, this would use actual Supabase auth
-  func authenticatedClient(as _: UUID) async throws -> Any {
-    // Placeholder - would return authenticated SupabaseClient
-    // Using service role or JWT impersonation for tests
-    fatalError("Implement with Supabase test authentication")
-  }
-
-  /// Cleans up test data created during tests
-  func cleanupTestData() async throws {
-    // Placeholder - delete test records using service role
+  @Test("Cleanup RLS test data", .enabled(if: rlsTestsEnabled))
+  func testCleanupTestData() async throws {
+    try await RLSTestClient.cleanupTestData()
+    // No assertion needed - cleanup should succeed silently
   }
 }
+
+// swiftlint:enable force_unwrapping
+// swiftlint:enable function_body_length

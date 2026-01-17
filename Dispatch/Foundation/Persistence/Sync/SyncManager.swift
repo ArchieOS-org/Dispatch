@@ -103,6 +103,10 @@ final class SyncManager: ObservableObject {
 
   static let shared = SyncManager()
 
+  /// Preview-safe instance for SwiftUI previews.
+  /// Uses .preview mode which disables all network and persistence side effects.
+  static let preview = SyncManager(mode: .preview)
+
   static let lastSyncTimeKey = "dispatch.lastSyncTime"
   static let lastSyncListingTypesKey = "dispatch.lastSyncListingTypes"
   static let lastSyncActivityTemplatesKey = "dispatch.lastSyncActivityTemplates"
