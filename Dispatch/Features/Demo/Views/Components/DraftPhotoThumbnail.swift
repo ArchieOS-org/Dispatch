@@ -86,7 +86,7 @@ struct DraftPhotoThumbnail: View {
       Image(systemName: "xmark.circle.fill")
         .font(.system(size: isHero ? 24 : 18))
         .foregroundStyle(.white)
-        .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+        .dsShadow(DS.Shadows.subtle)
     }
     .padding(DS.Spacing.sm)
     .contentShape(Rectangle())

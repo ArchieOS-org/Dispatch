@@ -76,7 +76,7 @@ struct NavigationPopover: View {
     .frame(width: 320)
     .background(DS.Colors.Background.groupedSecondary)
     .clipShape(RoundedRectangle(cornerRadius: 12))
-    .shadow(radius: 20, y: 10)
+    .dsShadow(DS.Shadows.searchOverlay)
     .overlay(
       RoundedRectangle(cornerRadius: 12)
         .stroke(Color.primary.opacity(0.1), lineWidth: 1)

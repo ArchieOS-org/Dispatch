@@ -121,7 +121,7 @@ private struct GoogleSignInButton: View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
           .stroke(Color.black.opacity(0.1), lineWidth: 0.5)
       )
-      .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
+      .dsShadow(DS.Shadows.small)
     }
     .buttonStyle(PressableButtonStyle())
 
