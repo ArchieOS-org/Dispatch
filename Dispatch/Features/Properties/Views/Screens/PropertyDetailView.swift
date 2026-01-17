@@ -189,10 +189,11 @@ private struct PropertyListingRow: View {
 
   var body: some View {
     HStack(spacing: DS.Spacing.md) {
-      // Stage indicator
+      // Stage indicator (decorative - stage name shown in pill)
       Circle()
         .fill(listing.stage.color)
         .frame(width: 10, height: 10)
+        .accessibilityHidden(true)
 
       VStack(alignment: .leading, spacing: 2) {
         Text(listing.listingType.rawValue.capitalized)

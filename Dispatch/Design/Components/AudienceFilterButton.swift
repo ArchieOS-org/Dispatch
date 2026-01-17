@@ -51,6 +51,8 @@ struct AudienceFilterButton: View {
     #if os(macOS)
       .onHover { isHovering = $0 }
     #endif
+      .accessibilityLabel("Audience filter")
+      .accessibilityHint("Double tap to change filter")
       .accessibilityIdentifier("AudienceFilterButton")
       // Regression Lock: Encodes symbol name to prove visual change
       .accessibilityValue("\(lens.rawValue)|\(lens.icon)")

@@ -39,6 +39,20 @@ struct RoleDot: View {
       }
     }
     .opacity(DS.Spacing.roleIndicatorOpacity)
+    .accessibilityLabel(accessibilityDescription)
+  }
+
+  /// Generates a descriptive label for VoiceOver based on audiences
+  private var accessibilityDescription: String {
+    if audiences.contains(.admin), audiences.contains(.marketing) {
+      return "Visible to admin and marketing"
+    } else if audiences.contains(.admin) {
+      return "Visible to admin only"
+    } else if audiences.contains(.marketing) {
+      return "Visible to marketing only"
+    } else {
+      return "No audience assigned"
+    }
   }
 
   // MARK: Private
