@@ -49,9 +49,10 @@ struct OnboardingLoadingView: View {
             .font(DS.Typography.body)
             .foregroundStyle(DS.Colors.Text.secondary)
             .multilineTextAlignment(.center)
-            .onAppear {
+            .task {
               // Cycle through messages if it takes a while
-              cycleMessages()
+              // SwiftUI automatically cancels this task when view disappears
+              await cycleMessages()
             }
         }
 
@@ -76,16 +77,14 @@ struct OnboardingLoadingView: View {
   @EnvironmentObject private var syncManager: SyncManager
   @State private var message = "Setting up your workspace..."
 
-  private func cycleMessages() {
-    Task {
-      try? await Task.sleep(nanoseconds: 3 * 1_000_000_000)
-      guard syncManager.lastSyncErrorMessage == nil else { return }
-      withAnimation { message = "Syncing your profile..." }
+  private func cycleMessages() async {
+    try? await Task.sleep(nanoseconds: 3 * 1_000_000_000)
+    guard !Task.isCancelled, syncManager.lastSyncErrorMessage == nil else { return }
+    withAnimation { message = "Syncing your profile..." }
 
-      try? await Task.sleep(nanoseconds: 4 * 1_000_000_000)
-      guard syncManager.lastSyncErrorMessage == nil else { return }
-      withAnimation { message = "Almost there..." }
-    }
+    try? await Task.sleep(nanoseconds: 4 * 1_000_000_000)
+    guard !Task.isCancelled, syncManager.lastSyncErrorMessage == nil else { return }
+    withAnimation { message = "Almost there..." }
   }
 }
 
