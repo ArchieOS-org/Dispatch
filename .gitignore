@@ -39,6 +39,10 @@ Dispatch/Configuration/Secrets.swift
 Dispatch/App/Configuration/Secrets.swift
 /Secrets.swift
 
+# Secrets plist - DO NOT COMMIT
+Dispatch/App/Configuration/SecretsConfig.plist
+SecretsConfig.plist
+
 # macOS
 .DS_Store
 .AppleDouble
