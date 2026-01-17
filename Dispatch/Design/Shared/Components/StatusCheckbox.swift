@@ -25,6 +25,8 @@ struct StatusCheckbox: View {
         .font(.system(size: 14, weight: .medium))
         .foregroundStyle(color)
         .frame(width: 14, height: 14) // Match text visual height
+        .frame(minWidth: DS.Spacing.minTouchTarget, minHeight: DS.Spacing.minTouchTarget)
+        .contentShape(Rectangle())
         .scaleEffect(isCompleted ? 1.0 : 0.95)
         .animation(
           reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.6),

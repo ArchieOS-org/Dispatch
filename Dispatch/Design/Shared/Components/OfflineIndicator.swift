@@ -14,6 +14,7 @@ struct OfflineIndicator: View {
     Circle()
       .fill(Color.orange)
       .frame(width: 12, height: 12)
+      .accessibilityHidden(true)
   }
 }
 
