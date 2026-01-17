@@ -8,9 +8,10 @@
 import SwiftUI
 
 struct OverduePill: View {
-  let count: Int
 
-  @ScaledMetric(relativeTo: .caption2) private var iconSize: CGFloat = 9
+  // MARK: Internal
+
+  let count: Int
 
   var body: some View {
     Pill(foreground: .white, background: DS.Colors.overdue) {
@@ -29,6 +30,12 @@ struct OverduePill: View {
   var accessibilityLabel: String {
     count == 1 ? "1 overdue task" : "\(count) overdue tasks"
   }
+
+  // MARK: Private
+
+  @ScaledMetric(relativeTo: .caption2)
+  private var iconSize: CGFloat = 9
+
 }
 
 #Preview {

@@ -31,11 +31,17 @@ extension PlatformImage {
   }
 }
 
-// MARK: - Copy Feedback Utilities
+// MARK: - CopyFeedback
 
 /// Provides cross-platform clipboard operations with visual feedback support.
 /// Uses proper SwiftUI async patterns instead of DispatchQueue timing hacks.
 enum CopyFeedback {
+
+  /// Standard delay for copy feedback reset (1.5 seconds)
+  static let standardDelay: Duration = .seconds(1.5)
+
+  /// Longer delay for copy feedback reset (2.0 seconds)
+  static let longDelay: Duration = .seconds(2)
 
   /// Copies text to the system clipboard with optional haptic feedback.
   /// - Parameters:
@@ -46,7 +52,7 @@ enum CopyFeedback {
 
     #if canImport(UIKit)
     UIPasteboard.general.string = text
-    // Haptic feedback on iOS
+    /// Haptic feedback on iOS
     let generator = UIImpactFeedbackGenerator(style: .light)
     generator.impactOccurred()
     // VoiceOver announcement
@@ -75,9 +81,4 @@ enum CopyFeedback {
     }
   }
 
-  /// Standard delay for copy feedback reset (1.5 seconds)
-  static let standardDelay: Duration = .seconds(1.5)
-
-  /// Longer delay for copy feedback reset (2.0 seconds)
-  static let longDelay: Duration = .seconds(2)
 }

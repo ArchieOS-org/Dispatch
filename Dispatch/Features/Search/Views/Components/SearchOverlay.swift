@@ -53,8 +53,8 @@ struct SearchOverlay: View {
     listings: [Listing],
     onSelectResult: @escaping (SearchResult) -> Void
   ) {
-    self._isPresented = isPresented
-    self._searchText = searchText
+    _isPresented = isPresented
+    _searchText = searchText
     self.tasks = tasks
     self.activities = activities
     self.listings = listings
@@ -214,24 +214,11 @@ private enum SearchOverlayPreviewData {
 }
 
 private struct SearchOverlayPreviewHost: View {
+
+  // MARK: Internal
+
   @State var isPresented: Bool
   @State var searchText: String
-
-  @Query private var tasks: [TaskItem]
-  @Query private var activities: [Activity]
-  @Query private var listings: [Listing]
-
-  private var activeTasks: [TaskItem] {
-    tasks.filter { $0.status != .deleted }
-  }
-
-  private var activeActivities: [Activity] {
-    activities.filter { $0.status != .deleted }
-  }
-
-  private var activeListings: [Listing] {
-    listings.filter { $0.status != .deleted }
-  }
 
   var body: some View {
     ZStack {
@@ -251,6 +238,25 @@ private struct SearchOverlayPreviewHost: View {
     }
     .environmentObject(AppOverlayState(mode: .preview))
   }
+
+  // MARK: Private
+
+  @Query private var tasks: [TaskItem]
+  @Query private var activities: [Activity]
+  @Query private var listings: [Listing]
+
+  private var activeTasks: [TaskItem] {
+    tasks.filter { $0.status != .deleted }
+  }
+
+  private var activeActivities: [Activity] {
+    activities.filter { $0.status != .deleted }
+  }
+
+  private var activeListings: [Listing] {
+    listings.filter { $0.status != .deleted }
+  }
+
 }
 
 #Preview("Search Overlay · Empty") {

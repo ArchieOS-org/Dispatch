@@ -8,6 +8,8 @@
 
 import SwiftUI
 
+// MARK: - ListRowLink
+
 /// A NavigationLink wrapper for navigation rows.
 ///
 /// Uses NavigationLink as the outer container (Apple's intended pattern).
@@ -35,10 +37,8 @@ import SwiftUI
 /// }
 /// ```
 struct ListRowLink<Value: Hashable, Content: View>: View {
-  let value: Value
-  let accessibilityLabel: String?
-  let accessibilityHint: String?
-  @ViewBuilder let content: () -> Content
+
+  // MARK: Lifecycle
 
   init(
     value: Value,
@@ -52,6 +52,13 @@ struct ListRowLink<Value: Hashable, Content: View>: View {
     self.content = content
   }
 
+  // MARK: Internal
+
+  let value: Value
+  let accessibilityLabel: String?
+  let accessibilityHint: String?
+  @ViewBuilder let content: () -> Content
+
   var body: some View {
     NavigationLink(value: value) {
       content()
@@ -64,7 +71,7 @@ struct ListRowLink<Value: Hashable, Content: View>: View {
   }
 }
 
-// MARK: - Accessibility Modifiers
+// MARK: - OptionalAccessibilityLabel
 
 private struct OptionalAccessibilityLabel: ViewModifier {
   let label: String?
@@ -77,6 +84,8 @@ private struct OptionalAccessibilityLabel: ViewModifier {
     }
   }
 }
+
+// MARK: - OptionalAccessibilityHint
 
 private struct OptionalAccessibilityHint: ViewModifier {
   let hint: String?
