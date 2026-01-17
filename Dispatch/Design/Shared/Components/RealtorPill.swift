@@ -27,6 +27,8 @@ struct RealtorPill: View {
         .clipShape(Capsule())
     }
     .buttonStyle(.plain)
+    .accessibilityLabel(realtorName)
+    .accessibilityHint("Double tap to view profile")
   }
 }
 
