@@ -24,6 +24,7 @@ struct WorkItemDetailView: View {
   var onEditNote: ((Note) -> Void)?
   var onDeleteNote: ((Note) -> Void)?
   var onAddNote: ((String) -> Void)?
+  var onDeleteItem: (() -> Void)?
 
   var body: some View {
     StandardScreen(title: item.title, layout: .column, scroll: .automatic) {
@@ -37,6 +38,21 @@ struct WorkItemDetailView: View {
     .sheet(isPresented: $showAssigneePicker) {
       assigneePickerSheet
     }
+    #if os(macOS)
+    .onDeleteCommand {
+      if onDeleteItem != nil {
+        showDeleteItemAlert = true
+      }
+    }
+    .alert("Delete \(item.isTask ? "Task" : "Activity")?", isPresented: $showDeleteItemAlert) {
+      Button("Cancel", role: .cancel) { }
+      Button("Delete", role: .destructive) {
+        onDeleteItem?()
+      }
+    } message: {
+      Text("This \(item.isTask ? "task" : "activity") will be marked as deleted.")
+    }
+    #endif
   }
 
   // MARK: Private
@@ -50,6 +66,11 @@ struct WorkItemDetailView: View {
 
   @State private var showAssigneePicker = false
   @State private var selectedAssigneeIds: Set<UUID> = []
+
+  #if os(macOS)
+  /// State for keyboard-triggered deletion
+  @State private var showDeleteItemAlert = false
+  #endif
 
   /// Environment
   @EnvironmentObject private var lensState: LensState

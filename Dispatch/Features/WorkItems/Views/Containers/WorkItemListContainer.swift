@@ -58,6 +58,11 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
   @State private var selectedFilter = AssignmentFilter.mine
   @EnvironmentObject private var lensState: LensState
 
+  #if os(macOS)
+  /// Tracks the currently focused work item ID for keyboard navigation
+  @FocusState private var focusedItemID: UUID?
+  #endif
+
   private var filteredItems: [WorkItem] {
     items.filter { item in
       selectedFilter.matches(assigneeUserIds: item.assigneeUserIds, currentUserId: currentUserId) &&
@@ -100,6 +105,11 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     }
   }
 
+  /// Flat list of all work item IDs for keyboard navigation
+  private var allItemIDs: [UUID] {
+    groupedItems.flatMap { $0.items.map(\.id) }
+  }
+
   private var mainScreen: some View {
     StandardScreen(title: title, layout: .column, scroll: .disabled) {
       VStack(spacing: 0) {
@@ -116,6 +126,11 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
         }
       }
     }
+    #if os(macOS)
+    .onMoveCommand { direction in
+      handleMoveCommand(direction)
+    }
+    #endif
     .onReceive(NotificationCenter.default.publisher(for: .filterMine)) { _ in
       selectedFilter = .mine
     }
@@ -126,6 +141,45 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
       selectedFilter = .unassigned
     }
   }
+
+  #if os(macOS)
+  /// Handles arrow key navigation in the work items list
+  private func handleMoveCommand(_ direction: MoveCommandDirection) {
+    let ids = allItemIDs
+    guard !ids.isEmpty else { return }
+
+    switch direction {
+    case .up:
+      if let currentID = focusedItemID,
+         let currentIndex = ids.firstIndex(of: currentID),
+         currentIndex > 0
+      {
+        focusedItemID = ids[currentIndex - 1]
+      } else {
+        // No selection or at top - select first item
+        focusedItemID = ids.first
+      }
+
+    case .down:
+      if let currentID = focusedItemID,
+         let currentIndex = ids.firstIndex(of: currentID),
+         currentIndex < ids.count - 1
+      {
+        focusedItemID = ids[currentIndex + 1]
+      } else if focusedItemID == nil {
+        // No selection - select first item
+        focusedItemID = ids.first
+      }
+
+    case .left, .right:
+      // Left/right not used for vertical lists
+      break
+
+    @unknown default:
+      break
+    }
+  }
+  #endif
 
   private var listView: some View {
     List {
