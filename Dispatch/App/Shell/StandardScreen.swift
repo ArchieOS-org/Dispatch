@@ -177,7 +177,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
       // macOS: Custom static header (Things 3 style)
       // Toolbar is always visible in full-screen, so consistent padding
       Text(title)
-        .font(.largeTitle)
+        .font(DS.Typography.largeTitle)
         .fontWeight(.bold)
         .foregroundColor(DS.Colors.Text.primary)
         .padding(.horizontal, horizontalPadding)

@@ -107,7 +107,8 @@ private struct GoogleSignInButton: View {
           .font(.system(size: 20))
 
         Text("Continue with Google")
-          .font(.system(size: 17, weight: .medium))
+          .font(DS.Typography.body)
+          .fontWeight(.medium)
       }
       .frame(maxWidth: .infinity)
       .frame(height: 50)

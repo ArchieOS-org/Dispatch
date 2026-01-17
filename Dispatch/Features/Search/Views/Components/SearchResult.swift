@@ -206,12 +206,12 @@ private struct SearchResultPreviewRow: View {
 
       VStack(alignment: .leading, spacing: 2) {
         Text(result.title)
-          .font(.headline)
+          .font(DS.Typography.headline)
           .foregroundStyle(DS.Colors.Text.primary)
           .lineLimit(1)
 
         Text(result.subtitle)
-          .font(.subheadline)
+          .font(DS.Typography.bodySecondary)
           .foregroundStyle(DS.Colors.Text.secondary)
           .lineLimit(1)
       }

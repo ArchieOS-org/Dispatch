@@ -92,13 +92,13 @@ struct FilterMenu: View {
 
   VStack(spacing: DS.Spacing.lg) {
     Text("Current: \(audience.label)")
-      .font(.headline)
+      .font(DS.Typography.headline)
       .foregroundStyle(.secondary)
 
     FilterMenu(audience: $audience)
 
     Text("Tap to cycle • Hold for menu")
-      .font(.caption)
+      .font(DS.Typography.caption)
       .foregroundStyle(.tertiary)
   }
   .padding(DS.Spacing.xl)
@@ -113,7 +113,7 @@ struct FilterMenu: View {
       VStack(spacing: DS.Spacing.xs) {
         FilterMenu(audience: .constant(lens))
         Text(lens.label)
-          .font(.caption2)
+          .font(DS.Typography.captionSecondary)
           .foregroundStyle(.tertiary)
       }
     }

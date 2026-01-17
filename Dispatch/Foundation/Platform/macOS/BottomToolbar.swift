@@ -162,9 +162,9 @@ struct BottomToolbar: View {
     // Content area
     VStack {
       Text("Current Filter: \(audience.label)")
-        .font(.headline)
+        .font(DS.Typography.headline)
       Text("Use the filter menu in the toolbar below")
-        .font(.caption)
+        .font(DS.Typography.caption)
         .foregroundStyle(.secondary)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -186,9 +186,9 @@ struct BottomToolbar: View {
     // Content area
     VStack {
       Text("Work Item Detail")
-        .font(.headline)
+        .font(DS.Typography.headline)
       Text("Detail toolbar with delete action")
-        .font(.caption)
+        .font(DS.Typography.caption)
         .foregroundStyle(.secondary)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -446,7 +446,7 @@ struct BottomToolbar: View {
     ForEach(AudienceLens.allCases, id: \.self) { lens in
       VStack(alignment: .leading, spacing: DS.Spacing.xs) {
         Text(lens.label)
-          .font(.caption)
+          .font(DS.Typography.caption)
           .foregroundStyle(.secondary)
           .padding(.leading, DS.Spacing.md)
 

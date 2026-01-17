@@ -80,7 +80,7 @@ struct SectionHeader<Trailing: View>: View {
     }
     SectionHeader("Listings") {
       Image(systemName: "chevron.right")
-        .font(.caption)
+        .font(DS.Typography.caption)
         .foregroundStyle(DS.Colors.Text.tertiary)
     }
   }

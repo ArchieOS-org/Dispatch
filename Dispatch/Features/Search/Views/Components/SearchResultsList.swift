@@ -129,15 +129,15 @@ struct SearchResultsList: View {
   private var noResultsView: some View {
     VStack(spacing: DS.Spacing.md) {
       Image(systemName: "doc.text.magnifyingglass")
-        .font(.largeTitle)
+        .font(DS.Typography.largeTitle)
         .foregroundColor(DS.Colors.Text.tertiary)
 
       Text("No results for \"\(searchText)\"")
-        .font(.body)
+        .font(DS.Typography.body)
         .foregroundColor(DS.Colors.Text.secondary)
 
       Text("Try searching for a different term")
-        .font(.subheadline)
+        .font(DS.Typography.bodySecondary)
         .foregroundColor(DS.Colors.Text.tertiary)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -146,7 +146,7 @@ struct SearchResultsList: View {
 
   private func sectionHeader(_ title: String) -> some View {
     Text(title)
-      .font(.subheadline)
+      .font(DS.Typography.bodySecondary)
       .fontWeight(.semibold)
       .foregroundColor(DS.Colors.Text.secondary)
       .padding(.horizontal, DS.Spacing.lg)

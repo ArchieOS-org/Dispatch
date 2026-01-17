@@ -298,7 +298,7 @@ private let previewNotes: [Note] = (0 ..< 3).map { i in
 #Preview("Notes Content - Unstyled") {
   VStack {
     Text("Custom Container")
-      .font(.headline)
+      .font(DS.Typography.headline)
     NotesContent(
       notes: previewNotes.prefix(2).map { $0 },
       userLookup: { _ in User(name: "Jane Doe", email: "jane@example.com", userType: .marketing) },
