@@ -26,7 +26,6 @@ struct ContentView: View {
       .environmentObject(workItemActions)
       // .environmentObject(searchManager) // Remvoved
       .environmentObject(appState.lensState)
-      // .environmentObject(quickEntryState) // Removed
       .environmentObject(overlayState)
     #if os(macOS)
       .overlay(alignment: .top) {
@@ -109,11 +108,7 @@ struct ContentView: View {
   /// Controls stage picker sheet visibility (for tab-bar mode fallback)
   @State private var showStagePicker = false
   #endif
-  // searchManager migrated to AppState
-  // @StateObject private var searchManager = SearchPresentationManager()
-  // Local nav state removed - deferring to AppState.router (One Boss)
 
-  // QuickEntryState removed - migrated to AppState
   @StateObject private var overlayState = AppOverlayState()
   @StateObject private var keyboardObserver = KeyboardObserver()
 

@@ -246,6 +246,5 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
       Text("Detail View")
     }
   )
-  .environmentObject(SearchPresentationManager())
   .environmentObject(LensState())
 }

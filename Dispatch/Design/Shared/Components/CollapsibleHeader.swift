@@ -172,5 +172,4 @@ struct CollapsibleHeaderScrollView<Header: View, Content: View>: View {
     }
     .padding()
   }
-  .environmentObject(SearchPresentationManager())
 }
