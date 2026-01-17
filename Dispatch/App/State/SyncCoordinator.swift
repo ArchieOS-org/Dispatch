@@ -72,6 +72,8 @@ class SyncCoordinator: ObservableObject {
   // Track internal state to prevent redundant calls
   private var isListening = false
   private var syncTask: Task<Void, Never>?
+  private var lifecycleTask: Task<Void, Never>?
+  private var stopListeningTask: Task<Void, Never>?
 
   // Network Monitoring
   private let networkMonitor = NWPathMonitor()
@@ -104,19 +106,28 @@ class SyncCoordinator: ObservableObject {
   private func startLifecycle() {
     guard authManager.isAuthenticated else { return }
 
+    // Cancel any existing lifecycle task before creating a new one (idempotent)
+    lifecycleTask?.cancel()
+
     // 1. Update User Context
     syncManager.updateCurrentUser(authManager.currentUserID)
 
     // 2. Perform Compatibility Check (moved from old DispatchApp logic)
-    Task {
+    lifecycleTask = Task {
+      guard !Task.isCancelled else { return }
+
       let compatStatus = await AppCompatManager.shared.checkCompatibility()
       if compatStatus.isBlocked {
         Self.logger.error("App version blocked: \(AppCompatManager.shared.statusMessage)")
         return
       }
 
+      guard !Task.isCancelled else { return }
+
       // 3. Initial Sync
       await syncManager.sync()
+
+      guard !Task.isCancelled else { return }
 
       // 4. Start Realtime Listening
       if !isListening {
@@ -127,10 +138,15 @@ class SyncCoordinator: ObservableObject {
   }
 
   private func stopLifecycle() {
-    // Cancel any in-flight syncs if possible (SyncManager doesn't expose cancellation token yet, but we can stop listening)
+    // Cancel any in-flight lifecycle tasks to prevent orphans
+    lifecycleTask?.cancel()
+    lifecycleTask = nil
 
     if isListening {
-      Task {
+      // Cancel any existing stop listening task before creating new one
+      stopListeningTask?.cancel()
+      stopListeningTask = Task {
+        guard !Task.isCancelled else { return }
         await syncManager.stopListening()
         isListening = false
       }
