@@ -89,7 +89,7 @@ struct UserAvatar: View {
   }
 
   private var backgroundColor: Color {
-    guard let user else { return Color.gray }
+    guard let user else { return DS.Colors.Text.tertiary }
     // Deterministic color based on user ID
     let colors: [Color] = [
       .blue,

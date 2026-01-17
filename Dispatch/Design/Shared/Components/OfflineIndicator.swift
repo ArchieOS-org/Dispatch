@@ -12,7 +12,7 @@ import SwiftUI
 struct OfflineIndicator: View {
   var body: some View {
     Circle()
-      .fill(Color.orange)
+      .fill(DS.Colors.warning)
       .frame(width: 12, height: 12)
       .accessibilityLabel("Offline mode active")
   }
