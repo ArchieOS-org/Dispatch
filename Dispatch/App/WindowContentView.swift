@@ -29,13 +29,16 @@ struct WindowContentView: View {
   /// Debug test harness binding (shared for simplicity)
   @Binding var showTestHarness: Bool
 
+  /// Observed sync manager for currentUser changes
+  @EnvironmentObject private var syncManager: SyncManager
+
   // MARK: - Body
 
   var body: some View {
     Group {
       ZStack {
         if appState.authManager.isAuthenticated {
-          if SyncManager.shared.currentUser != nil {
+          if syncManager.currentUser != nil {
             AppShellView()
               .transition(.opacity)
           } else {
@@ -48,6 +51,7 @@ struct WindowContentView: View {
         }
       }
       .animation(.easeInOut, value: appState.authManager.isAuthenticated)
+      .animation(.easeInOut, value: syncManager.currentUser != nil)
     }
     #if os(macOS)
     // Inject per-window state into environment (macOS only)

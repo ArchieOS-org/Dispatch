@@ -72,10 +72,10 @@ struct DispatchApp: App {
         .onOpenURL { url in
           appState.authManager.handleRedirect(url)
         }
-        .frame(minWidth: DS.Spacing.windowMinWidth, minHeight: DS.Spacing.windowMinHeight)
     }
     .modelContainer(sharedModelContainer)
     #if os(macOS)
+      .frame(minWidth: DS.Spacing.windowMinWidth, minHeight: DS.Spacing.windowMinHeight)
       .defaultSize(width: DS.Spacing.windowDefaultWidth, height: DS.Spacing.windowDefaultHeight)
       .commands {
         // Pass the dispatch closure explicitly to avoid Environment lookup issues in menu bar

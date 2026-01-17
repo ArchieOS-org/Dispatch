@@ -115,7 +115,11 @@ Use `mcp__xcodebuildmcp__*` tools for:
 
 **Fallback**: If MCP tools are unavailable, use the bash commands in "Common Commands" section.
 
-### Context7 for Documentation
+### Context7 for Documentation (MANDATORY)
+
+> **CRITICAL: Your training data is OUTDATED. Context7 is the source of truth.**
+>
+> See `.claude/rules/context7-mandatory.md` for full policy. All agents MUST use Context7 before writing code that uses any framework or library. Do NOT rely on training memory.
 
 **Always use Context7 MCP tools to look up current documentation before implementing features.**
 

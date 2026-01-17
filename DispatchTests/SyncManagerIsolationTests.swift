@@ -38,18 +38,20 @@ final class SyncManagerIsolationTests: XCTestCase {
     #endif
 
     XCTAssertNil(manager.syncLoopTask, "syncLoopTask should be nil")
-    XCTAssertNil(manager.statusTask, "statusTask should be nil")
-    XCTAssertNil(manager.broadcastTask, "broadcastTask should be nil")
-    XCTAssertNil(manager.startBroadcastListeningTask, "startBroadcastListeningTask should be nil")
 
-    XCTAssertNil(manager.tasksSubscriptionTask, "tasksSubscriptionTask should be nil")
-    XCTAssertNil(manager.activitiesSubscriptionTask, "activitiesSubscriptionTask should be nil")
-    XCTAssertNil(manager.listingsSubscriptionTask, "listingsSubscriptionTask should be nil")
-    XCTAssertNil(manager.usersSubscriptionTask, "usersSubscriptionTask should be nil")
-    XCTAssertNil(manager.notesSubscriptionTask, "notesSubscriptionTask should be nil")
+    // Realtime tasks are now managed by RealtimeManager (extracted in refactor)
+    XCTAssertNil(manager.realtimeManager.statusTask, "statusTask should be nil")
+    XCTAssertNil(manager.realtimeManager.broadcastTask, "broadcastTask should be nil")
+    XCTAssertNil(manager.realtimeManager.startBroadcastListeningTask, "startBroadcastListeningTask should be nil")
 
-    XCTAssertNil(manager.realtimeChannel, "realtimeChannel should be nil")
-    XCTAssertNil(manager.broadcastChannel, "broadcastChannel should be nil")
+    XCTAssertNil(manager.realtimeManager.tasksSubscriptionTask, "tasksSubscriptionTask should be nil")
+    XCTAssertNil(manager.realtimeManager.activitiesSubscriptionTask, "activitiesSubscriptionTask should be nil")
+    XCTAssertNil(manager.realtimeManager.listingsSubscriptionTask, "listingsSubscriptionTask should be nil")
+    XCTAssertNil(manager.realtimeManager.usersSubscriptionTask, "usersSubscriptionTask should be nil")
+    XCTAssertNil(manager.realtimeManager.notesSubscriptionTask, "notesSubscriptionTask should be nil")
+
+    XCTAssertNil(manager.realtimeManager.realtimeChannel, "realtimeChannel should be nil")
+    XCTAssertNil(manager.realtimeManager.broadcastChannel, "broadcastChannel should be nil")
   }
 
   func testUserDefaultsIsolation() async {
