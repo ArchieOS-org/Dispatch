@@ -32,8 +32,18 @@ struct RealtorsListView: View {
 
   @State private var showAddSheet = false
 
+  #if os(macOS)
+  /// Tracks the currently focused realtor ID for keyboard navigation
+  @FocusState private var focusedRealtorID: UUID?
+  #endif
+
   private var activeRealtorList: [User] {
     allUsers.filter { $0.userType == .realtor }
+  }
+
+  /// Flat list of all realtor IDs for keyboard navigation
+  private var allRealtorIDs: [UUID] {
+    activeRealtorList.map(\.id)
   }
 
   private var content: some View {
@@ -52,11 +62,55 @@ struct RealtorsListView: View {
         }
       }
     }
+    #if os(macOS)
+    .onMoveCommand { direction in
+      handleMoveCommand(direction)
+    }
+    #endif
     .onAppear {
       // No-op or remove if not needed, but fixing structure first.
       // Phase 2 goal was to remove onAppear, so let's just close content.
     }
   }
+
+  #if os(macOS)
+  /// Handles arrow key navigation in the realtors list
+  private func handleMoveCommand(_ direction: MoveCommandDirection) {
+    let ids = allRealtorIDs
+    guard !ids.isEmpty else { return }
+
+    switch direction {
+    case .up:
+      if let currentID = focusedRealtorID,
+         let currentIndex = ids.firstIndex(of: currentID),
+         currentIndex > 0
+      {
+        focusedRealtorID = ids[currentIndex - 1]
+      } else {
+        // No selection or at top - select first item
+        focusedRealtorID = ids.first
+      }
+
+    case .down:
+      if let currentID = focusedRealtorID,
+         let currentIndex = ids.firstIndex(of: currentID),
+         currentIndex < ids.count - 1
+      {
+        focusedRealtorID = ids[currentIndex + 1]
+      } else if focusedRealtorID == nil {
+        // No selection - select first item
+        focusedRealtorID = ids.first
+      }
+
+    case .left, .right:
+      // Left/right not used for vertical lists
+      break
+
+    @unknown default:
+      break
+    }
+  }
+  #endif
 }
 
 // MARK: - RealtorRow

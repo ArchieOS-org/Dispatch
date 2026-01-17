@@ -51,6 +51,18 @@ struct ListingListView: View {
       } message: {
         Text("This draft will be permanently deleted.")
       }
+      #if os(macOS)
+      .alert("Delete Listing?", isPresented: $showDeleteListingAlert) {
+        Button("Cancel", role: .cancel) {
+          listingToDelete = nil
+        }
+        Button("Delete", role: .destructive) {
+          confirmDeleteFocusedListing()
+        }
+      } message: {
+        Text("This listing will be marked as deleted.")
+      }
+      #endif
   }
 
   // MARK: Private
@@ -80,12 +92,23 @@ struct ListingListView: View {
   }
   #endif
 
+  #if os(macOS)
+  /// Tracks the currently focused listing ID for keyboard navigation
+  @FocusState private var focusedListingID: UUID?
+  #endif
+
   @State private var showDeleteNoteAlert = false
   @State private var noteToDelete: Note?
   @State private var itemForNoteDeletion: WorkItem?
 
   @State private var showDeleteDraftAlert = false
   @State private var draftToDelete: ListingGeneratorDraft?
+
+  #if os(macOS)
+  /// State for keyboard-triggered listing deletion
+  @State private var showDeleteListingAlert = false
+  @State private var listingToDelete: Listing?
+  #endif
 
   /// Filter out deleted listings
   private var allListings: [Listing] {
@@ -128,6 +151,11 @@ struct ListingListView: View {
 
   private var currentUserId: UUID {
     syncManager.currentUserID ?? Self.unauthenticatedUserId
+  }
+
+  /// Flat list of all listing IDs for keyboard navigation
+  private var allListingIDs: [UUID] {
+    groupedByOwner.flatMap { $0.listings.map(\.id) }
   }
 
   private var mainScreen: some View {
@@ -192,7 +220,75 @@ struct ListingListView: View {
         EmptyView()
       }
     }
+    #if os(macOS)
+    .onMoveCommand { direction in
+      handleMoveCommand(direction)
+    }
+    .onDeleteCommand {
+      handleDeleteCommand()
+    }
+    #endif
   }
+
+  #if os(macOS)
+  /// Handles arrow key navigation in the listings list
+  private func handleMoveCommand(_ direction: MoveCommandDirection) {
+    let ids = allListingIDs
+    guard !ids.isEmpty else { return }
+
+    switch direction {
+    case .up:
+      if let currentID = focusedListingID,
+         let currentIndex = ids.firstIndex(of: currentID),
+         currentIndex > 0
+      {
+        focusedListingID = ids[currentIndex - 1]
+      } else {
+        // No selection or at top - select first item
+        focusedListingID = ids.first
+      }
+
+    case .down:
+      if let currentID = focusedListingID,
+         let currentIndex = ids.firstIndex(of: currentID),
+         currentIndex < ids.count - 1
+      {
+        focusedListingID = ids[currentIndex + 1]
+      } else if focusedListingID == nil {
+        // No selection - select first item
+        focusedListingID = ids.first
+      }
+
+    case .left, .right:
+      // Left/right not used for vertical lists
+      break
+
+    @unknown default:
+      break
+    }
+  }
+
+  /// Handles Delete key press - shows confirmation alert for focused listing
+  private func handleDeleteCommand() {
+    guard let focusedID = focusedListingID,
+          let listing = allListings.first(where: { $0.id == focusedID })
+    else { return }
+
+    listingToDelete = listing
+    showDeleteListingAlert = true
+  }
+
+  /// Confirms deletion of the focused listing
+  private func confirmDeleteFocusedListing() {
+    guard let listing = listingToDelete else { return }
+    listing.status = .deleted
+    listing.deletedAt = Date()
+    listing.markPending()
+    syncManager.requestSync()
+    listingToDelete = nil
+    focusedListingID = nil
+  }
+  #endif
 
   private func workItemDestination(for ref: WorkItemRef) -> some View {
     WorkItemResolverView(

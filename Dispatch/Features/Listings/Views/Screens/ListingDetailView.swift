@@ -47,6 +47,11 @@ struct ListingDetailView: View {
       // Refresh notes from server when viewing listing
       await syncManager.refreshNotesForParent(parentId: listing.id, parentType: .listing)
     }
+    #if os(macOS)
+    .onDeleteCommand {
+      showDeleteListingAlert = true
+    }
+    #endif
   }
 
   // MARK: Private

@@ -96,6 +96,13 @@ struct DispatchApp: App {
       .onChange(of: appState.authManager.isAuthenticated) { _, isAuthenticated in
         appState.syncCoordinator.handle(authStatusIsAuthenticated: isAuthenticated)
       }
+
+    // MARK: - macOS Settings Scene (Cmd+,)
+    #if os(macOS)
+    Settings {
+      MacOSSettingsView()
+    }
+    #endif
   }
 
   // MARK: Private
