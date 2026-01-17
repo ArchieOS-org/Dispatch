@@ -84,6 +84,11 @@ enum AppCommand: Equatable {
   /// Handle an incoming deep link URL (dispatch://...)
   case deepLink(URL)
 
+  // MARK: - Route Cleanup
+
+  /// Remove a route from all navigation paths (used after entity deletion)
+  case removeRoute(AppRoute)
+
   // MARK: - Debug
 
   case debugSimulateCrash

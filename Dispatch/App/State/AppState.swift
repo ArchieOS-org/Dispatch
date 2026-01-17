@@ -233,6 +233,9 @@ final class AppState: ObservableObject {
       router.navigate(to: route)
       router.phoneNavigate(to: route)
 
+    case .removeRoute(let route):
+      router.removeRoute(route)
+
     case .debugSimulateCrash:
       fatalError("Debug Crash Triggered")
     }
