@@ -19,7 +19,7 @@ struct UserTag: View {
     // macOS: Pill style with full name
     HStack(spacing: 4) {
       Image(systemName: "person.fill")
-        .font(.system(size: 8))
+        .font(.system(size: iconSize))
       Text(user.name)
         .font(DS.Typography.captionSecondary)
     }
@@ -28,8 +28,10 @@ struct UserTag: View {
     .background(Color.gray.opacity(0.1))
     .clipShape(Capsule())
     .foregroundStyle(.secondary)
+    .accessibilityLabel("User: \(user.name)")
     #else
     // iOS: Initials/Minimal (fixed-size circular badge)
+    // Visual size is 24pt, but hit area expanded to 44pt for HIG compliance
     ZStack {
       Circle()
         .fill(Color.gray.opacity(0.1))
@@ -43,10 +45,16 @@ struct UserTag: View {
         .minimumScaleFactor(0.75)
     }
     .frame(width: 24, height: 24)
+    .frame(minWidth: 44, minHeight: 44)
+    .contentShape(Rectangle())
+    .accessibilityLabel("User: \(user.name)")
     #endif
   }
 
   // MARK: Private
+
+  /// Scaled icon size for Dynamic Type support (base: 8pt)
+  @ScaledMetric(relativeTo: .caption2) private var iconSize: CGFloat = 8
 
   private var initials: String {
     let components = user.name.components(separatedBy: .whitespaces)

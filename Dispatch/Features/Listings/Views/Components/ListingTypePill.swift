@@ -16,15 +16,20 @@ struct ListingTypePill: View {
 
   var body: some View {
     Text(title)
-      .font(.system(size: 10, weight: .semibold)) // Tiny, compact font
+      .font(.system(size: fontSize, weight: .semibold))
       .foregroundStyle(color)
       .padding(.horizontal, 6)
       .padding(.vertical, 2)
-      .background(color.opacity(0.12)) // Subtle tinted background
+      .background(color.opacity(0.12))
       .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall))
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel("Listing type: \(title)")
   }
 
   // MARK: Private
+
+  /// Scaled font size for Dynamic Type support (base: 10pt)
+  @ScaledMetric(relativeTo: .caption2) private var fontSize: CGFloat = 10
 
   private var title: String {
     switch type {
