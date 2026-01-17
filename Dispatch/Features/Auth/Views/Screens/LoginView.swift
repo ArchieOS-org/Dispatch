@@ -86,7 +86,7 @@ struct LoginView: View {
 
   // MARK: Private
 
-  @StateObject private var authManager = AuthManager.shared
+  @EnvironmentObject private var authManager: AuthManager
 
 }
 
