@@ -12,6 +12,7 @@ import SwiftUI
 /// Used for the FAB and similar simple glass buttons.
 struct GlassButton: View {
   let icon: String
+  let accessibilityLabel: String
   let action: () -> Void
   var isFiltered = false
 
@@ -39,6 +40,8 @@ struct GlassButton: View {
       }
     }
     .buttonStyle(.plain)
+    .accessibilityLabel(accessibilityLabel)
+    .accessibilityAddTraits(.isButton)
   }
 }
 
@@ -49,7 +52,7 @@ struct GlassButton: View {
     Color.blue.opacity(0.3)
       .ignoresSafeArea()
 
-    GlassButton(icon: "plus", action: { })
+    GlassButton(icon: "plus", accessibilityLabel: "Add item", action: { })
   }
 }
 
@@ -58,6 +61,6 @@ struct GlassButton: View {
     Color.blue.opacity(0.3)
       .ignoresSafeArea()
 
-    GlassButton(icon: "plus", action: { }, isFiltered: true)
+    GlassButton(icon: "plus", accessibilityLabel: "Add item", action: { }, isFiltered: true)
   }
 }
