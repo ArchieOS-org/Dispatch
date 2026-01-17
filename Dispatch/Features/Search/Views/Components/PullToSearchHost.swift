@@ -92,7 +92,7 @@ struct PullToSearchHost<Content: View>: View {
               .frame(maxWidth: .infinity, alignment: .leading)
               .padding()
               .background(Color.gray.opacity(0.1))
-              .cornerRadius(8)
+              .cornerRadius(DS.Spacing.radiusMedium)
           }
         }
         .padding()

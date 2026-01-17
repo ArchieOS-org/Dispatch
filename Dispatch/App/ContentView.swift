@@ -619,7 +619,7 @@ struct ContentView: View {
             .padding()
             .background(Color.red)
             .foregroundColor(.white)
-            .cornerRadius(8)
+            .cornerRadius(DS.Spacing.radiusMedium)
         }
         .accessibilityIdentifier("DispatchProbe")
         .zIndex(999)

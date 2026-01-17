@@ -586,7 +586,7 @@ private struct FilterButton: View {
         .padding(.vertical, 4)
         .background(isSelected ? Color.accentColor : Color.secondary.opacity(0.2))
         .foregroundColor(isSelected ? .white : .primary)
-        .cornerRadius(8)
+        .cornerRadius(DS.Spacing.radiusMedium)
     }
   }
 }

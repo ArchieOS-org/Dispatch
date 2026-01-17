@@ -39,7 +39,7 @@ struct AudienceFilterButton: View {
         #endif
         .background {
           #if os(macOS)
-          RoundedRectangle(cornerRadius: 6)
+          RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall)
             .fill(isHovering ? Color.primary.opacity(0.08) : Color.clear)
           #else
           Color.clear

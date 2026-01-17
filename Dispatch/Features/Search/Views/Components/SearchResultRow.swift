@@ -50,7 +50,7 @@ struct SearchResultRow: View {
           .padding(.horizontal, 6)
           .padding(.vertical, 2)
           .background(DS.Colors.Background.tertiary)
-          .cornerRadius(4)
+          .cornerRadius(DS.Spacing.radiusSmall)
       }
     }
     .padding(.horizontal, DS.Spacing.lg)
