@@ -242,6 +242,12 @@ final class AppState: ObservableObject {
     SyncManager.shared.objectWillChange
       .sink { [weak self] _ in self?.objectWillChange.send() }
       .store(in: &cancellables)
+
+    // Forward lensState changes so views observing appState.lensState.* update correctly
+    // SwiftUI does NOT automatically observe nested ObservableObject changes
+    lensState.objectWillChange
+      .sink { [weak self] _ in self?.objectWillChange.send() }
+      .store(in: &cancellables)
   }
 
   /// Strict enforcement: crashes if called in preview mode
