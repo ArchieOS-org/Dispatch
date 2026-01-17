@@ -18,6 +18,29 @@ struct DatePill: View {
     Pill {
       Text(dateString)
     }
+    .accessibilityLabel(accessibilityLabelText)
+  }
+
+  // MARK: Internal (for testability)
+
+  var isOverdue: Bool {
+    let calendar = Calendar.current
+    let startToday = calendar.startOfDay(for: Date())
+    let startDate = calendar.startOfDay(for: date)
+    return startDate < startToday
+  }
+
+  var accessibilityLabelText: String {
+    let formatter = DateFormatter()
+    formatter.dateStyle = .long
+    formatter.timeStyle = .none
+    let formattedDate = formatter.string(from: date)
+
+    if isOverdue {
+      return "Overdue: \(formattedDate)"
+    } else {
+      return "Due date: \(formattedDate)"
+    }
   }
 
   // MARK: Private
