@@ -130,6 +130,7 @@ struct FetchedReport: Identifiable, Equatable {
       Flood zone: None. Environmental considerations: None identified.
       Nearby amenities include schools within 1km and public transit access.
       """
+
     case .mpac:
       """
       Current assessed value: $485,000. Assessment year: 2024.

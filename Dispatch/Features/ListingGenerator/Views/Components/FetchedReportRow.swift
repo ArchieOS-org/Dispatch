@@ -14,8 +14,6 @@ import SwiftUI
 /// Minimal design that doesn't compete with the main description output.
 struct FetchedReportRow: View {
 
-  // MARK: Internal
-
   let report: FetchedReport
   let onToggleExpand: () -> Void
 

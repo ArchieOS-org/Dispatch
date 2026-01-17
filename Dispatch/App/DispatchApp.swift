@@ -76,13 +76,13 @@ struct DispatchApp: App {
     }
     .modelContainer(sharedModelContainer)
     #if os(macOS)
-    .defaultSize(width: DS.Spacing.windowDefaultWidth, height: DS.Spacing.windowDefaultHeight)
-    .commands {
-      // Pass the dispatch closure explicitly to avoid Environment lookup issues in menu bar
-      DispatchCommands { cmd in
-        appState.dispatch(cmd)
+      .defaultSize(width: DS.Spacing.windowDefaultWidth, height: DS.Spacing.windowDefaultHeight)
+      .commands {
+        // Pass the dispatch closure explicitly to avoid Environment lookup issues in menu bar
+        DispatchCommands { cmd in
+          appState.dispatch(cmd)
+        }
       }
-    }
     #endif
       // Plumbing: Feed ScenePhase to Coordinator
       .onChange(of: scenePhase) { _, newPhase in
@@ -132,14 +132,14 @@ struct DispatchApp: App {
     appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
     appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
 
-    // Configure button appearance separately from title
+    /// Configure button appearance separately from title
     let buttonAppearance = UIBarButtonItemAppearance(style: .plain)
     buttonAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.tintColor]
     appearance.buttonAppearance = buttonAppearance
     appearance.backButtonAppearance = buttonAppearance
     appearance.doneButtonAppearance = buttonAppearance
 
-    // Apply to all navigation bar appearance states
+    /// Apply to all navigation bar appearance states
     let navBar = UINavigationBar.appearance()
     navBar.standardAppearance = appearance
     navBar.scrollEdgeAppearance = appearance

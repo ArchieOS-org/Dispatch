@@ -36,6 +36,20 @@ struct MacWindowPolicy: NSViewRepresentable {
 
   // MARK: Internal
 
+  /// Sets the visibility of the traffic light buttons (close, minimize, zoom).
+  /// - Parameters:
+  ///   - hidden: Whether to hide the traffic lights
+  ///   - window: The window containing the traffic lights
+  static func setTrafficLightsHidden(_ hidden: Bool, for window: NSWindow) {
+    [
+      NSWindow.ButtonType.closeButton,
+      NSWindow.ButtonType.miniaturizeButton,
+      NSWindow.ButtonType.zoomButton
+    ].forEach { buttonType in
+      window.standardWindowButton(buttonType)?.isHidden = hidden
+    }
+  }
+
   func makeNSView(context _: Context) -> NSView {
     let view = NSView()
     DispatchQueue.main.async {
@@ -80,17 +94,6 @@ struct MacWindowPolicy: NSViewRepresentable {
     window.titlebarSeparatorStyle = .none
   }
 
-  /// Sets the visibility of the traffic light buttons (close, minimize, zoom).
-  /// - Parameters:
-  ///   - hidden: Whether to hide the traffic lights
-  ///   - window: The window containing the traffic lights
-  static func setTrafficLightsHidden(_ hidden: Bool, for window: NSWindow) {
-    [NSWindow.ButtonType.closeButton,
-     NSWindow.ButtonType.miniaturizeButton,
-     NSWindow.ButtonType.zoomButton].forEach { buttonType in
-      window.standardWindowButton(buttonType)?.isHidden = hidden
-    }
-  }
 }
 
 // MARK: - FullScreenTrafficLightController
@@ -126,6 +129,11 @@ private final class FullScreenTrafficLightCoordinator {
 
   // MARK: Private
 
+  // MARK: - Toolbar Background Transparency (Experimental)
+
+  /// Debug flag - set to true to see view hierarchy in console
+  private static let debugLogging = true
+
   private var isFullScreen = false
   private var trafficLightsVisible = true
   private var mouseMonitor: Any?
@@ -153,18 +161,24 @@ private final class FullScreenTrafficLightCoordinator {
     )
   }
 
-  @objc private func windowWillEnterFullScreen(_ notification: Notification) {
-    guard let notificationWindow = notification.object as? NSWindow,
-          notificationWindow == window else { return }
+  @objc
+  private func windowWillEnterFullScreen(_ notification: Notification) {
+    guard
+      let notificationWindow = notification.object as? NSWindow,
+      notificationWindow == window
+    else { return }
     isFullScreen = true
     // Hide traffic lights when entering full-screen
     setTrafficLightsVisible(false)
     startMouseMonitoring()
   }
 
-  @objc private func windowDidEnterFullScreen(_ notification: Notification) {
-    guard let notificationWindow = notification.object as? NSWindow,
-          notificationWindow == window else { return }
+  @objc
+  private func windowDidEnterFullScreen(_ notification: Notification) {
+    guard
+      let notificationWindow = notification.object as? NSWindow,
+      notificationWindow == window
+    else { return }
     // Make toolbar background transparent after full-screen transition completes
     // Try multiple delays to catch any late view hierarchy changes
 
@@ -186,9 +200,12 @@ private final class FullScreenTrafficLightCoordinator {
     }
   }
 
-  @objc private func windowDidExitFullScreen(_ notification: Notification) {
-    guard let notificationWindow = notification.object as? NSWindow,
-          notificationWindow == window else { return }
+  @objc
+  private func windowDidExitFullScreen(_ notification: Notification) {
+    guard
+      let notificationWindow = notification.object as? NSWindow,
+      notificationWindow == window
+    else { return }
     isFullScreen = false
     // Show traffic lights when exiting full-screen
     setTrafficLightsVisible(true)
@@ -236,9 +253,9 @@ private final class FullScreenTrafficLightCoordinator {
 
     let mouseInTitlebar = locationInWindow.y >= titlebarMinY
 
-    if mouseInTitlebar && !trafficLightsVisible {
+    if mouseInTitlebar, !trafficLightsVisible {
       setTrafficLightsVisible(true)
-    } else if !mouseInTitlebar && trafficLightsVisible {
+    } else if !mouseInTitlebar, trafficLightsVisible {
       setTrafficLightsVisible(false)
     }
   }
@@ -248,11 +265,6 @@ private final class FullScreenTrafficLightCoordinator {
     trafficLightsVisible = visible
     MacWindowPolicy.setTrafficLightsHidden(!visible, for: window)
   }
-
-  // MARK: - Toolbar Background Transparency (Experimental)
-
-  /// Debug flag - set to true to see view hierarchy in console
-  private static let debugLogging = true
 
   /// Makes the toolbar background transparent in full-screen mode.
   /// This is an experimental approach that manipulates NSVisualEffectView instances
@@ -283,8 +295,10 @@ private final class FullScreenTrafficLightCoordinator {
     window.toolbarStyle = .unified
 
     // APPROACH 2a: Original approach - from close button
-    if let closeButton = window.standardWindowButton(.closeButton),
-       let titlebarContainer = closeButton.superview?.superview {
+    if
+      let closeButton = window.standardWindowButton(.closeButton),
+      let titlebarContainer = closeButton.superview?.superview
+    {
       if Self.debugLogging {
         print("DEBUG: --- APPROACH 2a: From close button ---")
         print("DEBUG: Close button: \(closeButton)")
@@ -316,7 +330,9 @@ private final class FullScreenTrafficLightCoordinator {
         print("DEBUG: --- APPROACH 2c: All NSVisualEffectViews in window ---")
         print("DEBUG: Found \(allEffectViews.count) NSVisualEffectViews total")
         for (index, view) in allEffectViews.enumerated() {
-          print("DEBUG:   [\(index)] frame: \(view.frame), material: \(view.material.rawValue), blendingMode: \(view.blendingMode.rawValue)")
+          print(
+            "DEBUG:   [\(index)] frame: \(view.frame), material: \(view.material.rawValue), blendingMode: \(view.blendingMode.rawValue)"
+          )
         }
       }
 
@@ -388,7 +404,8 @@ private final class FullScreenTrafficLightCoordinator {
     let typeName = String(describing: type(of: view))
     var extras = ""
     if let effectView = view as? NSVisualEffectView {
-      extras = " [material:\(effectView.material.rawValue), blending:\(effectView.blendingMode.rawValue), alpha:\(effectView.alphaValue)]"
+      extras =
+        " [material:\(effectView.material.rawValue), blending:\(effectView.blendingMode.rawValue), alpha:\(effectView.alphaValue)]"
     }
     print("\(prefix)\(typeName) - frame: \(view.frame)\(extras)")
     for subview in view.subviews {
@@ -400,7 +417,9 @@ private final class FullScreenTrafficLightCoordinator {
   private func makeVisualEffectsTransparent(in view: NSView, approach: String) {
     if let effectView = view as? NSVisualEffectView {
       if Self.debugLogging {
-        print("DEBUG: [\(approach)] Found NSVisualEffectView: frame=\(effectView.frame), material=\(effectView.material.rawValue)")
+        print(
+          "DEBUG: [\(approach)] Found NSVisualEffectView: frame=\(effectView.frame), material=\(effectView.material.rawValue)"
+        )
       }
       effectView.alphaValue = 0
       modifiedEffectViews.append(effectView)
@@ -421,6 +440,7 @@ private final class FullScreenTrafficLightCoordinator {
     modifiedEffectViews.removeAll()
   }
 }
+
 // swiftlint:enable no_direct_standard_out_logs
 
 // MARK: - FullScreenTrafficLightView

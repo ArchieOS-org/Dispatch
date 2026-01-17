@@ -310,7 +310,7 @@ struct ContentView: View {
       // Uses SwiftUI's native .onKeyPress() which is inherently window-scoped
       .focusable()
       .focused($contentAreaFocused)
-      .focusEffectDisabled()  // Disable blue focus ring while keeping keyboard focus
+      .focusEffectDisabled() // Disable blue focus ring while keeping keyboard focus
       .onKeyPress(characters: .alphanumerics, phases: .down) { keyPress in
         // Skip if modifiers are pressed (except Shift for uppercase)
         guard keyPress.modifiers.subtracting(.shift).isEmpty else {

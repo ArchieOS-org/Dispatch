@@ -19,6 +19,8 @@ import SwiftUI
 /// body - they must be in a View. This wrapper view solves that.
 struct WindowContentView: View {
 
+  // MARK: Internal
+
   // MARK: - Properties
 
   /// Reference to the shared app state (injected, not per-window)
@@ -26,12 +28,6 @@ struct WindowContentView: View {
 
   /// Debug test harness binding (shared for simplicity)
   @Binding var showTestHarness: Bool
-
-  #if os(macOS)
-  /// Per-window UI state - each window gets its own instance
-  /// This is the key to multi-window state isolation
-  @State private var windowUIState = WindowUIState()
-  #endif
 
   // MARK: - Body
 
@@ -59,14 +55,23 @@ struct WindowContentView: View {
     #endif
     #if DEBUG
     .sheet(isPresented: $showTestHarness) {
-      SyncTestHarness()
-        .environmentObject(SyncManager.shared)
-    }
+        SyncTestHarness()
+          .environmentObject(SyncManager.shared)
+      }
     #if os(iOS)
-    .onShake {
-      showTestHarness = true
-    }
+      .onShake {
+        showTestHarness = true
+      }
     #endif
     #endif
   }
+
+  // MARK: Private
+
+  #if os(macOS)
+  /// Per-window UI state - each window gets its own instance
+  /// This is the key to multi-window state isolation
+  @State private var windowUIState = WindowUIState()
+  #endif
+
 }

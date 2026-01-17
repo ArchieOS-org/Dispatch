@@ -14,6 +14,36 @@ import Foundation
 /// Captures property selection, uploads, and report settings.
 struct ListingGeneratorInputSnapshot: Codable, Equatable {
 
+  // MARK: Lifecycle
+
+  // MARK: - Initialization
+
+  init(
+    inputMode: String = "existingListing",
+    selectedListingId: UUID? = nil,
+    selectedListingAddress: String? = nil,
+    manualAddress: String = "",
+    manualPropertyType: String = "",
+    manualDetails: String = "",
+    photos: [PhotoSnapshot] = [],
+    documents: [DocumentSnapshot] = [],
+    enableGeoWarehouse: Bool = false,
+    enableMPAC: Bool = false
+  ) {
+    self.inputMode = inputMode
+    self.selectedListingId = selectedListingId
+    self.selectedListingAddress = selectedListingAddress
+    self.manualAddress = manualAddress
+    self.manualPropertyType = manualPropertyType
+    self.manualDetails = manualDetails
+    self.photos = photos
+    self.documents = documents
+    self.enableGeoWarehouse = enableGeoWarehouse
+    self.enableMPAC = enableMPAC
+  }
+
+  // MARK: Internal
+
   // MARK: - Input Mode
 
   /// Current input mode (existing listing or manual entry)
@@ -56,31 +86,6 @@ struct ListingGeneratorInputSnapshot: Codable, Equatable {
   /// Whether MPAC report is enabled
   var enableMPAC: Bool
 
-  // MARK: - Initialization
-
-  init(
-    inputMode: String = "existingListing",
-    selectedListingId: UUID? = nil,
-    selectedListingAddress: String? = nil,
-    manualAddress: String = "",
-    manualPropertyType: String = "",
-    manualDetails: String = "",
-    photos: [PhotoSnapshot] = [],
-    documents: [DocumentSnapshot] = [],
-    enableGeoWarehouse: Bool = false,
-    enableMPAC: Bool = false
-  ) {
-    self.inputMode = inputMode
-    self.selectedListingId = selectedListingId
-    self.selectedListingAddress = selectedListingAddress
-    self.manualAddress = manualAddress
-    self.manualPropertyType = manualPropertyType
-    self.manualDetails = manualDetails
-    self.photos = photos
-    self.documents = documents
-    self.enableGeoWarehouse = enableGeoWarehouse
-    self.enableMPAC = enableMPAC
-  }
 }
 
 // MARK: - ListingGeneratorOutputSnapshot
@@ -88,6 +93,34 @@ struct ListingGeneratorInputSnapshot: Codable, Equatable {
 /// Codable snapshot of output state for draft persistence.
 /// Captures generated outputs, selections, and refinement history.
 struct ListingGeneratorOutputSnapshot: Codable, Equatable {
+
+  // MARK: Lifecycle
+
+  // MARK: - Initialization
+
+  init(
+    outputA: GeneratedOutputSnapshot? = nil,
+    outputB: GeneratedOutputSnapshot? = nil,
+    selectedVersion: String? = nil,
+    refinementHistory: [RefinementSnapshot] = [],
+    generatedDescription: String = "",
+    status: String = "draft",
+    sessionId: UUID = UUID(),
+    fetchedReports: [FetchedReportSnapshot] = [],
+    extractedFromImages: Bool = false
+  ) {
+    self.outputA = outputA
+    self.outputB = outputB
+    self.selectedVersion = selectedVersion
+    self.refinementHistory = refinementHistory
+    self.generatedDescription = generatedDescription
+    self.status = status
+    self.sessionId = sessionId
+    self.fetchedReports = fetchedReports
+    self.extractedFromImages = extractedFromImages
+  }
+
+  // MARK: Internal
 
   // MARK: - Generated Outputs
 
@@ -126,39 +159,14 @@ struct ListingGeneratorOutputSnapshot: Codable, Equatable {
   /// Whether information was extracted from uploaded photos
   var extractedFromImages: Bool
 
-  // MARK: - Initialization
-
-  init(
-    outputA: GeneratedOutputSnapshot? = nil,
-    outputB: GeneratedOutputSnapshot? = nil,
-    selectedVersion: String? = nil,
-    refinementHistory: [RefinementSnapshot] = [],
-    generatedDescription: String = "",
-    status: String = "draft",
-    sessionId: UUID = UUID(),
-    fetchedReports: [FetchedReportSnapshot] = [],
-    extractedFromImages: Bool = false
-  ) {
-    self.outputA = outputA
-    self.outputB = outputB
-    self.selectedVersion = selectedVersion
-    self.refinementHistory = refinementHistory
-    self.generatedDescription = generatedDescription
-    self.status = status
-    self.sessionId = sessionId
-    self.fetchedReports = fetchedReports
-    self.extractedFromImages = extractedFromImages
-  }
 }
 
 // MARK: - PhotoSnapshot
 
 /// Codable snapshot of an uploaded photo.
 struct PhotoSnapshot: Codable, Equatable {
-  var id: UUID
-  var imageData: Data
-  var filename: String
-  var sortOrder: Int
+
+  // MARK: Lifecycle
 
   init(from photo: UploadedPhoto) {
     id = photo.id
@@ -166,6 +174,13 @@ struct PhotoSnapshot: Codable, Equatable {
     filename = photo.filename
     sortOrder = photo.sortOrder
   }
+
+  // MARK: Internal
+
+  var id: UUID
+  var imageData: Data
+  var filename: String
+  var sortOrder: Int
 
   func toUploadedPhoto() -> UploadedPhoto {
     UploadedPhoto(
@@ -181,10 +196,8 @@ struct PhotoSnapshot: Codable, Equatable {
 
 /// Codable snapshot of an uploaded document.
 struct DocumentSnapshot: Codable, Equatable {
-  var id: UUID
-  var filename: String
-  var fileType: String
-  var data: Data
+
+  // MARK: Lifecycle
 
   init(from document: UploadedDocument) {
     id = document.id
@@ -192,6 +205,13 @@ struct DocumentSnapshot: Codable, Equatable {
     fileType = document.fileType.rawValue
     data = document.data
   }
+
+  // MARK: Internal
+
+  var id: UUID
+  var filename: String
+  var fileType: String
+  var data: Data
 
   func toUploadedDocument() -> UploadedDocument {
     UploadedDocument(
@@ -207,11 +227,8 @@ struct DocumentSnapshot: Codable, Equatable {
 
 /// Codable snapshot of a generated output.
 struct GeneratedOutputSnapshot: Codable, Equatable {
-  var id: UUID
-  var version: String
-  var mlsFields: MLSFieldsSnapshot
-  var generatedAt: Date
-  var isSelected: Bool
+
+  // MARK: Lifecycle
 
   init(from output: GeneratedOutput) {
     id = output.id
@@ -220,6 +237,14 @@ struct GeneratedOutputSnapshot: Codable, Equatable {
     generatedAt = output.generatedAt
     isSelected = output.isSelected
   }
+
+  // MARK: Internal
+
+  var id: UUID
+  var version: String
+  var mlsFields: MLSFieldsSnapshot
+  var generatedAt: Date
+  var isSelected: Bool
 
   func toGeneratedOutput() -> GeneratedOutput {
     let outputVersion: OutputVersion = version == OutputVersion.a.rawValue ? .a : .b
@@ -237,6 +262,34 @@ struct GeneratedOutputSnapshot: Codable, Equatable {
 
 /// Codable snapshot of MLS fields.
 struct MLSFieldsSnapshot: Codable, Equatable {
+
+  // MARK: Lifecycle
+
+  init(from fields: MLSFields) {
+    propertyType = fields.propertyType
+    yearBuilt = fields.yearBuilt
+    squareFootage = fields.squareFootage
+    lotSize = fields.lotSize
+    bedrooms = fields.bedrooms
+    bathrooms = fields.bathrooms
+    stories = fields.stories
+    parkingSpaces = fields.parkingSpaces
+    garageType = fields.garageType
+    heatingCooling = fields.heatingCooling
+    flooring = fields.flooring
+    appliances = fields.appliances
+    exteriorFeatures = fields.exteriorFeatures
+    interiorFeatures = fields.interiorFeatures
+    communityFeatures = fields.communityFeatures
+    publicRemarks = fields.publicRemarks
+    privateRemarks = fields.privateRemarks
+    directions = fields.directions
+    headline = fields.headline
+    tagline = fields.tagline
+  }
+
+  // MARK: Internal
+
   // Property Details
   var propertyType: String
   var yearBuilt: String
@@ -264,29 +317,6 @@ struct MLSFieldsSnapshot: Codable, Equatable {
   // Marketing
   var headline: String
   var tagline: String
-
-  init(from fields: MLSFields) {
-    propertyType = fields.propertyType
-    yearBuilt = fields.yearBuilt
-    squareFootage = fields.squareFootage
-    lotSize = fields.lotSize
-    bedrooms = fields.bedrooms
-    bathrooms = fields.bathrooms
-    stories = fields.stories
-    parkingSpaces = fields.parkingSpaces
-    garageType = fields.garageType
-    heatingCooling = fields.heatingCooling
-    flooring = fields.flooring
-    appliances = fields.appliances
-    exteriorFeatures = fields.exteriorFeatures
-    interiorFeatures = fields.interiorFeatures
-    communityFeatures = fields.communityFeatures
-    publicRemarks = fields.publicRemarks
-    privateRemarks = fields.privateRemarks
-    directions = fields.directions
-    headline = fields.headline
-    tagline = fields.tagline
-  }
 
   func toMLSFields() -> MLSFields {
     var fields = MLSFields()
@@ -341,11 +371,8 @@ struct RefinementSnapshot: Codable, Equatable {
 
 /// Codable snapshot of a fetched report.
 struct FetchedReportSnapshot: Codable, Equatable {
-  var id: UUID
-  var type: String
-  var fetchedAt: Date
-  var isExpanded: Bool
-  var mockSummary: String
+
+  // MARK: Lifecycle
 
   init(from report: FetchedReport) {
     id = report.id
@@ -354,6 +381,14 @@ struct FetchedReportSnapshot: Codable, Equatable {
     isExpanded = report.isExpanded
     mockSummary = report.mockSummary
   }
+
+  // MARK: Internal
+
+  var id: UUID
+  var type: String
+  var fetchedAt: Date
+  var isExpanded: Bool
+  var mockSummary: String
 
   func toFetchedReport() -> FetchedReport {
     FetchedReport(

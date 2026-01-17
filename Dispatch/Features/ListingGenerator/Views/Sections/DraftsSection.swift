@@ -152,9 +152,27 @@ struct DraftsSectionCard: View {
   }
 }
 
-// MARK: - Preview
+// MARK: - DraftsSectionPreview
 
 private struct DraftsSectionPreview: View {
+
+  // MARK: Internal
+
+  var body: some View {
+    List {
+      DraftsSection(
+        drafts: drafts,
+        onNavigate: { _ in },
+        onDelete: { draft in
+          drafts.removeAll { $0.id == draft.id }
+        }
+      )
+    }
+    .listStyle(.plain)
+  }
+
+  // MARK: Private
+
   @State private var drafts = [
     ListingGeneratorDraft(
       name: "123 Main Street",
@@ -176,23 +194,13 @@ private struct DraftsSectionPreview: View {
     )
   ]
 
-  var body: some View {
-    List {
-      DraftsSection(
-        drafts: drafts,
-        onNavigate: { _ in },
-        onDelete: { draft in
-          drafts.removeAll { $0.id == draft.id }
-        }
-      )
-    }
-    .listStyle(.plain)
-  }
 }
 
 #Preview("Drafts Section") {
   DraftsSectionPreview()
 }
+
+// MARK: - DraftsSectionCardPreview
 
 private struct DraftsSectionCardPreview: View {
   let drafts = [

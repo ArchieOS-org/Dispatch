@@ -7,14 +7,13 @@
 
 import SwiftUI
 
+// MARK: - AppShellView
+
 /// The top-level application shell.
 /// Owns the Window Chrome Policy and Global Navigation Containers.
 struct AppShellView: View {
 
-  #if os(macOS)
-  @Environment(\.openWindow) private var openWindow
-  @Environment(\.supportsMultipleWindows) private var supportsMultipleWindows
-  #endif
+  // MARK: Internal
 
   var body: some View {
     // Phase 0: Wrapping existing ContentView.
@@ -37,6 +36,14 @@ struct AppShellView: View {
       }
     #endif
   }
+
+  // MARK: Private
+
+  #if os(macOS)
+  @Environment(\.openWindow) private var openWindow
+  @Environment(\.supportsMultipleWindows) private var supportsMultipleWindows
+  #endif
+
 }
 
 #if os(macOS)

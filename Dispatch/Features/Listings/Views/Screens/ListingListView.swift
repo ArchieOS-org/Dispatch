@@ -165,7 +165,7 @@ struct ListingListView: View {
           )
         }
 
-        if groupedByOwner.isEmpty && drafts.isEmpty {
+        if groupedByOwner.isEmpty, drafts.isEmpty {
           // Caller handles empty state
           ContentUnavailableView {
             Label("No Listings", systemImage: DS.Icons.Entity.listing)

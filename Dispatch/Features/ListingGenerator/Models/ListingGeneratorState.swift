@@ -245,6 +245,24 @@ final class ListingGeneratorState {
     }
   }
 
+  /// Create a new ListingGeneratorState instance from a draft.
+  /// Useful for creating a fresh state object initialized from persistence.
+  static func createFromDraft(
+    _ draft: ListingGeneratorDraft,
+    modelContext: ModelContext,
+    aiService: AIServiceProtocol = MockAIService()
+  ) throws -> ListingGeneratorState {
+    let state = ListingGeneratorState(aiService: aiService)
+    try state.loadDraft(draft, modelContext: modelContext)
+    return state
+  }
+
+  /// Delete a draft from persistence
+  static func deleteDraft(_ draft: ListingGeneratorDraft, from modelContext: ModelContext) throws {
+    modelContext.delete(draft)
+    try modelContext.save()
+  }
+
   // MARK: - Actions
 
   /// Generate a description based on current input
@@ -619,24 +637,6 @@ final class ListingGeneratorState {
     currentDraftId = draft.id
   }
 
-  /// Create a new ListingGeneratorState instance from a draft.
-  /// Useful for creating a fresh state object initialized from persistence.
-  static func createFromDraft(
-    _ draft: ListingGeneratorDraft,
-    modelContext: ModelContext,
-    aiService: AIServiceProtocol = MockAIService()
-  ) throws -> ListingGeneratorState {
-    let state = ListingGeneratorState(aiService: aiService)
-    try state.loadDraft(draft, modelContext: modelContext)
-    return state
-  }
-
-  /// Delete a draft from persistence
-  static func deleteDraft(_ draft: ListingGeneratorDraft, from modelContext: ModelContext) throws {
-    modelContext.delete(draft)
-    try modelContext.save()
-  }
-
   // MARK: Private
 
   private let trainingService = MockTrainingDataService()
@@ -899,6 +899,7 @@ final class ListingGeneratorState {
       if let address = selectedListing?.address, !address.isEmpty {
         return address
       }
+
     case .manualEntry:
       if !manualAddress.isEmpty {
         return manualAddress

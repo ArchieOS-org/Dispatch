@@ -175,11 +175,11 @@ struct ListingGeneratorView: View {
     }
     .defaultScrollAnchor(.top)
     #if os(macOS)
-    .contentMargins(.bottom, DS.Spacing.bottomToolbarHeight, for: .scrollContent)
+      .contentMargins(.bottom, DS.Spacing.bottomToolbarHeight, for: .scrollContent)
     #else
-    .contentMargins(.bottom, DS.Spacing.floatingButtonScrollInset, for: .scrollContent)
+      .contentMargins(.bottom, DS.Spacing.floatingButtonScrollInset, for: .scrollContent)
     #endif
-    .background(DS.Colors.Background.grouped)
+      .background(DS.Colors.Background.grouped)
   }
 
   // MARK: - Output Screen
@@ -194,11 +194,11 @@ struct ListingGeneratorView: View {
     }
     .defaultScrollAnchor(.top)
     #if os(macOS)
-    .contentMargins(.bottom, DS.Spacing.bottomToolbarHeight, for: .scrollContent)
+      .contentMargins(.bottom, DS.Spacing.bottomToolbarHeight, for: .scrollContent)
     #else
-    .contentMargins(.bottom, DS.Spacing.floatingButtonScrollInset, for: .scrollContent)
+      .contentMargins(.bottom, DS.Spacing.floatingButtonScrollInset, for: .scrollContent)
     #endif
-    .background(DS.Colors.Background.primary)
+      .background(DS.Colors.Background.primary)
   }
 
   // MARK: - Input Sections
