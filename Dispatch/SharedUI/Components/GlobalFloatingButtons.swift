@@ -33,10 +33,10 @@ struct GlobalFloatingButtons: View {
             .padding(.horizontal, DS.Spacing.floatingButtonMargin) // 20pt
             .padding(.bottom, DS.Spacing.floatingButtonBottomInset) // 24pt
         }
-        .opacity(appState.overlayState != .none ? 0 : 1)
-        .offset(y: appState.overlayState != .none ? 12 : 0)
-        .allowsHitTesting(appState.overlayState == .none)
-        .animation(.easeInOut(duration: 0.2), value: appState.overlayState)
+        .opacity(shouldHideButtons ? 0 : 1)
+        .offset(y: shouldHideButtons ? 12 : 0)
+        .allowsHitTesting(!shouldHideButtons)
+        .animation(.easeInOut(duration: 0.2), value: shouldHideButtons)
     }
     #endif
   }
@@ -45,6 +45,12 @@ struct GlobalFloatingButtons: View {
 
   @EnvironmentObject private var lensState: LensState
   @EnvironmentObject private var appState: AppState
+  @EnvironmentObject private var overlayState: AppOverlayState
+
+  /// Single source of truth for button visibility
+  private var shouldHideButtons: Bool {
+    overlayState.isOverlayHidden
+  }
 
   #if os(iOS)
   /// Use idiom, not size class - iPad in Split View can be .compact
@@ -83,6 +89,7 @@ struct GlobalFloatingButtons: View {
   }
   .environmentObject(LensState())
   .environmentObject(AppState(mode: .preview))
+  .environmentObject(AppOverlayState(mode: .preview))
 }
 
 #Preview("Global Floating Buttons - Filtered") {
@@ -97,5 +104,6 @@ struct GlobalFloatingButtons: View {
   }
   .environmentObject(lensState)
   .environmentObject(AppState(mode: .preview))
+  .environmentObject(AppOverlayState(mode: .preview))
 }
 #endif

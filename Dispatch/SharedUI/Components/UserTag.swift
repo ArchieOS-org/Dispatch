@@ -29,10 +29,20 @@ struct UserTag: View {
     .clipShape(Capsule())
     .foregroundStyle(.secondary)
     #else
-    // iOS: Initials/Minimal
-    Text(initials)
-      .font(DS.Typography.caption)
-      .foregroundStyle(.secondary)
+    // iOS: Initials/Minimal (fixed-size circular badge)
+    ZStack {
+      Circle()
+        .fill(Color.gray.opacity(0.1))
+      Circle()
+        .strokeBorder(Color.gray.opacity(0.25), lineWidth: 1)
+
+      Text(initials)
+        .font(DS.Typography.caption)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .minimumScaleFactor(0.75)
+    }
+    .frame(width: 24, height: 24)
     #endif
   }
 

@@ -9,6 +9,8 @@
 import SwiftData
 import SwiftUI
 
+// MARK: - SearchOverlay
+
 /// A full-screen search overlay with dimmed backdrop and floating modal.
 ///
 /// **Layout:**
@@ -25,6 +27,11 @@ import SwiftUI
 /// **Navigation:**
 /// - Selecting a result dismisses the overlay and triggers navigation
 /// - Navigation is deferred to prevent "push while presenting" issues
+///
+/// **Focus & Overlay Management:**
+/// - Owns its own `@FocusState` for keyboard control
+/// - Registers `.searchOverlay` reason with `AppOverlayState` on appear
+/// - Clears focus and overlay reason in `dismiss()` (suspenders) + `onDisappear` (belt)
 struct SearchOverlay: View {
 
   // MARK: Internal
@@ -53,10 +60,53 @@ struct SearchOverlay: View {
         Spacer()
       }
     }
+    // Phase 1: Visual fade-out (immediate)
+    .opacity(isDismissing ? 0 : 1)
+    .animation(.easeOut(duration: 0.2), value: isDismissing)
+    .allowsHitTesting(!isDismissing)
     .transition(.opacity)
+    .task {
+      // Wait one frame for view hierarchy to stabilize before any state changes.
+      // This prevents NavigationAuthority warnings from cascading updates.
+      try? await Task.sleep(for: .milliseconds(16))
+      guard !Task.isCancelled, !isDismissing else { return }
+
+      // Register overlay reason (hides GlobalFloatingButtons)
+      overlayState.hide(reason: .searchOverlay)
+
+      // Wait for text input system to fully initialize before focusing.
+      // iOS text input requires the RTIInputSystemSession to be established.
+      // 300ms allows for: text system init (~100-150ms) + emoji keyboard (~100ms) + buffer
+      try? await Task.sleep(for: .milliseconds(300))
+      guard !Task.isCancelled, !isDismissing else { return }
+      isFocused = true
+    }
+    .onDisappear {
+      // Belt: ensure reason is cleared even if dismiss() was bypassed
+      overlayState.show(reason: .searchOverlay)
+    }
+    // Phase 2: Wait for keyboard to finish hiding before removing from hierarchy
+    .onChange(of: overlayState.activeReasons) { _, reasons in
+      // If we're dismissing and keyboard reason is now cleared, finalize
+      if isDismissing, !reasons.contains(.keyboard) {
+        finalizeDismiss()
+      }
+    }
   }
 
   // MARK: Private
+
+  @FocusState private var isFocused: Bool
+  @EnvironmentObject private var overlayState: AppOverlayState
+
+  /// Phase 1 state: overlay is visually fading out
+  @State private var isDismissing = false
+
+  /// Stored result for deferred navigation
+  @State private var pendingResult: SearchResult?
+
+  /// Fallback dismiss ID to prevent stale timeouts
+  @State private var dismissID: UUID?
 
   @Query(sort: \TaskItem.title)
   private var tasks: [TaskItem]
@@ -91,8 +141,8 @@ struct SearchOverlay: View {
 
   private var modalContent: some View {
     VStack(spacing: 0) {
-      // Search bar
-      SearchBar(text: $searchText) {
+      // Search bar with external focus binding
+      SearchBar(text: $searchText, externalFocus: $isFocused) {
         dismiss()
       }
 
@@ -113,52 +163,156 @@ struct SearchOverlay: View {
   }
 
   private func dismiss() {
-    if reduceMotion {
-      isPresented = false
-      searchText = ""
+    guard !isDismissing else { return }
+
+    // Phase 1: Clear focus (keyboard starts hiding) + visual fade
+    isFocused = false
+    overlayState.show(reason: .searchOverlay)
+    isDismissing = true
+
+    // If keyboard isn't active, finalize immediately
+    #if os(iOS)
+    if !overlayState.isReasonActive(.keyboard) {
+      finalizeDismiss()
     } else {
-      withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-        isPresented = false
+      // Fallback timeout in case notification is missed
+      let currentDismissID = UUID()
+      dismissID = currentDismissID
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
+        guard isDismissing, dismissID == currentDismissID else { return }
+        finalizeDismiss()
       }
-      searchText = ""
     }
+    #else
+    finalizeDismiss()
+    #endif
   }
 
   private func selectResult(_ result: SearchResult) {
-    // Dismiss overlay first
-    if reduceMotion {
-      isPresented = false
+    guard !isDismissing else { return }
+
+    // Phase 1: Clear focus (keyboard starts hiding) + visual fade
+    isFocused = false
+    overlayState.show(reason: .searchOverlay)
+    isDismissing = true
+    pendingResult = result
+
+    // If keyboard isn't active, finalize immediately
+    #if os(iOS)
+    if !overlayState.isReasonActive(.keyboard) {
+      finalizeDismiss()
     } else {
-      withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-        isPresented = false
+      // Fallback timeout in case notification is missed
+      let currentDismissID = UUID()
+      dismissID = currentDismissID
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
+        guard isDismissing, dismissID == currentDismissID else { return }
+        finalizeDismiss()
       }
     }
+    #else
+    finalizeDismiss()
+    #endif
+  }
+
+  private func finalizeDismiss() {
+    let result = pendingResult
+    pendingResult = nil
+    dismissID = nil
     searchText = ""
 
-    // Defer navigation to next run loop to avoid "push while presenting"
-    DispatchQueue.main.async {
-      onSelectResult(result)
+    // Phase 2: Actually remove from hierarchy
+    isPresented = false
+
+    // Trigger navigation if we had a pending result
+    if let result {
+      DispatchQueue.main.async {
+        onSelectResult(result)
+      }
     }
   }
 }
 
 // MARK: - Preview
 
-#Preview("Search Overlay") {
-  @Previewable @State var isPresented = true
-  @Previewable @State var searchText = ""
+#if DEBUG
 
-  ZStack {
-    Color.blue.opacity(0.2)
-      .ignoresSafeArea()
+private enum SearchOverlayPreviewData {
+  static func seededContainer() -> ModelContainer {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: TaskItem.self, Activity.self, Listing.self, configurations: config)
+    let context = ModelContext(container)
 
-    if isPresented {
-      SearchOverlay(
-        isPresented: $isPresented,
-        searchText: $searchText,
-        onSelectResult: { _ in }
-      )
-    }
+    // Seed standard data if available
+    PreviewDataFactory.seed(context)
+
+    // Add deterministic items that match a sample query
+    let listing = (try? context.fetch(FetchDescriptor<Listing>()).first)
+
+    let task1 = TaskItem(
+      title: "Fix Broken Window",
+      status: .open,
+      declaredBy: PreviewDataFactory.aliceID,
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
+    )
+    task1.syncState = .synced
+
+    let task2 = TaskItem(
+      title: "Window Measurements",
+      status: .open,
+      declaredBy: PreviewDataFactory.aliceID,
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
+    )
+    task2.syncState = .synced
+
+    let activity1 = Activity(
+      title: "Window inspection call",
+      declaredBy: PreviewDataFactory.aliceID,
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
+    )
+    activity1.syncState = .synced
+
+    context.insert(task1)
+    context.insert(task2)
+    context.insert(activity1)
+
+    try? context.save()
+    return container
   }
-  .modelContainer(for: [TaskItem.self, Activity.self, Listing.self], inMemory: true)
 }
+
+private struct SearchOverlayPreviewHost: View {
+  @State var isPresented: Bool
+  @State var searchText: String
+
+  var body: some View {
+    ZStack {
+      Color.blue.opacity(0.2)
+        .ignoresSafeArea()
+
+      if isPresented {
+        SearchOverlay(
+          isPresented: $isPresented,
+          searchText: $searchText,
+          onSelectResult: { _ in }
+        )
+      }
+    }
+    .environmentObject(AppOverlayState(mode: .preview))
+  }
+}
+
+#Preview("Search Overlay · Empty") {
+  SearchOverlayPreviewHost(isPresented: true, searchText: "")
+    .modelContainer(for: [TaskItem.self, Activity.self, Listing.self], inMemory: true)
+}
+
+#Preview("Search Overlay · With Results") {
+  SearchOverlayPreviewHost(isPresented: true, searchText: "win")
+    .modelContainer(SearchOverlayPreviewData.seededContainer())
+}
+
+#endif

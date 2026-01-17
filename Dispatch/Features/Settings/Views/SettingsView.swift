@@ -14,17 +14,49 @@ import SwiftUI
 /// Root Settings view for admins.
 /// Access Control: Only visible to admin users.
 struct SettingsView: View {
+
+  // MARK: Internal
+
   var body: some View {
-    StandardScreen(title: "Settings", layout: .column, scroll: .disabled) {
-      StandardList([SettingsSection.listingTypes]) { section in
-        ListRowLink(value: AppRoute.settings(section)) {
-          SettingsRow(section: section)
+    StandardScreen(title: "Settings", layout: .column, scroll: .automatic) {
+      VStack(spacing: DS.Spacing.lg) {
+        // Profile Row (navigates to ProfilePageView)
+        ProfileRow()
+
+        // Admin Settings (only for admin users)
+        if syncManager.currentUser?.userType == .admin {
+          VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            Text("Admin")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Colors.Text.secondary)
+              .textCase(.uppercase)
+              .padding(.horizontal, DS.Spacing.xs)
+
+            VStack(spacing: 0) {
+              ForEach(SettingsSection.allCases) { section in
+                ListRowLink(value: AppRoute.settings(section)) {
+                  SettingsRow(section: section)
+                }
+                if section != SettingsSection.allCases.last {
+                  Divider()
+                    .padding(.leading, 52)
+                }
+              }
+            }
+          }
         }
       }
+      .padding(.vertical, DS.Spacing.sm)
     }
+    .environment(\.pullToSearchDisabled, true)
+    .onAppear { overlayState.hide(reason: .settingsScreen) }
+    .onDisappear { overlayState.show(reason: .settingsScreen) }
   }
 
+  // MARK: Private
+
   @EnvironmentObject private var appState: AppState
+  @EnvironmentObject private var overlayState: AppOverlayState
   @EnvironmentObject private var syncManager: SyncManager
 
 }
@@ -33,6 +65,7 @@ struct SettingsView: View {
 
 enum SettingsSection: String, Identifiable, CaseIterable {
   case listingTypes = "listing_types"
+  case listingDraftDemo = "listing_draft_demo"
 
   // MARK: Internal
 
@@ -43,20 +76,80 @@ enum SettingsSection: String, Identifiable, CaseIterable {
   var title: String {
     switch self {
     case .listingTypes: "Listing Types"
+    case .listingDraftDemo: "Draft Preview"
     }
   }
 
   var icon: String {
     switch self {
     case .listingTypes: DS.Icons.Entity.listing
+    case .listingDraftDemo: "doc.richtext"
     }
   }
 
   var description: String {
     switch self {
     case .listingTypes: "Configure listing types and auto-generated activities"
+    case .listingDraftDemo: "Preview the listing draft editor (demo)"
     }
   }
+}
+
+// MARK: - ProfileRow
+
+/// Summary row that navigates to the full ProfilePageView.
+private struct ProfileRow: View {
+
+  // MARK: Internal
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+      Text("Account")
+        .font(DS.Typography.caption)
+        .foregroundStyle(DS.Colors.Text.secondary)
+        .textCase(.uppercase)
+        .padding(.horizontal, DS.Spacing.xs)
+
+      ListRowLink(value: AppRoute.profile) {
+        HStack(spacing: DS.Spacing.md) {
+          UserAvatar(user: currentUser, size: .large)
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text(currentUser?.name ?? "Unknown")
+              .font(DS.Typography.headline)
+              .foregroundStyle(DS.Colors.Text.primary)
+              .lineLimit(1)
+
+            Text(currentUser?.userType.displayName ?? "")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Colors.Text.secondary)
+              .lineLimit(1)
+          }
+
+          Spacer()
+
+          Image(systemName: "chevron.right")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(DS.Colors.Text.tertiary)
+        }
+        .padding(DS.Spacing.md)
+        .frame(minHeight: DS.Spacing.minTouchTarget)
+        .contentShape(Rectangle())
+      }
+    }
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("Profile: \(currentUser?.name ?? "Unknown"), \(currentUser?.userType.displayName ?? "")")
+    .accessibilityHint("Tap to view and edit profile")
+  }
+
+  // MARK: Private
+
+  @EnvironmentObject private var syncManager: SyncManager
+
+  private var currentUser: User? {
+    syncManager.currentUser
+  }
+
 }
 
 // MARK: - SettingsRow
@@ -89,6 +182,8 @@ private struct SettingsRow: View {
     }
     .padding(.vertical, DS.Spacing.md)
     .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("\(section.title). \(section.description)")
   }
 }
 

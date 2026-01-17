@@ -51,12 +51,31 @@ final class AppState: ObservableObject {
     case addListing
     case addRealtor
 
+    // MARK: Internal
+
     var id: String {
       switch self {
       case .none: "none"
       case .quickEntry: "quickEntry"
       case .addListing: "addListing"
       case .addRealtor: "addRealtor"
+      }
+    }
+
+    // MARK: - Equatable conformance for associated values
+
+    static func ==(lhs: SheetState, rhs: SheetState) -> Bool {
+      switch (lhs, rhs) {
+      case (.none, .none):
+        true
+      case (.quickEntry(let l), .quickEntry(let r)):
+        l == r
+      case (.addListing, .addListing):
+        true
+      case (.addRealtor, .addRealtor):
+        true
+      default:
+        false
       }
     }
   }
@@ -95,18 +114,61 @@ final class AppState: ObservableObject {
     Self.logger.debug("Dispatching command: \(String(describing: command))")
 
     switch command {
-    case .navigate(let route):
-      router.navigate(to: route)
+    // MARK: - Destination Selection (iPad/macOS)
 
-    case .popToRoot:
-      router.popToRoot()
+    case .userSelectedDestination(let destination):
+      router.userSelectDestination(destination)
+
+    case .setSelectedDestination(let destination):
+      router.setSelectedDestination(destination)
+
+    // MARK: - Tab Selection (legacy wrappers - bridge to destination-based)
+
+    case .userSelectedTab(let tab):
+      router.userSelectDestination(.tab(tab))
+
+    case .setSelectedTab(let tab):
+      router.setSelectedDestination(.tab(tab))
+
+    // MARK: - iPad/macOS Navigation (per-destination stacks)
+
+    case .navigateTo(let route, let destination):
+      router.navigate(to: route, on: destination)
+
+    case .setPath(let path, let destination):
+      router.paths[destination] = path
+
+    case .popToRoot(let destination):
+      router.popToRoot(for: destination)
+
+    case .resetStackID(let destination):
+      router.resetStackID(for: destination)
+
+    // MARK: - iPhone Navigation (single stack)
+
+    case .phoneNavigateTo(let route):
+      router.phoneNavigate(to: route)
+
+    case .setPhonePath(let path):
+      router.phonePath = path
+
+    case .phonePopToRoot:
+      router.phonePopToRoot()
+
+    // MARK: - Legacy Navigation (for backwards compatibility)
+
+    case .navigate(let route):
+      // Legacy: navigate on current tab (iPad/macOS) or phone path (iPhone)
+      // For now, use phone path as default since most existing code is iPhone-oriented
+      router.phoneNavigate(to: route)
 
     case .selectTab(let tab):
-      router.selectTab(tab)
+      // Legacy: map to userSelectedTab (maintains old behavior)
+      router.userSelectTab(tab)
 
     case .newItem:
-      // Context-aware creation based on current tab
-      switch router.selectedTab {
+      // Context-aware creation based on current destination
+      switch router.selectedDestination.asTab ?? .workspace {
       case .properties:
         // TODO: Add property creation sheet when implemented
         break
@@ -114,8 +176,8 @@ final class AppState: ObservableObject {
         sheetState = .addListing
       case .realtors:
         sheetState = .addRealtor
-      case .settings:
-        // Settings doesn't have a "new item" action
+      case .settings, .listingGenerator:
+        // Settings and Listing Generator don't have a "new item" action
         break
       case .workspace, .search:
         // Default to quick entry for workspace or search
@@ -123,6 +185,8 @@ final class AppState: ObservableObject {
       }
 
     case .openSearch(let initialText):
+      // Idempotency guard: ignore if already searching or dismissing
+      guard case .none = overlayState else { return }
       overlayState = .search(initialText: initialText)
 
     case .toggleSidebar:
@@ -148,6 +212,13 @@ final class AppState: ObservableObject {
     case .filterUnclaimed:
       // lensState.audience = .unclaimed
       break
+
+    case .openListingGenerator(let listing):
+      // Navigate to full-view instead of presenting sheet
+      let route = AppRoute.listingGenerator(listingId: listing?.id)
+      router.navigate(to: route)
+      // Also push on phone path for iPhone support
+      router.phoneNavigate(to: route)
 
     case .debugSimulateCrash:
       fatalError("Debug Crash Triggered")

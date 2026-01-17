@@ -46,13 +46,8 @@ struct BottomToolbar: View {
   var onNew: (() -> Void)?
   var onSearch: (() -> Void)?
 
-  // Detail context actions
-  var onClaim: (() -> Void)?
+  /// Detail context actions
   var onDelete: (() -> Void)?
-
-  // Claim state for detail views
-  var isClaimable = true
-  var isClaimed = false
 
   var body: some View {
     HStack(spacing: 0) {
@@ -137,18 +132,7 @@ struct BottomToolbar: View {
 
   @ViewBuilder
   private var detailToolbar: some View {
-    // Left: Claim button (only for work items, not listings)
-    HStack(spacing: 0) {
-      if context == .workItemDetail, let onClaim, isClaimable {
-        ToolbarIconButton(
-          icon: isClaimed ? "hand.raised.slash" : "hand.raised",
-          action: onClaim,
-          accessibilityLabel: isClaimed ? "Release" : "Claim"
-        )
-      }
-    }
-    .padding(.leading, DS.Spacing.bottomToolbarPadding)
-
+    // Left spacer for balance
     Spacer()
 
     // Right: Delete button
@@ -166,7 +150,120 @@ struct BottomToolbar: View {
   }
 }
 
-#Preview("List Context") {
+// MARK: - Previews
+
+// MARK: Interactive
+
+/// Interactive list toolbar with filter cycling
+#Preview("Interactive - List") {
+  @Previewable @State var audience: AudienceLens = .all
+
+  VStack(spacing: 0) {
+    // Content area
+    VStack {
+      Text("Current Filter: \(audience.label)")
+        .font(.headline)
+      Text("Use the filter menu in the toolbar below")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color(nsColor: .windowBackgroundColor))
+
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 300)
+}
+
+/// Interactive detail toolbar
+#Preview("Interactive - Detail") {
+  VStack(spacing: 0) {
+    // Content area
+    VStack {
+      Text("Work Item Detail")
+        .font(.headline)
+      Text("Detail toolbar with delete action")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color(nsColor: .windowBackgroundColor))
+
+    BottomToolbar(
+      context: .workItemDetail,
+      onDelete: { }
+    )
+  }
+  .frame(width: 500, height: 300)
+}
+
+// MARK: List Contexts
+
+/// Task list with all actions
+#Preview("Task List - Full") {
+  @Previewable @State var audience: AudienceLens = .all
+
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// Activity list context
+#Preview("Activity List") {
+  @Previewable @State var audience: AudienceLens = .marketing
+
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .activityList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// Listing list context
+#Preview("Listing List") {
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .listingList,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// Realtor list context
+#Preview("Realtor List") {
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .realtorList,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// List without filter (no audience binding)
+#Preview("List - No Filter") {
   VStack(spacing: 0) {
     Spacer()
     BottomToolbar(
@@ -175,20 +272,196 @@ struct BottomToolbar: View {
       onSearch: { }
     )
   }
-  .frame(width: 400, height: 200)
+  .frame(width: 500, height: 200)
 }
 
-#Preview("Detail Context") {
+/// List without new button
+#Preview("List - No New Button") {
+  @Previewable @State var audience: AudienceLens = .all
+
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// List without search button
+#Preview("List - No Search Button") {
+  @Previewable @State var audience: AudienceLens = .all
+
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+// MARK: Detail Contexts
+
+/// Work item detail with delete
+#Preview("Work Item Detail") {
   VStack(spacing: 0) {
     Spacer()
     BottomToolbar(
       context: .workItemDetail,
-      onClaim: { },
-      onDelete: { },
-      isClaimable: true,
-      isClaimed: false
+      onDelete: { }
     )
   }
-  .frame(width: 400, height: 200)
+  .frame(width: 500, height: 200)
 }
+
+/// Listing detail - no claim button, only delete
+#Preview("Listing Detail") {
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .listingDetail,
+      onDelete: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+/// Detail without delete button
+#Preview("Detail - No Delete") {
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .workItemDetail
+    )
+  }
+  .frame(width: 500, height: 200)
+}
+
+// MARK: Color Schemes
+
+/// Light mode - list context
+#Preview("Light Mode - List") {
+  @Previewable @State var audience: AudienceLens = .admin
+
+  VStack(spacing: 0) {
+    Color(nsColor: .windowBackgroundColor)
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+  .preferredColorScheme(.light)
+}
+
+/// Dark mode - list context
+#Preview("Dark Mode - List") {
+  @Previewable @State var audience: AudienceLens = .admin
+
+  VStack(spacing: 0) {
+    Color(nsColor: .windowBackgroundColor)
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+  .preferredColorScheme(.dark)
+}
+
+/// Light mode - detail context
+#Preview("Light Mode - Detail") {
+  VStack(spacing: 0) {
+    Color(nsColor: .windowBackgroundColor)
+    BottomToolbar(
+      context: .workItemDetail,
+      onDelete: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+  .preferredColorScheme(.light)
+}
+
+/// Dark mode - detail context
+#Preview("Dark Mode - Detail") {
+  VStack(spacing: 0) {
+    Color(nsColor: .windowBackgroundColor)
+    BottomToolbar(
+      context: .workItemDetail,
+      onDelete: { }
+    )
+  }
+  .frame(width: 500, height: 200)
+  .preferredColorScheme(.dark)
+}
+
+// MARK: Width Variations
+
+/// Narrow window
+#Preview("Narrow Width") {
+  @Previewable @State var audience: AudienceLens = .all
+
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 300, height: 200)
+}
+
+/// Wide window
+#Preview("Wide Width") {
+  @Previewable @State var audience: AudienceLens = .all
+
+  VStack(spacing: 0) {
+    Spacer()
+    BottomToolbar(
+      context: .taskList,
+      audience: $audience,
+      onNew: { },
+      onSearch: { }
+    )
+  }
+  .frame(width: 800, height: 200)
+}
+
+// MARK: All Filter States Gallery
+
+/// Shows toolbar with each audience filter state
+#Preview("Filter States Gallery") {
+  VStack(spacing: DS.Spacing.lg) {
+    ForEach(AudienceLens.allCases, id: \.self) { lens in
+      VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+        Text(lens.label)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .padding(.leading, DS.Spacing.md)
+
+        BottomToolbar(
+          context: .taskList,
+          audience: .constant(lens),
+          onNew: { },
+          onSearch: { }
+        )
+      }
+    }
+  }
+  .padding(.vertical, DS.Spacing.md)
+  .frame(width: 500)
+  .background(Color(nsColor: .windowBackgroundColor))
+}
+
 #endif

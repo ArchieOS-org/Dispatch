@@ -1,19 +1,21 @@
 //
-//  ClaimFilter.swift
+//  AssignmentFilter.swift
 //  Dispatch
 //
-//  Filter enum for segmenting work items by claim state
+//  Filter enum for segmenting work items by assignment state
 //  Created by Claude on 2025-12-06.
 //
 
 import Foundation
 
-/// Filter options for segmenting work items by claim ownership.
+// MARK: - AssignmentFilter
+
+/// Filter options for segmenting work items by assignment.
 /// Used in TaskListView and ActivityListView segmented controls.
-enum ClaimFilter: String, CaseIterable, Identifiable {
-  case mine = "My Tasks"
+enum AssignmentFilter: String, CaseIterable, Identifiable {
+  case mine = "Assigned to Me"
   case others = "Others'"
-  case unclaimed = "Unclaimed"
+  case unassigned = "Unassigned"
 
   // MARK: Internal
 
@@ -23,25 +25,34 @@ enum ClaimFilter: String, CaseIterable, Identifiable {
 
   /// Checks if a work item matches this filter
   /// - Parameters:
-  ///   - claimedBy: The UUID of the user who claimed the item (nil if unclaimed)
+  ///   - assigneeUserIds: The UUIDs of users assigned to this item
   ///   - currentUserId: The current user's UUID
   /// - Returns: true if the item matches the filter criteria
-  func matches(claimedBy: UUID?, currentUserId: UUID) -> Bool {
+  func matches(assigneeUserIds: [UUID], currentUserId: UUID) -> Bool {
     switch self {
     case .mine:
-      claimedBy == currentUserId
+      assigneeUserIds.contains(currentUserId)
     case .others:
-      claimedBy != nil && claimedBy != currentUserId
-    case .unclaimed:
-      claimedBy == nil
+      !assigneeUserIds.isEmpty && !assigneeUserIds.contains(currentUserId)
+    case .unassigned:
+      assigneeUserIds.isEmpty
     }
   }
 
-  /// Display name for activities (changes "My Tasks" to "My Activities")
+  /// Display name for activities (changes "Assigned to Me" to "My Activities")
   func displayName(forActivities: Bool) -> String {
-    if forActivities, self == .mine {
-      return "My Activities"
+    switch self {
+    case .mine:
+      forActivities ? "My Activities" : "My Tasks"
+    case .others:
+      "Others'"
+    case .unassigned:
+      "Unassigned"
     }
-    return rawValue
   }
 }
+
+// MARK: - Legacy Alias
+
+/// Legacy type alias for backward compatibility during migration
+typealias ClaimFilter = AssignmentFilter

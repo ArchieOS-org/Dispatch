@@ -62,13 +62,6 @@ final class User {
   @Relationship(deleteRule: .nullify, inverse: \Listing.owner)
   var listings = [Listing]()
 
-  /// Relationships (for staff)
-  @Relationship(deleteRule: .nullify, inverse: \TaskItem.claimedByUser)
-  var claimedTasks = [TaskItem]()
-
-  @Relationship(deleteRule: .nullify, inverse: \Activity.claimedByUser)
-  var claimedActivities = [Activity]()
-
   var syncState: EntitySyncState {
     get { syncStateRaw ?? .synced }
     set { syncStateRaw = newValue }

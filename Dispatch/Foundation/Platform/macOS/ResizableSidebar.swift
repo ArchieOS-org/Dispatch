@@ -12,78 +12,136 @@ import SwiftUI
 /// A container view that provides a Things 3-style resizable sidebar.
 /// - Sidebar can be resized by dragging the edge
 /// - Sidebar can be collapsed completely
-/// - State persists across app launches
+/// - State is per-window (provided via WindowUIState environment)
 /// - Responds to keyboard shortcut (Cmd+/)
 struct ResizableSidebar<Sidebar: View, Content: View>: View {
-  @StateObject private var state = SidebarState()
+  /// Per-window UI state provided via environment
+  @Environment(WindowUIState.self) private var windowState
+
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  // Ephemeral drag state - view-local, no Combine churn
+  @GestureState private var dragDelta: CGFloat = 0
+  @State private var dragStartWidth: CGFloat = 0
+  @State private var isHovering = false
 
   @ViewBuilder let sidebar: () -> Sidebar
   @ViewBuilder let content: () -> Content
 
+  /// Display width: 0...max during drag (no min clamp), 0 or width otherwise
+  private var displayWidth: CGFloat {
+    if windowState.isDragging {
+      return windowState.clampedWidthDuringDrag(dragStartWidth + dragDelta)
+    }
+    return windowState.sidebarVisible ? windowState.sidebarWidth : 0
+  }
+
   var body: some View {
     GeometryReader { _ in
       HStack(spacing: 0) {
-        // Sidebar content - always in hierarchy when visible or dragging
-        if state.shouldShowSidebar {
-          sidebar()
-            .frame(width: state.displayWidth)
-            .background(alignment: .top) {
-              // Fill the titlebar void behind traffic lights
-              // Use window background to avoid material stacking with .listStyle(.sidebar)
-              Color(nsColor: .windowBackgroundColor)
-                .ignoresSafeArea(.all, edges: .top)
-            }
-        }
+        // Sidebar ALWAYS mounted - just width=0 when hidden
+        sidebar()
+          .frame(width: displayWidth)
+          .clipped() // Prevent overflow when width=0
+          .allowsHitTesting(windowState.sidebarVisible || windowState.isDragging)
+          .transaction { if windowState.isDragging { $0.animation = nil } }
+          .background {
+            // One unified vibrancy layer for everything in the sidebar column
+            Rectangle()
+              .fill(.thinMaterial)
+              .ignoresSafeArea(.all, edges: .top) // fills behind traffic lights
+          }
 
         content()
           .frame(maxWidth: .infinity)
       }
-      // Unified drag handle overlay - persists through entire drag
+      // Full-height drag handle - always interactive
       .overlay(alignment: .leading) {
-        UnifiedDragHandle(state: state, reduceMotion: reduceMotion)
-          .offset(x: state.shouldShowSidebar ? state.displayWidth - DS.Spacing.sidebarDragHandleWidth / 2 : 0)
+        DragHandleView(
+          isHovering: $isHovering,
+          isDragging: windowState.isDragging,
+          reduceMotion: reduceMotion,
+          onTap: { toggleSidebar() }
+        )
+        .offset(x: displayWidth > 0 ? displayWidth : 0)
+        .gesture(dragGesture)
+        // NO .allowsHitTesting guard - always interactive
       }
     }
-    // Only animate isVisible changes, NOT during drag
+    // Only animate sidebarVisible changes, NOT during drag
     .animation(
-      state.isDragging ? .none : (reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)),
-      value: state.isVisible
+      windowState.isDragging ? .none : (reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)),
+      value: windowState.sidebarVisible
     )
     .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
-      withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-        state.toggle()
+      toggleSidebar()
+    }
+  }
+
+  private var dragGesture: some Gesture {
+    DragGesture(minimumDistance: 1)
+      .updating($dragDelta) { value, delta, _ in
+        delta = value.translation.width.rounded()
       }
+      .onChanged { _ in
+        // Set isDragging and capture start width ONCE
+        if !windowState.isDragging {
+          dragStartWidth = windowState.sidebarVisible ? windowState.sidebarWidth : 0
+          windowState.isDragging = true
+        }
+      }
+      .onEnded { value in
+        let finalWidth = dragStartWidth + value.translation.width
+
+        // Collapse threshold: below minWidth - 30
+        if finalWidth < DS.Spacing.sidebarMinWidth - 30 {
+          withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            windowState.sidebarVisible = false
+          }
+        } else {
+          // Expand with FULL clamp (min...max) on end only
+          withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
+            windowState.sidebarVisible = true
+            windowState.sidebarWidth = windowState.clampedWidth(finalWidth)
+          }
+        }
+
+        windowState.isDragging = false
+      }
+  }
+
+  private func toggleSidebar() {
+    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+      windowState.toggleSidebar()
     }
   }
 }
 
-// MARK: - Unified Drag Handle
+// MARK: - Drag Handle View
 
-/// A persistent drag handle that works in both collapsed and expanded states.
-/// This overlay persists through the entire drag operation, preventing gesture cancellation.
-private struct UnifiedDragHandle: View {
+/// A dumb UI component for the drag handle - no gesture logic, no state mutations.
+private struct DragHandleView: View {
+  @Binding var isHovering: Bool
 
-  // MARK: Internal
-
-  @ObservedObject var state: SidebarState
-
+  let isDragging: Bool
   let reduceMotion: Bool
+  let onTap: () -> Void
 
   var body: some View {
     Rectangle()
       .fill(Color.clear)
       .frame(width: DS.Spacing.sidebarDragHandleWidth)
+      .frame(maxHeight: .infinity) // Full height
       .contentShape(Rectangle())
       .overlay(alignment: .center) {
         // Visible handle indicator - shows on hover or during drag
-        RoundedRectangle(cornerRadius: 2)
+        RoundedRectangle(cornerRadius: 3)
           .fill(Color.primary.opacity(0.3))
-          .frame(width: 4, height: DS.Spacing.sidebarDragHandleHeight)
-          .opacity(isHovering || state.isDragging ? 1 : 0)
+          .frame(width: 6, height: DS.Spacing.sidebarDragHandleHeight)
+          .opacity(isHovering || isDragging ? 1 : 0)
           .animation(
             reduceMotion ? .none : .easeInOut(duration: 0.15),
-            value: isHovering || state.isDragging
+            value: isHovering || isDragging
           )
       }
       .onHover { hovering in
@@ -94,58 +152,15 @@ private struct UnifiedDragHandle: View {
           NSCursor.pop()
         }
       }
-      .gesture(dragGesture)
-      .onTapGesture {
-        // Toggle sidebar on tap
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-          state.toggle()
-        }
-      }
-  }
-
-  // MARK: Private
-
-  @State private var isHovering = false
-  @State private var dragStartWidth: CGFloat = 0
-
-  private var dragGesture: some Gesture {
-    DragGesture(minimumDistance: 1)
-      .onChanged { value in
-        if !state.isDragging {
-          // Capture starting state
-          dragStartWidth = state.isVisible ? state.width : 0
-          state.isDragging = true
-        }
-
-        // Update liveWidth instantly - sidebar follows cursor
-        state.liveWidth = dragStartWidth + value.translation.width
-      }
-      .onEnded { _ in
-        // Determine final state based on final width
-        let finalWidth = state.liveWidth
-
-        if finalWidth < DS.Spacing.sidebarMinWidth - 30 {
-          // Collapse
-          withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-            state.isVisible = false
-          }
-        } else if finalWidth > 50 || state.isVisible {
-          // Expand or stay visible with proper width
-          withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
-            state.isVisible = true
-            state.width = state.clampedWidth(finalWidth)
-            state.liveWidth = state.width
-          }
-        }
-
-        state.isDragging = false
-      }
+      .onTapGesture(perform: onTap)
   }
 }
 
 // MARK: - Preview
 
 #Preview("ResizableSidebar") {
+  @Previewable @State var windowState = WindowUIState()
+
   ResizableSidebar {
     List {
       Label("Tasks", systemImage: "checklist")
@@ -158,6 +173,7 @@ private struct UnifiedDragHandle: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(Color.secondary.opacity(0.1))
   }
+  .environment(windowState)
   .frame(width: 800, height: 600)
 }
 #endif

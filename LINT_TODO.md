@@ -55,7 +55,6 @@ Non-trivial fixes are listed for follow-up; no refactors applied.
 | Dispatch/Foundation/Platform/macOS/BottomToolbar.swift | 184 | `no_direct_standard_out_logs` | Replace print/debugPrint with Logger/os_log or remove (DEBUG-only if needed). |
 | Dispatch/Foundation/Platform/macOS/BottomToolbar.swift | 195 | `no_direct_standard_out_logs` | Replace print/debugPrint with Logger/os_log or remove (DEBUG-only if needed). |
 | Dispatch/Foundation/Platform/macOS/BottomToolbar.swift | 196 | `no_direct_standard_out_logs` | Replace print/debugPrint with Logger/os_log or remove (DEBUG-only if needed). |
-| Dispatch/Foundation/Platform/macOS/KeyMonitorView.swift | 28 | `implicit_return` | Add an explicit `return` or expand the body to satisfy style. |
 | Dispatch/Foundation/Testing/PreviewDataFactory.swift | 15 | `force_unwrapping` | Use guard/if let or provide a default instead of `!`. |
 | Dispatch/Foundation/Testing/PreviewDataFactory.swift | 16 | `force_unwrapping` | Use guard/if let or provide a default instead of `!`. |
 | Dispatch/Foundation/Testing/PreviewDataFactory.swift | 17 | `force_unwrapping` | Use guard/if let or provide a default instead of `!`. |

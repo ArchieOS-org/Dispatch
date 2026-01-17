@@ -28,13 +28,15 @@ struct DispatchApp: App {
       User.self,
       TaskItem.self,
       Activity.self,
+      TaskAssignee.self,
+      ActivityAssignee.self,
       Listing.self,
       Note.self,
       Subtask.self,
       StatusChange.self,
-      ClaimEvent.self,
       ListingTypeDefinition.self,
-      ActivityTemplate.self
+      ActivityTemplate.self,
+      ListingGeneratorDraft.self
     ])
     let modelConfiguration = ModelConfiguration(
       schema: schema,
@@ -59,47 +61,22 @@ struct DispatchApp: App {
   }()
 
   var body: some Scene {
-    WindowGroup {
-      Group {
-        ZStack {
-          if appState.authManager.isAuthenticated {
-            if SyncManager.shared.currentUser != nil {
-              AppShellView()
-                .transition(.opacity)
-            } else {
-              OnboardingLoadingView()
-                .transition(.opacity)
-            }
-          } else {
-            LoginView()
-              .transition(.opacity)
-          }
-        }
-        .animation(.easeInOut, value: appState.authManager.isAuthenticated)
-      }
-      .tint(DS.Colors.accent)
-      // Inject Brain & Core Services globally
-      .environmentObject(appState)
-      .environmentObject(appState.authManager)
-      .environmentObject(SyncManager.shared)
-
-      #if DEBUG
-        .sheet(isPresented: $showTestHarness) {
-          SyncTestHarness()
-            .environmentObject(SyncManager.shared)
-        }
-      #if os(iOS)
-        .onShake {
-          showTestHarness = true
-        }
-      #endif
-      #endif
+    WindowGroup(id: "main") {
+      // WindowContentView holds per-window @State (WindowUIState on macOS)
+      // SwiftUI creates new storage for each window instance
+      WindowContentView(appState: appState, showTestHarness: $showTestHarness)
+        // Inject Brain & Core Services globally (shared across windows)
+        .environmentObject(appState)
+        .environmentObject(appState.authManager)
+        .environmentObject(SyncManager.shared)
         .onOpenURL { url in
-        appState.authManager.handleRedirect(url)
-      }
+          appState.authManager.handleRedirect(url)
+        }
+        .frame(minWidth: DS.Spacing.windowMinWidth, minHeight: DS.Spacing.windowMinHeight)
     }
     .modelContainer(sharedModelContainer)
     #if os(macOS)
+      .defaultSize(width: DS.Spacing.windowDefaultWidth, height: DS.Spacing.windowDefaultHeight)
       .commands {
         // Pass the dispatch closure explicitly to avoid Environment lookup issues in menu bar
         DispatchCommands { cmd in
@@ -131,17 +108,38 @@ struct DispatchApp: App {
   @State private var showTestHarness = false
   #endif
 
-  /// Configures navigation bar appearance to prevent title color issues during interactive transitions.
-  /// Sets all 4 appearance states so iOS never falls back to tint defaults mid-gesture.
+  /// Configures navigation bar appearance to ensure consistent title colors.
+  ///
+  /// The primary fix for navigation title color issues during interactive back gestures
+  /// is architectural: .tint() is applied ONLY to innerContent/leaf views, not to
+  /// container views that wrap navigation modifiers. This prevents the tint environment
+  /// from affecting navigation bar elements during gesture state restoration.
+  ///
+  /// Key points:
+  /// - StandardScreen applies .tint() to innerContent (inside ScrollView, away from nav bar)
+  /// - AppDestinationsModifier does NOT apply .tint() (destinations use StandardScreen)
+  /// - Views outside StandardScreen (ListingGeneratorView) apply tint to their layouts
+  /// - Auth views (LoginView, OnboardingLoadingView) apply tint at ZStack level (no nav bar)
+  ///
+  /// This UIKit configuration provides additional defense-in-depth by
+  /// setting explicit title colors that persist during gesture state restoration.
   private func configureNavigationBarAppearance() {
     #if os(iOS)
     let appearance = UINavigationBarAppearance()
     appearance.configureWithDefaultBackground()
 
-    // Explicit title colors - don't rely on defaults during interactive gestures
+    // Explicit title colors - ensures titles use label color even during transitions
     appearance.titleTextAttributes = [.foregroundColor: UIColor.label]
     appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
 
+    /// Configure button appearance separately from title
+    let buttonAppearance = UIBarButtonItemAppearance(style: .plain)
+    buttonAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.tintColor]
+    appearance.buttonAppearance = buttonAppearance
+    appearance.backButtonAppearance = buttonAppearance
+    appearance.doneButtonAppearance = buttonAppearance
+
+    /// Apply to all navigation bar appearance states
     let navBar = UINavigationBar.appearance()
     navBar.standardAppearance = appearance
     navBar.scrollEdgeAppearance = appearance
@@ -149,7 +147,9 @@ struct DispatchApp: App {
     if #available(iOS 15.0, *) {
       navBar.compactScrollEdgeAppearance = appearance
     }
-    // NOTE: Button tint handled by SwiftUI .tint(DS.Colors.accent) at app root
+
+    // Explicit tintColor for back button icons
+    navBar.tintColor = UIColor.tintColor
     #endif
   }
 

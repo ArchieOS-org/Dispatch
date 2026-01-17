@@ -20,6 +20,7 @@ extension ListingDTO {
     price = model.price.map { NSDecimalNumber(decimal: $0).doubleValue }
     mlsNumber = model.mlsNumber
     listingType = model.listingType.rawValue
+    listingTypeId = model.typeDefinitionId
     status = model.status.rawValue
     stage = model.stage.rawValue
     ownedBy = model.ownedBy

@@ -19,7 +19,7 @@ struct NotesSection: View {
   var onDelete: ((Note) -> Void)? = nil
 
   var body: some View {
-    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
       Text("Notes")
         .font(DS.Typography.headline)
         .foregroundColor(DS.Colors.Text.primary)
@@ -31,7 +31,6 @@ struct NotesSection: View {
         onDelete: onDelete
       )
     }
-    .padding(DS.Spacing.md)
     .background(DS.Colors.Background.card)
     .cornerRadius(DS.Spacing.radiusCard)
   }
@@ -62,7 +61,7 @@ struct NotesContent: View {
       VStack(alignment: .leading, spacing: DS.Spacing.xs) {
         // Note list
         if !visibleNotes.isEmpty {
-          LazyVStack(alignment: .leading, spacing: DS.Spacing.sm) {
+          LazyVStack(alignment: .leading, spacing: DS.Spacing.xs) {
             ForEach(visibleNotes) { note in
               NoteCard(
                 note: note,
@@ -142,7 +141,7 @@ private struct NoteCard: View {
           .italic()
       }
     }
-    .padding(.vertical, DS.Spacing.sm)
+    .padding(.vertical, DS.Spacing.xs)
     .contentShape(Rectangle())
     .onTapGesture {
       onTap?()
@@ -201,26 +200,23 @@ private struct NoteComposer: View {
   var onSave: (String) -> Void
 
   var body: some View {
-    HStack(alignment: .top, spacing: DS.Spacing.sm) {
-      ZStack(alignment: .topLeading) {
-        // Placeholder (visible when empty and not focused)
-        if text.isEmpty, !isFocused {
-          Text("Add a note…")
-            .font(DS.Typography.body)
-            .foregroundColor(DS.Colors.Text.tertiary)
-            .padding(.vertical, DS.Spacing.xs)
-            .allowsHitTesting(false)
-        }
-
-        // TextEditor
-        TextEditor(text: $text)
+    HStack(alignment: .top, spacing: DS.Spacing.xs) {
+      // Multiline input that grows with content (no internal scroll)
+      TextField(
+        "",
+        text: $text,
+        prompt: Text("Add a note…")
           .font(DS.Typography.body)
-          .foregroundColor(DS.Colors.Text.primary)
-          .scrollContentBackground(.hidden)
-          .focused($isFocused)
-          .frame(minHeight: 40, maxHeight: 120)
-          .fixedSize(horizontal: false, vertical: true)
-      }
+          .foregroundColor(DS.Colors.Text.tertiary),
+        axis: .vertical
+      )
+      .font(DS.Typography.body)
+      .foregroundColor(DS.Colors.Text.primary)
+      .focused($isFocused)
+      .multilineTextAlignment(.leading)
+      .lineLimit(1 ... 12)
+      .textFieldStyle(.plain)
+      .padding(.vertical, DS.Spacing.xs)
 
       // Send button (appears only when valid input + focused)
       if hasValidInput, isFocused {
@@ -233,7 +229,6 @@ private struct NoteComposer: View {
         .transition(.scale.combined(with: .opacity))
       }
     }
-    .padding(.vertical, DS.Spacing.xs)
     .cornerRadius(DS.Spacing.radiusCard)
     .animation(.easeInOut(duration: 0.15), value: isFocused)
     .animation(.easeInOut(duration: 0.15), value: hasValidInput)

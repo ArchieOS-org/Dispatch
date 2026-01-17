@@ -168,9 +168,9 @@ struct AddListingSheet: View {
   }
 
   private func setSmartDefaults() {
-    // Default type: system "Sale" (stable, not position-dependent)
+    // Default type: "Sale" by name, fallback to first type
     if selectedTypeId == nil {
-      selectedTypeId = listingTypes.first { $0.isSystem && $0.name.lowercased() == "sale" }?.id
+      selectedTypeId = listingTypes.first { $0.name.lowercased() == "sale" }?.id
         ?? listingTypes.first?.id
     }
 
@@ -207,16 +207,14 @@ struct AddListingSheet: View {
     dismiss()
   }
 
-  /// Maps dynamic ListingTypeDefinition to legacy ListingType enum.
-  /// Only system types map to specific values; user-created types → .other
+  /// Maps dynamic ListingTypeDefinition to legacy ListingType enum by name.
   private func mapToLegacyEnum(_ type: ListingTypeDefinition) -> ListingType {
-    guard type.isSystem else { return .other }
     switch type.name.lowercased() {
-    case "sale": return .sale
-    case "lease": return .lease
-    case "pre-listing": return .preListing
-    case "rental": return .rental
-    default: return .other
+    case "sale": .sale
+    case "lease": .lease
+    case "pre-listing": .preListing
+    case "rental": .rental
+    default: .other
     }
   }
 }
@@ -228,4 +226,5 @@ struct AddListingSheet: View {
     currentUserId: UUID(),
     onSave: { }
   )
+  .environmentObject(SyncManager.shared)
 }

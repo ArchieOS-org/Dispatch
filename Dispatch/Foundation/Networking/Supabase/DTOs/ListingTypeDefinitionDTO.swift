@@ -15,7 +15,6 @@ struct ListingTypeDefinitionDTO: Codable, Sendable {
   init(from model: ListingTypeDefinition) {
     id = model.id
     name = model.name
-    isSystem = model.isSystem
     position = model.position
     isArchived = model.isArchived
     ownedBy = model.ownedBy
@@ -29,7 +28,6 @@ struct ListingTypeDefinitionDTO: Codable, Sendable {
     case id
     case name
     case position
-    case isSystem = "is_system"
     case isArchived = "is_archived"
     case ownedBy = "owned_by"
     case createdAt = "created_at"
@@ -38,7 +36,6 @@ struct ListingTypeDefinitionDTO: Codable, Sendable {
 
   let id: UUID
   let name: String
-  let isSystem: Bool
   let position: Int
   let isArchived: Bool
   let ownedBy: UUID?
@@ -50,7 +47,6 @@ struct ListingTypeDefinitionDTO: Codable, Sendable {
     ListingTypeDefinition(
       id: id,
       name: name,
-      isSystem: isSystem,
       position: position,
       isArchived: isArchived,
       ownedBy: ownedBy,

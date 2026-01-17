@@ -21,10 +21,8 @@ struct ListingTypeDetailView: View {
   var body: some View {
     StandardScreen(title: listingType.name, layout: .column, scroll: .disabled) {
       VStack(spacing: 0) {
-        // Header: Type Name Editor (if not system)
-        if !listingType.isSystem {
-          typeNameSection
-        }
+        // Header: Type Name Editor
+        typeNameSection
 
         // Templates List
         templatesSection
@@ -201,7 +199,6 @@ private struct AudienceChip: View {
     let saleType = ListingTypeDefinition(
       id: UUID(),
       name: "Sale",
-      isSystem: false,
       position: 0,
       ownedBy: UUID()
     )

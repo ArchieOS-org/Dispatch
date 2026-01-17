@@ -43,6 +43,10 @@ struct ListingDetailView: View {
     } message: {
       Text("This note will be permanently deleted.")
     }
+    .task {
+      // Refresh notes from server when viewing listing
+      await syncManager.refreshNotesForParent(parentId: listing.id, parentType: .listing)
+    }
   }
 
   // MARK: Private
@@ -51,6 +55,7 @@ struct ListingDetailView: View {
 
   @EnvironmentObject private var syncManager: SyncManager
   @EnvironmentObject private var lensState: LensState
+  @EnvironmentObject private var actions: WorkItemActions
   @Environment(\.modelContext) private var modelContext
   @Environment(\.dismiss) private var dismiss
 
@@ -133,10 +138,12 @@ struct ListingDetailView: View {
     }
     let hasAnyActivities = !adminActivities.isEmpty || !marketingActivities.isEmpty
 
-    return VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+    return VStack(alignment: .leading, spacing: 0) {
       stageSection
+      Color.clear.frame(height: DS.Spacing.lg)
 
       metadataSection
+      Color.clear.frame(height: DS.Spacing.lg)
 
       notesSection
 
@@ -150,6 +157,8 @@ struct ListingDetailView: View {
 
       // Activity sections - wrapped in container to prevent orphan spacing
       if hasAnyActivities {
+        // Keep normal section spacing when Tasks exist; otherwise use the smaller Notes gap
+        Color.clear.frame(height: filteredTasks.isEmpty ? DS.Spacing.sm : DS.Spacing.lg)
         VStack(alignment: .leading, spacing: DS.Spacing.lg) {
           if showAdminFirst {
             adminSection(activities: adminActivities)
@@ -244,12 +253,10 @@ struct ListingDetailView: View {
             NavigationLink(value: AppRoute.workItem(.task(task))) {
               WorkItemRow(
                 item: .task(task),
-                claimState: WorkItem.task(task).claimState(
-                  currentUserId: currentUserId,
-                  userLookup: userLookup
-                ),
-                onClaim: { claimTask(task) },
-                onRelease: { unclaimTask(task) },
+                userLookup: actions.userLookupDict,
+                onComplete: { actions.onComplete(.task(task)) },
+                onEdit: { },
+                onDelete: { },
                 hideDueDate: true
               )
             }
@@ -317,12 +324,10 @@ struct ListingDetailView: View {
         NavigationLink(value: AppRoute.workItem(.activity(activity))) {
           WorkItemRow(
             item: .activity(activity),
-            claimState: WorkItem.activity(activity).claimState(
-              currentUserId: currentUserId,
-              userLookup: userLookup
-            ),
-            onClaim: { claimActivity(activity) },
-            onRelease: { unclaimActivity(activity) },
+            userLookup: actions.userLookupDict,
+            onComplete: { actions.onComplete(.activity(activity)) },
+            onEdit: { },
+            onDelete: { },
             hideDueDate: true
           )
         }
@@ -355,7 +360,7 @@ struct ListingDetailView: View {
 
   private func confirmDeleteNote() {
     guard let note = noteToDelete else { return }
-    note.softDelete()
+    note.softDelete(by: currentUserId)
     noteToDelete = nil
     syncManager.requestSync()
   }
@@ -366,42 +371,6 @@ struct ListingDetailView: View {
     listing.markPending()
     syncManager.requestSync()
     dismiss()
-  }
-
-  private func claimTask(_ task: TaskItem) {
-    task.claimedBy = currentUserId
-    task.claimedAt = Date()
-    task.markPending()
-    let event = ClaimEvent(parentType: .task, parentId: task.id, action: .claimed, userId: currentUserId)
-    task.claimHistory.append(event)
-    syncManager.requestSync()
-  }
-
-  private func unclaimTask(_ task: TaskItem) {
-    task.claimedBy = nil
-    task.claimedAt = nil
-    task.markPending()
-    let event = ClaimEvent(parentType: .task, parentId: task.id, action: .released, userId: currentUserId)
-    task.claimHistory.append(event)
-    syncManager.requestSync()
-  }
-
-  private func claimActivity(_ activity: Activity) {
-    activity.claimedBy = currentUserId
-    activity.claimedAt = Date()
-    activity.markPending()
-    let event = ClaimEvent(parentType: .activity, parentId: activity.id, action: .claimed, userId: currentUserId)
-    activity.claimHistory.append(event)
-    syncManager.requestSync()
-  }
-
-  private func unclaimActivity(_ activity: Activity) {
-    activity.claimedBy = nil
-    activity.claimedAt = nil
-    activity.markPending()
-    let event = ClaimEvent(parentType: .activity, parentId: activity.id, action: .released, userId: currentUserId)
-    activity.claimHistory.append(event)
-    syncManager.requestSync()
   }
 
 }
@@ -441,6 +410,60 @@ struct ListingDetailView: View {
         listing: listing,
         userLookup: { id in usersById[id] }
       )
+      .environmentObject(WorkItemActions(
+        currentUserId: PreviewDataFactory.aliceID,
+        userLookupDict: usersById
+      ))
+    } else {
+      Text("Missing preview data")
+    }
+  }
+}
+
+#Preview("With Two Notes") {
+  PreviewShell(
+    // Force Lens Match
+    lensState: {
+      let l = LensState()
+      l.audience = .all
+      return l
+    }(),
+    setup: { context in
+      PreviewDataFactory.seed(context)
+
+      // Preview-only: populate location fields so the metadata section renders
+      let listingID = PreviewDataFactory.listingID
+      let listingDescriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingID })
+      if let listing = try? context.fetch(listingDescriptor).first {
+        listing.city = "Toronto"
+        listing.province = "ON"
+        listing.postalCode = "M5V 2T6"
+
+        // Preview-only: ensure there are exactly two notes
+        let previewUserId = UUID()
+        listing.notes = [
+          Note(content: "First note for preview", createdBy: previewUserId, parentType: .listing, parentId: listing.id),
+          Note(content: "Second note for preview", createdBy: previewUserId, parentType: .listing, parentId: listing.id)
+        ]
+      }
+    }
+  ) { context in
+    // O(1) Lookup covering all users (owner + others)
+    let users = (try? context.fetch(FetchDescriptor<User>())) ?? []
+    let usersById = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
+
+    // Deterministic Fetch
+    let listingID = PreviewDataFactory.listingID
+    let listingDescriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingID })
+    if let listing = try? context.fetch(listingDescriptor).first {
+      ListingDetailView(
+        listing: listing,
+        userLookup: { id in usersById[id] }
+      )
+      .environmentObject(WorkItemActions(
+        currentUserId: PreviewDataFactory.aliceID,
+        userLookupDict: usersById
+      ))
     } else {
       Text("Missing preview data")
     }

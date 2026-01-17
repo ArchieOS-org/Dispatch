@@ -26,6 +26,10 @@ struct AppDestinationsModifier: ViewModifier {
     content
       // MARK: - All Routes (ID-based) - SINGLE DESTINATION
       .navigationDestination(for: AppRoute.self) { route in
+        // Note: .tint() is NOT applied here because it would wrap the entire destination
+        // including navigation modifiers, which causes title color issues during
+        // interactive back gesture cancellation. Tint is applied at content level
+        // by StandardScreen.innerContent or individual views.
         routeDestination(for: route)
       }
       // PROBE: Signal that registry is active
@@ -57,16 +61,13 @@ struct AppDestinationsModifier: ViewModifier {
       WorkItemResolverView(
         ref: ref,
         currentUserId: actions.currentUserId,
-        userLookup: actions.userLookup,
+        userLookup: actions.userLookupDict,
+        availableUsers: actions.availableUsers,
         onComplete: actions.onComplete,
-        onClaim: actions.onClaim,
-        onRelease: actions.onRelease,
+        onAssigneesChanged: actions.onAssigneesChanged,
         onEditNote: nil,
         onDeleteNote: actions.onDeleteNote,
-        onAddNote: actions.onAddNote,
-        onToggleSubtask: actions.onToggleSubtask,
-        onDeleteSubtask: actions.onDeleteSubtask,
-        onAddSubtask: actions.onAddSubtask
+        onAddNote: actions.onAddNote
       )
 
     case .settings(let section):
@@ -90,6 +91,15 @@ struct AppDestinationsModifier: ViewModifier {
 
     case .settingsRoot:
       SettingsView()
+
+    case .listingGenerator(let listingId):
+      ListingGeneratorView(preselectedListingId: listingId)
+
+    case .listingGeneratorDraft(let draftId):
+      ListingGeneratorView(preselectedDraftId: draftId)
+
+    case .profile:
+      ProfilePageView()
     }
   }
 
@@ -98,6 +108,8 @@ struct AppDestinationsModifier: ViewModifier {
     switch section {
     case .listingTypes:
       ListingTypeListView()
+    case .listingDraftDemo:
+      ListingDraftDemoView()
     }
   }
 }

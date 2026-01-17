@@ -11,9 +11,9 @@ import SwiftData
 // MARK: - TaskItem
 
 /// Named TaskItem to avoid conflict with Swift's Task type.
-/// Represents a work item that can be claimed and completed by staff.
+/// Represents a work item that can be assigned to multiple users and completed.
 @Model
-final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
+final class TaskItem: WorkItemProtocol, NotableProtocol {
 
   // MARK: Lifecycle
 
@@ -22,10 +22,8 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     title: String,
     taskDescription: String = "",
     dueDate: Date? = nil,
-    priority: Priority = .medium,
     status: TaskStatus = .open,
     declaredBy: UUID,
-    claimedBy: UUID? = nil,
     listingId: UUID? = nil,
     createdVia: CreationSource = .dispatch,
     sourceSlackMessages: [String]? = nil,
@@ -37,10 +35,8 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     self.title = title
     self.taskDescription = taskDescription
     self.dueDate = dueDate
-    self.priority = priority
     self.status = status
     self.declaredBy = declaredBy
-    self.claimedBy = claimedBy
     self.listingId = listingId
     self.createdVia = createdVia
     self.sourceSlackMessages = sourceSlackMessages
@@ -50,18 +46,61 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     syncStateRaw = .synced
   }
 
+  /// Convenience initializer for previews/testing that accepts assignee user IDs
+  convenience init(
+    id: UUID = UUID(),
+    title: String,
+    taskDescription: String = "",
+    dueDate: Date? = nil,
+    status: TaskStatus = .open,
+    declaredBy: UUID,
+    listingId: UUID? = nil,
+    assigneeUserIds: [UUID],
+    createdVia: CreationSource = .dispatch,
+    sourceSlackMessages: [String]? = nil,
+    audiencesRaw: [String] = ["admin", "marketing"],
+    createdAt: Date = Date(),
+    updatedAt: Date = Date()
+  ) {
+    self.init(
+      id: id,
+      title: title,
+      taskDescription: taskDescription,
+      dueDate: dueDate,
+      status: status,
+      declaredBy: declaredBy,
+      listingId: listingId,
+      createdVia: createdVia,
+      sourceSlackMessages: sourceSlackMessages,
+      audiencesRaw: audiencesRaw,
+      createdAt: createdAt,
+      updatedAt: updatedAt
+    )
+    // Create TaskAssignee objects for each user ID
+    for userId in assigneeUserIds {
+      let assignee = TaskAssignee(
+        taskId: id,
+        userId: userId,
+        assignedBy: declaredBy,
+        assignedAt: createdAt,
+        createdAt: createdAt,
+        updatedAt: updatedAt
+      )
+      assignee.task = self
+      assignees.append(assignee)
+    }
+  }
+
   // MARK: Internal
 
   @Attribute(.unique) var id: UUID
   var title: String
   var taskDescription: String
   var dueDate: Date?
-  var priority: Priority
   var status: TaskStatus
 
   // Foreign keys stored as UUIDs
   var declaredBy: UUID
-  var claimedBy: UUID?
   var listingId: UUID?
 
   // Metadata
@@ -73,7 +112,6 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
   var audiencesRaw: [String] = ["admin", "marketing"]
 
   // Timestamps
-  var claimedAt: Date?
   var completedAt: Date?
   var deletedAt: Date?
   var createdAt: Date
@@ -94,12 +132,16 @@ final class TaskItem: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
   @Relationship(deleteRule: .cascade)
   var statusHistory = [StatusChange]()
 
-  @Relationship(deleteRule: .cascade)
-  var claimHistory = [ClaimEvent]()
+  @Relationship(deleteRule: .cascade, inverse: \TaskAssignee.task)
+  var assignees = [TaskAssignee]()
 
-  // Inverse relationship (optional)
-  var claimedByUser: User?
+  /// Inverse relationship (optional)
   var listing: Listing?
+
+  /// Convenience computed property for assignee user IDs
+  var assigneeUserIds: [UUID] {
+    assignees.map { $0.userId }
+  }
 
   /// Computed property exposing audiences as Set<Role>
   var audiences: Set<Role> {

@@ -19,7 +19,7 @@ struct RealtorProfileView: View {
   let user: User
 
   var body: some View {
-    StandardScreen(title: user.name, layout: .column, scroll: .automatic) {
+    StandardScreen(title: "", layout: .column, scroll: .automatic) {
       content
     } toolbarContent: {
       ToolbarItem(placement: .primaryAction) {
@@ -40,7 +40,6 @@ struct RealtorProfileView: View {
   @Query private var tasks: [TaskItem]
   @Query private var activities: [Activity]
 
-  @EnvironmentObject private var lensState: LensState
   @EnvironmentObject private var actions: WorkItemActions
   @State private var showEditSheet = false
 
@@ -56,12 +55,12 @@ struct RealtorProfileView: View {
     var items = [WorkItem]()
 
     let userTasks = tasks.filter {
-      ($0.claimedByUser?.id == user.id || $0.declaredBy == user.id) && $0.status != .deleted
+      ($0.assigneeUserIds.contains(user.id) || $0.declaredBy == user.id) && $0.status != .deleted
     }
     items.append(contentsOf: userTasks.map { WorkItem.task($0) })
 
     let userActivities = activities.filter {
-      ($0.claimedByUser?.id == user.id || $0.declaredBy == user.id) && $0.status != .deleted
+      ($0.assigneeUserIds.contains(user.id) || $0.declaredBy == user.id) && $0.status != .deleted
     }
     items.append(contentsOf: userActivities.map { WorkItem.activity($0) })
 
@@ -73,26 +72,26 @@ struct RealtorProfileView: View {
       // Profile Header
       profileHeader
 
-      // Properties Section
-      if !userProperties.isEmpty {
+      // Active Listings Section
+      if !userListings.isEmpty {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
-          sectionHeader("Properties (\(userProperties.count))")
-          ForEach(userProperties) { property in
-            NavigationLink(value: AppRoute.property(property.id)) {
-              PropertyRowView(property: property)
+          sectionHeader("Active Listings")
+          ForEach(userListings) { listing in
+            NavigationLink(value: AppRoute.listing(listing.id)) {
+              ListingRowView(listing: listing)
             }
             .buttonStyle(.plain)
           }
         }
       }
 
-      // Active Listings Section
-      if !userListings.isEmpty {
+      // Properties Section
+      if !userProperties.isEmpty {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
-          sectionHeader("Active Listings (\(userListings.count))")
-          ForEach(userListings) { listing in
-            NavigationLink(value: AppRoute.listing(listing.id)) {
-              ListingRowView(listing: listing)
+          sectionHeader("Properties")
+          ForEach(userProperties) { property in
+            NavigationLink(value: AppRoute.property(property.id)) {
+              PropertyRowView(property: property)
             }
             .buttonStyle(.plain)
           }
@@ -107,12 +106,10 @@ struct RealtorProfileView: View {
             NavigationLink(value: AppRoute.workItem(WorkItemRef.from(item))) {
               WorkItemRow(
                 item: item,
-                claimState: item.claimState(currentUserId: actions.currentUserId, userLookup: actions.userLookup),
+                userLookup: actions.userLookupDict,
                 onComplete: { actions.onComplete(item) },
                 onEdit: { },
-                onDelete: { },
-                onClaim: { actions.onClaim(item) },
-                onRelease: { actions.onRelease(item) }
+                onDelete: { }
               )
             }
             .buttonStyle(.plain)
@@ -128,7 +125,7 @@ struct RealtorProfileView: View {
       // Avatar
       Circle()
         .fill(DS.Colors.Background.secondary)
-        .frame(width: 80, height: 80)
+        .frame(width: 120, height: 120)
         .overlay {
           if let avatarData = user.avatar, let pImage = PlatformImage.from(data: avatarData) {
             Image(platformImage: pImage)
@@ -137,10 +134,17 @@ struct RealtorProfileView: View {
               .clipShape(Circle())
           } else {
             Text(user.initials)
-              .font(.system(size: 32, weight: .medium))
+              .font(.system(size: 48, weight: .medium))
               .foregroundStyle(DS.Colors.Text.secondary)
           }
         }
+        .accessibilityLabel("Profile photo for \(user.name)")
+
+      // User name below avatar
+      Text(user.name)
+        .font(DS.Typography.title)
+        .foregroundStyle(DS.Colors.Text.primary)
+        .accessibilityAddTraits(.isHeader)
 
       VStack(spacing: DS.Spacing.xs) {
         Text(user.userType.rawValue.capitalized)
@@ -155,20 +159,25 @@ struct RealtorProfileView: View {
 
       // Quick Actions
       HStack(spacing: DS.Spacing.lg) {
-        actionButton(icon: "envelope.fill", label: "Email") { }
-        actionButton(icon: "phone.fill", label: "Call") { }
-        actionButton(icon: "message.fill", label: "Slack") { }
+        actionButton(icon: "envelope.fill", label: "Email", hint: "Send email to \(user.name)") { }
+        actionButton(icon: "phone.fill", label: "Call", hint: "Call \(user.name)") { }
+        actionButton(icon: "message.fill", label: "Slack", hint: "Message \(user.name) on Slack") { }
       }
     }
     // Frame max width removed to satisfy layout contract; relies on StandardScreen column width
   }
 
-  private func actionButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
+  private func actionButton(
+    icon: String,
+    label: String,
+    hint: String,
+    action: @escaping () -> Void
+  ) -> some View {
     Button(action: action) {
-      VStack(spacing: 8) {
+      VStack(spacing: DS.Spacing.sm) {
         Circle()
           .fill(DS.Colors.Background.tertiary)
-          .frame(width: 44, height: 44)
+          .frame(width: DS.Spacing.minTouchTarget, height: DS.Spacing.minTouchTarget)
           .overlay {
             Image(systemName: icon)
               .font(.system(size: 18))
@@ -180,6 +189,8 @@ struct RealtorProfileView: View {
       }
     }
     .buttonStyle(.plain)
+    .accessibilityLabel(label)
+    .accessibilityHint(hint)
   }
 
   private func sectionHeader(_ text: String) -> some View {
@@ -188,22 +199,21 @@ struct RealtorProfileView: View {
       .foregroundStyle(DS.Colors.Text.secondary)
       .textCase(.uppercase)
       .padding(.top, DS.Spacing.md)
+      .accessibilityAddTraits(.isHeader)
   }
 }
 
 // MARK: - PropertyRowView
 
 private struct PropertyRowView: View {
+
+  // MARK: Internal
+
   let property: Property
 
   var body: some View {
     HStack(spacing: DS.Spacing.md) {
-      Image(systemName: DS.Icons.Entity.property)
-        .font(.title2)
-        .foregroundColor(DS.Colors.Section.properties)
-        .frame(width: 40)
-
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
         Text(property.displayAddress)
           .font(DS.Typography.body)
           .foregroundColor(DS.Colors.Text.primary)
@@ -218,35 +228,53 @@ private struct PropertyRowView: View {
       Spacer()
 
       // Listing count badge
-      let listingCount = property.activeListings.count
       if listingCount > 0 {
         Text("\(listingCount) listing\(listingCount == 1 ? "" : "s")")
           .font(DS.Typography.caption)
           .foregroundColor(DS.Colors.Section.properties)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 4)
+          .padding(.horizontal, DS.Spacing.sm)
+          .padding(.vertical, DS.Spacing.xs)
           .background(DS.Colors.Section.properties.opacity(0.15))
           .clipShape(Capsule())
+          .accessibilityHidden(true)
       }
     }
     .padding(.vertical, DS.Spacing.sm)
     .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(accessibilityDescription)
   }
+
+  // MARK: Private
+
+  private var listingCount: Int {
+    property.activeListings.count
+  }
+
+  private var accessibilityDescription: String {
+    var description = property.displayAddress
+    if !property.city.isEmpty {
+      description += ", \(property.city), \(property.province)"
+    }
+    if listingCount > 0 {
+      description += ", \(listingCount) active listing\(listingCount == 1 ? "" : "s")"
+    }
+    return description
+  }
+
 }
 
 // MARK: - ListingRowView
 
 private struct ListingRowView: View {
+
+  // MARK: Internal
+
   let listing: Listing
 
   var body: some View {
     HStack(spacing: DS.Spacing.md) {
-      Image(systemName: DS.Icons.Entity.listingFill)
-        .font(.title2)
-        .foregroundColor(DS.Colors.Text.tertiary)
-        .frame(width: 40)
-
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
         Text(listing.address)
           .font(DS.Typography.body)
           .foregroundColor(DS.Colors.Text.primary)
@@ -258,17 +286,26 @@ private struct ListingRowView: View {
 
       Spacer()
 
-      Text(listing.status.rawValue.capitalized)
+      Text(listing.stage.displayName)
         .font(DS.Typography.caption)
-        .padding(.leading, 8)
-        .padding(.trailing, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, DS.Spacing.sm)
+        .padding(.vertical, DS.Spacing.xs)
         .background(DS.Colors.Background.tertiary)
         .clipShape(Capsule())
+        .accessibilityHidden(true)
     }
     .padding(.vertical, DS.Spacing.sm)
     .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(accessibilityDescription)
   }
+
+  // MARK: Private
+
+  private var accessibilityDescription: String {
+    "\(listing.address), \(listing.city), \(listing.province), status: \(listing.stage.displayName)"
+  }
+
 }
 
 // MARK: - Previews
@@ -304,8 +341,8 @@ private struct ListingRowView: View {
         title: "Update Lockbox Code",
         status: .open,
         declaredBy: PreviewDataFactory.aliceID,
-        claimedBy: PreviewDataFactory.bobID,
-        listingId: listing.id
+        listingId: listing.id,
+        assigneeUserIds: [PreviewDataFactory.bobID]
       )
       task.syncState = .synced
       context.insert(task)
@@ -320,7 +357,7 @@ private struct ListingRowView: View {
       RealtorProfileView(user: bob)
         .environmentObject(WorkItemActions(
           currentUserId: PreviewDataFactory.aliceID,
-          userLookup: { _ in nil }
+          userLookupDict: [:]
         ))
     }
   }
@@ -350,7 +387,7 @@ private struct ListingRowView: View {
       RealtorProfileView(user: bob)
         .environmentObject(WorkItemActions(
           currentUserId: PreviewDataFactory.aliceID,
-          userLookup: { _ in nil }
+          userLookupDict: [:]
         ))
     }
   }
@@ -371,7 +408,7 @@ private struct ListingRowView: View {
       RealtorProfileView(user: alice)
         .environmentObject(WorkItemActions(
           currentUserId: PreviewDataFactory.aliceID,
-          userLookup: { _ in nil }
+          userLookupDict: [:]
         ))
     }
   }

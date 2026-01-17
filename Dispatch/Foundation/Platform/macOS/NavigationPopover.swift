@@ -4,6 +4,11 @@ import SwiftUI
 
 /// The entire dropdown panel containing search + navigation list.
 /// Unifies "Quick Find" navigation and "Search" results.
+///
+/// **Focus Management:**
+/// - Owns its own `@FocusState` for keyboard control
+/// - Auto-focuses the search field after popover animation completes
+/// - Passes external focus binding to SearchBar for proper text input
 struct NavigationPopover: View {
 
   // MARK: Lifecycle
@@ -31,17 +36,12 @@ struct NavigationPopover: View {
   let onNavigate: (AppTab) -> Void
   let onSelectResult: (SearchResult) -> Void
 
-  // Hardcoded empty arrays removed (Queries active)
-
-  // Hardcoded counts for MVP demo (Navigation List)
-  let inboxCount = 4
-  let todayCount = 8
-
   var body: some View {
     VStack(spacing: 0) {
-      // Unifed Search Bar (replaces QuickFindField)
+      // Unified Search Bar with external focus binding
       SearchBar(
         text: $searchText,
+        externalFocus: $searchFieldFocused,
         showCancelButton: false,
         onCancel: {
           searchText = ""
@@ -81,9 +81,18 @@ struct NavigationPopover: View {
       RoundedRectangle(cornerRadius: 12)
         .stroke(Color.primary.opacity(0.1), lineWidth: 1)
     )
+    .task {
+      // Wait for popover animation to complete before focusing
+      // This ensures the text field is fully in the view hierarchy
+      try? await Task.sleep(for: .milliseconds(100))
+      searchFieldFocused = true
+    }
   }
 
   // MARK: Private
+
+  /// Focus state for the search field - enables immediate typing
+  @FocusState private var searchFieldFocused: Bool
 
   /// Search Data Queries
   @Query(sort: \TaskItem.title)
@@ -109,11 +118,11 @@ struct NavigationPopover: View {
   private var navigationList: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
-        // Navigation Items
+        // Navigation Items (matches iOS Quick Jump)
         let items: [SearchResult] = [
-          .navigation(title: "Inbox", icon: "tray", tab: .workspace, badgeCount: inboxCount),
-          .navigation(title: "Today", icon: "star.fill", tab: .workspace, badgeCount: todayCount),
-          .navigation(title: "Listings", icon: "building.2", tab: .listings, badgeCount: nil),
+          .navigation(title: "My Workspace", icon: "briefcase", tab: .workspace, badgeCount: nil),
+          .navigation(title: "Listings", icon: DS.Icons.Entity.listing, tab: .listings, badgeCount: nil),
+          .navigation(title: "Properties", icon: DS.Icons.Entity.property, tab: .properties, badgeCount: nil),
           .navigation(title: "Realtors", icon: DS.Icons.Entity.realtor, tab: .realtors, badgeCount: nil)
         ]
 

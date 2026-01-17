@@ -23,6 +23,7 @@ extension AppTab: Identifiable {
     case .realtors: "Realtors"
     case .settings: "Settings"
     case .search: "Search"
+    case .listingGenerator: "Listing Generator"
     }
   }
 
@@ -34,6 +35,7 @@ extension AppTab: Identifiable {
     case .realtors: DS.Icons.Entity.realtor
     case .settings: "gearshape"
     case .search: "magnifyingglass"
+    case .listingGenerator: "sparkles"
     }
   }
 }
@@ -41,17 +43,26 @@ extension AppTab: Identifiable {
 // MARK: - Visibility Rules (Data-Driven)
 
 extension AppTab {
+  /// Main navigation tabs for TabView (excludes settings and search).
+  /// Settings is in a separate TabSection; search is an overlay.
+  static var mainTabs: [AppTab] {
+    [.workspace, .properties, .listings, .realtors]
+  }
+
+  /// Tabs shown in macOS sidebar (excludes search only).
+  /// Settings is now navigated in-window, not a separate scene.
   static var sidebarTabs: [AppTab] {
     allCases.filter(\.showsInSidebar)
   }
 
+  /// Tabs shown in iPhone menu (all except search).
   static var menuTabs: [AppTab] {
     allCases.filter(\.showsInMenu)
   }
 
   var showsInSidebar: Bool {
     switch self {
-    case .search, .settings: false
+    case .search: false
     default: true
     }
   }

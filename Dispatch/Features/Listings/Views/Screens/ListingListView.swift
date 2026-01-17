@@ -41,26 +41,15 @@ struct ListingListView: View {
       } message: {
         Text("This note will be permanently deleted.")
       }
-      .alert("Delete Subtask?", isPresented: $showDeleteSubtaskAlert) {
+      .alert("Delete Draft?", isPresented: $showDeleteDraftAlert) {
         Button("Cancel", role: .cancel) {
-          subtaskToDelete = nil
-          itemForSubtaskDeletion = nil
+          draftToDelete = nil
         }
         Button("Delete", role: .destructive) {
-          confirmDeleteSubtask()
+          confirmDeleteDraft()
         }
       } message: {
-        Text("This subtask will be permanently deleted.")
-      }
-      .sheet(isPresented: $showAddSubtaskSheet) {
-        AddSubtaskSheet(title: $newSubtaskTitle) {
-          if let item = itemForSubtaskAdd {
-            addSubtask(to: item, title: newSubtaskTitle)
-          }
-          newSubtaskTitle = ""
-          itemForSubtaskAdd = nil
-          showAddSubtaskSheet = false
-        }
+        Text("This draft will be permanently deleted.")
       }
   }
 
@@ -71,23 +60,32 @@ struct ListingListView: View {
   @Query(sort: \Listing.address)
   private var allListingsRaw: [Listing]
 
+  @Query(sort: \ListingGeneratorDraft.updatedAt, order: .reverse)
+  private var drafts: [ListingGeneratorDraft]
+
   @Query private var users: [User]
 
   @EnvironmentObject private var syncManager: SyncManager
   @EnvironmentObject private var lensState: LensState
+  @EnvironmentObject private var appState: AppState
   @Environment(\.modelContext) private var modelContext
+
+  #if os(iOS)
+  /// Collapsed by default to avoid duplication with tabViewSidebarHeader.
+  @State private var stagesExpanded = false
+
+  /// Check device type for iPad-specific UI.
+  private var isIPad: Bool {
+    UIDevice.current.userInterfaceIdiom == .pad
+  }
+  #endif
 
   @State private var showDeleteNoteAlert = false
   @State private var noteToDelete: Note?
   @State private var itemForNoteDeletion: WorkItem?
 
-  @State private var showDeleteSubtaskAlert = false
-  @State private var subtaskToDelete: Subtask?
-  @State private var itemForSubtaskDeletion: WorkItem?
-
-  @State private var showAddSubtaskSheet = false
-  @State private var itemForSubtaskAdd: WorkItem?
-  @State private var newSubtaskTitle = ""
+  @State private var showDeleteDraftAlert = false
+  @State private var draftToDelete: ListingGeneratorDraft?
 
   /// Filter out deleted listings
   private var allListings: [Listing] {
@@ -123,33 +121,71 @@ struct ListingListView: View {
     allListings.isEmpty
   }
 
+  /// Stage counts computed from active listings.
+  private var stageCounts: [ListingStage: Int] {
+    allListings.stageCounts()
+  }
+
   private var currentUserId: UUID {
     syncManager.currentUserID ?? Self.unauthenticatedUserId
   }
 
   private var mainScreen: some View {
     StandardScreen(title: "Listings", layout: .column, scroll: .automatic) {
-      if groupedByOwner.isEmpty {
-        // Caller handles empty state
-        ContentUnavailableView {
-          Label("No Listings", systemImage: DS.Icons.Entity.listing)
-        } description: {
-          Text("Listings will appear here")
-        }
-      } else {
-        StandardGroupedList(
-          groupedByOwner,
-          items: { $0.listings },
-          header: { group in
-            SectionHeader(group.owner?.name ?? "Unknown Owner")
-          },
-          row: { group, listing in
-            ListRowLink(value: AppRoute.listing(listing.id)) {
-              ListingRow(listing: listing, owner: group.owner)
-            }
+      VStack(spacing: DS.Spacing.sectionSpacing) {
+        // iPad fallback: Stage cards in collapsed DisclosureGroup.
+        // tabViewSidebarHeader is hidden in tab bar mode, so we provide access here.
+        // Collapsed by default to avoid duplication when sidebar is visible.
+        #if os(iOS)
+        if isIPad {
+          DisclosureGroup("Stages", isExpanded: $stagesExpanded) {
+            StageCardsHeader(
+              stageCounts: stageCounts,
+              onSelectStage: { stage in
+                appState.dispatch(.setSelectedDestination(.stage(stage)))
+              }
+            )
           }
-        )
-        .pullToSearch() // Required: sensor is internal, modifier enables mechanism
+          .padding(.horizontal, DS.Spacing.md)
+          .padding(.vertical, DS.Spacing.sm)
+        }
+        #endif
+
+        // Listing Generator Drafts Section (if any exist)
+        if !drafts.isEmpty {
+          DraftsSectionCard(
+            drafts: drafts,
+            onNavigate: { draftId in
+              appState.dispatch(.navigate(.listingGeneratorDraft(draftId: draftId)))
+            },
+            onDelete: { draft in
+              draftToDelete = draft
+              showDeleteDraftAlert = true
+            }
+          )
+        }
+
+        if groupedByOwner.isEmpty, drafts.isEmpty {
+          // Caller handles empty state
+          ContentUnavailableView {
+            Label("No Listings", systemImage: DS.Icons.Entity.listing)
+          } description: {
+            Text("Listings will appear here")
+          }
+        } else if !groupedByOwner.isEmpty {
+          StandardGroupedList(
+            groupedByOwner,
+            items: { $0.listings },
+            header: { group in
+              SectionHeader(group.owner?.name ?? "Unknown Owner")
+            },
+            row: { group, listing in
+              ListRowLink(value: AppRoute.listing(listing.id)) {
+                ListingRow(listing: listing, owner: group.owner)
+              }
+            }
+          )
+        }
       }
     } toolbarContent: {
       ToolbarItem(placement: .automatic) {
@@ -162,27 +198,17 @@ struct ListingListView: View {
     WorkItemResolverView(
       ref: ref,
       currentUserId: currentUserId,
-      userLookup: { userCache[$0] },
+      userLookup: userCache,
+      availableUsers: users,
       onComplete: { item in toggleComplete(item) },
-      onClaim: { item in claim(item) },
-      onRelease: { item in unclaim(item) },
+      onAssigneesChanged: { item, userIds in updateAssignees(item, userIds: userIds) },
       onEditNote: nil,
       onDeleteNote: { note, item in
         noteToDelete = note
         itemForNoteDeletion = item
         showDeleteNoteAlert = true
       },
-      onAddNote: { content, item in addNote(to: item, content: content) },
-      onToggleSubtask: { subtask in toggleSubtask(subtask) },
-      onDeleteSubtask: { subtask, item in
-        subtaskToDelete = subtask
-        itemForSubtaskDeletion = item
-        showDeleteSubtaskAlert = true
-      },
-      onAddSubtask: { item in
-        itemForSubtaskAdd = item
-        showAddSubtaskSheet = true
-      }
+      onAddNote: { content, item in addNote(to: item, content: content) }
     )
   }
 
@@ -201,31 +227,40 @@ struct ListingListView: View {
     syncManager.requestSync()
   }
 
-  private func claim(_ item: WorkItem) {
+  private func updateAssignees(_ item: WorkItem, userIds: [UUID]) {
+    let userIdSet = Set(userIds)
+
     switch item {
     case .task(let task, _):
-      task.claimedBy = currentUserId
-      task.claimedAt = Date()
+      // Remove assignees no longer in list
+      task.assignees.removeAll { !userIdSet.contains($0.userId) }
+      // Add new assignees
+      let existingUserIds = Set(task.assignees.map { $0.userId })
+      for userId in userIds where !existingUserIds.contains(userId) {
+        let assignee = TaskAssignee(
+          taskId: task.id,
+          userId: userId,
+          assignedBy: currentUserId
+        )
+        assignee.task = task
+        task.assignees.append(assignee)
+      }
       task.markPending()
 
     case .activity(let activity, _):
-      activity.claimedBy = currentUserId
-      activity.claimedAt = Date()
-      activity.markPending()
-    }
-    syncManager.requestSync()
-  }
-
-  private func unclaim(_ item: WorkItem) {
-    switch item {
-    case .task(let task, _):
-      task.claimedBy = nil
-      task.claimedAt = nil
-      task.markPending()
-
-    case .activity(let activity, _):
-      activity.claimedBy = nil
-      activity.claimedAt = nil
+      // Remove assignees no longer in list
+      activity.assignees.removeAll { !userIdSet.contains($0.userId) }
+      // Add new assignees
+      let existingUserIds = Set(activity.assignees.map { $0.userId })
+      for userId in userIds where !existingUserIds.contains(userId) {
+        let assignee = ActivityAssignee(
+          activityId: activity.id,
+          userId: userId,
+          assignedBy: currentUserId
+        )
+        assignee.activity = activity
+        activity.assignees.append(assignee)
+      }
       activity.markPending()
     }
     syncManager.requestSync()
@@ -263,42 +298,18 @@ struct ListingListView: View {
     syncManager.requestSync()
   }
 
-  private func toggleSubtask(_ subtask: Subtask) {
-    subtask.completed.toggle()
-    syncManager.requestSync()
-  }
-
-  private func confirmDeleteSubtask() {
-    guard let subtask = subtaskToDelete, let item = itemForSubtaskDeletion else { return }
-    switch item {
-    case .task(let task, _):
-      task.subtasks.removeAll { $0.id == subtask.id }
-      task.markPending()
-
-    case .activity(let activity, _):
-      activity.subtasks.removeAll { $0.id == subtask.id }
-      activity.markPending()
+  private func confirmDeleteDraft() {
+    guard let draft = draftToDelete else { return }
+    do {
+      try ListingGeneratorState.deleteDraft(draft, from: modelContext)
+    } catch {
+      // PHASE 3: Handle error appropriately - add proper error logging
+      // swiftlint:disable:next no_direct_standard_out_logs
+      print("Failed to delete draft: \(error)")
     }
-    modelContext.delete(subtask)
-    subtaskToDelete = nil
-    itemForSubtaskDeletion = nil
-    syncManager.requestSync()
+    draftToDelete = nil
   }
 
-  private func addSubtask(to item: WorkItem, title: String) {
-    switch item {
-    case .task(let task, _):
-      let subtask = Subtask(title: title, parentType: .task, parentId: item.id)
-      task.subtasks.append(subtask)
-      task.markPending()
-
-    case .activity(let activity, _):
-      let subtask = Subtask(title: title, parentType: .activity, parentId: item.id)
-      activity.subtasks.append(subtask)
-      activity.markPending()
-    }
-    syncManager.requestSync()
-  }
 }
 
 // MARK: - ListingListPreviewContainer
@@ -423,14 +434,12 @@ private struct ListingListPreviewContainer: View {
     let task1 = TaskItem(
       title: "Schedule photography",
       taskDescription: "Book professional photos",
-      priority: .high,
       status: .completed,
       declaredBy: janeRealtor.id
     )
     let task2 = TaskItem(
       title: "Update MLS",
       taskDescription: "Update listing details",
-      priority: .medium,
       status: .open,
       declaredBy: janeRealtor.id
     )
@@ -440,21 +449,18 @@ private struct ListingListPreviewContainer: View {
     let task3 = TaskItem(
       title: "Price review",
       taskDescription: "Review comparable sales",
-      priority: .high,
       status: .completed,
       declaredBy: johnAgent.id
     )
     let task4 = TaskItem(
       title: "Virtual tour",
       taskDescription: "Create 3D walkthrough",
-      priority: .medium,
       status: .completed,
       declaredBy: johnAgent.id
     )
     let task5 = TaskItem(
       title: "Open house prep",
       taskDescription: "Prepare for weekend showing",
-      priority: .low,
       status: .open,
       declaredBy: johnAgent.id
     )
@@ -476,15 +482,19 @@ private struct ListingListPreviewContainer: View {
       Note.self,
       Subtask.self,
       StatusChange.self,
-      ClaimEvent.self
+      TaskAssignee.self,
+      ActivityAssignee.self,
+      ListingGeneratorDraft.self
     ], inMemory: true)
     .environmentObject(SyncManager(mode: .preview))
     .environmentObject(LensState())
+    .environmentObject(AppState(mode: .preview))
 }
 
 #Preview("Listing List - Empty") {
   ListingListView()
-    .modelContainer(for: [Listing.self, User.self], inMemory: true)
+    .modelContainer(for: [Listing.self, User.self, ListingGeneratorDraft.self], inMemory: true)
     .environmentObject(SyncManager(mode: .preview))
     .environmentObject(LensState())
+    .environmentObject(AppState(mode: .preview))
 }

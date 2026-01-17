@@ -9,6 +9,9 @@ private struct StagedListingRow: View {
 
   var body: some View {
     HStack(spacing: DS.Spacing.md) {
+      if shouldShowProgress {
+        ProgressCircle(progress: listing.progress, size: 18)
+      }
       VStack(alignment: .leading, spacing: DS.Spacing.xs) {
         Text(listing.address)
           .font(DS.Typography.body)
@@ -28,6 +31,16 @@ private struct StagedListingRow: View {
   }
 
   // MARK: Private
+
+  /// Show progress circle for stages other than live, done, sold
+  private var shouldShowProgress: Bool {
+    switch listing.stage {
+    case .live, .done, .sold:
+      false
+    default:
+      true
+    }
+  }
 
   private var typeTagColors: (fg: Color, bg: Color) {
     let palette: [Color] = [.blue, .green, .orange, .purple, .teal, .pink]
@@ -93,7 +106,6 @@ struct StagedListingsView: View {
             }
           }
         )
-        .pullToSearch() // Required: sensor is internal, modifier enables mechanism
       }
     }
   }
@@ -149,11 +161,12 @@ private enum StagedListingsPreviewData {
     let context = ModelContext(container)
     PreviewDataFactory.seed(context)
 
-    // Preview-only: ensure some seeded listings appear in the Live stage
+    // Preview-only: distribute seeded listings across *all* stages for previews
     let descriptor = FetchDescriptor<Listing>(sortBy: [SortDescriptor(\Listing.address)])
-    if let listings = try? context.fetch(descriptor) {
-      for listing in listings.prefix(5) {
-        listing.stage = .live
+    let stages = ListingStage.allCases
+    if let listings = try? context.fetch(descriptor), !stages.isEmpty {
+      for (idx, listing) in listings.enumerated() {
+        listing.stage = stages[idx % stages.count]
       }
     }
     try? context.save()
@@ -162,29 +175,18 @@ private enum StagedListingsPreviewData {
   }
 }
 
-#Preview("Staged Listings - Live (Seeded)") {
-  NavigationStack {
-    StagedListingsView(stage: .live)
-  }
-  .modelContainer(StagedListingsPreviewData.seededContainer())
-  .environmentObject(SyncManager(mode: .preview))
-  .environmentObject(LensState())
-}
+// MARK: - StagedListingsView_Previews
 
-#Preview("Staged Listings - Live") {
-  NavigationStack {
-    StagedListingsView(stage: .live)
+struct StagedListingsView_Previews: PreviewProvider {
+  static var previews: some View {
+    ForEach(ListingStage.allCases, id: \.self) { stage in
+      NavigationStack {
+        StagedListingsView(stage: stage)
+      }
+      .modelContainer(StagedListingsPreviewData.seededContainer())
+      .environmentObject(SyncManager(mode: .preview))
+      .environmentObject(LensState())
+      .previewDisplayName("Staged Listings - \(stage.displayName)")
+    }
   }
-  .modelContainer(for: [Listing.self, User.self], inMemory: true)
-  .environmentObject(SyncManager(mode: .preview))
-  .environmentObject(LensState())
-}
-
-#Preview("Staged Listings - Pending") {
-  NavigationStack {
-    StagedListingsView(stage: .pending)
-  }
-  .modelContainer(for: [Listing.self, User.self], inMemory: true)
-  .environmentObject(SyncManager(mode: .preview))
-  .environmentObject(LensState())
 }

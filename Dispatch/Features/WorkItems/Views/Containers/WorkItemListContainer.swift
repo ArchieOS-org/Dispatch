@@ -16,10 +16,10 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     title: String,
     items: [WorkItem],
     currentUserId: UUID,
-    userLookup: @escaping (UUID) -> User?,
+    userLookup: [UUID: User],
     isActivityList: Bool = false,
     embedInNavigationStack: Bool = true,
-    @ViewBuilder rowBuilder: @escaping (WorkItem, ClaimState) -> Row,
+    @ViewBuilder rowBuilder: @escaping (WorkItem) -> Row,
     @ViewBuilder destination: @escaping (WorkItemRef) -> Destination
   ) {
     self.title = title
@@ -37,10 +37,10 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
   let title: String
   let items: [WorkItem]
   let currentUserId: UUID
-  let userLookup: (UUID) -> User?
+  let userLookup: [UUID: User]
   let isActivityList: Bool
   let embedInNavigationStack: Bool
-  @ViewBuilder let rowBuilder: (WorkItem, ClaimState) -> Row
+  @ViewBuilder let rowBuilder: (WorkItem) -> Row
   @ViewBuilder let destinationBuilder: (WorkItemRef) -> Destination
 
   var body: some View {
@@ -55,12 +55,12 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
 
   // MARK: Private
 
-  @State private var selectedFilter = ClaimFilter.mine
+  @State private var selectedFilter = AssignmentFilter.mine
   @EnvironmentObject private var lensState: LensState
 
   private var filteredItems: [WorkItem] {
     items.filter { item in
-      selectedFilter.matches(claimedBy: item.claimedBy, currentUserId: currentUserId) &&
+      selectedFilter.matches(assigneeUserIds: item.assigneeUserIds, currentUserId: currentUserId) &&
         lensState.audience.matches(audiences: item.audiences)
     }
   }
@@ -85,18 +85,18 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     switch selectedFilter {
     case .mine:
       isActivityList
-        ? "Activities you claim will appear here"
-        : "Tasks you claim will appear here"
+        ? "Activities assigned to you will appear here"
+        : "Tasks assigned to you will appear here"
 
     case .others:
       isActivityList
-        ? "Activities claimed by others will appear here"
-        : "Tasks claimed by others will appear here"
+        ? "Activities assigned to others will appear here"
+        : "Tasks assigned to others will appear here"
 
-    case .unclaimed:
+    case .unassigned:
       isActivityList
-        ? "Unclaimed activities will appear here"
-        : "Unclaimed tasks will appear here"
+        ? "Unassigned activities will appear here"
+        : "Unassigned tasks will appear here"
     }
   }
 
@@ -123,7 +123,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
       selectedFilter = .others
     }
     .onReceive(NotificationCenter.default.publisher(for: .filterUnclaimed)) { _ in
-      selectedFilter = .unclaimed
+      selectedFilter = .unassigned
     }
   }
 
@@ -132,7 +132,7 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
       ForEach(groupedItems, id: \.section) { section, sectionItems in
         Section {
           ForEach(sectionItems) { item in
-            rowBuilder(item, item.claimState(currentUserId: currentUserId, userLookup: userLookup))
+            rowBuilder(item)
               .listRowSeparator(.hidden)
               .listRowInsets(EdgeInsets(
                 top: 0,
@@ -175,9 +175,8 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
       title: "Review quarterly report",
       taskDescription: "Go through Q4 numbers",
       dueDate: Date(),
-      priority: .high,
       declaredBy: currentUserId,
-      claimedBy: currentUserId
+      assigneeUserIds: [currentUserId]
     ))
   ]
 
@@ -185,8 +184,8 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     title: "Tasks",
     items: sampleTasks,
     currentUserId: currentUserId,
-    userLookup: { _ in sampleUser },
-    rowBuilder: { item, _ in
+    userLookup: [sampleUser.id: sampleUser],
+    rowBuilder: { item in
       Text(item.title)
     },
     destination: { _ in

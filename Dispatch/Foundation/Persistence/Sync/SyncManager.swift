@@ -22,6 +22,20 @@ enum SyncRunMode: Sendable {
   case test // Deterministic mode: no network, timers, or side effects
 }
 
+// MARK: - ProfileUpdateError
+
+/// Errors that can occur when updating user profile
+enum ProfileUpdateError: LocalizedError {
+  case notAuthenticated
+
+  var errorDescription: String? {
+    switch self {
+    case .notAuthenticated:
+      "You must be signed in to update your profile."
+    }
+  }
+}
+
 // MARK: - SyncManager
 
 @MainActor
@@ -96,7 +110,6 @@ final class SyncManager: ObservableObject {
   var activitiesSubscriptionTask: Task<Void, Never>?
   var listingsSubscriptionTask: Task<Void, Never>?
   var usersSubscriptionTask: Task<Void, Never>?
-  var claimEventsSubscriptionTask: Task<Void, Never>?
   var notesSubscriptionTask: Task<Void, Never>?
 
   #if DEBUG
@@ -166,6 +179,31 @@ final class SyncManager: ObservableObject {
     currentUserID = userId
   }
 
+  /// Updates the current user's user type in Supabase and locally
+  /// - Parameter newType: The new user type to set
+  /// - Throws: If the update fails
+  func updateUserType(_ newType: UserType) async throws {
+    guard let user = currentUser else {
+      debugLog.log("updateUserType: No current user", category: .sync)
+      throw ProfileUpdateError.notAuthenticated
+    }
+
+    debugLog.log("updateUserType: Updating to \(newType.rawValue)", category: .sync)
+
+    // Update in Supabase directly (RLS allows user to update their own profile)
+    try await supabase
+      .from("users")
+      .update(["user_type": newType.rawValue, "updated_at": ISO8601DateFormatter().string(from: Date())])
+      .eq("id", value: user.id.uuidString)
+      .execute()
+
+    // Update local model
+    user.userType = newType
+    user.updatedAt = Date()
+
+    debugLog.log("updateUserType: Successfully updated to \(newType.rawValue)", category: .sync)
+  }
+
   /// Coalescing sync request - replaces "fire and forget" tasks with a single consumer.
   /// Guaranteed to run on MainActor.
   func requestSync() {
@@ -231,6 +269,59 @@ final class SyncManager: ObservableObject {
   func resetLastSyncTime() {
     debugLog.log("resetLastSyncTime() called - next sync will run FULL RECONCILIATION", category: .sync)
     lastSyncTime = nil
+    // Also reset per-table watermarks so all entities are re-fetched
+    lastSyncNotes = nil
+    debugLog.log("  → Also reset notes watermark", category: .sync)
+  }
+
+  /// Refreshes notes for a specific parent (listing, task, or activity).
+  /// Call this when viewing a detail screen to ensure notes are up-to-date.
+  /// This is lightweight - only fetches notes for the specific parent.
+  @MainActor
+  func refreshNotesForParent(parentId: UUID, parentType: ParentType) async {
+    // Skip if a full sync is already in progress (it will fetch notes anyway)
+    guard !isSyncing else { return }
+    guard modelContainer != nil else { return }
+
+    debugLog.log("refreshNotesForParent(\(parentType.rawValue), \(parentId))", category: .sync)
+
+    do {
+      // Fetch notes for this parent from server
+      let dtos: [NoteDTO] = try await supabase
+        .from("notes")
+        .select()
+        .eq("parent_id", value: parentId.uuidString)
+        .eq("parent_type", value: parentType.rawValue)
+        .execute()
+        .value
+
+      debugLog.log("  Fetched \(dtos.count) notes for parent", category: .sync)
+
+      // Get context AFTER async work to avoid stale reference
+      guard let context = modelContainer?.mainContext else { return }
+
+      // Get local note IDs for this parent
+      let localDescriptor = FetchDescriptor<Note>(predicate: #Predicate {
+        $0.parentId == parentId && $0.parentType == parentType
+      })
+      let localNotes = try context.fetch(localDescriptor)
+      let localIds = Set(localNotes.map { $0.id })
+
+      // Apply each note (handles insert/update)
+      var insertedCount = 0
+      var updatedCount = 0
+      for dto in dtos {
+        let wasNew = !localIds.contains(dto.id)
+        try applyRemoteNote(dto: dto, source: .syncDown, context: context)
+        if wasNew { insertedCount += 1 } else { updatedCount += 1 }
+      }
+
+      if insertedCount > 0 || updatedCount > 0 {
+        debugLog.log("  ✓ Applied \(insertedCount) new, \(updatedCount) updated notes", category: .sync)
+      }
+    } catch {
+      debugLog.error("refreshNotesForParent failed: \(error.localizedDescription)")
+    }
   }
 
   /// Performs a full sync with orphan reconciliation, regardless of lastSyncTime.
@@ -272,14 +363,6 @@ final class SyncManager: ObservableObject {
     debugLog.log("retryListing() called for \(listing.id)", category: .sync)
     listing.syncState = .pending
     listing.lastSyncError = nil
-    await sync()
-  }
-
-  /// Retry syncing a specific ClaimEvent
-  func retryClaimEvent(_ claimEvent: ClaimEvent) async {
-    debugLog.log("retryClaimEvent() called for \(claimEvent.id)", category: .sync)
-    claimEvent.syncState = .pending
-    claimEvent.lastSyncError = nil
     await sync()
   }
 
@@ -436,18 +519,6 @@ final class SyncManager: ObservableObject {
     return true
   }
 
-  /// Delete a claim event by ID from local SwiftData
-  func deleteLocalClaimEvent(id: UUID, context: ModelContext) throws -> Bool {
-    let descriptor = FetchDescriptor<ClaimEvent>(predicate: #Predicate { $0.id == id })
-    guard let claimEvent = try context.fetch(descriptor).first else {
-      debugLog.log("deleteLocalClaimEvent: ClaimEvent \(id) not found locally", category: .sync)
-      return false
-    }
-    debugLog.log("deleteLocalClaimEvent: Deleting claim event \(id)", category: .sync)
-    context.delete(claimEvent)
-    return true
-  }
-
   /// Delete a note by ID from local SwiftData
   func deleteLocalNote(id: UUID, context: ModelContext) throws -> Bool {
     let descriptor = FetchDescriptor<Note>(predicate: #Predicate { $0.id == id })
@@ -572,11 +643,6 @@ final class SyncManager: ObservableObject {
     let usersUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "users")
     let usersDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "users")
 
-    // --- CLAIM EVENTS ---
-    let claimInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "claim_events")
-    let claimUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "claim_events")
-    let claimDeletes = channel.postgresChange(DeleteAction.self, schema: "public", table: "claim_events")
-
     // --- NOTES ---
     let noteInserts = channel.postgresChange(InsertAction.self, schema: "public", table: "notes")
     let noteUpdates = channel.postgresChange(UpdateAction.self, schema: "public", table: "notes")
@@ -675,29 +741,6 @@ final class SyncManager: ObservableObject {
       }
     }
 
-    claimEventsSubscriptionTask = Task {
-      await withTaskGroup(of: Void.self) { group in
-        group.addTask {
-          for await e in claimInserts {
-            if Task.isCancelled { return }
-            await self.handleClaimEventInsert(e)
-          }
-        }
-        group.addTask {
-          for await e in claimUpdates {
-            if Task.isCancelled { return }
-            await self.handleClaimEventUpdate(e)
-          }
-        }
-        group.addTask {
-          for await e in claimDeletes {
-            if Task.isCancelled { return }
-            await self.handleClaimEventDelete(e)
-          }
-        }
-      }
-    }
-
     notesSubscriptionTask = Task {
       await withTaskGroup(of: Void.self) { group in
         group.addTask { for await e in noteInserts { if Task.isCancelled { return }
@@ -747,7 +790,6 @@ final class SyncManager: ObservableObject {
     activitiesSubscriptionTask?.cancel()
     listingsSubscriptionTask?.cancel()
     usersSubscriptionTask?.cancel()
-    claimEventsSubscriptionTask?.cancel()
     notesSubscriptionTask?.cancel()
 
     #if DEBUG
@@ -772,7 +814,6 @@ final class SyncManager: ObservableObject {
           _ = await self.activitiesSubscriptionTask?.result
           _ = await self.listingsSubscriptionTask?.result
           _ = await self.usersSubscriptionTask?.result
-          _ = await self.claimEventsSubscriptionTask?.result
 
           #if DEBUG
           _ = await self.debugHangingTask?.result
@@ -793,8 +834,7 @@ final class SyncManager: ObservableObject {
       _ = await activitiesSubscriptionTask?.result
       _ = await listingsSubscriptionTask?.result
       _ = await usersSubscriptionTask?.result
-      _ = await claimEventsSubscriptionTask?.result
-      _ = await notesSubscriptionTask?.result // Jobs Standard
+      _ = await notesSubscriptionTask?.result
 
       #if DEBUG
       _ = await debugHangingTask?.result
@@ -811,7 +851,6 @@ final class SyncManager: ObservableObject {
     activitiesSubscriptionTask = nil
     listingsSubscriptionTask = nil
     usersSubscriptionTask = nil
-    claimEventsSubscriptionTask = nil
     notesSubscriptionTask = nil
 
     #if DEBUG
@@ -877,6 +916,19 @@ final class SyncManager: ObservableObject {
     let id: UUID
   }
 
+  /// Source of remote note changes for logging
+  private enum RemoteNoteSource: CustomStringConvertible {
+    case syncDown
+    case broadcast
+
+    var description: String {
+      switch self {
+      case .syncDown: "syncDown"
+      case .broadcast: "broadcast"
+      }
+    }
+  }
+
   private var isShutdown = false // Jobs Standard: Track lifecycle state
 
   private var modelContainer: ModelContainer?
@@ -903,6 +955,9 @@ final class SyncManager: ObservableObject {
   /// Activities currently being synced up - skip realtime echoes for these
   /// NOTE: Will be removed in Phase 3 once origin_user_id filtering is validated
   private var inFlightActivityIds = Set<UUID>()
+
+  /// Notes currently being synced up - skip realtime echoes for these
+  private var inFlightNoteIds = Set<UUID>()
 
   #if DEBUG
   /// Track recently processed IDs to detect duplicate processing (DEBUG only)
@@ -955,11 +1010,30 @@ final class SyncManager: ObservableObject {
       }
     }
 
-    // Detect Postgres/RLS errors
+    // Detect Postgres/RLS errors with table-aware messaging
     // Note: PostgrestError handling ideally involves checking the error code (e.g. 42501 or PGRST102)
-    let errorString = String(describing: error)
-    if errorString.contains("42501") || errorString.localizedCaseInsensitiveContains("permission denied") {
-      return "Permission denied. You can only edit your own profile."
+    let errorString = String(describing: error).lowercased()
+    if errorString.contains("42501") || errorString.contains("permission denied") {
+      // Provide table-specific error messages for better debugging
+      if errorString.contains("notes") {
+        return "Permission denied syncing notes."
+      }
+      if errorString.contains("listings") {
+        return "Permission denied syncing listings."
+      }
+      if errorString.contains("tasks") {
+        return "Permission denied syncing tasks."
+      }
+      if errorString.contains("activities") {
+        return "Permission denied syncing activities."
+      }
+      if errorString.contains("users") {
+        return "Permission denied syncing user profile."
+      }
+      if errorString.contains("properties") {
+        return "Permission denied syncing properties."
+      }
+      return "Permission denied during sync."
     }
 
     return "Sync failed: \(error.localizedDescription)"
@@ -1009,14 +1083,23 @@ final class SyncManager: ObservableObject {
     try await syncDownActivities(context: context, since: lastSyncISO)
     debugLog.endTiming("syncDownActivities")
 
-    debugLog.startTiming("syncDownClaimEvents")
-    try await syncDownClaimEvents(context: context, since: lastSyncISO)
-    debugLog.endTiming("syncDownClaimEvents")
+    debugLog.startTiming("syncDownTaskAssignees")
+    try await syncDownTaskAssignees(context: context, since: lastSyncISO)
+    debugLog.endTiming("syncDownTaskAssignees")
+
+    debugLog.startTiming("syncDownActivityAssignees")
+    try await syncDownActivityAssignees(context: context, since: lastSyncISO)
+    debugLog.endTiming("syncDownActivityAssignees")
 
     // Notes (Incremental, Soft-Delete Aware)
     debugLog.startTiming("syncDownNotes")
     try await syncDownNotes(context: context)
     debugLog.endTiming("syncDownNotes")
+
+    // Notes Reconciliation - catches any notes missed by incremental sync
+    debugLog.startTiming("reconcileMissingNotes")
+    _ = try await reconcileMissingNotes(context: context)
+    debugLog.endTiming("reconcileMissingNotes")
 
     // JOBS-STANDARD: Order-Independent Relationship Reconciliation
     // Ensure Listing.owner is resolved regardless of sync order
@@ -1069,10 +1152,15 @@ final class SyncManager: ObservableObject {
     let usersDeleted = try await reconcileOrphanUsers(context: context)
     totalDeleted += usersDeleted
 
-    // Reconcile ClaimEvents
-    debugLog.log("Reconciling ClaimEvents...", category: .sync)
-    let claimEventsDeleted = try await reconcileOrphanClaimEvents(context: context)
-    totalDeleted += claimEventsDeleted
+    // Reconcile TaskAssignees
+    debugLog.log("Reconciling TaskAssignees...", category: .sync)
+    let taskAssigneesDeleted = try await reconcileOrphanTaskAssignees(context: context)
+    totalDeleted += taskAssigneesDeleted
+
+    // Reconcile ActivityAssignees
+    debugLog.log("Reconciling ActivityAssignees...", category: .sync)
+    let activityAssigneesDeleted = try await reconcileOrphanActivityAssignees(context: context)
+    totalDeleted += activityAssigneesDeleted
 
     debugLog.log("", category: .sync)
     debugLog.log("Orphan reconciliation complete: deleted \(totalDeleted) total orphan records", category: .sync)
@@ -1185,29 +1273,55 @@ final class SyncManager: ObservableObject {
     return deletedCount
   }
 
-  private func reconcileOrphanClaimEvents(context: ModelContext) async throws -> Int {
+  private func reconcileOrphanTaskAssignees(context: ModelContext) async throws -> Int {
     let remoteDTOs: [IDOnlyDTO] = try await supabase
-      .from("claim_events")
+      .from("task_assignees")
       .select("id")
       .execute()
       .value
     let remoteIds = Set(remoteDTOs.map { $0.id })
-    debugLog.log("  Remote claim events: \(remoteIds.count)", category: .sync)
+    debugLog.log("  Remote task assignees: \(remoteIds.count)", category: .sync)
 
-    let localDescriptor = FetchDescriptor<ClaimEvent>()
-    let localClaimEvents = try context.fetch(localDescriptor)
-    debugLog.log("  Local claim events: \(localClaimEvents.count)", category: .sync)
+    let localDescriptor = FetchDescriptor<TaskAssignee>()
+    let localAssignees = try context.fetch(localDescriptor)
+    debugLog.log("  Local task assignees: \(localAssignees.count)", category: .sync)
 
     var deletedCount = 0
-    for claimEvent in localClaimEvents {
-      if !remoteIds.contains(claimEvent.id) {
-        debugLog.log("  🗑️ Deleting orphan claim event: \(claimEvent.id)", category: .sync)
-        context.delete(claimEvent)
+    for assignee in localAssignees {
+      if !remoteIds.contains(assignee.id) {
+        debugLog.log("  ��️ Deleting orphan task assignee: \(assignee.id)", category: .sync)
+        context.delete(assignee)
         deletedCount += 1
       }
     }
 
-    debugLog.log("  Deleted \(deletedCount) orphan claim events", category: .sync)
+    debugLog.log("  Deleted \(deletedCount) orphan task assignees", category: .sync)
+    return deletedCount
+  }
+
+  private func reconcileOrphanActivityAssignees(context: ModelContext) async throws -> Int {
+    let remoteDTOs: [IDOnlyDTO] = try await supabase
+      .from("activity_assignees")
+      .select("id")
+      .execute()
+      .value
+    let remoteIds = Set(remoteDTOs.map { $0.id })
+    debugLog.log("  Remote activity assignees: \(remoteIds.count)", category: .sync)
+
+    let localDescriptor = FetchDescriptor<ActivityAssignee>()
+    let localAssignees = try context.fetch(localDescriptor)
+    debugLog.log("  Local activity assignees: \(localAssignees.count)", category: .sync)
+
+    var deletedCount = 0
+    for assignee in localAssignees {
+      if !remoteIds.contains(assignee.id) {
+        debugLog.log("  🗑️ Deleting orphan activity assignee: \(assignee.id)", category: .sync)
+        context.delete(assignee)
+        deletedCount += 1
+      }
+    }
+
+    debugLog.log("  Deleted \(deletedCount) orphan activity assignees", category: .sync)
     return deletedCount
   }
 
@@ -1509,6 +1623,7 @@ final class SyncManager: ObservableObject {
         existing.stage = .pending
       }
       existing.propertyId = dto.propertyId
+      existing.typeDefinitionId = dto.listingTypeId
       existing.activatedAt = dto.activatedAt
       existing.pendingAt = dto.pendingAt
       existing.closedAt = dto.closedAt
@@ -1569,10 +1684,7 @@ final class SyncManager: ObservableObject {
       existing.title = dto.title
       existing.taskDescription = dto.description ?? ""
       existing.dueDate = dto.dueDate
-      existing.priority = Priority(rawValue: dto.priority) ?? .medium
       existing.status = TaskStatus(rawValue: dto.status) ?? .open
-      existing.claimedBy = dto.claimedBy
-      existing.claimedAt = dto.claimedAt
       existing.completedAt = dto.completedAt
       existing.deletedAt = dto.deletedAt
       existing.updatedAt = dto.updatedAt
@@ -1656,13 +1768,9 @@ final class SyncManager: ObservableObject {
       debugLog.log("    UPDATE existing activity: \(dto.id)", category: .sync)
       existing.title = dto.title
       existing.activityDescription = dto.description ?? ""
-      existing.type = ActivityType(rawValue: dto.activityType) ?? .other
       existing.dueDate = dto.dueDate
-      existing.priority = Priority(rawValue: dto.priority) ?? .medium
       existing.status = ActivityStatus(rawValue: dto.status) ?? .open
-      existing.claimedBy = dto.claimedBy
       existing.duration = dto.durationMinutes.map { TimeInterval($0 * 60) }
-      existing.claimedAt = dto.claimedAt
       existing.completedAt = dto.completedAt
       existing.deletedAt = dto.deletedAt
       existing.updatedAt = dto.updatedAt
@@ -1710,62 +1818,126 @@ final class SyncManager: ObservableObject {
     activity.listing = parentListing
   }
 
-  private func syncDownClaimEvents(context: ModelContext, since: String) async throws {
-    debugLog.log("syncDownClaimEvents() - querying Supabase...", category: .sync)
-    let dtos: [ClaimEventDTO] = try await supabase
-      .from("claim_events")
+  // MARK: - Task Assignees Sync
+
+  private func syncDownTaskAssignees(context: ModelContext, since: String) async throws {
+    debugLog.log("syncDownTaskAssignees() - querying Supabase...", category: .sync)
+    let dtos: [TaskAssigneeDTO] = try await supabase
+      .from("task_assignees")
       .select()
       .gt("updated_at", value: since)
       .execute()
       .value
 
-    debugLog.logSyncOperation(operation: "FETCH", table: "claim_events", count: dtos.count)
+    debugLog.logSyncOperation(operation: "FETCH", table: "task_assignees", count: dtos.count)
 
     for (index, dto) in dtos.enumerated() {
-      debugLog.log("  Upserting claim event \(index + 1)/\(dtos.count): \(dto.id)", category: .sync)
-      try upsertClaimEvent(dto: dto, context: context)
+      debugLog.log("  Upserting task assignee \(index + 1)/\(dtos.count): \(dto.id)", category: .sync)
+      try upsertTaskAssignee(dto: dto, context: context)
     }
   }
 
-  private func upsertClaimEvent(dto: ClaimEventDTO, context: ModelContext) throws {
+  private func upsertTaskAssignee(dto: TaskAssigneeDTO, context: ModelContext) throws {
     let targetId = dto.id
-    let descriptor = FetchDescriptor<ClaimEvent>(
+    let descriptor = FetchDescriptor<TaskAssignee>(
       predicate: #Predicate { $0.id == targetId }
     )
 
     if let existing = try context.fetch(descriptor).first {
-      debugLog.log("    UPDATE existing claim event: \(dto.id)", category: .sync)
-
-      let resolvedParentType: ParentType
-      if let type = ParentType(rawValue: dto.parentType) {
-        resolvedParentType = type
-      } else {
-        debugLog.log("⚠️ Invalid parentType '\(dto.parentType)' for ClaimEvent \(dto.id), defaulting to .task", category: .sync)
-        resolvedParentType = .task
-      }
-
-      let resolvedAction: ClaimAction
-      if let act = ClaimAction(rawValue: dto.action) {
-        resolvedAction = act
-      } else {
-        debugLog.log("⚠️ Invalid action '\(dto.action)' for ClaimEvent \(dto.id), defaulting to .claimed", category: .sync)
-        resolvedAction = .claimed
-      }
-
-      existing.parentType = resolvedParentType
-      existing.parentId = dto.parentId
-      existing.action = resolvedAction
+      debugLog.log("    UPDATE existing task assignee: \(dto.id)", category: .sync)
+      existing.taskId = dto.taskId
       existing.userId = dto.userId
-      existing.performedAt = dto.performedAt
-      existing.reason = dto.reason
+      existing.assignedBy = dto.assignedBy
+      existing.assignedAt = dto.assignedAt
       existing.updatedAt = dto.updatedAt
       existing.markSynced()
+
+      // Establish relationship with parent task
+      try establishTaskAssigneeRelationship(assignee: existing, taskId: dto.taskId, context: context)
     } else {
-      debugLog.log("    INSERT new claim event: \(dto.id)", category: .sync)
-      let newClaimEvent = dto.toModel()
-      newClaimEvent.markSynced()
-      context.insert(newClaimEvent)
+      debugLog.log("    INSERT new task assignee: \(dto.id)", category: .sync)
+      let newAssignee = dto.toModel()
+      newAssignee.markSynced()
+      context.insert(newAssignee)
+      try establishTaskAssigneeRelationship(assignee: newAssignee, taskId: dto.taskId, context: context)
     }
+  }
+
+  private func establishTaskAssigneeRelationship(assignee: TaskAssignee, taskId: UUID, context: ModelContext) throws {
+    let taskDescriptor = FetchDescriptor<TaskItem>(
+      predicate: #Predicate { $0.id == taskId }
+    )
+
+    guard let parentTask = try context.fetch(taskDescriptor).first else {
+      debugLog.log("      ⚠️ Parent task \(taskId) not found - relationship deferred", category: .sync)
+      return
+    }
+
+    if !parentTask.assignees.contains(where: { $0.id == assignee.id }) {
+      parentTask.assignees.append(assignee)
+    }
+    assignee.task = parentTask
+  }
+
+  // MARK: - Activity Assignees Sync
+
+  private func syncDownActivityAssignees(context: ModelContext, since: String) async throws {
+    debugLog.log("syncDownActivityAssignees() - querying Supabase...", category: .sync)
+    let dtos: [ActivityAssigneeDTO] = try await supabase
+      .from("activity_assignees")
+      .select()
+      .gt("updated_at", value: since)
+      .execute()
+      .value
+
+    debugLog.logSyncOperation(operation: "FETCH", table: "activity_assignees", count: dtos.count)
+
+    for (index, dto) in dtos.enumerated() {
+      debugLog.log("  Upserting activity assignee \(index + 1)/\(dtos.count): \(dto.id)", category: .sync)
+      try upsertActivityAssignee(dto: dto, context: context)
+    }
+  }
+
+  private func upsertActivityAssignee(dto: ActivityAssigneeDTO, context: ModelContext) throws {
+    let targetId = dto.id
+    let descriptor = FetchDescriptor<ActivityAssignee>(
+      predicate: #Predicate { $0.id == targetId }
+    )
+
+    if let existing = try context.fetch(descriptor).first {
+      debugLog.log("    UPDATE existing activity assignee: \(dto.id)", category: .sync)
+      existing.activityId = dto.activityId
+      existing.userId = dto.userId
+      existing.assignedBy = dto.assignedBy
+      existing.assignedAt = dto.assignedAt
+      existing.updatedAt = dto.updatedAt
+      existing.markSynced()
+
+      // Establish relationship with parent activity
+      try establishActivityAssigneeRelationship(assignee: existing, activityId: dto.activityId, context: context)
+    } else {
+      debugLog.log("    INSERT new activity assignee: \(dto.id)", category: .sync)
+      let newAssignee = dto.toModel()
+      newAssignee.markSynced()
+      context.insert(newAssignee)
+      try establishActivityAssigneeRelationship(assignee: newAssignee, activityId: dto.activityId, context: context)
+    }
+  }
+
+  private func establishActivityAssigneeRelationship(assignee: ActivityAssignee, activityId: UUID, context: ModelContext) throws {
+    let activityDescriptor = FetchDescriptor<Activity>(
+      predicate: #Predicate { $0.id == activityId }
+    )
+
+    guard let parentActivity = try context.fetch(activityDescriptor).first else {
+      debugLog.log("      ⚠️ Parent activity \(activityId) not found - relationship deferred", category: .sync)
+      return
+    }
+
+    if !parentActivity.assignees.contains(where: { $0.id == assignee.id }) {
+      parentActivity.assignees.append(assignee)
+    }
+    assignee.activity = parentActivity
   }
 
   private func syncDownListingTypes(context: ModelContext) async throws {
@@ -1798,7 +1970,6 @@ final class SyncManager: ObservableObject {
         // UPDATE
         debugLog.log("    UPDATE: \(dto.id) - \(dto.name)", category: .sync)
         existing.name = dto.name
-        existing.isSystem = dto.isSystem
         existing.position = dto.position
         existing.isArchived = dto.isArchived
         existing.ownedBy = dto.ownedBy
@@ -1901,7 +2072,7 @@ final class SyncManager: ObservableObject {
     debugLog.logSyncOperation(operation: "FETCH", table: "notes", count: dtos.count)
 
     for dto in dtos {
-      try upsertNote(dto: dto, context: context)
+      try applyRemoteNote(dto: dto, source: .syncDown, context: context)
     }
 
     // Update per-table watermark
@@ -1910,47 +2081,127 @@ final class SyncManager: ObservableObject {
     }
   }
 
-  /// Centralized upsert logic for Notes (used by SyncDown and Realtime)
-  private func upsertNote(dto: NoteDTO, context: ModelContext) throws {
+  /// Reconciles missing notes - finds notes on server that don't exist locally and fetches them.
+  /// This is a failsafe to catch notes that were missed due to watermark issues or other sync gaps.
+  /// Runs on every sync to ensure data consistency.
+  private func reconcileMissingNotes(context: ModelContext) async throws -> Int {
+    // 1. Fetch all note IDs from server (lightweight query)
+    let remoteDTOs: [IDOnlyDTO] = try await supabase
+      .from("notes")
+      .select("id")
+      .execute()
+      .value
+    let remoteIds = Set(remoteDTOs.map { $0.id })
+    debugLog.log("  Remote notes: \(remoteIds.count)", category: .sync)
+
+    // 2. Get all local note IDs
+    let localDescriptor = FetchDescriptor<Note>()
+    let localNotes = try context.fetch(localDescriptor)
+    let localIds = Set(localNotes.map { $0.id })
+    debugLog.log("  Local notes: \(localIds.count)", category: .sync)
+
+    // 3. Find IDs that exist on server but not locally
+    let missingIds = remoteIds.subtracting(localIds)
+
+    guard !missingIds.isEmpty else {
+      debugLog.log("  ✓ No missing notes", category: .sync)
+      return 0
+    }
+
+    debugLog.log("  ⚠️ Found \(missingIds.count) missing notes, fetching...", category: .sync)
+
+    // 4. Fetch full note data for missing IDs (batch query)
+    let missingDTOs: [NoteDTO] = try await supabase
+      .from("notes")
+      .select()
+      .in("id", values: Array(missingIds).map { $0.uuidString })
+      .execute()
+      .value
+
+    // 5. Insert missing notes using unified merge function
+    for dto in missingDTOs {
+      try applyRemoteNote(dto: dto, source: .syncDown, context: context)
+    }
+
+    debugLog.log("  ✓ Reconciled \(missingDTOs.count) missing notes", category: .sync)
+    return missingDTOs.count
+  }
+
+  /// Single source of truth for applying remote note changes (used by syncDown and broadcast)
+  /// Handles in-flight protection, pending protection, and upsert in one place.
+  private func applyRemoteNote(dto: NoteDTO, source: RemoteNoteSource, context: ModelContext) throws {
     let descriptor = FetchDescriptor<Note>(predicate: #Predicate { $0.id == dto.id })
     let existing = try context.fetch(descriptor).first
 
-    // Pending protection: don't overwrite if we have pending local changes
-    if let existing, existing.syncState == .pending || existing.syncState == .failed {
-      debugLog.log("    SKIP (pending/failed): \(dto.id)", category: .sync)
+    // 1. In-flight protection: skip if we're currently syncing this note up
+    if inFlightNoteIds.contains(dto.id) {
+      debugLog.log("  ⏭️ Skipping in-flight note \(dto.id) from \(source)", category: .sync)
       return
     }
 
+    // 2. Pending protection: don't overwrite if we have pending local changes
+    if let existing, existing.syncState == .pending || existing.syncState == .failed {
+      existing.hasRemoteChangeWhilePending = true
+      debugLog.log("  ⏭️ Marked pending note \(dto.id) as having remote change from \(source)", category: .sync)
+      return
+    }
+
+    // 3. Upsert (handles soft delete via deleted_at field)
     if let existing {
       // UPDATE (or Soft Delete)
       if let deletedAt = dto.deletedAt {
         debugLog.log("    SOFT DELETE existing note: \(dto.id)", category: .sync)
         existing.deletedAt = deletedAt
-        existing.markSynced() // Ensure state reflects server
+        existing.deletedBy = dto.deletedBy
+        existing.markSynced()
       } else {
         debugLog.log("    UPDATE existing note: \(dto.id)", category: .sync)
         existing.content = dto.content
         existing.editedAt = dto.editedAt
         existing.editedBy = dto.editedBy
-        existing.updatedAt = dto.updatedAt ?? existing.updatedAt // Fallback if nil in DTO (shouldn't be)
+        existing.updatedAt = dto.updatedAt ?? existing.updatedAt
         existing.deletedAt = nil // Resurrect if needed
+        existing.deletedBy = nil
         existing.markSynced()
       }
 
-      // Parent keys are immutable usually, but update just in case
+      // Parent keys are immutable, but update just in case
       if let pType = ParentType(rawValue: dto.parentType) {
         existing.parentType = pType
       }
       existing.parentId = dto.parentId
     } else {
-      // INSERT
-      // If it's already deleted on server, should we insert it?
-      // Yes, as a tombstone (deletedAt != nil) to prevent re-fetch or invalid reference issues.
-      // But usually SyncDown fetches based onUpdatedAt, so we might want to have the record.
+      // INSERT (even if deleted on server, as tombstone)
       debugLog.log("    INSERT new note: \(dto.id)", category: .sync)
       let newNote = dto.toModel()
-      // toModel sets syncState=.synced
       context.insert(newNote)
+
+      // Link note to parent's notes array (required for UI to display it)
+      let parentId = dto.parentId
+      if let parentType = ParentType(rawValue: dto.parentType) {
+        switch parentType {
+        case .task:
+          let taskDescriptor = FetchDescriptor<TaskItem>(predicate: #Predicate { $0.id == parentId })
+          if let task = try? context.fetch(taskDescriptor).first {
+            task.notes.append(newNote)
+            debugLog.log("    → Linked note to task \(parentId)", category: .sync)
+          }
+
+        case .activity:
+          let activityDescriptor = FetchDescriptor<Activity>(predicate: #Predicate { $0.id == parentId })
+          if let activity = try? context.fetch(activityDescriptor).first {
+            activity.notes.append(newNote)
+            debugLog.log("    → Linked note to activity \(parentId)", category: .sync)
+          }
+
+        case .listing:
+          let listingDescriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == parentId })
+          if let listing = try? context.fetch(listingDescriptor).first {
+            listing.notes.append(newNote)
+            debugLog.log("    → Linked note to listing \(parentId)", category: .sync)
+          }
+        }
+      }
     }
   }
 
@@ -2010,7 +2261,7 @@ final class SyncManager: ObservableObject {
     }
 
     debugLog.log(
-      "Sync order: Users → Properties → Listings → Tasks → Activities → ClaimEvents (FK dependencies)",
+      "Sync order: Users → Properties → Listings → Tasks → Activities → Assignees → Notes (FK dependencies)",
       category: .sync
     )
 
@@ -2020,8 +2271,9 @@ final class SyncManager: ObservableObject {
     try await syncUpListings(context: context)
     try await syncUpTasks(context: context)
     try await syncUpActivities(context: context)
+    try await syncUpTaskAssignees(context: context)
+    try await syncUpActivityAssignees(context: context)
     try await syncUpNotes(context: context)
-    try await syncUpClaimEvents(context: context)
     debugLog.log("syncUp() complete", category: .sync)
   }
 
@@ -2211,14 +2463,6 @@ final class SyncManager: ObservableObject {
       details: "of \(allTasks.count) total"
     )
 
-    // Debug: log claimedBy value for each pending task
-    for task in pendingTasks {
-      debugLog.log(
-        "  📋 Pending task \(task.id): claimedBy=\(task.claimedBy?.uuidString ?? "nil"), title=\(task.title)",
-        category: .sync
-      )
-    }
-
     guard !pendingTasks.isEmpty else {
       debugLog.log("  No pending tasks to sync", category: .sync)
       return
@@ -2230,14 +2474,7 @@ final class SyncManager: ObservableObject {
 
     // Try batch first for efficiency
     do {
-      let dtos = pendingTasks.map { task -> TaskDTO in
-        let dto = TaskDTO(from: task)
-        debugLog.log(
-          "  📤 Preparing DTO for task \(task.id): claimedBy=\(dto.claimedBy?.uuidString ?? "nil"), syncState=\(task.syncState)",
-          category: .sync
-        )
-        return dto
-      }
+      let dtos = pendingTasks.map { TaskDTO(from: $0) }
       debugLog.log("  Batch upserting \(dtos.count) tasks to Supabase...", category: .sync)
       try await supabase
         .from("tasks")
@@ -2344,33 +2581,61 @@ final class SyncManager: ObservableObject {
 
     guard !pendingNotes.isEmpty else { return }
 
-    // Batch upsert first
+    // Mark in-flight BEFORE any network calls to prevent realtime echo overwrites
+    inFlightNoteIds = Set(pendingNotes.map { $0.id })
+    defer { inFlightNoteIds.removeAll() }
+
+    // INSERT-first pattern: Try batch INSERT first (for new notes)
+    // This avoids relying on syncedAt which can be unreliable after reinstalls/DB resets
+    let insertDTOs = pendingNotes.map { NoteDTO(from: $0) }
+    debugLog.log("  Attempting batch INSERT for \(insertDTOs.count) notes...", category: .sync)
+
     do {
-      let dtos = pendingNotes.map { NoteDTO(from: $0) }
-      debugLog.log("  Batch upserting \(dtos.count) notes...", category: .sync)
       try await supabase
         .from("notes")
-        .upsert(dtos)
+        .insert(insertDTOs)
+        .execute()
+
+      // All succeeded as inserts
+      for note in pendingNotes {
+        note.markSynced()
+        note.hasRemoteChangeWhilePending = false
+      }
+      debugLog.log("  Batch INSERT succeeded for \(pendingNotes.count) notes", category: .sync)
+      return
+    } catch {
+      // Some/all may already exist - fall through to update path
+      debugLog.log("  Batch INSERT had conflicts, trying UPDATE path...", category: .sync)
+    }
+
+    // Batch UPDATE with mutable-only DTO (NoteUpdateDTO excludes immutable columns)
+    // This respects column-level UPDATE grants on: content, edited_at, edited_by, updated_at, deleted_at, deleted_by
+    let updateDTOs = pendingNotes.map { NoteUpdateDTO(from: $0) }
+
+    do {
+      try await supabase
+        .from("notes")
+        .upsert(updateDTOs, onConflict: "id")
         .execute()
 
       for note in pendingNotes {
         note.markSynced()
-        note.hasRemoteChangeWhilePending = false // Jobs Standard: Clear conflict flag
+        note.hasRemoteChangeWhilePending = false
       }
-      debugLog.log("  Marked \(pendingNotes.count) notes as synced", category: .sync)
+      debugLog.log("  Batch UPDATE succeeded for \(pendingNotes.count) notes", category: .sync)
     } catch {
-      // Individual fallback
-      debugLog.log("Batch note sync failed, trying individually: \(error.localizedDescription)", category: .error)
+      // Individual fallback for partial failures
+      debugLog.log("Batch note UPDATE failed, trying individually: \(error.localizedDescription)", category: .error)
 
       for note in pendingNotes {
         do {
-          let dto = NoteDTO(from: note)
+          let dto = NoteUpdateDTO(from: note)
           try await supabase
             .from("notes")
-            .upsert([dto])
+            .upsert([dto], onConflict: "id")
             .execute()
           note.markSynced()
-          note.hasRemoteChangeWhilePending = false // Jobs Standard: Clear conflict flag
+          note.hasRemoteChangeWhilePending = false
           debugLog.log("  ✓ Note \(note.id) synced", category: .sync)
         } catch {
           let message = userFacingMessage(for: error)
@@ -2489,55 +2754,114 @@ final class SyncManager: ObservableObject {
     }
   }
 
-  private func syncUpClaimEvents(context: ModelContext) async throws {
-    let descriptor = FetchDescriptor<ClaimEvent>()
-    let allClaimEvents = try context.fetch(descriptor)
-    debugLog.log("syncUpClaimEvents() - fetched \(allClaimEvents.count) total claim events from SwiftData", category: .sync)
+  // MARK: - SyncUp Assignees
 
-    let pendingClaimEvents = allClaimEvents.filter { $0.syncState == .pending || $0.syncState == .failed }
+  private func syncUpTaskAssignees(context: ModelContext) async throws {
+    let descriptor = FetchDescriptor<TaskAssignee>()
+    let allAssignees = try context.fetch(descriptor)
+    debugLog.log("syncUpTaskAssignees() - fetched \(allAssignees.count) total task assignees from SwiftData", category: .sync)
+
+    let pendingAssignees = allAssignees.filter { $0.syncState == .pending || $0.syncState == .failed }
     debugLog.logSyncOperation(
       operation: "PENDING",
-      table: "claim_events",
-      count: pendingClaimEvents.count,
-      details: "of \(allClaimEvents.count) total"
+      table: "task_assignees",
+      count: pendingAssignees.count,
+      details: "of \(allAssignees.count) total"
     )
 
-    guard !pendingClaimEvents.isEmpty else {
-      debugLog.log("  No pending claim events to sync", category: .sync)
+    guard !pendingAssignees.isEmpty else {
+      debugLog.log("  No pending task assignees to sync", category: .sync)
       return
     }
 
     // Try batch first for efficiency
     do {
-      let dtos = pendingClaimEvents.map { ClaimEventDTO(from: $0) }
-      debugLog.log("  Batch upserting \(dtos.count) claim events to Supabase...", category: .sync)
+      let dtos = pendingAssignees.map { TaskAssigneeDTO(model: $0) }
+      debugLog.log("  Batch upserting \(dtos.count) task assignees to Supabase...", category: .sync)
       try await supabase
-        .from("claim_events")
+        .from("task_assignees")
         .upsert(dtos)
         .execute()
       debugLog.log("  Batch upsert successful", category: .sync)
 
-      for claimEvent in pendingClaimEvents {
-        claimEvent.markSynced()
+      for assignee in pendingAssignees {
+        assignee.markSynced()
       }
-      debugLog.log("  Marked \(pendingClaimEvents.count) claim events as synced", category: .sync)
+      debugLog.log("  Marked \(pendingAssignees.count) task assignees as synced", category: .sync)
     } catch {
       // Batch failed - try individual items to isolate failures
-      debugLog.log("Batch claim event sync failed, trying individually: \(error.localizedDescription)", category: .error)
+      debugLog.log("Batch task assignee sync failed, trying individually: \(error.localizedDescription)", category: .error)
 
-      for claimEvent in pendingClaimEvents {
+      for assignee in pendingAssignees {
         do {
-          let dto = ClaimEventDTO(from: claimEvent)
+          let dto = TaskAssigneeDTO(model: assignee)
           try await supabase
-            .from("claim_events")
+            .from("task_assignees")
             .upsert([dto])
             .execute()
-          claimEvent.markSynced()
-          debugLog.log("  ✓ ClaimEvent \(claimEvent.id) synced individually", category: .sync)
+          assignee.markSynced()
+          debugLog.log("  ✓ TaskAssignee \(assignee.id) synced individually", category: .sync)
         } catch {
           let message = userFacingMessage(for: error)
-          claimEvent.markFailed(message)
-          debugLog.error("  ✗ ClaimEvent \(claimEvent.id) sync failed: \(message)")
+          assignee.markFailed(message)
+          debugLog.error("  ✗ TaskAssignee \(assignee.id) sync failed: \(message)")
+        }
+      }
+    }
+  }
+
+  private func syncUpActivityAssignees(context: ModelContext) async throws {
+    let descriptor = FetchDescriptor<ActivityAssignee>()
+    let allAssignees = try context.fetch(descriptor)
+    debugLog.log(
+      "syncUpActivityAssignees() - fetched \(allAssignees.count) total activity assignees from SwiftData",
+      category: .sync
+    )
+
+    let pendingAssignees = allAssignees.filter { $0.syncState == .pending || $0.syncState == .failed }
+    debugLog.logSyncOperation(
+      operation: "PENDING",
+      table: "activity_assignees",
+      count: pendingAssignees.count,
+      details: "of \(allAssignees.count) total"
+    )
+
+    guard !pendingAssignees.isEmpty else {
+      debugLog.log("  No pending activity assignees to sync", category: .sync)
+      return
+    }
+
+    // Try batch first for efficiency
+    do {
+      let dtos = pendingAssignees.map { ActivityAssigneeDTO(model: $0) }
+      debugLog.log("  Batch upserting \(dtos.count) activity assignees to Supabase...", category: .sync)
+      try await supabase
+        .from("activity_assignees")
+        .upsert(dtos)
+        .execute()
+      debugLog.log("  Batch upsert successful", category: .sync)
+
+      for assignee in pendingAssignees {
+        assignee.markSynced()
+      }
+      debugLog.log("  Marked \(pendingAssignees.count) activity assignees as synced", category: .sync)
+    } catch {
+      // Batch failed - try individual items to isolate failures
+      debugLog.log("Batch activity assignee sync failed, trying individually: \(error.localizedDescription)", category: .error)
+
+      for assignee in pendingAssignees {
+        do {
+          let dto = ActivityAssigneeDTO(model: assignee)
+          try await supabase
+            .from("activity_assignees")
+            .upsert([dto])
+            .execute()
+          assignee.markSynced()
+          debugLog.log("  ✓ ActivityAssignee \(assignee.id) synced individually", category: .sync)
+        } catch {
+          let message = userFacingMessage(for: error)
+          assignee.markFailed(message)
+          debugLog.error("  ✗ ActivityAssignee \(assignee.id) sync failed: \(message)")
         }
       }
     }
@@ -2688,6 +3012,8 @@ final class SyncManager: ObservableObject {
       return .ok(Date()) // Connected and healthy
     case .subscribing:
       return .syncing // Connecting...
+    case .unsubscribing:
+      return .syncing // Disconnecting in progress
     case .unsubscribed:
       return .idle // Stopped
     @unknown default:
@@ -2844,8 +3170,8 @@ final class SyncManager: ObservableObject {
         try await handleListingBroadcast(payload: payload, context: context)
       case .users:
         try await handleUserBroadcast(payload: payload, context: context)
-      case .claimEvents:
-        try await handleClaimEventBroadcast(payload: payload, context: context)
+      case .notes:
+        try await handleNoteBroadcast(payload: payload, context: context)
       }
 
       try context.save()
@@ -2984,32 +3310,44 @@ final class SyncManager: ObservableObject {
     }
   }
 
-  /// Handles claim event broadcast - converts payload to ClaimEventDTO and calls existing upsertClaimEvent
-  private func handleClaimEventBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
+  /// Handles note broadcast - converts payload to NoteDTO and applies with pending/in-flight protection
+  private func handleNoteBroadcast(payload: BroadcastChangePayload, context: ModelContext) async throws {
     if payload.type == .delete {
+      // Hard delete on server = hard delete locally (not soft delete!)
       if
         let oldRecord = payload.cleanedOldRecord(),
         let idString = oldRecord["id"] as? String,
         let id = UUID(uuidString: idString)
       {
-        _ = try deleteLocalClaimEvent(id: id, context: context)
-        debugLog.log("  ✓ Broadcast: Deleted claim event \(id)", category: .event)
+        let descriptor = FetchDescriptor<Note>(predicate: #Predicate { $0.id == id })
+        if let existing = try? context.fetch(descriptor).first {
+          context.delete(existing)
+          debugLog.log("  ✓ Broadcast: Hard deleted note \(id)", category: .event)
+        } else {
+          // Log missing note for debugging (helps identify sync gaps)
+          debugLog.log("  ⚠️ Broadcast: DELETE for missing local note \(id)", category: .event)
+        }
       }
     } else {
-      guard let cleanRecord = payload.cleanedRecord() else { return }
+      // INSERT or UPDATE (soft deletes come through as UPDATE with deleted_at set)
+      guard let cleanRecord = payload.cleanedRecord() else {
+        debugLog.log("  ⚠️ Broadcast: Failed to get cleanedRecord for note", category: .event)
+        return
+      }
 
       let recordData = try JSONSerialization.data(withJSONObject: cleanRecord)
-      let dto = try PostgrestClient.Configuration.jsonDecoder.decode(ClaimEventDTO.self, from: recordData)
+      let dto = try PostgrestClient.Configuration.jsonDecoder.decode(NoteDTO.self, from: recordData)
 
       #if DEBUG
       if recentlyProcessedIds.contains(dto.id) {
-        debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for claim event \(dto.id)", category: .event)
+        debugLog.log("  ⚠️ Broadcast: Duplicate processing detected for note \(dto.id)", category: .event)
       }
       recentlyProcessedIds.insert(dto.id)
       #endif
 
-      try upsertClaimEvent(dto: dto, context: context)
-      debugLog.log("  ✓ Broadcast: Upserted claim event \(dto.id)", category: .event)
+      // Use unified merge function (handles in-flight + pending protection)
+      try applyRemoteNote(dto: dto, source: .broadcast, context: context)
+      debugLog.log("  ✓ Broadcast: Processed note \(dto.id)", category: .event)
     }
   }
 }
@@ -3021,29 +3359,49 @@ extension SyncManager {
   // MARK: Internal
 
   func handleTaskInsert(_ action: InsertAction) async {
-    guard let container = modelContainer else { return }
+    debugLog.log("📥 [Realtime] Task INSERT event received", category: .realtime)
+    guard let container = modelContainer else {
+      debugLog.log("  ⚠️ No modelContainer - skipping", category: .realtime)
+      return
+    }
     do {
       let dto = try action.decodeRecord(as: TaskDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+      debugLog.log("  ✓ Decoded task: \(dto.id) - \(dto.title)", category: .realtime)
       try upsertTask(dto: dto, context: container.mainContext)
+      debugLog.log("  ✓ Upserted task successfully", category: .realtime)
     } catch {
       debugLog.error("Failed to handle Task INSERT", error: error)
     }
   }
 
   func handleTaskUpdate(_ action: UpdateAction) async {
-    guard let container = modelContainer else { return }
+    debugLog.log("📥 [Realtime] Task UPDATE event received", category: .realtime)
+    guard let container = modelContainer else {
+      debugLog.log("  ⚠️ No modelContainer - skipping", category: .realtime)
+      return
+    }
     do {
       let dto = try action.decodeRecord(as: TaskDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+      debugLog.log("  ✓ Decoded task: \(dto.id) - \(dto.title)", category: .realtime)
       try upsertTask(dto: dto, context: container.mainContext)
+      debugLog.log("  ✓ Upserted task successfully", category: .realtime)
     } catch {
       debugLog.error("Failed to handle Task UPDATE", error: error)
     }
   }
 
   func handleTaskDelete(_ action: DeleteAction) async {
-    guard let container = modelContainer else { return }
+    debugLog.log("📥 [Realtime] Task DELETE event received", category: .realtime)
+    guard let container = modelContainer else {
+      debugLog.log("  ⚠️ No modelContainer - skipping", category: .realtime)
+      return
+    }
     if let id = extractUUID(from: action.oldRecord, key: "id") {
+      debugLog.log("  ✓ Deleting task: \(id)", category: .realtime)
       _ = try? deleteLocalTask(id: id, context: container.mainContext)
+      debugLog.log("  ✓ Deleted task successfully", category: .realtime)
+    } else {
+      debugLog.log("  ⚠️ Could not extract ID from oldRecord", category: .realtime)
     }
   }
 
@@ -3075,29 +3433,49 @@ extension SyncManager {
   }
 
   func handleListingInsert(_ action: InsertAction) async {
-    guard let container = modelContainer else { return }
+    debugLog.log("📥 [Realtime] Listing INSERT event received", category: .realtime)
+    guard let container = modelContainer else {
+      debugLog.log("  ⚠️ No modelContainer - skipping", category: .realtime)
+      return
+    }
     do {
       let dto = try action.decodeRecord(as: ListingDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+      debugLog.log("  ✓ Decoded listing: \(dto.id) - \(dto.address)", category: .realtime)
       try upsertListing(dto: dto, context: container.mainContext)
+      debugLog.log("  ✓ Upserted listing successfully", category: .realtime)
     } catch {
       debugLog.error("Failed to handle Listing INSERT", error: error)
     }
   }
 
   func handleListingUpdate(_ action: UpdateAction) async {
-    guard let container = modelContainer else { return }
+    debugLog.log("📥 [Realtime] Listing UPDATE event received", category: .realtime)
+    guard let container = modelContainer else {
+      debugLog.log("  ⚠️ No modelContainer - skipping", category: .realtime)
+      return
+    }
     do {
       let dto = try action.decodeRecord(as: ListingDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
+      debugLog.log("  ✓ Decoded listing: \(dto.id) - \(dto.address)", category: .realtime)
       try upsertListing(dto: dto, context: container.mainContext)
+      debugLog.log("  ✓ Upserted listing successfully", category: .realtime)
     } catch {
       debugLog.error("Failed to handle Listing UPDATE", error: error)
     }
   }
 
   func handleListingDelete(_ action: DeleteAction) async {
-    guard let container = modelContainer else { return }
+    debugLog.log("📥 [Realtime] Listing DELETE event received", category: .realtime)
+    guard let container = modelContainer else {
+      debugLog.log("  ⚠️ No modelContainer - skipping", category: .realtime)
+      return
+    }
     if let id = extractUUID(from: action.oldRecord, key: "id") {
+      debugLog.log("  ✓ Deleting listing: \(id)", category: .realtime)
       _ = try? deleteLocalListing(id: id, context: container.mainContext)
+      debugLog.log("  ✓ Deleted listing successfully", category: .realtime)
+    } else {
+      debugLog.log("  ⚠️ Could not extract ID from oldRecord", category: .realtime)
     }
   }
 
@@ -3128,33 +3506,6 @@ extension SyncManager {
     }
   }
 
-  func handleClaimEventInsert(_ action: InsertAction) async {
-    guard let container = modelContainer else { return }
-    do {
-      let dto = try action.decodeRecord(as: ClaimEventDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
-      try upsertClaimEvent(dto: dto, context: container.mainContext)
-    } catch {
-      debugLog.error("Failed to handle ClaimEvent INSERT", error: error)
-    }
-  }
-
-  func handleClaimEventUpdate(_ action: UpdateAction) async {
-    guard let container = modelContainer else { return }
-    do {
-      let dto = try action.decodeRecord(as: ClaimEventDTO.self, decoder: PostgrestClient.Configuration.jsonDecoder)
-      try upsertClaimEvent(dto: dto, context: container.mainContext)
-    } catch {
-      debugLog.error("Failed to handle ClaimEvent UPDATE", error: error)
-    }
-  }
-
-  func handleClaimEventDelete(_ action: DeleteAction) async {
-    guard let container = modelContainer else { return }
-    if let id = extractUUID(from: action.oldRecord, key: "id") {
-      _ = try? deleteLocalClaimEvent(id: id, context: container.mainContext)
-    }
-  }
-
   // MARK: Private
 
   private func handleNoteInsert(_ action: InsertAction) async {
@@ -3177,7 +3528,7 @@ extension SyncManager {
     await MainActor.run {
       guard let context = modelContainer?.mainContext else { return }
       do {
-        try upsertNote(dto: dto, context: context)
+        try applyRemoteNote(dto: dto, source: .syncDown, context: context)
         debugLog.log("RT: Inserted Note \(dto.id)", category: .realtime)
       } catch {
         debugLog.error("RT: Note Insert Failed", error: error)
@@ -3205,7 +3556,7 @@ extension SyncManager {
     await MainActor.run {
       guard let context = modelContainer?.mainContext else { return }
       do {
-        try upsertNote(dto: dto, context: context)
+        try applyRemoteNote(dto: dto, source: .syncDown, context: context)
         debugLog.log("RT: Updated Note \(dto.id) (Deleted: \(dto.deletedAt != nil))", category: .realtime)
       } catch {
         debugLog.error("RT: Note Update Failed", error: error)

@@ -5,6 +5,7 @@
 //  Created for Dispatch Architecture Unification
 //
 
+import Combine
 import Network
 import OSLog
 import Supabase
@@ -14,7 +15,7 @@ import SwiftUI
 /// Manages the `SyncManager` start/stop states based on scene phase and authentication.
 /// Designed to be idempotent.
 @MainActor
-class SyncCoordinator {
+class SyncCoordinator: ObservableObject {
 
   // MARK: Lifecycle
 
@@ -26,6 +27,10 @@ class SyncCoordinator {
   }
 
   // MARK: Internal
+
+  /// Indicates whether the device is offline (no network connection).
+  /// Used to display the offline indicator in the UI.
+  @Published private(set) var isOffline = true
 
   /// Called by AppState or DispatchApp when ScenePhase changes
   func handle(scenePhase: ScenePhase) {
@@ -83,6 +88,9 @@ class SyncCoordinator {
   }
 
   private func handleNetworkChange(status: NWPath.Status) {
+    // Update offline indicator
+    isOffline = status != .satisfied
+
     if status == .satisfied, lastNetworkStatus != .satisfied {
       // Network restored
       if authManager.isAuthenticated {

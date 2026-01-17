@@ -20,6 +20,7 @@ struct ListingDTO: Codable, Sendable {
     case postalCode = "postal_code"
     case mlsNumber = "mls_number"
     case listingType = "listing_type"
+    case listingTypeId = "listing_type_id"
     case ownedBy = "owned_by"
     case propertyId = "property_id"
     case createdVia = "created_via"
@@ -42,6 +43,7 @@ struct ListingDTO: Codable, Sendable {
   let price: Double?
   let mlsNumber: String?
   let listingType: String
+  let listingTypeId: UUID?
   let status: String
   let stage: String?
   let ownedBy: UUID
@@ -134,6 +136,9 @@ struct ListingDTO: Codable, Sendable {
 
     // Set propertyId (relationship reconciled later in sync)
     listing.propertyId = propertyId
+
+    // Set typeDefinitionId (relationship reconciled later in sync)
+    listing.typeDefinitionId = listingTypeId
 
     return listing
   }

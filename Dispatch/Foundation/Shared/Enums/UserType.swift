@@ -14,9 +14,22 @@ enum UserType: String, Codable, CaseIterable {
   case `operator`
   case exec
 
+  // MARK: Internal
+
   /// Staff members can claim tasks/activities. Only admin, marketing, and operator are staff.
   /// Execs have visibility but don't claim work items.
   var isStaff: Bool {
     self == .admin || self == .marketing || self == .operator
+  }
+
+  /// Human-readable display name for UI
+  var displayName: String {
+    switch self {
+    case .realtor: "Realtor"
+    case .admin: "Admin"
+    case .marketing: "Marketing"
+    case .operator: "Operator"
+    case .exec: "Executive"
+    }
   }
 }

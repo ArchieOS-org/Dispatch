@@ -47,12 +47,14 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     title: String,
     layout: LayoutMode = .column,
     scroll: ScrollMode = .automatic,
+    pullToSearch: Bool = true,
     @ViewBuilder content: @escaping () -> Content,
     @ToolbarContentBuilder toolbarContent: @escaping () -> ToolbarItems
   ) {
     self.title = title
     self.layout = layout
     self.scroll = scroll
+    self.pullToSearch = pullToSearch
     self.content = content
     self.toolbarContent = toolbarContent
   }
@@ -61,11 +63,13 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     title: String,
     layout: LayoutMode = .column,
     scroll: ScrollMode = .automatic,
+    pullToSearch: Bool = true,
     @ViewBuilder content: @escaping () -> Content
   ) where ToolbarItems == ToolbarItem<Void, EmptyView> {
     self.title = title
     self.layout = layout
     self.scroll = scroll
+    self.pullToSearch = pullToSearch
     self.content = content
     toolbarContent = { ToolbarItem(placement: .automatic) { EmptyView() } }
   }
@@ -88,22 +92,45 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
   let title: String
   let layout: LayoutMode
   let scroll: ScrollMode
+  let pullToSearch: Bool
   @ViewBuilder let content: () -> Content
   let toolbarContent: () -> ToolbarItems
 
   var body: some View {
-    mainContent
-      .navigationTitle(title)
-      .toolbar {
-        toolbarContent()
-      }
-      .applyLayoutWitness()
+    PullToSearchHost {
+      mainContent
+    }
+    .navigationTitle(title)
+    .toolbar {
+      toolbarContent()
+      // NOTE: iOS 26 introduces ToolbarItemPlacement.largeTitle for custom large title styling.
+      // This would fix navigation animation issues (title turning blue on interrupted back gesture).
+      // Re-enable when iOS 26 SDK is available in CI:
+      // #if os(iOS)
+      // if #available(iOS 26.0, *) {
+      //     ToolbarItem(placement: .largeTitle) {
+      //         Text(title).foregroundStyle(.primary)
+      //     }
+      // }
+      // #endif
+    }
+    .applyLayoutWitness()
     #if os(iOS)
       .navigationBarTitleDisplayMode(.large)
+      // Reset color scheme for navigation bar to prevent accent tint from
+      // affecting title during interactive back gesture cancellation.
+      // nil = use system default (adapts to light/dark mode automatically).
+      .toolbarColorScheme(nil, for: .navigationBar)
     #endif
+      // Reset tint at navigation level to prevent accent color bleeding into nav title
+      // during interactive back gesture cancellation. The accent tint is applied to
+      // innerContent (inside ScrollView) so controls/buttons still get the correct color.
+      .tint(nil)
   }
 
   // MARK: Private
+
+  @Environment(\.pullToSearchDisabled) private var pullToSearchDisabled
 
   private var horizontalPadding: CGFloat? {
     switch layout {
@@ -111,7 +138,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
       return 0
     case .column:
       #if os(iOS)
-      // Use Apple’s platform default inset so content aligns with the system large title.
+      // Use Apple's platform default inset so content aligns with the system large title.
       return nil
       #else
       return DS.Spacing.Layout.pageMargin
@@ -131,6 +158,11 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
         ScrollView {
           innerContent
         }
+        #if os(iOS)
+        // Add bottom margin to clear floating buttons on iPhone
+        .contentMargins(.bottom, DS.Spacing.floatingButtonScrollInset, for: .scrollContent)
+        #endif
+        .modifier(PullToSearchTrackingConditionalModifier(enabled: pullToSearch && !pullToSearchDisabled))
 
       case .disabled:
         innerContent
@@ -143,6 +175,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     VStack(alignment: .leading, spacing: 0) {
       #if os(macOS)
       // macOS: Custom static header (Things 3 style)
+      // Toolbar is always visible in full-screen, so consistent padding
       Text(title)
         .font(.largeTitle)
         .fontWeight(.bold)
@@ -160,6 +193,9 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
         .padding(.horizontal, horizontalPadding)
     }
     .frame(maxWidth: .infinity, alignment: .top)
+    // Apply tint here at content level, not at mainContent level
+    // This prevents tint from affecting navigation title during interactive back gestures
+    .tint(DS.Colors.accent)
     // Expose scroll mode to child components for contract enforcement
     .environment(
       \.standardScreenScrollMode,
@@ -169,7 +205,6 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     .navigationTitle("") // Hide system title on Mac in favor of our custom header
     #endif
   }
-
 }
 
 // MARK: - StandardScreenPreviewContent

@@ -11,7 +11,7 @@ import SwiftData
 // MARK: - Activity
 
 @Model
-final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
+final class Activity: WorkItemProtocol, NotableProtocol {
 
   // MARK: Lifecycle
 
@@ -19,12 +19,9 @@ final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     id: UUID = UUID(),
     title: String,
     activityDescription: String = "",
-    type: ActivityType = .other,
     dueDate: Date? = nil,
-    priority: Priority = .medium,
     status: ActivityStatus = .open,
     declaredBy: UUID,
-    claimedBy: UUID? = nil,
     listingId: UUID? = nil,
     createdVia: CreationSource = .dispatch,
     sourceSlackMessages: [String]? = nil,
@@ -36,12 +33,9 @@ final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     self.id = id
     self.title = title
     self.activityDescription = activityDescription
-    self.type = type
     self.dueDate = dueDate
-    self.priority = priority
     self.status = status
     self.declaredBy = declaredBy
-    self.claimedBy = claimedBy
     self.listingId = listingId
     self.createdVia = createdVia
     self.sourceSlackMessages = sourceSlackMessages
@@ -52,19 +46,63 @@ final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
     syncStateRaw = .synced
   }
 
+  /// Convenience initializer for previews/testing that accepts assignee user IDs
+  convenience init(
+    id: UUID = UUID(),
+    title: String,
+    activityDescription: String = "",
+    dueDate: Date? = nil,
+    status: ActivityStatus = .open,
+    declaredBy: UUID,
+    listingId: UUID? = nil,
+    assigneeUserIds: [UUID],
+    createdVia: CreationSource = .dispatch,
+    sourceSlackMessages: [String]? = nil,
+    duration: TimeInterval? = nil,
+    audiencesRaw: [String] = ["admin", "marketing"],
+    createdAt: Date = Date(),
+    updatedAt: Date = Date()
+  ) {
+    self.init(
+      id: id,
+      title: title,
+      activityDescription: activityDescription,
+      dueDate: dueDate,
+      status: status,
+      declaredBy: declaredBy,
+      listingId: listingId,
+      createdVia: createdVia,
+      sourceSlackMessages: sourceSlackMessages,
+      duration: duration,
+      audiencesRaw: audiencesRaw,
+      createdAt: createdAt,
+      updatedAt: updatedAt
+    )
+    // Create ActivityAssignee objects for each user ID
+    for userId in assigneeUserIds {
+      let assignee = ActivityAssignee(
+        activityId: id,
+        userId: userId,
+        assignedBy: declaredBy,
+        assignedAt: createdAt,
+        createdAt: createdAt,
+        updatedAt: updatedAt
+      )
+      assignee.activity = self
+      assignees.append(assignee)
+    }
+  }
+
   // MARK: Internal
 
   @Attribute(.unique) var id: UUID
   var title: String
   var activityDescription: String
-  var type: ActivityType
   var dueDate: Date?
-  var priority: Priority
   var status: ActivityStatus
 
   // Foreign keys
   var declaredBy: UUID
-  var claimedBy: UUID?
   var listingId: UUID?
   var sourceTemplateId: UUID? // For idempotency: links to ActivityTemplate that generated this
 
@@ -78,7 +116,6 @@ final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
   var audiencesRaw: [String] = ["admin", "marketing"]
 
   // Timestamps
-  var claimedAt: Date?
   var completedAt: Date?
   var deletedAt: Date?
   var createdAt: Date
@@ -99,13 +136,17 @@ final class Activity: WorkItemProtocol, ClaimableProtocol, NotableProtocol {
   @Relationship(deleteRule: .cascade)
   var statusHistory = [StatusChange]()
 
-  @Relationship(deleteRule: .cascade)
-  var claimHistory = [ClaimEvent]()
+  @Relationship(deleteRule: .cascade, inverse: \ActivityAssignee.activity)
+  var assignees = [ActivityAssignee]()
 
   // Inverse relationships
-  var claimedByUser: User?
   var listing: Listing?
   var sourceTemplate: ActivityTemplate? // Source template that generated this activity
+
+  /// Convenience computed property for assignee user IDs
+  var assigneeUserIds: [UUID] {
+    assignees.map { $0.userId }
+  }
 
   /// Computed property exposing audiences as Set<Role>
   var audiences: Set<Role> {

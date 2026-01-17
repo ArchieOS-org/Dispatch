@@ -2,32 +2,21 @@
 //  QuickEntrySheet.swift
 //  Dispatch
 //
-//  Universal quick entry sheet for creating Tasks and Activities
+//  Jobs-Standard sheet for quickly creating Tasks or Activities.
 //
 
 import SwiftData
 import SwiftUI
 
-/// A unified sheet for quickly creating Tasks or Activities.
-///
-/// Design decisions:
-/// 1. Single sheet handles both item types (Task/Activity) with a type picker
-/// 2. Type-specific fields (ActivityType) shown conditionally
-/// 3. All common fields (title, listing, priority) shared
-/// 4. Callback-based save to allow parent view to handle sync
-/// 5. Listings passed as parameter to avoid @Query re-evaluation on keystrokes
-///
-/// Usage:
-/// ```swift
-/// .sheet(isPresented: $showQuickEntry) {
-///     QuickEntrySheet(
-///         defaultItemType: .task,
-///         currentUserId: currentUserId,
-///         listings: listings,
-///         onSave: { syncManager.requestSync() }
-///     )
-/// }
-/// ```
+// MARK: - QuickEntrySheet
+
+/// Jobs-Standard sheet for quickly creating Tasks or Activities.
+/// Features:
+/// - Unified type picker (Task/Activity) with segmented control
+/// - Optional listing association
+/// - Multi-assignee selection
+/// - Due date picker
+/// - Callback-based save for parent sync control
 struct QuickEntrySheet: View {
 
   // MARK: Lifecycle
@@ -36,13 +25,17 @@ struct QuickEntrySheet: View {
     defaultItemType: QuickEntryItemType = .task,
     currentUserId: UUID,
     listings: [Listing] = [],
+    availableUsers: [User] = [],
     onSave: @escaping () -> Void
   ) {
     self.defaultItemType = defaultItemType
     self.currentUserId = currentUserId
     self.listings = listings
+    self.availableUsers = availableUsers
     self.onSave = onSave
     _itemType = State(initialValue: defaultItemType)
+    // Start with no assignee - user can tap "Assign to me" for quick self-assignment
+    _selectedAssigneeIds = State(initialValue: [])
   }
 
   // MARK: Internal
@@ -56,78 +49,16 @@ struct QuickEntrySheet: View {
   /// Available listings for selection (passed from parent to avoid @Query in sheet)
   let listings: [Listing]
 
+  /// Available users for assignee selection
+  let availableUsers: [User]
+
   /// Callback when save completes (for triggering sync)
   var onSave: () -> Void
 
   var body: some View {
     NavigationStack {
-      Form {
-        // Type Selection
-        Section {
-          Picker("Type", selection: $itemType) {
-            ForEach(QuickEntryItemType.allCases) { type in
-              Label(type.displayName, systemImage: type.icon)
-                .tag(type)
-            }
-          }
-          .pickerStyle(.segmented)
-        }
-
-        // Title (required)
-        Section {
-          TextField(titlePlaceholder, text: $title)
-        } header: {
-          Text("Title")
-        } footer: {
-          if title.trimmingCharacters(in: .whitespaces).isEmpty {
-            Text("Required")
-              .foregroundColor(DS.Colors.destructive)
-          }
-        }
-
-        // Activity Type (only for activities)
-        if itemType == .activity {
-          Section("Activity Type") {
-            Picker("Activity Type", selection: $activityType) {
-              ForEach(ActivityType.allCases, id: \.self) { type in
-                Text(activityTypeLabel(type))
-                  .tag(type)
-              }
-            }
-            .pickerStyle(.menu)
-          }
-        }
-
-        // Listing (optional)
-        if !listings.isEmpty {
-          Section("Listing") {
-            Picker("Listing", selection: $selectedListing) {
-              Text("None").tag(nil as Listing?)
-              ForEach(listings) { listing in
-                Text(listing.address).tag(listing as Listing?)
-              }
-            }
-            .pickerStyle(.menu)
-          }
-        }
-
-        // Priority
-        Section("Priority") {
-          Picker("Priority", selection: $priority) {
-            ForEach(Priority.allCases, id: \.self) { priority in
-              HStack {
-                Circle()
-                  .fill(priority.color)
-                  .frame(width: DS.Spacing.priorityDotSize, height: DS.Spacing.priorityDotSize)
-                Text(priority.rawValue.capitalized)
-              }
-              .tag(priority)
-            }
-          }
-          .pickerStyle(.menu)
-        }
-      }
-      .navigationTitle("Quick Add")
+      formContent
+        .navigationTitle("Quick Add")
       #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
       #endif
@@ -144,9 +75,12 @@ struct QuickEntrySheet: View {
             .disabled(!canSave)
           }
         }
+        .sheet(isPresented: $showAssigneePicker) {
+          assigneePickerSheet
+        }
     }
     #if os(iOS)
-    .presentationDetents([.medium])
+    .presentationDetents([.medium, .large])
     .presentationDragIndicator(.visible)
     #endif
   }
@@ -159,8 +93,108 @@ struct QuickEntrySheet: View {
   @State private var itemType: QuickEntryItemType
   @State private var title = ""
   @State private var selectedListing: Listing?
-  @State private var priority = Priority.medium
-  @State private var activityType = ActivityType.other
+  @State private var hasDueDate = false
+  @State private var dueDate = Date()
+  @State private var selectedAssigneeIds: Set<UUID> = []
+  @State private var showAssigneePicker = false
+
+  // MARK: - Platform Form Content
+
+  @ViewBuilder
+  private var formContent: some View {
+    #if os(macOS)
+    macOSForm
+    #else
+    iOSForm
+    #endif
+  }
+
+  #if os(macOS)
+  private var macOSForm: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      LabeledContent("Type") {
+        Picker("Type", selection: $itemType) {
+          ForEach(QuickEntryItemType.allCases) { type in
+            Label(type.displayName, systemImage: type.icon)
+              .tag(type)
+          }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+      }
+
+      LabeledContent("Title") {
+        TextField("Title", text: $title, prompt: Text(titlePlaceholder))
+          .labelsHidden()
+          .textFieldStyle(.roundedBorder)
+      }
+
+      if !listings.isEmpty {
+        LabeledContent("Listing") {
+          Picker("Listing", selection: $selectedListing) {
+            Text("None").tag(nil as Listing?)
+            ForEach(listings) { listing in
+              Text(listing.address).tag(listing as Listing?)
+            }
+          }
+          .labelsHidden()
+        }
+      }
+
+      LabeledContent("Due Date") {
+        HStack {
+          Toggle("", isOn: $hasDueDate)
+            .labelsHidden()
+          if hasDueDate {
+            DatePicker("", selection: $dueDate, displayedComponents: [.date])
+              .labelsHidden()
+          }
+        }
+      }
+
+      LabeledContent("Assign to") {
+        Button {
+          showAssigneePicker = true
+        } label: {
+          HStack {
+            if selectedAssigneeIds.isEmpty {
+              Text("No one assigned")
+                .foregroundColor(DS.Colors.Text.tertiary)
+            } else {
+              let userLookup = Dictionary(uniqueKeysWithValues: availableUsers.map { ($0.id, $0) })
+              OverlappingAvatars(
+                userIds: Array(selectedAssigneeIds),
+                users: userLookup,
+                maxVisible: 3,
+                size: .small
+              )
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+              .font(.caption)
+              .foregroundColor(DS.Colors.Text.tertiary)
+          }
+        }
+        .buttonStyle(.plain)
+      }
+    }
+    .padding()
+  }
+  #endif
+
+  private var iOSForm: some View {
+    Form {
+      Section {
+        typePicker
+        titleField
+        if !listings.isEmpty {
+          listingPicker
+        }
+        dueDateRow
+        assigneesRow
+      }
+    }
+  }
 
   private var canSave: Bool {
     !title.trimmingCharacters(in: .whitespaces).isEmpty
@@ -173,28 +207,116 @@ struct QuickEntrySheet: View {
     }
   }
 
-  private func activityTypeLabel(_ type: ActivityType) -> String {
-    switch type {
-    case .call: "Phone Call"
-    case .email: "Email"
-    case .meeting: "Meeting"
-    case .showProperty: "Show Property"
-    case .followUp: "Follow Up"
-    case .other: "Other"
+  private var userLookup: [UUID: User] {
+    Dictionary(uniqueKeysWithValues: availableUsers.map { ($0.id, $0) })
+  }
+
+  // MARK: - Form Rows
+
+  private var typePicker: some View {
+    Picker("Type", selection: $itemType) {
+      ForEach(QuickEntryItemType.allCases) { type in
+        Label(type.displayName, systemImage: type.icon)
+          .tag(type)
+      }
+    }
+    .pickerStyle(.segmented)
+  }
+
+  private var titleField: some View {
+    TextField("Title", text: $title, prompt: Text(titlePlaceholder))
+  }
+
+  private var listingPicker: some View {
+    Picker("Listing", selection: $selectedListing) {
+      Text("None").tag(nil as Listing?)
+      ForEach(listings) { listing in
+        Text(listing.address).tag(listing as Listing?)
+      }
+    }
+    .pickerStyle(.menu)
+  }
+
+  private var dueDateRow: some View {
+    HStack {
+      Text("Due Date")
+      Spacer()
+      Toggle("", isOn: $hasDueDate)
+        .labelsHidden()
+      if hasDueDate {
+        DatePicker("", selection: $dueDate, displayedComponents: [.date])
+          .labelsHidden()
+      }
     }
   }
+
+  private var assigneesRow: some View {
+    Button {
+      showAssigneePicker = true
+    } label: {
+      HStack {
+        Text("Assign to")
+          .foregroundColor(DS.Colors.Text.primary)
+        Spacer()
+        if selectedAssigneeIds.isEmpty {
+          Text("No one")
+            .foregroundColor(DS.Colors.Text.tertiary)
+        } else {
+          OverlappingAvatars(
+            userIds: Array(selectedAssigneeIds),
+            users: userLookup,
+            maxVisible: 3,
+            size: .small
+          )
+        }
+        Image(systemName: "chevron.right")
+          .font(.caption)
+          .foregroundColor(DS.Colors.Text.tertiary)
+      }
+    }
+    .buttonStyle(.plain)
+  }
+
+  private var assigneePickerSheet: some View {
+    NavigationStack {
+      MultiUserPicker(
+        selectedUserIds: $selectedAssigneeIds,
+        availableUsers: availableUsers,
+        currentUserId: currentUserId
+      )
+      .navigationTitle("Assign Users")
+      #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+      #endif
+        .toolbar {
+          ToolbarItem(placement: .confirmationAction) {
+            Button("Done") {
+              showAssigneePicker = false
+            }
+          }
+        }
+    }
+    #if os(macOS)
+    .frame(minWidth: 300, minHeight: 400)
+    #endif
+  }
+
+  // MARK: - Actions
 
   private func saveAndDismiss() {
     let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
     guard !trimmedTitle.isEmpty else { return }
 
+    let effectiveDueDate = hasDueDate ? dueDate : nil
+
     switch itemType {
     case .task:
       let task = TaskItem(
         title: trimmedTitle,
-        priority: priority,
+        dueDate: effectiveDueDate,
         declaredBy: currentUserId,
-        listingId: selectedListing?.id
+        listingId: selectedListing?.id,
+        assigneeUserIds: Array(selectedAssigneeIds)
       )
       // IMPORTANT: Insert into context BEFORE setting up relationships
       // SwiftData requires models to be in context before relationship manipulation
@@ -209,10 +331,10 @@ struct QuickEntrySheet: View {
     case .activity:
       let activity = Activity(
         title: trimmedTitle,
-        type: activityType,
-        priority: priority,
+        dueDate: effectiveDueDate,
         declaredBy: currentUserId,
-        listingId: selectedListing?.id
+        listingId: selectedListing?.id,
+        assigneeUserIds: Array(selectedAssigneeIds)
       )
       // IMPORTANT: Insert into context BEFORE setting up relationships
       // SwiftData requires models to be in context before relationship manipulation
@@ -225,7 +347,6 @@ struct QuickEntrySheet: View {
       }
     }
 
-    // TODO: Show toast "Task added" / "Activity added"
     onSave()
     dismiss()
   }
@@ -233,20 +354,46 @@ struct QuickEntrySheet: View {
 
 // MARK: - Preview
 
-#Preview("Quick Entry Sheet - Task") {
+#if DEBUG
+
+#Preview("Quick Entry - Task") {
+  PreviewShell { context in
+    let listings = (try? context.fetch(FetchDescriptor<Listing>())) ?? []
+    let users = (try? context.fetch(FetchDescriptor<User>())) ?? []
+
+    QuickEntrySheet(
+      defaultItemType: .task,
+      currentUserId: PreviewDataFactory.aliceID,
+      listings: listings,
+      availableUsers: users,
+      onSave: { }
+    )
+  }
+}
+
+#Preview("Quick Entry - Activity") {
+  PreviewShell { context in
+    let listings = (try? context.fetch(FetchDescriptor<Listing>())) ?? []
+    let users = (try? context.fetch(FetchDescriptor<User>())) ?? []
+
+    QuickEntrySheet(
+      defaultItemType: .activity,
+      currentUserId: PreviewDataFactory.aliceID,
+      listings: listings,
+      availableUsers: users,
+      onSave: { }
+    )
+  }
+}
+
+#Preview("Quick Entry - No Listings") {
   QuickEntrySheet(
     defaultItemType: .task,
     currentUserId: UUID(),
     listings: [],
+    availableUsers: [],
     onSave: { }
   )
 }
 
-#Preview("Quick Entry Sheet - Activity") {
-  QuickEntrySheet(
-    defaultItemType: .activity,
-    currentUserId: UUID(),
-    listings: [],
-    onSave: { }
-  )
-}
+#endif

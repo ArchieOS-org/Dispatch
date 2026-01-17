@@ -21,7 +21,8 @@ struct NoteDTO: Codable, Sendable {
     editedBy: UUID?,
     createdAt: Date,
     updatedAt: Date?,
-    deletedAt: Date?
+    deletedAt: Date?,
+    deletedBy: UUID?
   ) {
     self.id = id
     self.content = content
@@ -33,6 +34,7 @@ struct NoteDTO: Codable, Sendable {
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.deletedAt = deletedAt
+    self.deletedBy = deletedBy
   }
 
   init(from model: Note) {
@@ -46,6 +48,7 @@ struct NoteDTO: Codable, Sendable {
     createdAt = model.createdAt
     updatedAt = model.updatedAt
     deletedAt = model.deletedAt
+    deletedBy = model.deletedBy
   }
 
   // MARK: Internal
@@ -61,6 +64,7 @@ struct NoteDTO: Codable, Sendable {
     case createdAt = "created_at"
     case updatedAt = "updated_at"
     case deletedAt = "deleted_at"
+    case deletedBy = "deleted_by"
   }
 
   let id: UUID
@@ -73,6 +77,7 @@ struct NoteDTO: Codable, Sendable {
   let createdAt: Date
   let updatedAt: Date? // Nullable for legacy data, but DB default is now()
   let deletedAt: Date?
+  let deletedBy: UUID?
 
   func toModel() -> Note {
     let resolvedParentType: ParentType
@@ -100,6 +105,7 @@ struct NoteDTO: Codable, Sendable {
     note.editedBy = editedBy
     note.updatedAt = updatedAt ?? createdAt // Fallback for old records
     note.deletedAt = deletedAt
+    note.deletedBy = deletedBy
     note.markSynced() // Mark as synced since it came from server
     return note
   }

@@ -25,7 +25,6 @@ enum PreviewDataFactory {
   /// - 3 Tasks (Open, Claimed, Completed)
   /// - 2 Activities (Call, Email)
   /// - Notes & History
-  @MainActor
   static func seed(_ context: ModelContext) {
     // Users
     let alice = User(
@@ -75,18 +74,10 @@ enum PreviewDataFactory {
       title: "Paint Living Room",
       status: .open,
       declaredBy: aliceID,
-      claimedBy: bobID,
-      listingId: listingID
+      listingId: listingID,
+      assigneeUserIds: [bobID]
     )
     taskClaimed.syncState = EntitySyncState.synced
-    // Add claim history
-    let claimEvent = ClaimEvent(
-      parentType: .task,
-      parentId: taskClaimed.id,
-      action: .claimed,
-      userId: bobID
-    )
-    taskClaimed.claimHistory.append(claimEvent)
 
     let taskDone = TaskItem(
       title: "Replace Keybox",
@@ -102,7 +93,6 @@ enum PreviewDataFactory {
     // Activities
     let activityCall = Activity(
       title: "Client Call",
-      type: .call,
       declaredBy: aliceID,
       listingId: listingID
     )
@@ -110,7 +100,6 @@ enum PreviewDataFactory {
 
     let activityEmail = Activity(
       title: "Send Docs",
-      type: .email,
       status: ActivityStatus.completed,
       declaredBy: aliceID,
       listingId: listingID

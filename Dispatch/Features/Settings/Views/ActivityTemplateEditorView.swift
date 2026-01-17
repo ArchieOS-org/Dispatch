@@ -212,7 +212,6 @@ private struct AudienceToggleChip: View {
     let saleType = ListingTypeDefinition(
       id: UUID(),
       name: "Sale",
-      isSystem: false,
       position: 0,
       ownedBy: UUID()
     )

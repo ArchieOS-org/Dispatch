@@ -18,6 +18,14 @@ xcuserdata/
 # Swift Package Manager
 .build/
 Packages/
+!Packages/SharedBackend/
+Packages/SharedBackend/.build/
+Packages/SharedBackend/.swiftpm/
+Packages/SharedBackend/Package.resolved
+!Packages/DesignSystem/
+Packages/DesignSystem/.build/
+Packages/DesignSystem/.swiftpm/
+Packages/DesignSystem/Package.resolved
 Package.resolved
 
 # CocoaPods
@@ -30,6 +38,10 @@ Carthage/Build/
 Dispatch/Configuration/Secrets.swift
 Dispatch/App/Configuration/Secrets.swift
 /Secrets.swift
+
+# Secrets plist - DO NOT COMMIT
+Dispatch/App/Configuration/SecretsConfig.plist
+SecretsConfig.plist
 
 # macOS
 .DS_Store

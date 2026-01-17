@@ -49,13 +49,22 @@ final class KeyboardObserver: NSObject, ObservableObject {
       object: nil
     )
 
+    // Use keyboardDidHide for precise timing — buttons appear only when keyboard is fully gone
     NotificationCenter.default.addObserver(
       self,
-      selector: #selector(keyboardWillHide),
-      name: UIResponder.keyboardWillHideNotification,
+      selector: #selector(keyboardDidHide),
+      name: UIResponder.keyboardDidHideNotification,
       object: nil
     )
     #endif
+  }
+
+  /// Detaches and removes all observers
+  func detach() {
+    guard isAttached else { return }
+    NotificationCenter.default.removeObserver(self)
+    overlayState = nil
+    isAttached = false
   }
 
   // MARK: Private
@@ -70,7 +79,8 @@ final class KeyboardObserver: NSObject, ObservableObject {
   }
 
   @objc
-  private func keyboardWillHide(_: Notification) {
+  private func keyboardDidHide(_: Notification) {
+    // Keyboard is fully gone — safe to show buttons
     overlayState?.show(reason: .keyboard)
   }
   #endif

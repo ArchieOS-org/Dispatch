@@ -6,6 +6,7 @@
 //  Created by Claude on 2025-12-18.
 //
 
+import SwiftData
 import SwiftUI
 
 // MARK: - SearchResult
@@ -60,7 +61,15 @@ enum SearchResult: Identifiable, Hashable {
       return task.taskDescription.isEmpty ? "No description" : task.taskDescription
 
     case .activity(let activity):
-      return activity.type.displayName
+      // Show due date if available, otherwise assignee count or unassigned
+      if let dueDate = activity.dueDate {
+        return dueDateSubtitle(for: dueDate)
+      } else if !activity.assigneeUserIds.isEmpty {
+        let count = activity.assigneeUserIds.count
+        return count == 1 ? "1 assignee" : "\(count) assignees"
+      } else {
+        return "Unassigned"
+      }
 
     case .listing(let listing):
       let status = listing.status.rawValue.capitalized
@@ -74,19 +83,8 @@ enum SearchResult: Identifiable, Hashable {
   var icon: String {
     switch self {
     case .task: DS.Icons.Entity.task
-
-    case .activity(let activity):
-      switch activity.type {
-      case .call: DS.Icons.ActivityType.call
-      case .email: DS.Icons.ActivityType.email
-      case .meeting: DS.Icons.ActivityType.meeting
-      case .showProperty: DS.Icons.ActivityType.showProperty
-      case .followUp: DS.Icons.ActivityType.followUp
-      case .other: DS.Icons.ActivityType.other
-      }
-
+    case .activity: DS.Icons.Entity.activity
     case .listing: DS.Icons.Entity.listing
-
     case .navigation(_, let icon, _, _): icon
     }
   }
@@ -131,13 +129,13 @@ enum SearchResult: Identifiable, Hashable {
     }
   }
 
-  /// Sort priority for section ordering (Tasks first, then Activities, then Listings)
+  /// Sort priority for section ordering (Navigation, then Listings, then Tasks, then Activities)
   var sectionOrder: Int {
     switch self {
     case .navigation: -1 // Navigation always first
-    case .task: 0
-    case .activity: 1
-    case .listing: 2
+    case .listing: 0
+    case .task: 1
+    case .activity: 2
     }
   }
 
@@ -147,7 +145,177 @@ enum SearchResult: Identifiable, Hashable {
     default: nil
     }
   }
+
+  // MARK: Private
+
+  /// Formats due date as relative subtitle text
+  private func dueDateSubtitle(for date: Date) -> String {
+    let calendar = Calendar.current
+    let today = calendar.startOfDay(for: Date())
+    let dueDay = calendar.startOfDay(for: date)
+
+    let daysDiff = calendar.dateComponents([.day], from: today, to: dueDay).day ?? 0
+
+    if daysDiff < 0 {
+      return "Overdue by \(abs(daysDiff)) day\(abs(daysDiff) == 1 ? "" : "s")"
+    } else if daysDiff == 0 {
+      return "Due today"
+    } else if daysDiff == 1 {
+      return "Due tomorrow"
+    } else if daysDiff <= 7 {
+      return "Due in \(daysDiff) days"
+    } else {
+      let formatter = DateFormatter()
+      formatter.dateFormat = "MMM d"
+      return "Due \(formatter.string(from: date))"
+    }
+  }
+
 }
+
+// MARK: - Previews
+
+#if DEBUG
+
+private enum SearchResultPreviewData {
+  static func makeResults(context: ModelContext) -> [SearchResult] {
+    // Seed base data if available in your preview harness
+    PreviewDataFactory.seed(context)
+
+    let listings = (try? context.fetch(FetchDescriptor<Listing>())) ?? []
+    let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
+    let activities = (try? context.fetch(FetchDescriptor<Activity>())) ?? []
+
+    // Mix a few of each type for sectioning + ranking
+    let listingResults = listings.prefix(6).map { SearchResult.listing($0) }
+    let taskResults = tasks.prefix(10).map { SearchResult.task($0) }
+    let activityResults = activities.prefix(10).map { SearchResult.activity($0) }
+
+    return taskResults + activityResults + listingResults
+  }
+}
+
+private struct SearchResultPreviewRow: View {
+  let result: SearchResult
+
+  var body: some View {
+    HStack(spacing: 12) {
+      Image(systemName: result.icon)
+        .foregroundStyle(result.accentColor)
+        .frame(width: 18)
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text(result.title)
+          .font(.headline)
+          .foregroundStyle(DS.Colors.Text.primary)
+          .lineLimit(1)
+
+        Text(result.subtitle)
+          .font(.subheadline)
+          .foregroundStyle(DS.Colors.Text.secondary)
+          .lineLimit(1)
+      }
+
+      Spacer(minLength: 0)
+
+      if let badge = result.badgeCount {
+        Text("\(badge)")
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(DS.Colors.Text.primary)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 4)
+          .background(Color.secondary.opacity(0.15))
+          .clipShape(Capsule())
+      }
+    }
+    .padding(.vertical, 6)
+  }
+}
+
+private struct SearchResultsPreviewList: View {
+  let results: [SearchResult]
+  @State var query: String
+
+  var body: some View {
+    List {
+      if query.isEmpty {
+        Section {
+          Text("Type to filter results")
+            .foregroundStyle(DS.Colors.Text.secondary)
+        }
+      } else if results.filtered(by: query).isEmpty {
+        Section {
+          Text("No matches")
+            .foregroundStyle(DS.Colors.Text.secondary)
+        }
+      } else {
+        ForEach(results.filtered(by: query).prefix(60)) { result in
+          SearchResultPreviewRow(result: result)
+        }
+      }
+    }
+    .navigationTitle("SearchResult")
+    #if os(iOS)
+      .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search")
+    #else
+      .searchable(text: $query, prompt: "Search")
+    #endif
+  }
+}
+
+#Preview("SearchResult · Grouped + Filtered") {
+  PreviewShell { context in
+    let results = SearchResultPreviewData.makeResults(context: context)
+
+    NavigationStack {
+      SearchResultsPreviewList(results: results, query: "a")
+    }
+  }
+}
+
+#Preview("SearchResult · Ranking (prefix vs contains)") {
+  PreviewShell(setup: { context in
+    PreviewDataFactory.seed(context)
+
+    // Add a few deterministic titles so ranking differences are obvious
+    let listing = (try? context.fetch(FetchDescriptor<Listing>()).first)
+
+    let t1 = TaskItem(
+      title: "Fix Broken Window",
+      status: .open,
+      declaredBy: PreviewDataFactory.aliceID,
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
+    )
+    let t2 = TaskItem(
+      title: "Window Measurements",
+      status: .open,
+      declaredBy: PreviewDataFactory.aliceID,
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
+    )
+    let t3 = TaskItem(
+      title: "Schedule contractor",
+      status: .open,
+      declaredBy: PreviewDataFactory.aliceID,
+      listingId: listing?.id,
+      assigneeUserIds: [PreviewDataFactory.bobID]
+    )
+
+    context.insert(t1)
+    context.insert(t2)
+    context.insert(t3)
+    try? context.save()
+  }) { context in
+    let results = SearchResultPreviewData.makeResults(context: context)
+
+    NavigationStack {
+      SearchResultsPreviewList(results: results, query: "win")
+    }
+  }
+}
+
+#endif
 
 // MARK: - Filtering & Ranking
 
@@ -198,21 +366,6 @@ extension SearchResult {
   }
 }
 
-// MARK: - Activity Type Display Name
-
-extension ActivityType {
-  fileprivate var displayName: String {
-    switch self {
-    case .call: "Call"
-    case .email: "Email"
-    case .meeting: "Meeting"
-    case .showProperty: "Showing"
-    case .followUp: "Follow-up"
-    case .other: "Activity"
-    }
-  }
-}
-
 // MARK: - Search Result Collection Helpers
 
 extension [SearchResult] {
@@ -221,7 +374,20 @@ extension [SearchResult] {
     guard !query.isEmpty else { return [] }
 
     return filter { !$0.isDeleted && $0.matches(query: query) }
-      .sorted { $0.rankingScore(for: query) > $1.rankingScore(for: query) }
+      .sorted {
+        let lhsScore = $0.rankingScore(for: query)
+        let rhsScore = $1.rankingScore(for: query)
+        if lhsScore != rhsScore { return lhsScore > rhsScore }
+
+        // Tie-break 1: type priority
+        if $0.sectionOrder != $1.sectionOrder { return $0.sectionOrder < $1.sectionOrder }
+
+        // Tie-break 2: open before completed
+        if $0.isCompleted != $1.isCompleted { return !$0.isCompleted }
+
+        // Tie-break 3: stable alpha
+        return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+      }
   }
 
   /// Groups results by section with per-section limit
@@ -231,7 +397,7 @@ extension [SearchResult] {
     return grouped
       .map { (section: $0.key, results: Array($0.value.prefix(limit))) }
       .sorted { lhs, rhs in
-        // Sort sections: Tasks, Activities, Listings
+        // Sort sections: Navigation, Listings, Tasks, Activities
         let lhsOrder = lhs.results.first?.sectionOrder ?? 0
         let rhsOrder = rhs.results.first?.sectionOrder ?? 0
         return lhsOrder < rhsOrder
