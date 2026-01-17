@@ -19,6 +19,7 @@ struct FilterMenu: View {
   // MARK: Internal
 
   @Binding var audience: AudienceLens
+  @ScaledMetric(relativeTo: .caption2) private var chevronSize: CGFloat = 10
 
   var body: some View {
     HStack(spacing: 0) {
@@ -53,9 +54,9 @@ struct FilterMenu: View {
         .labelsHidden()
       } label: {
         Image(systemName: "chevron.down")
-          .font(.system(size: 10, weight: .bold))
+          .font(.system(size: chevronSize, weight: .bold))
           .foregroundStyle(.secondary)
-          .frame(width: 16, height: DS.Spacing.bottomToolbarButtonSize)
+          .frame(width: 44, height: DS.Spacing.bottomToolbarButtonSize)
           .contentShape(Rectangle())
       }
       .menuStyle(.borderlessButton)
