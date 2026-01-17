@@ -58,6 +58,7 @@ struct ListingDetailView: View {
 
   private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000") ?? UUID()
 
+  @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var syncManager: SyncManager
   @EnvironmentObject private var lensState: LensState
   @EnvironmentObject private var actions: WorkItemActions
@@ -376,6 +377,8 @@ struct ListingDetailView: View {
     listing.markPending()
     syncManager.requestSync()
     dismiss()
+    // Clean up navigation path to prevent navigating back to deleted listing
+    appState.dispatch(.removeRoute(.listing(listing.id)))
   }
 
 }
