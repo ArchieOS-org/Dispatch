@@ -1,5 +1,6 @@
 # Lint & Format Workflow
 # Uses pinned tool versions identical to local CI Mirror
+# Runs on Linux for faster CI (no macOS runner capacity constraints)
 
 name: Lint & Format
 
@@ -7,10 +8,14 @@ on:
   push:
   pull_request:
 
+env:
+  SWIFTLINT_VERSION: "0.57.0"
+  SWIFTFORMAT_VERSION: "0.54.6"
+
 jobs:
   lint-format:
     name: Lint & Format
-    runs-on: macos-14
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -20,10 +25,27 @@ jobs:
         uses: actions/cache@v4
         with:
           path: tools
-          key: tools-v1-${{ hashFiles('scripts/install_tools.sh', 'tools/checksums.txt') }}
+          key: tools-linux-v1-swiftlint-${{ env.SWIFTLINT_VERSION }}-swiftformat-${{ env.SWIFTFORMAT_VERSION }}
 
-      - name: Install Tools
-        run: ./scripts/install_tools.sh
+      - name: Install Tools (Linux)
+        run: |
+          mkdir -p tools
+
+          # Install SwiftLint if not cached
+          if [ ! -f tools/swiftlint ]; then
+            echo "Downloading SwiftLint ${SWIFTLINT_VERSION} for Linux..."
+            curl -sL "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/swiftlint_linux.zip" -o /tmp/swiftlint.zip
+            unzip -q /tmp/swiftlint.zip -d tools/
+            chmod +x tools/swiftlint
+          fi
+
+          # Install SwiftFormat if not cached
+          if [ ! -f tools/swiftformat ]; then
+            echo "Downloading SwiftFormat ${SWIFTFORMAT_VERSION} for Linux..."
+            curl -sL "https://github.com/nicklockwood/SwiftFormat/releases/download/${SWIFTFORMAT_VERSION}/swiftformat_linux.zip" -o /tmp/swiftformat.zip
+            unzip -q /tmp/swiftformat.zip -d tools/
+            chmod +x tools/swiftformat
+          fi
 
       - name: Diagnostics
         run: |
