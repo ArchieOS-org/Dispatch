@@ -7,57 +7,44 @@
 
 import Foundation
 import OSLog
+import SharedBackend
 import Supabase
 
 // MARK: - SupabaseService
 
+/// App-level service that wraps SharedBackend.Backend for backward compatibility.
+/// Provides the `supabase` global accessor used throughout the app.
 final class SupabaseService {
 
   // MARK: Lifecycle
 
   private init() {
     #if DEBUG
-    Self.logger.debug("Initializing Supabase client...")
-    Self.logger.debug("URL: \(Secrets.supabaseURL, privacy: .private)")
-    Self.logger.debug("Anon Key (prefix): \(String(Secrets.supabaseAnonKey.prefix(30)), privacy: .private)...")
+    Self.logger.debug("Initializing SupabaseService via SharedBackend...")
     #endif
 
-    guard let url = URL(string: Secrets.supabaseURL) else {
-      fatalError("Invalid Supabase URL: \(Secrets.supabaseURL)")
+    do {
+      backend = try Backend(config: AppBackendConfig())
+      #if DEBUG
+      Self.logger.info("SupabaseService initialized successfully via SharedBackend")
+      #endif
+    } catch {
+      fatalError("Failed to initialize SharedBackend: \(error)")
     }
-
-    #if DEBUG
-    Self.logger.debug("URL parsed successfully: \(url.absoluteString, privacy: .private)")
-    #endif
-
-    client = SupabaseClient(
-      supabaseURL: url,
-      supabaseKey: Secrets.supabaseAnonKey,
-      options: SupabaseClientOptions(
-        db: .init(schema: "public"),
-        auth: .init(
-          flowType: .pkce,
-          emitLocalSessionAsInitialSession: true
-        ),
-        global: .init(
-          headers: ["x-app-name": "dispatch-ios"]
-        )
-      )
-    )
-
-    #if DEBUG
-    Self.logger.info("SupabaseClient initialized successfully")
-    Self.logger.debug("DB Schema: public")
-    Self.logger.debug("Auth Flow: PKCE")
-    Self.logger.debug("Custom Headers: x-app-name=dispatch-ios")
-    #endif
   }
 
   // MARK: Internal
 
   static let shared = SupabaseService()
 
-  let client: SupabaseClient
+  /// The SharedBackend instance
+  let backend: Backend
+
+  /// The underlying SupabaseClient for backward compatibility.
+  /// Prefer using backend services (backend.auth, backend.database, etc.) when possible.
+  var client: SupabaseClient {
+    backend.client
+  }
 
   // MARK: Private
 
@@ -65,7 +52,14 @@ final class SupabaseService {
 
 }
 
-/// Convenience accessor
+/// Convenience accessor for backward compatibility.
+/// Code can continue using `supabase.from(...)`, `supabase.auth`, etc.
 var supabase: SupabaseClient {
   SupabaseService.shared.client
+}
+
+/// Convenience accessor to the SharedBackend instance.
+/// Prefer using this for new code that wants typed service access.
+var backend: Backend {
+  SupabaseService.shared.backend
 }

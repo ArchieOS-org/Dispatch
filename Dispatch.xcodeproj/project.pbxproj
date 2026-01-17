@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0A93E8F62EE4F31A00D086C0 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 0A773EA12EE4C35400C0189F /* Supabase */; };
+		SHARED0001000000000000 /* SharedBackend in Frameworks */ = {isa = PBXBuildFile; productRef = SHARED0002000000000000 /* SharedBackend */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,6 +71,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0A93E8F62EE4F31A00D086C0 /* Supabase in Frameworks */,
+				SHARED0001000000000000 /* SharedBackend in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,6 +133,7 @@
 			name = Dispatch;
 			packageProductDependencies = (
 				0A773EA12EE4C35400C0189F /* Supabase */,
+				SHARED0002000000000000 /* SharedBackend */,
 			);
 			productName = Dispatch;
 			productReference = 0A773E762EE4C35000C0189F /* Dispatch.app */;
@@ -215,6 +218,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				0A773EA02EE4C35400C0189F /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				SHARED0003000000000000 /* XCLocalSwiftPackageReference "Packages/SharedBackend" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0A773E772EE4C35000C0189F /* Products */;
@@ -682,6 +686,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		SHARED0003000000000000 /* XCLocalSwiftPackageReference "Packages/SharedBackend" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/SharedBackend;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		0A773EA02EE4C35400C0189F /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -698,6 +709,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 0A773EA02EE4C35400C0189F /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Supabase;
+		};
+		SHARED0002000000000000 /* SharedBackend */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SharedBackend;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

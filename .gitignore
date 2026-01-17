@@ -18,6 +18,10 @@ xcuserdata/
 # Swift Package Manager
 .build/
 Packages/
+!Packages/SharedBackend/
+Packages/SharedBackend/.build/
+Packages/SharedBackend/.swiftpm/
+Packages/SharedBackend/Package.resolved
 Package.resolved
 
 # CocoaPods
