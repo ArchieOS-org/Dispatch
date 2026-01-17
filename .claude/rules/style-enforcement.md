@@ -1,6 +1,10 @@
 # Style Enforcement Policy
 
+> **Version**: 2.0
+> **Tier**: ENFORCED (blocks DONE if lint fails)
+
 ## Core Principle
+
 **If it can't be enforced by lint/format/build/test, it's a preference, not a rule.**
 
 We follow the Airbnb philosophy: rules must be mechanically enforceable.
@@ -17,7 +21,7 @@ A rule is only a rule if it can be checked by a machine:
 
 This keeps enforcement predictable and prevents bike-shedding. If you want something enforced, write a SwiftLint custom rule or accept that it's advisory.
 
-## Enforcement Chain
+## Enforcement Chain [ENFORCED]
 
 ### 1. Formatting (swiftformat)
 - Non-destructive formatting only
@@ -37,7 +41,7 @@ This keeps enforcement predictable and prevents bike-shedding. If you want somet
 - All tests must pass
 - New code should have test coverage
 
-## Integrator Gate (PATCHSET 4)
+## Integrator Gate (Final Patchset)
 
 Integrator MUST run these commands in order:
 
@@ -55,7 +59,7 @@ swiftlint lint
 
 If ANY step fails → build is BLOCKED.
 
-## Non-Enforceable Preferences (NOT rules)
+## Non-Enforceable Preferences [ADVISORY]
 
 These are guidelines, not gates:
 - Naming conventions beyond what lint catches
@@ -63,3 +67,10 @@ These are guidelines, not gates:
 - Architectural opinions
 
 Discuss in PR, don't block on.
+
+---
+
+## Related Rules
+
+- See `.claude/rules/modern-swift.md` for architecture guidelines (ADVISORY)
+- See `.claude/rules/design-bar.md` for UI quality guidelines

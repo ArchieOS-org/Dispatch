@@ -1,5 +1,7 @@
 # Dispatch
 
+> **Agent System Version**: 2.0
+
 Dispatch is a Swift multi-platform app (iOS, iPadOS, macOS) with a Supabase backend.
 
 ## Architecture
@@ -73,38 +75,24 @@ xcodebuild test -project Dispatch.xcodeproj -scheme Dispatch \
 swiftlint lint
 ```
 
-### Style Enforcement (Integrator PATCHSET 4)
+### Style Enforcement
 
-Integrator must run these commands at PATCHSET 4:
-
-```bash
-# 1. Format check (if swiftformat exists)
-if command -v swiftformat &> /dev/null; then
-  swiftformat . --lint
-fi
-
-# 2. Lint
-swiftlint lint
-```
-
-- If swiftformat not found → skip with "N/A"
-- If either fails → BLOCKED
-- See `.claude/rules/style-enforcement.md` for policy
+See `.claude/rules/style-enforcement.md` for full policy.
 
 ## MCP Tools
 
 ### Available MCP Servers
 
-| Server | Wildcard | Purpose |
-|--------|----------|---------|
-| `mcp__xcodebuildmcp__*` | Xcode build, test, simulator control | Build iOS/macOS, run tests, take screenshots |
-| `mcp__context7__*` | Documentation lookup | Get up-to-date library docs |
-| `mcp__supabase__*` | Database operations | Query, migrate, manage schema |
-| `mcp__github__*` | GitHub operations | PRs, issues, code search |
+| Server | Purpose |
+|--------|---------|
+| `mcp__xcodebuildmcp__*` | Build iOS/macOS, run tests, take screenshots |
+| `mcp__context7__*` | Get up-to-date library docs |
+| `mcp__supabase__*` | Query, migrate, manage schema |
+| `mcp__github__*` | PRs, issues, code search |
 
-**IMPORTANT**: Use wildcards (`mcp__xcodebuildmcp__*`) when documenting MCP tools. Don't list specific method names unless you've confirmed they exist - tool names may change between MCP server versions.
+**IMPORTANT**: Use wildcards (`mcp__xcodebuildmcp__*`) when documenting MCP tools.
 
-### XcodeBuild MCP Usage
+### Context7 for Documentation
 
 Use `mcp__xcodebuildmcp__*` tools for:
 - Building for iOS Simulator and macOS
@@ -135,8 +123,6 @@ mcp__context7__resolve-library-id with libraryName="swiftui"
 # Get documentation
 mcp__context7__query-docs with libraryId="/websites/developer_apple_swiftui" query="your question"
 ```
-
-### Key Library IDs
 
 | Library | Context7 ID |
 |---------|-------------|
@@ -170,9 +156,21 @@ mcp__context7__query-docs with libraryId="/websites/developer_apple_swiftui" que
 
 ---
 
-## Agent Architecture
+## Agent Architecture (v2.0)
 
 Dispatch uses a vertical slice agent architecture for multi-agent coordination.
+
+### Quick Reference
+
+| To Learn About | See |
+|----------------|-----|
+| Manager mode activation | `.claude/rules/manager-mode.md` |
+| Design bar / Jobs Critique | `.claude/rules/design-bar.md` |
+| Context7 usage | `.claude/rules/context7-mandatory.md` |
+| Debugging protocol | `.claude/rules/framework-first.md` |
+| Contract template | `.claude/contracts/_template.md` |
+| Modern Swift patterns | `.claude/rules/modern-swift.md` |
+| Style enforcement | `.claude/rules/style-enforcement.md` |
 
 ### How to Use Agents
 
@@ -184,192 +182,98 @@ Dispatch uses a vertical slice agent architecture for multi-agent coordination.
 - "orchestrate this"
 - "use agents"
 
-This triggers full orchestration: dispatch-planner → contract → feature-owner → verification.
+See `.claude/rules/manager-mode.md` for full details.
 
-See `.claude/rules/manager-mode.md` for details.
-
-### Architecture Diagram
+### Architecture Overview
 
 ```
-[Small Change?] ──Yes──→ feature-owner + integrator (immediate)
-       │
-      No
-       ↓
-dispatch-planner
-  │
-  ├─ dispatch-explorer (ONLY if unfamiliar area)
-  │
-  ├─ Interface Lock → persisted to .claude/contracts/
-  │
-  ├─ feature-owner (vertical slice)
-  │       │
-  │       ├─ PATCHSET 1-3 (with integrator feedback)
-  │       │
-  │       └─ PATCHSET 4 triggers jobs-critic
-  │
-  ├─ jobs-critic (after PATCHSET 4) → writes SHIP verdict to contract
-  │
-  ├─ ui-polish (after jobs-critic SHIP: YES)
-  │
-  ├─ xcode-pilot (simulator validation after ui-polish)
-  │
-  │              [WAIT for all above]
-  │                      ▼
-  └─ integrator (FINAL) ─────────────→ DONE
+┌─────────────────────────────────────────────────────────────┐
+│  REQUEST ROUTING                                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Small Change (≤3 files, no schema, no new UI)?            │
+│        ↓ YES                                                │
+│   feature-owner → integrator → DONE                         │
+│                                                             │
+│        ↓ NO (Complex Change)                                │
+│   dispatch-planner (decides path)                           │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  CONDITIONAL AGENTS (Activated When Needed)                 │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─ Unfamiliar code? → dispatch-explorer                   │
+│  ├─ Schema changes? → data-integrity                        │
+│  ├─ UI changes? → jobs-critic                               │
+│  ├─ SHIP: YES + customer-facing? → ui-polish               │
+│  └─ High-risk UI flow? → xcode-pilot                       │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  CORE AGENTS (Always Active)                               │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  feature-owner → integrator → DONE                          │
+└─────────────────────────────────────────────────────────────┘
 ```
-
-**Critical**: "DONE" only valid from integrator running AFTER all file-modifying agents complete.
-
-**Principle: "One feature, one owner, one outcome."**
 
 ### Agents
 
-| Agent | Role | Supabase Access |
-|-------|------|-----------------|
-| `dispatch-planner` | Orchestrator - routes work through fastest safe path | Read only |
-| `dispatch-explorer` | Deep codebase context finder (conditional) | Read only |
-| `feature-owner` | Owns entire vertical slice end-to-end | **Read only** |
-| `jobs-critic` | Design bar enforcement - blocks DONE if SHIP: NO | None |
-| `integrator` | Verification gatekeeper - checks jobs-critic verdict | None |
-| `data-integrity` | Schema + sync authority | **Write/Execute** |
-| `ui-polish` | UI/UX refinement specialist (only after SHIP: YES) | None |
-| `xcode-pilot` | Simulator validation (after ui-polish) | None |
+| Agent | Role | When Used |
+|-------|------|-----------|
+| `dispatch-planner` | Routes work through fastest safe path | Complex changes |
+| `dispatch-explorer` | Deep codebase context finder | Unfamiliar areas |
+| `feature-owner` | Owns vertical slice end-to-end | Always |
+| `jobs-critic` | Design bar enforcement | UI changes |
+| `integrator` | Verification gatekeeper | Always (final) |
+| `data-integrity` | Schema + sync authority | Schema changes |
+| `ui-polish` | UI/UX refinement | After SHIP: YES |
+| `xcode-pilot` | Simulator validation | High-risk UI |
 
-### The Five Rules
+### The Core Rules
 
-#### Rule A: Default Execution
-Run feature-owner + integrator immediately unless risk triggers planner.
+#### Small Change Bypass [ENFORCED]
 
-**Small Change Bypass** (skip planner if ALL true):
-- ≤ 3 files modified
+Skip dispatch-planner if **ALL** true:
+- ≤3 files modified
 - No schema/API changes
 - No new UI navigation flow
 - No sync/offline changes
 
-#### Rule B: Interface Lock Required When ANY True
-- New state/action surface
-- DTO changes
-- Schema changes (DDL, indexes, constraints, RLS/policies, triggers, types)
-- New UI navigation
-- Sync/offline involved
+#### Adaptive Patchsets
 
-#### Rule C: Strict Permissions
-| Agent | Supabase Access | App Code |
-|-------|-----------------|----------|
-| feature-owner | **Read only** | Full edit |
-| data-integrity | **Write/Execute** | Read only |
-| integrator | None | Read only |
+Base protocol: 2 patchsets. Expand based on contract Complexity Indicators.
 
-#### Rule D: "Done" Definition
+| Patchset | Gate |
+|----------|------|
+| 1 | Compiles |
+| 1.5 | Schema ready (if needed) |
+| 2 | Tests pass, criteria met |
+| 2.5 | Design bar (if UI) |
+| 3 | Validation (if high-risk) |
+
+#### "Done" Definition [ENFORCED]
+
 - [ ] Builds on iOS + macOS
 - [ ] Relevant tests pass
 - [ ] Acceptance criteria met
 - [ ] No unresolved TODOs introduced
 - [ ] **Integrator reports DONE**
+- [ ] **Jobs Critique: SHIP YES** (if UI Review Required)
 
-#### Rule E: Stop Conditions
-Every agent must stop and escalate when:
-- Contract is missing / not locked
-- Lock Version changed mid-run
-- Migration required but data-integrity not assigned
-- Acceptance criteria cannot be met with current contract
-
-#### Rule F: Agent Sequencing (CRITICAL)
-**"DONE" is only valid from a FINAL integrator run after all file-modifying agents complete.**
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  MANDATORY SEQUENCE                                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  1. feature-owner (PATCHSET 1-4)                            │
-│           │                                                 │
-│           ▼                                                 │
-│  2. jobs-critic → writes "Jobs Critique: SHIP YES/NO"       │
-│           │        to .claude/contracts/<feature>.md        │
-│           │                                                 │
-│           ├── SHIP: NO → STOP (fix issues, re-run critic)   │
-│           │                                                 │
-│           ▼ SHIP: YES                                       │
-│  3. ui-polish (refines UI/UX)                               │
-│           │                                                 │
-│           ▼                                                 │
-│  4. xcode-pilot (simulator validation)                      │
-│           │                                                 │
-│           ▼                                                 │
-│  5. integrator (FINAL)                                      │
-│           │                                                 │
-│           ├── Reads contract, checks "Jobs Critique" field  │
-│           ├── If SHIP: NO or missing → REJECT DONE          │
-│           │                                                 │
-│           ▼ SHIP: YES confirmed                             │
-│        DONE                                                 │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Why**:
-- Running integrator parallel with ui-polish creates a race condition (stale snapshot)
-- ui-polish changes what xcode-pilot validates
-- jobs-critic verdict must be mechanically checked, not assumed
-
-**Mechanical Enforcement**:
-- jobs-critic MUST write `Jobs Critique: SHIP YES` or `Jobs Critique: SHIP NO` to contract
-- integrator MUST read contract and verify `Jobs Critique: SHIP YES` before reporting DONE
-- If jobs-critic field is missing or NO, integrator MUST reject DONE
-
-**The rule**: After all file-modifying agents complete (feature-owner, ui-polish), integrator MUST run one final time AND verify jobs-critic verdict. Only this final run's "DONE" status is authoritative.
-
-### Risk Gating
-
-| Lane | Trigger | Behavior |
-|------|---------|----------|
-| **Fast Lane** | UI/state/model only, no schema | Execute immediately |
-| **Guarded Lane** | Additive migration (new column w/ default, nullable) | Auto-run, must report SQL |
-| **Safe Lane** | Backfills, constraints, deletes, breaking DTOs | Approval required |
-
-### Interface Lock (Contracts)
+### Contracts
 
 **Location**: `.claude/contracts/<feature-slug>.md`
 
-Contracts are versioned and committed to the repo. Template available at `.claude/contracts/_template.md`.
+See `.claude/contracts/_template.md` for the current template with:
+- Complexity Indicators (determines patchset plan)
+- Context7 Queries logging
+- Jobs Critique section
+- Enforcement Summary
 
-```markdown
-## Interface Lock
+### Rule Tiers
 
-**Feature**: [name]
-**Status**: [draft | locked | complete]
-**Lock Version**: v1
-
-### Contract
-- New/changed model fields: [list]
-- DTO/API changes: [list]
-- State/actions added: [list]
-- Migration required: Y/N
-
-### Acceptance Criteria (3 max)
-1. [measurable outcome]
-
-### Non-goals
-- [what this feature does NOT include]
-
-### Ownership
-- feature-owner: [scope]
-- data-integrity: [if needed]
-```
-
-### Patchset Protocol
-
-feature-owner emits these markers for integrator verification:
-
-```
-PATCHSET 1: model + DTO compile
-PATCHSET 2: UI wired to state
-PATCHSET 3: sync + persistence
-PATCHSET 4: cleanup + tests
-```
-
-Integrator runs verification on each patchset:
-- PATCHSET 1: compile/typecheck
-- PATCHSET 2: build iOS + macOS
-- PATCHSET 3: full build + targeted tests
-- PATCHSET 4: full test suite + SwiftLint + done checklist
+| Tier | Meaning | Example |
+|------|---------|---------|
+| **ENFORCED** | Blocks DONE if violated | Jobs Critique, builds pass |
+| **GUIDELINE** | Strongly recommended, logged | Context7 usage |
+| **ADVISORY** | Coaching, not blocking | Design principles |

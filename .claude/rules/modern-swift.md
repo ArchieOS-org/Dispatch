@@ -1,4 +1,7 @@
-# Modern Swift Simplicity (MANDATORY)
+# Modern Swift Simplicity
+
+> **Version**: 2.0
+> **Tier**: ADVISORY (trackable, not blocking)
 
 Inspired by proven Swift project conventions. Less abstraction, more clarity.
 

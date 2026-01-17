@@ -1,4 +1,7 @@
-# Context7 Mandatory Usage (CRITICAL)
+# Context7 Usage [GUIDELINE - STRONGLY RECOMMENDED]
+
+> **Version**: 2.0
+> **Tier**: GUIDELINE (logged, not blocking)
 
 **Your training data is outdated. Context7 is the source of truth for all library documentation.**
 
@@ -6,9 +9,9 @@
 
 You were trained on documentation that is months or years old. APIs change, patterns evolve, and best practices get updated. **Context7 provides current, accurate documentation** that supersedes your training.
 
-## Mandatory Behavior
+## Behavior
 
-Before writing ANY code that uses external libraries or frameworks, you MUST:
+Before writing ANY code that uses external libraries or frameworks, you SHOULD:
 
 1. **Resolve the library ID**:
    ```
@@ -25,6 +28,8 @@ Before writing ANY code that uses external libraries or frameworks, you MUST:
    ```
 
 3. **Use the documented pattern**, not your training memory
+
+4. **Log to contract** (see Contract Logging below)
 
 ## When to Use Context7
 
@@ -45,24 +50,34 @@ Before writing ANY code that uses external libraries or frameworks, you MUST:
 | SwiftUI | `/websites/developer_apple_swiftui` |
 | Supabase | Use `resolve-library-id` |
 
-## Output Format
+## Contract Logging [ENFORCED]
 
-When using Context7, report what you consulted:
+**Agents MUST log Context7 queries to the contract file.**
 
+After using Context7, add to the contract's `Context7 Queries` section:
+
+```markdown
+### Context7 Queries
+- [library]: [question asked] → [brief pattern/answer used]
+- [library]: [question asked] → [brief pattern/answer used]
 ```
-CONTEXT7 CONSULTED:
-- Library: [name]
-- Query: [what you asked]
-- Pattern used: [brief summary]
-```
 
-## Enforcement
+**Enforcement**: Integrator checks for presence of Context7 Queries section when contract indicates framework usage. Missing queries trigger a warning (not blocking) but are logged.
 
-This rule is **MANDATORY** for all agents:
-- **feature-owner**: Must use Context7 before implementing patterns
-- **swift-debugger**: Must use Context7 before second fix attempt
-- **ui-polish**: Must use Context7 for SwiftUI modifiers
-- **dispatch-explorer**: Should use Context7 to understand framework patterns
+## Enforcement Tiers
+
+| Aspect | Tier | Consequence |
+|--------|------|-------------|
+| Using Context7 before framework code | GUIDELINE | Strongly recommended, not blocking |
+| Logging queries to contract | ENFORCED | Integrator checks, warns if missing |
+| Following documented patterns | GUIDELINE | Evaluated by jobs-critic for UI |
+
+## Agent Responsibilities
+
+- **feature-owner**: Should use Context7 before implementing patterns; MUST log to contract
+- **swift-debugger**: Should use Context7 before second fix attempt
+- **ui-polish**: Should use Context7 for SwiftUI modifiers; MUST log to contract
+- **dispatch-explorer**: May use Context7 to understand framework patterns
 
 ## Why This Matters
 
@@ -71,12 +86,13 @@ This rule is **MANDATORY** for all agents:
 3. **Time wasted debugging** - Wrong patterns lead to hours of debugging that Context7 prevents
 4. **Framework-first principle** - Context7 shows how frameworks are *designed* to work
 
-## Anti-Patterns (NEVER DO)
+## Anti-Patterns (AVOID)
 
 - Writing code from memory without checking Context7
 - Assuming your training knowledge is current
 - Skipping Context7 "to save time" (it costs more time debugging later)
 - Ignoring Context7 results in favor of training memory
+- Forgetting to log queries to contract
 
 ## Example Flow
 
@@ -90,8 +106,12 @@ Task: Implement MainActor isolation for a sync handler
    → Returns: Current Swift 6 patterns for actor isolation
 
 3. Implement using the documented pattern, NOT training memory
+
+4. Log to contract:
+   ### Context7 Queries
+   - Swift: MainActor class isolation async methods → Use @MainActor on class, nonisolated for sync-safe methods
 ```
 
 ---
 
-**Remember: Context7 is not optional. It's your primary source of truth.**
+**Remember: Context7 is strongly recommended but not blocking. What IS required: logging your queries to the contract.**
