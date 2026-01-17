@@ -217,6 +217,16 @@ final class AppState: ObservableObject {
       // Also push on phone path for iPhone support
       router.phoneNavigate(to: route)
 
+    case .deepLink(let url):
+      // Parse and route deep link URL
+      guard let route = DeepLinkHandler.route(from: url) else {
+        Self.logger.warning("Deep link could not be routed: \(url)")
+        return
+      }
+      // Navigate on both iPad/macOS and iPhone paths for consistency
+      router.navigate(to: route)
+      router.phoneNavigate(to: route)
+
     case .debugSimulateCrash:
       fatalError("Debug Crash Triggered")
     }

@@ -12,6 +12,16 @@
 				<string>com.googleusercontent.apps.428022180682-9fm6p0e0l3o8j1bnmf78b5uon8lkhntt</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>com.dispatch.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>dispatch</string>
+			</array>
+		</dict>
 	</array>
 </dict>
 </plist>
