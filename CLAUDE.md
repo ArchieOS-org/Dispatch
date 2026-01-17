@@ -69,15 +69,32 @@ xcodebuild test -project Dispatch.xcodeproj -scheme Dispatch \
   -destination 'platform=macOS'
 ```
 
-### Linting
+### Linting & Formatting
 
+**First-time setup** (downloads pinned tool versions):
 ```bash
-swiftlint lint
+./scripts/install_tools.sh
 ```
+
+**Commands matching CI exactly:**
+```bash
+# SwiftLint (Airbnb rules via .swiftlint.airbnb.yml parent config)
+./tools/swiftlint lint --strict Dispatch --config .swiftlint.yml
+
+# SwiftFormat (Airbnb rules via .swiftformat.ci)
+./tools/swiftformat Dispatch --lint --config .swiftformat.ci
+
+# Full local CI mirror (runs all gates - recommended before PR)
+./scripts/ci_mirror.sh
+```
+
+**Tool versions (pinned):**
+- SwiftLint: 0.57.0
+- SwiftFormat: 0.54.6
 
 ### Style Enforcement
 
-See `.claude/rules/style-enforcement.md` for full policy.
+See `.claude/rules/style-enforcement.md` for full policy. Uses Airbnb Swift style guide.
 
 ## MCP Tools
 
