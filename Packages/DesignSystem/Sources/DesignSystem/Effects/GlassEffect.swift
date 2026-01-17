@@ -1,20 +1,21 @@
 //
 //  GlassEffect.swift
-//  Dispatch
+//  DesignSystem
 //
 //  Design System - Glass Effect Primitives
+//  Platform-adaptive glass and material effects.
 //
 
 import SwiftUI
 
 extension View {
 
-  // MARK: Internal
+  // MARK: Public
 
   /// Applies a circular glass effect background on iOS 26+, material fallback on earlier versions.
   /// Explicitly circular - use for round buttons only.
   @ViewBuilder
-  func glassCircleBackground() -> some View {
+  public func glassCircleBackground() -> some View {
     // glassEffect is not available on all CI SDKs.
     // Use material fallback until the API exists in stable toolchains everywhere.
     glassCircleFallback()
@@ -24,7 +25,7 @@ extension View {
   /// Falls back to regularMaterial on earlier versions.
   /// Use .regular (not .interactive) for static sidebars - less visual noise.
   @ViewBuilder
-  func glassSidebarBackground() -> some View {
+  public func glassSidebarBackground() -> some View {
     // glassEffect is not available on all CI SDKs.
     // Use material fallback for now.
     background(.regularMaterial)

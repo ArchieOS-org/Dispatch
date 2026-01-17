@@ -22,6 +22,10 @@ Packages/
 Packages/SharedBackend/.build/
 Packages/SharedBackend/.swiftpm/
 Packages/SharedBackend/Package.resolved
+!Packages/DesignSystem/
+Packages/DesignSystem/.build/
+Packages/DesignSystem/.swiftpm/
+Packages/DesignSystem/Package.resolved
 Package.resolved
 
 # CocoaPods
