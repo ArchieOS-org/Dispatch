@@ -672,7 +672,8 @@ struct ContentView: View {
           searchText: $quickFindText,
           onSelectResult: { result in
             selectSearchResult(result)
-            appState.overlayState = .none
+            // DO NOT set appState.overlayState = .none here
+            // SearchOverlay.finalizeDismiss() handles this via isPresented binding
           }
         )
         .opacity(appState.overlayState.isSearch ? 1 : 0)

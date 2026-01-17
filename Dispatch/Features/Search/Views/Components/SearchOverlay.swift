@@ -72,8 +72,7 @@ struct SearchOverlay: View {
         overlayState.hide(reason: .searchOverlay)
         // Reset dismissing state for fresh presentation
         isDismissing = false
-        // Set focus - view identity is stable so @FocusState binding is registered
-        isFocused = true
+        // Focus handled by .task(id:) ONLY - RTI session needs time to establish
       } else {
         // Belt: ensure reason is cleared when dismissed
         overlayState.show(reason: .searchOverlay)
@@ -81,13 +80,18 @@ struct SearchOverlay: View {
       }
     }
     .task(id: isPresented) {
-      // Fallback: If something interrupted focus, ensure it's set
       guard isPresented else { return }
-      try? await Task.sleep(for: .milliseconds(16))
-      guard !Task.isCancelled, !isDismissing, isPresented else { return }
-      if !isFocused {
-        isFocused = true
+      // Wait for RTIInputSystemSession to establish
+      // iOS Remote Text Input requires:
+      // 1. View layout completion (~16-32ms)
+      // 2. Keyboard infrastructure init
+      // 3. IPC session with keyboard process
+      // 100ms is safe minimum; 16ms is insufficient
+      try? await Task.sleep(for: .milliseconds(100))
+      guard !Task.isCancelled, !isDismissing, isPresented else {
+        return
       }
+      isFocused = true
     }
     // Phase 2: Wait for keyboard to finish hiding before removing from hierarchy
     .onChange(of: overlayState.activeReasons) { _, reasons in
@@ -230,7 +234,10 @@ struct SearchOverlay: View {
 
     // Trigger navigation if we had a pending result
     if let result {
-      DispatchQueue.main.async {
+      // Wait for dismiss animation to complete before triggering navigation
+      // Prevents NavigationAuthority warnings from overlapping state changes
+      // Animation duration is ~200ms; 250ms provides safety margin
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
         onSelectResult(result)
       }
     }
