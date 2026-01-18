@@ -171,7 +171,11 @@ final class RealtimeManager {
         if Task.isCancelled { break }
         await broadcastEventParser.handleBroadcastEvent(event)
         if let container = delegate?.modelContainer {
-          try? container.mainContext.save()
+          do {
+            try container.mainContext.save()
+          } catch {
+            debugLog.error("Failed to save model context after broadcast event", error: error)
+          }
         }
       }
     }

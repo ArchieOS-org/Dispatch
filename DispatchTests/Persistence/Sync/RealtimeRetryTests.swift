@@ -138,6 +138,23 @@ final class ChannelLifecycleManagerRetryTests: XCTestCase {
 
   // MARK: - startListening Behavior in Test Mode
 
+  // NOTE: Test Coverage Limitation
+  //
+  // The actual retry loop logic in `performRetryLoop` is never executed in these tests
+  // because test mode returns early (line 381: `if mode == .test { return }`).
+  // This is intentional for deterministic behavior - the retry loop uses real `Task.sleep`
+  // delays which would make tests slow and flaky.
+  //
+  // Test coverage strategy:
+  // - RetryPolicy unit tests (above) verify the delay calculation logic directly
+  // - State enum tests verify state transitions work correctly
+  // - Integration testing of the full retry loop requires a live Supabase connection
+  //   or a testable delay abstraction (e.g., injectable clock/scheduler)
+  //
+  // Future improvements:
+  // - Consider adding a `DelayProvider` protocol to enable fast-forwarding time in tests
+  // - Add integration test mode that uses real network with test Supabase instance
+
   func test_startListening_skipsInTestMode() async {
     // Given - manager in test mode (set in setUp)
 
@@ -236,9 +253,12 @@ final class SyncCoordinatorRealtimeTests: XCTestCase {
     XCTAssertFalse(syncCoordinator.showRealtimeDegraded)
   }
 
-  func test_showRealtimeDegraded_trueWhenDegraded() {
+  func test_showRealtimeDegraded_trueWhenDegraded() async throws {
     // Given
     syncManager.realtimeConnectionState = .degraded
+
+    // Wait for Combine publisher to propagate (assign(to:) uses RunLoop.main)
+    try await Task.sleep(for: .milliseconds(50))
 
     // Then
     XCTAssertTrue(syncCoordinator.showRealtimeDegraded)
@@ -253,13 +273,19 @@ final class SyncCoordinatorRealtimeTests: XCTestCase {
     XCTAssertEqual(syncCoordinator.realtimeConnectionState, expectedState)
   }
 
-  func test_showRealtimeDegraded_returnsFalseAfterReconnection() {
+  func test_showRealtimeDegraded_returnsFalseAfterReconnection() async throws {
     // Given - start in degraded state
     syncManager.realtimeConnectionState = .degraded
+
+    // Wait for Combine publisher to propagate
+    try await Task.sleep(for: .milliseconds(50))
     XCTAssertTrue(syncCoordinator.showRealtimeDegraded)
 
     // When - reconnection succeeds
     syncManager.realtimeConnectionState = .connected
+
+    // Wait for Combine publisher to propagate
+    try await Task.sleep(for: .milliseconds(50))
 
     // Then - degraded indicator should clear
     XCTAssertFalse(syncCoordinator.showRealtimeDegraded)

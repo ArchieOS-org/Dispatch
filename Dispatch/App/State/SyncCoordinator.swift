@@ -23,6 +23,12 @@ class SyncCoordinator: ObservableObject {
     self.syncManager = syncManager
     self.authManager = authManager
 
+    // Subscribe to realtimeConnectionState changes to update showRealtimeDegraded
+    syncManager.$realtimeConnectionState
+      .map { $0 == .degraded }
+      .receive(on: RunLoop.main)
+      .assign(to: &$showRealtimeDegraded)
+
     startNetworkMonitoring()
   }
 
@@ -34,9 +40,7 @@ class SyncCoordinator: ObservableObject {
 
   /// Indicates whether realtime is in a degraded state (exceeded max retries).
   /// Used to display a subtle indicator in the UI.
-  var showRealtimeDegraded: Bool {
-    syncManager.realtimeConnectionState == .degraded
-  }
+  @Published private(set) var showRealtimeDegraded = false
 
   /// Current realtime connection state for detailed UI display.
   var realtimeConnectionState: RealtimeConnectionState {

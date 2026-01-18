@@ -321,10 +321,9 @@ final class ChannelLifecycleManager {
     // Cancel any existing retry loop
     retryTask?.cancel()
     retryTask = nil
-    // Reset retry state
+    // Reset retry state (connection state will be set by startListening on success)
     retryAttempt = 0
-    updateConnectionState(.connected)
-    // Attempt fresh connection
+    // Attempt fresh connection - startListening will set .connected on success (lines 103-104)
     Task { [weak self] in
       await self?.startListening(useBroadcastRealtime: useBroadcastRealtime)
     }
@@ -354,14 +353,19 @@ final class ChannelLifecycleManager {
   private var retryTask: Task<Void, Never>?
 
   private func handleDTO<DTO: Decodable>(_ action: some HasRecord, _ type: DTO.Type, _ callback: @MainActor (DTO) -> Void) async {
-    if let dto = try? action.decodeRecord(as: type, decoder: PostgrestClient.Configuration.jsonDecoder) {
+    do {
+      let dto = try action.decodeRecord(as: type, decoder: PostgrestClient.Configuration.jsonDecoder)
       await callback(dto)
+    } catch {
+      debugLog.error("Failed to decode \(String(describing: type))", error: error)
     }
   }
 
   private func handleDelete(_ action: DeleteAction, _ callback: @MainActor (UUID) -> Void) async {
     if let id = extractUUID(from: action.oldRecord, key: "id") {
       await callback(id)
+    } else {
+      debugLog.error("Failed to extract UUID from delete event, record: \(action.oldRecord)")
     }
   }
 
@@ -422,27 +426,10 @@ final class ChannelLifecycleManager {
   }
 
   /// Attempt a single reconnection. Returns true on success.
+  /// Simplified to avoid race conditions from subscribe/unsubscribe dance.
   private func attemptReconnection(useBroadcastRealtime: Bool) async -> Bool {
-    let channel = supabase.realtimeV2.channel("dispatch-sync")
-
-    do {
-      try await channel.subscribeWithError()
-      // Success - set up the channel
-      realtimeChannel = channel
-      isListening = true
-      // Note: We don't set up the stream listeners here because startListening
-      // will be called fresh on success. For retry, we just verify connectivity.
-      await channel.unsubscribe()
-      realtimeChannel = nil
-      isListening = false
-      // Now call startListening to set up everything properly
-      await startListening(useBroadcastRealtime: useBroadcastRealtime)
-      return isListening
-    } catch {
-      debugLog.error("Realtime retry subscription failed", error: error)
-      await channel.unsubscribe()
-      return false
-    }
+    await startListening(useBroadcastRealtime: useBroadcastRealtime)
+    return isListening
   }
 
   private func updateConnectionState(_ newState: RealtimeConnectionState) {
