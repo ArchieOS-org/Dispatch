@@ -48,7 +48,7 @@ Check all that apply to determine patchset plan:
 
 ### Proposed Architecture
 
-```
+```text
 EntitySyncHandler (Coordinator, ~300 lines)
     |
     +-- UserSyncHandler (~250 lines)
@@ -133,7 +133,7 @@ struct SyncHandlerDependencies {
 
 #### File Organization
 
-```
+```text
 Dispatch/Foundation/Persistence/Sync/
     EntitySyncHandler.swift         (coordinator, ~300 lines)
     Handlers/
