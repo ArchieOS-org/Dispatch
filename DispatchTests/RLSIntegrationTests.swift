@@ -8,11 +8,13 @@
 //  NOTE: These tests require a live Supabase instance with test users configured.
 //  They are disabled by default - enable with DISPATCH_RLS_TESTS=1 environment variable.
 //
-//  Test User Setup (in Supabase Auth):
-//  - User A: test_user_a@dispatch.test (password: TestPassword123!)
-//  - User B: test_user_b@dispatch.test (password: TestPassword123!)
+//  Test User Setup:
+//  Configure test credentials via environment variables:
+//  - TEST_USER1_EMAIL / TEST_USER1_PASSWORD
+//  - TEST_USER2_EMAIL / TEST_USER2_PASSWORD
 //
 //  The tests use service role to set up data, then authenticate as users to verify RLS.
+//  Tests skip gracefully if credentials are not configured.
 //
 
 // swiftlint:disable force_unwrapping
@@ -27,13 +29,29 @@ import Testing
 
 /// Configuration for RLS integration tests
 private enum RLSTestConfig {
-  /// Test user A credentials
-  static let userAEmail = "test_user_a@dispatch.test"
-  static let userAPassword = "TestPassword123!"
+  /// Test user A credentials (from environment variables)
+  static var userAEmail: String? {
+    ProcessInfo.processInfo.environment["TEST_USER1_EMAIL"]
+  }
 
-  /// Test user B credentials
-  static let userBEmail = "test_user_b@dispatch.test"
-  static let userBPassword = "TestPassword123!"
+  static var userAPassword: String? {
+    ProcessInfo.processInfo.environment["TEST_USER1_PASSWORD"]
+  }
+
+  /// Test user B credentials (from environment variables)
+  static var userBEmail: String? {
+    ProcessInfo.processInfo.environment["TEST_USER2_EMAIL"]
+  }
+
+  static var userBPassword: String? {
+    ProcessInfo.processInfo.environment["TEST_USER2_PASSWORD"]
+  }
+
+  /// Check if all required credentials are configured
+  static var credentialsConfigured: Bool {
+    userAEmail != nil && userAPassword != nil &&
+      userBEmail != nil && userBPassword != nil
+  }
 
   /// Test data prefix for cleanup
   static let testDataPrefix = "RLS_TEST_"
@@ -67,9 +85,24 @@ private enum RLSTestConfig {
   }
 }
 
-/// Check if RLS tests are enabled via environment variable
+/// Check if RLS tests are enabled via environment variable and credentials are configured
 private var rlsTestsEnabled: Bool {
-  ProcessInfo.processInfo.environment["DISPATCH_RLS_TESTS"] == "1"
+  ProcessInfo.processInfo.environment["DISPATCH_RLS_TESTS"] == "1" &&
+    RLSTestConfig.credentialsConfigured
+}
+
+// MARK: - RLSTestError
+
+/// Errors specific to RLS test setup
+private enum RLSTestError: Error, LocalizedError {
+  case credentialsNotConfigured(String)
+
+  var errorDescription: String? {
+    switch self {
+    case .credentialsNotConfigured(let envVars):
+      return "Test credentials not configured. Set environment variables: \(envVars)"
+    }
+  }
 }
 
 // MARK: - RLSTestClient
@@ -81,19 +114,25 @@ final class RLSTestClient {
   // MARK: Internal
 
   /// Get an authenticated client for test user A
+  /// - Throws: If credentials are not configured or authentication fails
   static func clientAsUserA() async throws -> (client: SupabaseClient, userId: UUID) {
-    try await authenticatedClient(
-      email: RLSTestConfig.userAEmail,
-      password: RLSTestConfig.userAPassword
-    )
+    guard let email = RLSTestConfig.userAEmail,
+          let password = RLSTestConfig.userAPassword
+    else {
+      throw RLSTestError.credentialsNotConfigured("TEST_USER1_EMAIL/TEST_USER1_PASSWORD")
+    }
+    return try await authenticatedClient(email: email, password: password)
   }
 
   /// Get an authenticated client for test user B
+  /// - Throws: If credentials are not configured or authentication fails
   static func clientAsUserB() async throws -> (client: SupabaseClient, userId: UUID) {
-    try await authenticatedClient(
-      email: RLSTestConfig.userBEmail,
-      password: RLSTestConfig.userBPassword
-    )
+    guard let email = RLSTestConfig.userBEmail,
+          let password = RLSTestConfig.userBPassword
+    else {
+      throw RLSTestError.credentialsNotConfigured("TEST_USER2_EMAIL/TEST_USER2_PASSWORD")
+    }
+    return try await authenticatedClient(email: email, password: password)
   }
 
   /// Get the shared service-role client (bypasses RLS)
