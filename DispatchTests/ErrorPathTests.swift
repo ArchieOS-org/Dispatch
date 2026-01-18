@@ -201,7 +201,7 @@ final class ErrorPathTests: XCTestCase {
     let error = URLError(.networkConnectionLost)
     let message = userFacingMessage(for: error)
 
-    XCTAssertEqual(message, "No internet connection.", "Connection lost should produce friendly message")
+    XCTAssertEqual(message, "Connection lost. Please check your network.", "Connection lost should produce friendly message")
   }
 
   /// Test that generic URLError produces network error message
@@ -209,7 +209,7 @@ final class ErrorPathTests: XCTestCase {
     let error = URLError(.cannotFindHost)
     let message = userFacingMessage(for: error)
 
-    XCTAssertEqual(message, "Network error.", "Unknown URLError should produce generic network error")
+    XCTAssertEqual(message, "Network error: Unable to reach server.", "Unknown URLError should produce network error with details")
   }
 
   /// Test permission denied (42501) produces correct message
