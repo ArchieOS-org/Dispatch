@@ -9,8 +9,8 @@
 #if os(macOS)
 import SwiftUI
 
-/// A 36pt icon-only button with hover state for the macOS bottom toolbar.
-/// Follows Things 3 styling: icon-only, no labels, subtle hover feedback.
+/// A 36pt icon-only button for the macOS bottom toolbar.
+/// Follows Things 3 styling: icon-only, no labels, tooltip on hover.
 struct ToolbarIconButton: View {
 
   // MARK: Internal
@@ -30,32 +30,19 @@ struct ToolbarIconButton: View {
           height: DS.Spacing.bottomToolbarButtonSize
         )
         .contentShape(Rectangle())
-        .background(
-          RoundedRectangle(cornerRadius: DS.Spacing.radiusSmall)
-            .fill(isHovering ? Color.primary.opacity(0.08) : Color.clear)
-        )
     }
     .buttonStyle(.plain)
-    .onHover { hovering in
-      isHovering = hovering
-    }
-    .animation(
-      reduceMotion ? .none : .easeInOut(duration: 0.15),
-      value: isHovering
-    )
     .accessibilityLabel(accessibilityLabel)
+    .help(accessibilityLabel)
   }
 
   // MARK: Private
 
-  @State private var isHovering = false
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
   private var iconColor: Color {
     if isDestructive {
-      isHovering ? .red : .red.opacity(0.7)
+      .red.opacity(0.7)
     } else {
-      isHovering ? .primary : .primary.opacity(0.6)
+      .primary.opacity(0.6)
     }
   }
 }
