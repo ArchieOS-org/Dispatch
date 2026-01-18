@@ -217,6 +217,25 @@ struct MacContentView: View {
         windowUIState.openSearch(initialText: String(keyPress.characters))
         return .handled
       }
+      // Escape key: pop navigation stack (only when not in overlay)
+      // Menu bar handles this via DispatchCommands, but this provides direct handling
+      // when focus is in the content area
+      .onKeyPress(.escape) {
+        // If overlay is showing, close it instead of popping navigation
+        if case .search = windowUIState.overlayState {
+          windowUIState.closeOverlay()
+          return .handled
+        }
+
+        // Pop navigation if we have a non-empty stack
+        let currentPath = appState.router.paths[appState.router.selectedDestination] ?? []
+        if !currentPath.isEmpty {
+          appState.dispatch(.popNavigation)
+          return .handled
+        }
+
+        return .ignored
+      }
       .onAppear {
         // Auto-focus content area when view appears
         contentAreaFocused = true

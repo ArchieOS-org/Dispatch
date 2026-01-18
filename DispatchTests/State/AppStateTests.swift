@@ -81,6 +81,33 @@ class AppStateTests: XCTestCase {
     }
   }
 
+  // MARK: - Keyboard Navigation Tests (macOS)
+
+  func test_dispatch_popNavigation_popsCurrentDestinationStack() {
+    // Navigate to a route on current destination
+    let route = AppRoute.listing(UUID())
+    appState.dispatch(.navigateTo(route, on: appState.router.selectedDestination))
+
+    let pathBefore = appState.router.paths[appState.router.selectedDestination] ?? []
+    XCTAssertFalse(pathBefore.isEmpty, "Path should have a route before pop")
+
+    // Pop via keyboard navigation command
+    appState.dispatch(.popNavigation)
+
+    let pathAfter = appState.router.paths[appState.router.selectedDestination] ?? []
+    XCTAssertTrue(pathAfter.isEmpty, "Path should be empty after popNavigation")
+  }
+
+  func test_dispatch_popNavigation_noOpWhenPathEmpty() {
+    // Ensure path is empty
+    XCTAssertTrue(appState.router.paths[appState.router.selectedDestination]?.isEmpty ?? true)
+
+    // Pop navigation should be safe (no crash, no-op)
+    appState.dispatch(.popNavigation)
+
+    XCTAssertTrue(appState.router.paths[appState.router.selectedDestination]?.isEmpty ?? true)
+  }
+
   // MARK: Private
 
   private var appState = AppState()
