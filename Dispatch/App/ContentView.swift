@@ -655,13 +655,18 @@ struct ContentView: View {
     #endif
   }
 
+  #if os(iOS) || os(visionOS)
   /// Things 3-style menu page navigation for iPhone with pull-down search.
   /// Uses phonePath (single stack) instead of per-tab paths.
   private var menuNavigation: some View {
     ZStack {
       NavigationStack(path: phonePathBinding) {
         PullToSearchHost {
-          MenuPageView()
+          MenuPageView(
+            stageCounts: stageCounts,
+            tabCounts: phoneTabCounts,
+            overdueCount: sidebarOverdueCount
+          )
         }
         .appDestinations()
       }
@@ -732,6 +737,7 @@ struct ContentView: View {
       }
     }
   }
+  #endif
 
   @ViewBuilder
   private var quickFindOverlay: some View {
@@ -846,6 +852,16 @@ struct ContentView: View {
     let startOfToday = Calendar.current.startOfDay(for: Date())
     return workspaceTasks.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
       + workspaceActivities.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
+  }
+
+  /// Tab counts for MenuPageView (iPhone menu).
+  private var phoneTabCounts: [AppTab: Int] {
+    [
+      .workspace: workspaceTasks.count + workspaceActivities.count,
+      .properties: activeProperties.count,
+      .listings: activeListings.count,
+      .realtors: activeRealtors.count
+    ]
   }
   #endif
 
