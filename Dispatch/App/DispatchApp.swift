@@ -140,7 +140,7 @@ struct DispatchApp: App {
   /// Key points:
   /// - StandardScreen applies .tint() to innerContent (inside ScrollView, away from nav bar)
   /// - AppDestinationsModifier does NOT apply .tint() (destinations use StandardScreen)
-  /// - Views outside StandardScreen (ListingGeneratorView) apply tint to their layouts
+  /// - Views outside StandardScreen apply tint to their own layouts directly
   /// - Auth views (LoginView, OnboardingLoadingView) apply tint at ZStack level (no nav bar)
   ///
   /// This UIKit configuration provides additional defense-in-depth by
