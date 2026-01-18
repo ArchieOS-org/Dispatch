@@ -229,6 +229,10 @@ final class ActivitySyncHandler: EntitySyncHandlerProtocol {
       return
     }
 
+    // Mark as in-flight before upsert to prevent realtime echo from overwriting local state
+    dependencies.conflictResolver.markActivityAssigneesInFlight(Set(pendingAssignees.map { $0.id }))
+    defer { dependencies.conflictResolver.clearActivityAssigneesInFlight() } // Always clear, even on error
+
     // Try batch first for efficiency
     do {
       let dtos = pendingAssignees.map { ActivityAssigneeDTO(model: $0) }
@@ -279,6 +283,20 @@ final class ActivitySyncHandler: EntitySyncHandlerProtocol {
     )
 
     if let existing = try context.fetch(descriptor).first {
+      // Local-first: skip ALL updates if local-authoritative
+      if
+        dependencies.conflictResolver.isLocalAuthoritative(
+          existing,
+          inFlight: dependencies.conflictResolver.isActivityAssigneeInFlight(existing.id)
+        )
+      {
+        debugLog.log(
+          "[SyncDown] Skip update for activity assignee \(dto.id) - local-authoritative (state=\(existing.syncState))",
+          category: .sync
+        )
+        return
+      }
+
       debugLog.log("    UPDATE existing activity assignee: \(dto.id)", category: .sync)
       existing.activityId = dto.activityId
       existing.userId = dto.userId

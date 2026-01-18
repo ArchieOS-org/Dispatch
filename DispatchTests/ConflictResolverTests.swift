@@ -107,6 +107,94 @@ final class ConflictResolverTests: XCTestCase {
     XCTAssertTrue(resolver.inFlightActivityIds.isEmpty)
   }
 
+  // MARK: - Task Assignee In-Flight Tracking
+
+  func test_markTaskAssigneesInFlight_addsIds() {
+    let id1 = UUID()
+    let id2 = UUID()
+
+    resolver.markTaskAssigneesInFlight([id1, id2])
+
+    XCTAssertTrue(resolver.isTaskAssigneeInFlight(id1))
+    XCTAssertTrue(resolver.isTaskAssigneeInFlight(id2))
+  }
+
+  func test_isTaskAssigneeInFlight_returnsFalseForUnmarkedId() {
+    let markedId = UUID()
+    let unmarkedId = UUID()
+
+    resolver.markTaskAssigneesInFlight([markedId])
+
+    XCTAssertFalse(resolver.isTaskAssigneeInFlight(unmarkedId))
+  }
+
+  func test_clearTaskAssigneesInFlight_removesAllTaskAssigneeIds() {
+    let id1 = UUID()
+    let id2 = UUID()
+    resolver.markTaskAssigneesInFlight([id1, id2])
+
+    resolver.clearTaskAssigneesInFlight()
+
+    XCTAssertFalse(resolver.isTaskAssigneeInFlight(id1))
+    XCTAssertFalse(resolver.isTaskAssigneeInFlight(id2))
+    XCTAssertTrue(resolver.inFlightTaskAssigneeIds.isEmpty)
+  }
+
+  func test_markTaskAssigneesInFlight_replacesExistingIds() {
+    let oldId = UUID()
+    let newId = UUID()
+
+    resolver.markTaskAssigneesInFlight([oldId])
+    resolver.markTaskAssigneesInFlight([newId])
+
+    XCTAssertFalse(resolver.isTaskAssigneeInFlight(oldId), "Old ID should be replaced")
+    XCTAssertTrue(resolver.isTaskAssigneeInFlight(newId), "New ID should be present")
+  }
+
+  // MARK: - Activity Assignee In-Flight Tracking
+
+  func test_markActivityAssigneesInFlight_addsIds() {
+    let id1 = UUID()
+    let id2 = UUID()
+
+    resolver.markActivityAssigneesInFlight([id1, id2])
+
+    XCTAssertTrue(resolver.isActivityAssigneeInFlight(id1))
+    XCTAssertTrue(resolver.isActivityAssigneeInFlight(id2))
+  }
+
+  func test_isActivityAssigneeInFlight_returnsFalseForUnmarkedId() {
+    let markedId = UUID()
+    let unmarkedId = UUID()
+
+    resolver.markActivityAssigneesInFlight([markedId])
+
+    XCTAssertFalse(resolver.isActivityAssigneeInFlight(unmarkedId))
+  }
+
+  func test_clearActivityAssigneesInFlight_removesAllActivityAssigneeIds() {
+    let id1 = UUID()
+    let id2 = UUID()
+    resolver.markActivityAssigneesInFlight([id1, id2])
+
+    resolver.clearActivityAssigneesInFlight()
+
+    XCTAssertFalse(resolver.isActivityAssigneeInFlight(id1))
+    XCTAssertFalse(resolver.isActivityAssigneeInFlight(id2))
+    XCTAssertTrue(resolver.inFlightActivityAssigneeIds.isEmpty)
+  }
+
+  func test_markActivityAssigneesInFlight_replacesExistingIds() {
+    let oldId = UUID()
+    let newId = UUID()
+
+    resolver.markActivityAssigneesInFlight([oldId])
+    resolver.markActivityAssigneesInFlight([newId])
+
+    XCTAssertFalse(resolver.isActivityAssigneeInFlight(oldId), "Old ID should be replaced")
+    XCTAssertTrue(resolver.isActivityAssigneeInFlight(newId), "New ID should be present")
+  }
+
   // MARK: - Note In-Flight Tracking
 
   func test_markNotesInFlight_addsIds() {
@@ -146,16 +234,22 @@ final class ConflictResolverTests: XCTestCase {
     let taskId = UUID()
     let activityId = UUID()
     let noteId = UUID()
+    let taskAssigneeId = UUID()
+    let activityAssigneeId = UUID()
 
     resolver.markTasksInFlight([taskId])
     resolver.markActivitiesInFlight([activityId])
     resolver.markNotesInFlight([noteId])
+    resolver.markTaskAssigneesInFlight([taskAssigneeId])
+    resolver.markActivityAssigneesInFlight([activityAssigneeId])
 
     resolver.clearAllInFlight()
 
     XCTAssertTrue(resolver.inFlightTaskIds.isEmpty, "Task IDs should be cleared")
     XCTAssertTrue(resolver.inFlightActivityIds.isEmpty, "Activity IDs should be cleared")
     XCTAssertTrue(resolver.inFlightNoteIds.isEmpty, "Note IDs should be cleared")
+    XCTAssertTrue(resolver.inFlightTaskAssigneeIds.isEmpty, "Task Assignee IDs should be cleared")
+    XCTAssertTrue(resolver.inFlightActivityAssigneeIds.isEmpty, "Activity Assignee IDs should be cleared")
   }
 
   // MARK: - isLocalAuthoritative Tests
@@ -264,6 +358,21 @@ final class ConflictResolverTests: XCTestCase {
     XCTAssertTrue(resolver.isTaskInFlight(sharedId))
     XCTAssertFalse(resolver.isActivityInFlight(sharedId))
     XCTAssertFalse(resolver.isNoteInFlight(sharedId))
+    XCTAssertFalse(resolver.isTaskAssigneeInFlight(sharedId))
+    XCTAssertFalse(resolver.isActivityAssigneeInFlight(sharedId))
+  }
+
+  func test_assigneeTypesAreIsolatedFromEachOther() {
+    let sharedId = UUID()
+
+    resolver.markTaskAssigneesInFlight([sharedId])
+
+    // Task assignee should not appear in activity assignee set
+    XCTAssertTrue(resolver.isTaskAssigneeInFlight(sharedId))
+    XCTAssertFalse(resolver.isActivityAssigneeInFlight(sharedId))
+    XCTAssertFalse(resolver.isTaskInFlight(sharedId))
+    XCTAssertFalse(resolver.isActivityInFlight(sharedId))
+    XCTAssertFalse(resolver.isNoteInFlight(sharedId))
   }
 
   func test_emptySetOperations() {
@@ -271,18 +380,26 @@ final class ConflictResolverTests: XCTestCase {
     resolver.markTasksInFlight([])
     resolver.markActivitiesInFlight([])
     resolver.markNotesInFlight([])
+    resolver.markTaskAssigneesInFlight([])
+    resolver.markActivityAssigneesInFlight([])
 
     XCTAssertTrue(resolver.inFlightTaskIds.isEmpty)
     XCTAssertTrue(resolver.inFlightActivityIds.isEmpty)
     XCTAssertTrue(resolver.inFlightNoteIds.isEmpty)
+    XCTAssertTrue(resolver.inFlightTaskAssigneeIds.isEmpty)
+    XCTAssertTrue(resolver.inFlightActivityAssigneeIds.isEmpty)
 
     // Clearing already-empty sets should work without error
     resolver.clearTasksInFlight()
     resolver.clearActivitiesInFlight()
     resolver.clearNotesInFlight()
+    resolver.clearTaskAssigneesInFlight()
+    resolver.clearActivityAssigneesInFlight()
     resolver.clearAllInFlight()
 
     XCTAssertTrue(resolver.inFlightTaskIds.isEmpty)
+    XCTAssertTrue(resolver.inFlightTaskAssigneeIds.isEmpty)
+    XCTAssertTrue(resolver.inFlightActivityAssigneeIds.isEmpty)
   }
 
   // MARK: Private
