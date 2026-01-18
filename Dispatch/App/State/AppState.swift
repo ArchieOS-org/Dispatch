@@ -179,8 +179,8 @@ final class AppState: ObservableObject {
         sheetState = .addListing
       case .realtors:
         sheetState = .addRealtor
-      case .settings, .listingGenerator:
-        // Settings and Listing Generator don't have a "new item" action
+      case .settings:
+        // Settings doesn't have a "new item" action
         break
       case .workspace, .search:
         // Default to quick entry for workspace or search
@@ -215,13 +215,6 @@ final class AppState: ObservableObject {
     case .filterUnclaimed:
       // lensState.audience = .unclaimed
       break
-
-    case .openListingGenerator(let listing):
-      // Navigate to full-view instead of presenting sheet
-      let route = AppRoute.listingGenerator(listingId: listing?.id)
-      router.navigate(to: route)
-      // Also push on phone path for iPhone support
-      router.phoneNavigate(to: route)
 
     case .deepLink(let url):
       // Parse and route deep link URL

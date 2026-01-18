@@ -113,8 +113,6 @@ struct MacContentView: View {
         .taskList // Settings uses default toolbar
       case .workspace, .search:
         .taskList // Re-use task actions for now
-      case .listingGenerator:
-        .taskList // Description Generator uses default toolbar
       }
 
     case .stage:
@@ -331,7 +329,7 @@ struct MacContentView: View {
     case .properties: activeProperties.count
     case .listings: activeListings.count
     case .realtors: activeRealtors.count
-    case .settings, .search, .listingGenerator: 0
+    case .settings, .search: 0
     }
   }
 
@@ -362,8 +360,6 @@ struct MacContentView: View {
       SettingsView()
     case .search:
       MyWorkspaceView()
-    case .listingGenerator:
-      ListingGeneratorView()
     }
   }
 

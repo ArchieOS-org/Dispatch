@@ -79,11 +79,6 @@ enum AppCommand: Equatable {
   case filterOthers
   case filterUnclaimed
 
-  // MARK: - AI Tools
-
-  /// Open the AI listing generator, optionally with a preselected listing
-  case openListingGenerator(listing: Listing? = nil)
-
   // MARK: - Deep Linking
 
   /// Handle an incoming deep link URL (dispatch://...)

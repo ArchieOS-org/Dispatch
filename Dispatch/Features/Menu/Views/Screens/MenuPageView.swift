@@ -103,7 +103,6 @@ struct MenuPageView: View {
     case .realtors: .realtorsList
     case .settings: .settingsRoot
     case .search: .workspace // Search is overlay, shouldn't be pushed
-    case .listingGenerator: .listingGenerator(listingId: nil)
     }
   }
 

@@ -38,12 +38,6 @@ enum AppRoute: Hashable, Sendable {
   case realtorsList
   case settingsRoot
 
-  /// Feature routes (full-view, not sheet)
-  case listingGenerator(listingId: UUID?)
-
-  /// Listing Generator with a draft pre-loaded
-  case listingGeneratorDraft(draftId: UUID)
-
   /// Profile page (navigable from Settings)
   case profile
 }
@@ -210,5 +204,4 @@ enum AppTab: String, CaseIterable, Equatable {
   case realtors
   case settings
   case search // Search is overlay, not push destination
-  case listingGenerator // AI listing generator tool
 }
