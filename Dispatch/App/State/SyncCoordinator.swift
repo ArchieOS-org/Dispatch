@@ -23,6 +23,12 @@ class SyncCoordinator: ObservableObject {
     self.syncManager = syncManager
     self.authManager = authManager
 
+    // Subscribe to realtimeConnectionState changes to update showRealtimeDegraded
+    syncManager.$realtimeConnectionState
+      .map { $0 == .degraded }
+      .receive(on: RunLoop.main)
+      .assign(to: &$showRealtimeDegraded)
+
     startNetworkMonitoring()
   }
 
@@ -31,6 +37,15 @@ class SyncCoordinator: ObservableObject {
   /// Indicates whether the device is offline (no network connection).
   /// Used to display the offline indicator in the UI.
   @Published private(set) var isOffline = true
+
+  /// Indicates whether realtime is in a degraded state (exceeded max retries).
+  /// Used to display a subtle indicator in the UI.
+  @Published private(set) var showRealtimeDegraded = false
+
+  /// Current realtime connection state for detailed UI display.
+  var realtimeConnectionState: RealtimeConnectionState {
+    syncManager.realtimeConnectionState
+  }
 
   /// Called by AppState or DispatchApp when ScenePhase changes
   func handle(scenePhase: ScenePhase) {
@@ -96,11 +111,13 @@ class SyncCoordinator: ObservableObject {
     if status == .satisfied, lastNetworkStatus != .satisfied {
       // Network restored
       if authManager.isAuthenticated {
-        Self.logger.info("Network restored - requesting sync and retrying failed entities")
+        Self.logger.info("Network restored - requesting sync, retrying failed entities, and reconnecting realtime")
         // Retry failed entities with exponential backoff
         Task {
           await syncManager.retryFailedEntities()
         }
+        // Trigger realtime reconnection (resets retry state and attempts fresh connection)
+        syncManager.attemptRealtimeReconnection()
       }
     }
     lastNetworkStatus = status

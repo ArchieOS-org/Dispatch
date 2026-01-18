@@ -4,10 +4,6 @@
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=uhkrvxlclflgevocqtkh"
     },
-    "context7": {
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"]
-    },
     "xcodebuildmcp": {
       "command": "npx",
       "args": ["-y", "xcodebuildmcp@latest"],

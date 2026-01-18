@@ -25,6 +25,7 @@ protocol RealtimeManagerDelegate: AnyObject {
   func realtimeManager(_ manager: RealtimeManager, didReceiveNoteDTO dto: NoteDTO)
   func realtimeManager(_ manager: RealtimeManager, didReceiveDeleteFor table: BroadcastTable, id: UUID)
   func realtimeManager(_ manager: RealtimeManager, statusDidChange status: SyncStatus)
+  func realtimeManager(_ manager: RealtimeManager, connectionStateDidChange state: RealtimeConnectionState)
   func realtimeManager(_ manager: RealtimeManager, isInFlightTaskId id: UUID) -> Bool
   func realtimeManager(_ manager: RealtimeManager, isInFlightActivityId id: UUID) -> Bool
   func realtimeManager(_ manager: RealtimeManager, isInFlightNoteId id: UUID) -> Bool
@@ -54,6 +55,10 @@ final class RealtimeManager {
   private(set) var broadcastChannel: RealtimeChannelV2?
   var broadcastTask: Task<Void, Never>?
   var startBroadcastListeningTask: Task<Void, Never>?
+
+  /// Current connection state for realtime subscriptions.
+  /// Exposed for UI to observe and display connection status.
+  private(set) var connectionState: RealtimeConnectionState = .connected
 
   var realtimeChannel: RealtimeChannelV2? { channelLifecycleManager.realtimeChannel }
   var isListening: Bool { channelLifecycleManager.isListening }
@@ -105,6 +110,13 @@ final class RealtimeManager {
 
   func extractUUID(from record: [String: AnyJSON], key: String) -> UUID? {
     channelLifecycleManager.extractUUID(from: record, key: key)
+  }
+
+  /// Attempt to reconnect realtime when network is restored.
+  /// Resets retry counts and attempts a fresh connection.
+  func attemptReconnection() {
+    if mode == .preview || mode == .test { return }
+    channelLifecycleManager.resetAndReconnect(useBroadcastRealtime: useBroadcastRealtime)
   }
 
   // MARK: Private
@@ -159,7 +171,11 @@ final class RealtimeManager {
         if Task.isCancelled { break }
         await broadcastEventParser.handleBroadcastEvent(event)
         if let container = delegate?.modelContainer {
-          try? container.mainContext.save()
+          do {
+            try container.mainContext.save()
+          } catch {
+            debugLog.error("Failed to save model context after broadcast event", error: error)
+          }
         }
       }
     }
@@ -171,6 +187,11 @@ final class RealtimeManager {
 extension RealtimeManager: ChannelLifecycleDelegate {
   func lifecycleManager(_: ChannelLifecycleManager, statusDidChange s: SyncStatus) {
     delegate?.realtimeManager(self, statusDidChange: s)
+  }
+
+  func lifecycleManager(_: ChannelLifecycleManager, connectionStateDidChange state: RealtimeConnectionState) {
+    connectionState = state
+    delegate?.realtimeManager(self, connectionStateDidChange: state)
   }
 
   func lifecycleManager(_: ChannelLifecycleManager, didReceiveTaskDTO dto: TaskDTO) {

@@ -89,11 +89,17 @@ struct ContentView: View {
   private var bodyCore: some View {
     ZStack {
       navigationContent
-      if appState.syncCoordinator.isOffline {
-        OfflineIndicator()
-          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-          .padding()
+      // Status indicators in bottom-left corner
+      VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+        if appState.syncCoordinator.showRealtimeDegraded {
+          RealtimeDegradedIndicator()
+        }
+        if appState.syncCoordinator.isOffline {
+          OfflineIndicator()
+        }
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+      .padding()
       #if DEBUG
       if ProcessInfo.processInfo.environment["DISPATCH_PROBE"] == "1" {
         Button { appState.dispatch(.openSearch(initialText: "probe")) } label: {
@@ -105,6 +111,7 @@ struct ContentView: View {
       #endif
     }
     .animation(.easeInOut(duration: 0.3), value: appState.syncCoordinator.isOffline)
+    .animation(.easeInOut(duration: 0.3), value: appState.syncCoordinator.showRealtimeDegraded)
     .onAppear { updateWorkItemActions()
       updateLensState()
     }
