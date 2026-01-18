@@ -157,7 +157,12 @@ private enum StagedListingsPreviewData {
   @MainActor
   static func seededContainer() -> ModelContainer {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: Listing.self, User.self, configurations: config)
+    let container: ModelContainer
+    do {
+      container = try ModelContainer(for: Listing.self, User.self, configurations: config)
+    } catch {
+      fatalError("Failed to create Preview ModelContainer: \(error)")
+    }
     let context = ModelContext(container)
     PreviewDataFactory.seed(context)
 
