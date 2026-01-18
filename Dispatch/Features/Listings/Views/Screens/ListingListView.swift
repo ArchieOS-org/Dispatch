@@ -41,16 +41,6 @@ struct ListingListView: View {
       } message: {
         Text("This note will be permanently deleted.")
       }
-      .alert("Delete Draft?", isPresented: $showDeleteDraftAlert) {
-        Button("Cancel", role: .cancel) {
-          draftToDelete = nil
-        }
-        Button("Delete", role: .destructive) {
-          confirmDeleteDraft()
-        }
-      } message: {
-        Text("This draft will be permanently deleted.")
-      }
     #if os(macOS)
       .alert("Delete Listing?", isPresented: $showDeleteListingAlert) {
         Button("Cancel", role: .cancel) {
@@ -71,9 +61,6 @@ struct ListingListView: View {
 
   @Query(sort: \Listing.address)
   private var allListingsRaw: [Listing]
-
-  @Query(sort: \ListingGeneratorDraft.updatedAt, order: .reverse)
-  private var drafts: [ListingGeneratorDraft]
 
   @Query private var users: [User]
 
@@ -100,9 +87,6 @@ struct ListingListView: View {
   @State private var showDeleteNoteAlert = false
   @State private var noteToDelete: Note?
   @State private var itemForNoteDeletion: WorkItem?
-
-  @State private var showDeleteDraftAlert = false
-  @State private var draftToDelete: ListingGeneratorDraft?
 
   #if os(macOS)
   /// State for keyboard-triggered listing deletion
@@ -179,21 +163,7 @@ struct ListingListView: View {
         }
         #endif
 
-        // Listing Generator Drafts Section (if any exist)
-        if !drafts.isEmpty {
-          DraftsSectionCard(
-            drafts: drafts,
-            onNavigate: { draftId in
-              appState.dispatch(.navigate(.listingGeneratorDraft(draftId: draftId)))
-            },
-            onDelete: { draft in
-              draftToDelete = draft
-              showDeleteDraftAlert = true
-            }
-          )
-        }
-
-        if groupedByOwner.isEmpty, drafts.isEmpty {
+        if groupedByOwner.isEmpty {
           // Caller handles empty state
           ContentUnavailableView {
             Label("No Listings", systemImage: DS.Icons.Entity.listing)
@@ -397,18 +367,6 @@ struct ListingListView: View {
     syncManager.requestSync()
   }
 
-  private func confirmDeleteDraft() {
-    guard let draft = draftToDelete else { return }
-    do {
-      try ListingGeneratorState.deleteDraft(draft, from: modelContext)
-    } catch {
-      // PHASE 3: Handle error appropriately - add proper error logging
-      // swiftlint:disable:next no_direct_standard_out_logs
-      print("Failed to delete draft: \(error)")
-    }
-    draftToDelete = nil
-  }
-
 }
 
 // MARK: - ListingListPreviewContainer
@@ -582,8 +540,7 @@ private struct ListingListPreviewContainer: View {
       Subtask.self,
       StatusChange.self,
       TaskAssignee.self,
-      ActivityAssignee.self,
-      ListingGeneratorDraft.self
+      ActivityAssignee.self
     ], inMemory: true)
     .environmentObject(SyncManager(mode: .preview))
     .environmentObject(LensState())
@@ -592,7 +549,7 @@ private struct ListingListPreviewContainer: View {
 
 #Preview("Listing List - Empty") {
   ListingListView()
-    .modelContainer(for: [Listing.self, User.self, ListingGeneratorDraft.self], inMemory: true)
+    .modelContainer(for: [Listing.self, User.self], inMemory: true)
     .environmentObject(SyncManager(mode: .preview))
     .environmentObject(LensState())
     .environmentObject(AppState(mode: .preview))

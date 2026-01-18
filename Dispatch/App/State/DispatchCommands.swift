@@ -57,14 +57,6 @@ struct DispatchCommands: Commands {
       .keyboardShortcut("3", modifiers: .command)
     }
 
-    // Tools menu - AI and productivity features
-    CommandMenu("Tools") {
-      Button("Generate Listing") {
-        dispatch(.openListingGenerator())
-      }
-      .keyboardShortcut("g", modifiers: .command)
-    }
-
     CommandGroup(after: .toolbar) {
       Button("Sync Now") {
         dispatch(.syncNow)

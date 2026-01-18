@@ -40,6 +40,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
+				Archive,
 			);
 			target = 0A773E752EE4C35000C0189F /* Dispatch */;
 		};

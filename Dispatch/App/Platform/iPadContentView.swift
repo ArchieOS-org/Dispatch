@@ -89,20 +89,6 @@ struct iPadContentView: View {
           }
         }
 
-        // MARK: - Tools section (AI and productivity features)
-        TabSection("Tools") {
-          Tab(
-            "Listing Generator",
-            systemImage: "sparkles",
-            value: SidebarDestination.tab(.listingGenerator)
-          ) {
-            NavigationStack(path: pathBindingProvider(.tab(.listingGenerator))) {
-              ListingGeneratorView()
-                .appDestinations()
-            }
-          }
-        }
-
         // MARK: - Settings section (separate for visual grouping)
         TabSection {
           Tab("Settings", systemImage: "gearshape", value: SidebarDestination.tab(.settings)) {
@@ -230,8 +216,6 @@ struct iPadContentView: View {
       SettingsView()
     case .search:
       MyWorkspaceView() // Search is overlay, shouldn't be a tab destination
-    case .listingGenerator:
-      ListingGeneratorView()
     }
   }
 
@@ -246,7 +230,7 @@ struct iPadContentView: View {
       activeProperties.count
     case .realtors:
       activeRealtors.count
-    case .settings, .search, .listingGenerator:
+    case .settings, .search:
       0
     }
   }
