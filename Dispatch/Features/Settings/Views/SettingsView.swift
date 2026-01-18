@@ -65,7 +65,6 @@ struct SettingsView: View {
 
 enum SettingsSection: String, Identifiable, CaseIterable {
   case listingTypes = "listing_types"
-  case listingDraftDemo = "listing_draft_demo"
 
   // MARK: Internal
 
@@ -76,21 +75,18 @@ enum SettingsSection: String, Identifiable, CaseIterable {
   var title: String {
     switch self {
     case .listingTypes: "Listing Types"
-    case .listingDraftDemo: "Draft Preview"
     }
   }
 
   var icon: String {
     switch self {
     case .listingTypes: DS.Icons.Entity.listing
-    case .listingDraftDemo: "doc.richtext"
     }
   }
 
   var description: String {
     switch self {
     case .listingTypes: "Configure listing types and auto-generated activities"
-    case .listingDraftDemo: "Preview the listing draft editor (demo)"
     }
   }
 }
