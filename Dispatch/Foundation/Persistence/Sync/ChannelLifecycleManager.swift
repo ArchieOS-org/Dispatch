@@ -75,15 +75,26 @@ final class ChannelLifecycleManager {
     let noteUpd = channel.postgresChange(UpdateAction.self, schema: "public", table: "notes")
     let noteDel = channel.postgresChange(DeleteAction.self, schema: "public", table: "notes")
 
-    do {
-      try await channel.subscribeWithError()
-    } catch {
-      debugLog.error("Realtime subscribe failed", error: error)
-      return
-    }
-
+    // Set flags BEFORE await to prevent race condition where stopListening() runs during await
+    // and then gets overwritten after await completes
     realtimeChannel = channel
     isListening = true
+
+    do {
+      try await channel.subscribeWithError()
+      // Check if stop was called during await
+      if !isListening {
+        await channel.unsubscribe()
+        realtimeChannel = nil
+        return
+      }
+    } catch {
+      debugLog.error("Realtime subscribe failed", error: error)
+      realtimeChannel = nil
+      isListening = false
+      await channel.unsubscribe()
+      return
+    }
 
     // Status monitoring
     statusTask = Task { [weak self] in

@@ -58,11 +58,12 @@ final class BroadcastEventParser {
   /// Handles broadcast events - parses payload and routes to delegate
   func handleBroadcastEvent(_ event: JSONObject) async {
     do {
-      // Log raw payload for debugging
+      #if DEBUG
+      // Log raw payload for debugging (DEBUG only to avoid PII exposure in release)
       debugLog.log("", category: .event)
       debugLog.log("RAW BROADCAST EVENT RECEIVED", category: .event)
 
-      // JSONObject is [String: AnyJSON] - use JSONEncoder for AnyJSON (Codable)
+      /// JSONObject is [String: AnyJSON] - use JSONEncoder for AnyJSON (Codable)
       let encoder = JSONEncoder()
       encoder.outputFormatting = .prettyPrinted
       if
@@ -73,6 +74,7 @@ final class BroadcastEventParser {
       } else {
         debugLog.log("Raw payload (keys): \(event.keys.joined(separator: ", "))", category: .event)
       }
+      #endif
 
       // Supabase Realtime wraps our payload in: { event, type, payload, meta }
       // Our BroadcastChangePayload is inside the "payload" field

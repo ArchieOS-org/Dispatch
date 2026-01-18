@@ -73,6 +73,10 @@ final class RealtimeManager {
 
   func stopListening() async {
     await channelLifecycleManager.stopListening()
+    // Cancel in-flight broadcast tasks to prevent race condition where
+    // broadcast subscription completes after stop
+    startBroadcastListeningTask?.cancel()
+    broadcastTask?.cancel()
     if let channel = broadcastChannel { await channel.unsubscribe() }
     broadcastChannel = nil
   }
@@ -138,6 +142,12 @@ final class RealtimeManager {
       }
     } catch {
       debugLog.error("Broadcast subscription failed", error: error)
+      return
+    }
+
+    // Check if task was cancelled during subscription await
+    if Task.isCancelled {
+      await channel.unsubscribe()
       return
     }
 
