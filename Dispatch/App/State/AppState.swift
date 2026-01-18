@@ -203,19 +203,6 @@ final class AppState: ObservableObject {
         syncCoordinator.forceSync()
       }
 
-    case .filterMine:
-      // TODO: Implement AssignmentFilter in LensState (AudienceLens is for Role, not Assignment)
-      // lensState.audience = .me
-      break
-
-    case .filterOthers:
-      // lensState.audience = .everyone
-      break
-
-    case .filterUnclaimed:
-      // lensState.audience = .unclaimed
-      break
-
     case .deepLink(let url):
       // Parse and route deep link URL
       guard let route = DeepLinkHandler.route(from: url) else {

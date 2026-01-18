@@ -24,14 +24,26 @@ struct DispatchCommands: Commands {
   // Since DispatchApp holds the StateObject, we can pass a closure or binding,
   // OR we can make this struct take the actions directly.
 
+  @Environment(\.openWindow) private var openWindow
+
   var dispatch: (AppCommand) -> Void
 
   var body: some Commands {
-    CommandGroup(after: .newItem) {
+    // Replace the default .newItem group to take over Cmd+N from WindowGroup's "New Window"
+    CommandGroup(replacing: .newItem) {
+      // New Window: Cmd+Shift+N (was Cmd+N by default, causing conflict)
+      Button("New Window") {
+        openWindow(id: "main")
+      }
+      .keyboardShortcut("n", modifiers: [.command, .shift])
+
+      // New Item: Cmd+N (our primary action for creating tasks)
       Button("New Item") {
         dispatch(.newItem)
       }
       .keyboardShortcut("n", modifiers: .command)
+
+      Divider()
 
       Button("Search") {
         // Post notification for per-window handling (WindowUIState)
@@ -41,20 +53,10 @@ struct DispatchCommands: Commands {
 
       Divider()
 
-      Button("My Tasks") {
-        dispatch(.filterMine)
+      Button("My Workspace") {
+        dispatch(.userSelectedDestination(.tab(.workspace)))
       }
       .keyboardShortcut("1", modifiers: .command)
-
-      Button("Others' Tasks") {
-        dispatch(.filterOthers)
-      }
-      .keyboardShortcut("2", modifiers: .command)
-
-      Button("Unclaimed") {
-        dispatch(.filterUnclaimed)
-      }
-      .keyboardShortcut("3", modifiers: .command)
     }
 
     CommandGroup(after: .toolbar) {

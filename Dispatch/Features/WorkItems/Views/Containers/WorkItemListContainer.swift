@@ -124,15 +124,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
       handleMoveCommand(direction)
     }
     #endif
-    .onReceive(NotificationCenter.default.publisher(for: .filterMine)) { _ in
-      selectedFilter = .mine
-    }
-    .onReceive(NotificationCenter.default.publisher(for: .filterOthers)) { _ in
-      selectedFilter = .others
-    }
-    .onReceive(NotificationCenter.default.publisher(for: .filterUnclaimed)) { _ in
-      selectedFilter = .unassigned
-    }
     // Memoization: recompute filtered/grouped items when dependencies change
     .onChange(of: items, initial: true) { _, _ in
       updateFilteredItems()
