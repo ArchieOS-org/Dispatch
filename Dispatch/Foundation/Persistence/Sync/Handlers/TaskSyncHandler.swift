@@ -168,6 +168,54 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
     }
   }
 
+  // MARK: - Reconcile Missing Tasks
+
+  /// Reconciles missing tasks - finds tasks on server that don't exist locally and fetches them.
+  /// This is a failsafe to catch tasks that were missed due to watermark issues or other sync gaps.
+  /// Runs on every sync to ensure data consistency.
+  func reconcileMissingTasks(context: ModelContext) async throws -> Int {
+    // 1. Fetch all task IDs from server (lightweight query)
+    let remoteDTOs: [IDOnlyDTO] = try await supabase
+      .from("tasks")
+      .select("id")
+      .execute()
+      .value
+    let remoteIds = Set(remoteDTOs.map { $0.id })
+    debugLog.log("  Remote tasks: \(remoteIds.count)", category: .sync)
+
+    // 2. Get all local task IDs
+    let localDescriptor = FetchDescriptor<TaskItem>()
+    let localTasks = try context.fetch(localDescriptor)
+    let localIds = Set(localTasks.map { $0.id })
+    debugLog.log("  Local tasks: \(localIds.count)", category: .sync)
+
+    // 3. Find IDs that exist on server but not locally
+    let missingIds = remoteIds.subtracting(localIds)
+
+    guard !missingIds.isEmpty else {
+      debugLog.log("  No missing tasks", category: .sync)
+      return 0
+    }
+
+    debugLog.log("  Warning: Found \(missingIds.count) missing tasks, fetching...", category: .sync)
+
+    // 4. Fetch full task data for missing IDs (batch query)
+    let missingDTOs: [TaskDTO] = try await supabase
+      .from("tasks")
+      .select()
+      .in("id", values: Array(missingIds).map { $0.uuidString })
+      .execute()
+      .value
+
+    // 5. Upsert missing tasks
+    for dto in missingDTOs {
+      try upsertTask(dto: dto, context: context, establishListingRelationship: nil)
+    }
+
+    debugLog.log("  Reconciled \(missingDTOs.count) missing tasks", category: .sync)
+    return missingDTOs.count
+  }
+
   // MARK: - Delete Task
 
   func deleteLocalTask(id: UUID, context: ModelContext) throws -> Bool {
@@ -313,5 +361,12 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
         try establishTask(newAssignee, dto.taskId, context)
       }
     }
+  }
+
+  // MARK: Private
+
+  /// Lightweight DTO for fetching only IDs from Supabase
+  private struct IDOnlyDTO: Codable {
+    let id: UUID
   }
 }

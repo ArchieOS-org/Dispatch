@@ -193,6 +193,54 @@ final class ListingSyncHandler: EntitySyncHandlerProtocol {
     return true
   }
 
+  // MARK: - Reconcile Missing Listings
+
+  /// Reconciles missing listings - finds listings on server that don't exist locally and fetches them.
+  /// This is a failsafe to catch listings that were missed due to watermark issues or other sync gaps.
+  /// Runs on every sync to ensure data consistency.
+  func reconcileMissingListings(context: ModelContext) async throws -> Int {
+    // 1. Fetch all listing IDs from server (lightweight query)
+    let remoteDTOs: [IDOnlyDTO] = try await supabase
+      .from("listings")
+      .select("id")
+      .execute()
+      .value
+    let remoteIds = Set(remoteDTOs.map { $0.id })
+    debugLog.log("  Remote listings: \(remoteIds.count)", category: .sync)
+
+    // 2. Get all local listing IDs
+    let localDescriptor = FetchDescriptor<Listing>()
+    let localListings = try context.fetch(localDescriptor)
+    let localIds = Set(localListings.map { $0.id })
+    debugLog.log("  Local listings: \(localIds.count)", category: .sync)
+
+    // 3. Find IDs that exist on server but not locally
+    let missingIds = remoteIds.subtracting(localIds)
+
+    guard !missingIds.isEmpty else {
+      debugLog.log("  No missing listings", category: .sync)
+      return 0
+    }
+
+    debugLog.log("  Warning: Found \(missingIds.count) missing listings, fetching...", category: .sync)
+
+    // 4. Fetch full listing data for missing IDs (batch query)
+    let missingDTOs: [ListingDTO] = try await supabase
+      .from("listings")
+      .select()
+      .in("id", values: Array(missingIds).map { $0.uuidString })
+      .execute()
+      .value
+
+    // 5. Upsert missing listings
+    for dto in missingDTOs {
+      try upsertListing(dto: dto, context: context, establishOwnerRelationship: nil)
+    }
+
+    debugLog.log("  Reconciled \(missingDTOs.count) missing listings", category: .sync)
+    return missingDTOs.count
+  }
+
   // MARK: - SyncDown ListingTypes
 
   func syncDownListingTypes(context: ModelContext) async throws {
@@ -307,5 +355,12 @@ final class ListingSyncHandler: EntitySyncHandlerProtocol {
         }
       }
     }
+  }
+
+  // MARK: Private
+
+  /// Lightweight DTO for fetching only IDs from Supabase
+  private struct IDOnlyDTO: Codable {
+    let id: UUID
   }
 }

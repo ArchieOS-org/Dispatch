@@ -201,6 +201,16 @@ struct SyncTestHarness: View {
           .tint(.gray)
         }
 
+        HStack(spacing: 12) {
+          Button(action: { Task { await resetFailedEntities() } }) {
+            Label("Reset Failed", systemImage: "arrow.counterclockwise.circle")
+              .frame(maxWidth: .infinity)
+          }
+          .buttonStyle(.bordered)
+          .tint(.red)
+          .disabled(isLoading || syncManager.isSyncing)
+        }
+
         // Data Creation
         HStack(spacing: 12) {
           Button(action: { createTestTask() }) {
@@ -435,6 +445,13 @@ struct SyncTestHarness: View {
     log("Resetting sync state (lastSyncTime = nil)...")
     syncManager.resetLastSyncTime()
     log("Next sync will run full reconciliation")
+  }
+
+  private func resetFailedEntities() async {
+    log("Resetting all failed entities (retryCount = 0, syncState = pending)...")
+    await syncManager.resetFailedEntities()
+    log("Failed entities reset and sync triggered")
+    await refreshCounts()
   }
 
   private func createTestTask() {

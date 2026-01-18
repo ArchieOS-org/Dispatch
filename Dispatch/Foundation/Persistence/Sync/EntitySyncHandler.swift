@@ -132,6 +132,18 @@ final class EntitySyncHandler {
     try await noteSyncHandler.reconcileMissingNotes(context: context)
   }
 
+  func reconcileMissingListings(context: ModelContext) async throws -> Int {
+    try await listingSyncHandler.reconcileMissingListings(context: context)
+  }
+
+  func reconcileMissingTasks(context: ModelContext) async throws -> Int {
+    try await taskSyncHandler.reconcileMissingTasks(context: context)
+  }
+
+  func reconcileMissingActivities(context: ModelContext) async throws -> Int {
+    try await activitySyncHandler.reconcileMissingActivities(context: context)
+  }
+
   // MARK: - SyncUp Operations
 
   func syncUpUsers(context: ModelContext) async throws {
