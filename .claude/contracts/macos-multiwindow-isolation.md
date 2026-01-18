@@ -84,7 +84,7 @@
 ### Jobs Critique (written by jobs-critic agent)
 
 **JOBS CRITIQUE**: SHIP YES
-**Reviewed**: 2026-01-16 14:30
+**Reviewed**: 2026-01-18 (updated)
 
 #### Checklist
 - [x] Ruthless simplicity - nothing can be removed without losing meaning
@@ -93,17 +93,25 @@
 - [x] No clutter - whitespace is a feature
 - [x] Native feel - follows platform conventions
 
-#### Verdict Notes
-The Duplicate Window button implementation is clean, minimal, and follows macOS conventions:
+#### Verdict Notes (Updated for Bottom Toolbar Relocation)
 
-1. **Icon choice is appropriate**: "plus.rectangle.on.rectangle" clearly communicates "add another window" - matches macOS system patterns
-2. **Label is clear**: "New Window" is unambiguous
-3. **Tooltip is helpful**: "Open New Window" provides context without being verbose
-4. **Placement is correct**: `.navigation` puts it in the leading toolbar area, appropriate for window-level actions
-5. **Edge case handled**: `.disabled(!supportsMultipleWindows)` gracefully handles environments that don't support multiple windows
-6. **Code organization is clean**: Separate `DuplicateWindowButton` struct keeps the code readable
+The Duplicate Window button has been moved from the top toolbar to the bottom toolbar. This change improves the design:
 
-Would Apple ship this? Yes - this matches the pattern seen in Finder, Safari, and other Apple apps for window management.
+1. **Icon choice is appropriate**: "square.on.square" is standard macOS iconography for window duplication
+2. **Placement improved**: Moving from top toolbar (with visible background) to bottom toolbar (icon-only) eliminates visual inconsistency
+3. **Follows Things 3 pattern**: Secondary utility actions (search, duplicate window) grouped on the right side of bottom toolbar
+4. **Uses ToolbarIconButton**: Consistent with other bottom toolbar buttons - 36pt size, .buttonStyle(.plain), no background, hover states
+5. **Tooltip preserved**: .help() provides "Opens a new window with independent sidebar and search state"
+6. **Keyboard shortcut intact**: Cmd+Shift+N still works
+7. **Disabled state handled**: supportsMultipleWindows check preserved
+
+**Design System Compliance**:
+- Uses DS.Spacing.bottomToolbarButtonSize (36pt)
+- Uses DS.Spacing.bottomToolbarIconSize (18pt)
+- Uses DS.Spacing.bottomToolbarPadding (12pt)
+- Uses DS.Spacing.bottomToolbarHeight (44pt)
+
+Would Apple ship this? Yes - Things 3 uses this exact pattern for utility toolbar actions.
 
 ---
 

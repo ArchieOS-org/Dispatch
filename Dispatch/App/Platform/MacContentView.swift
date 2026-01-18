@@ -73,6 +73,10 @@ struct MacContentView: View {
   /// Per-window UI state (sidebar, overlays) - each window gets its own instance
   @Environment(WindowUIState.self) private var windowUIState
 
+  /// Window management for duplicate window action
+  @Environment(\.openWindow) private var openWindow
+  @Environment(\.supportsMultipleWindows) private var supportsMultipleWindows
+
   /// Tracks whether this window is the key (focused) window
   @Environment(\.controlActiveState) private var controlActiveState
 
@@ -196,7 +200,11 @@ struct MacContentView: View {
           },
           onSearch: {
             windowUIState.openSearch(initialText: nil)
-          }
+          },
+          onDuplicateWindow: {
+            openWindow(id: "main")
+          },
+          duplicateWindowDisabled: !supportsMultipleWindows
         )
       }
       // Type Travel: alphanumeric keys open search with typed character

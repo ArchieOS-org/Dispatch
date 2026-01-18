@@ -49,6 +49,10 @@ struct BottomToolbar: View {
   /// Detail context actions
   var onDelete: (() -> Void)?
 
+  /// Window action (available in both contexts)
+  var onDuplicateWindow: (() -> Void)?
+  var duplicateWindowDisabled = false
+
   var body: some View {
     HStack(spacing: 0) {
       if context.isList {
@@ -92,8 +96,19 @@ struct BottomToolbar: View {
 
     Spacer()
 
-    // Right group
+    // Right group (duplicate window, then search rightmost)
     HStack(spacing: 0) {
+      if let onDuplicateWindow {
+        ToolbarIconButton(
+          icon: "square.on.square",
+          action: onDuplicateWindow,
+          accessibilityLabel: "New Window"
+        )
+        .help("Opens a new window with independent sidebar and search state")
+        .disabled(duplicateWindowDisabled)
+        .keyboardShortcut("n", modifiers: [.command, .shift])
+      }
+
       if let onSearch {
         ToolbarIconButton(
           icon: "magnifyingglass",
@@ -110,7 +125,7 @@ struct BottomToolbar: View {
     // Left spacer for balance
     Spacer()
 
-    // Right: Delete button
+    // Right: Delete button and duplicate window
     HStack(spacing: 0) {
       if let onDelete {
         ToolbarIconButton(
@@ -119,6 +134,17 @@ struct BottomToolbar: View {
           accessibilityLabel: "Delete",
           isDestructive: true
         )
+      }
+
+      if let onDuplicateWindow {
+        ToolbarIconButton(
+          icon: "square.on.square",
+          action: onDuplicateWindow,
+          accessibilityLabel: "New Window"
+        )
+        .help("Opens a new window with independent sidebar and search state")
+        .disabled(duplicateWindowDisabled)
+        .keyboardShortcut("n", modifiers: [.command, .shift])
       }
     }
     .padding(.trailing, DS.Spacing.bottomToolbarPadding)
