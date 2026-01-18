@@ -102,8 +102,6 @@ struct AppDestinationsModifier: ViewModifier {
     switch section {
     case .listingTypes:
       ListingTypeListView()
-    case .listingDraftDemo:
-      ListingDraftDemoView()
     }
   }
 }
