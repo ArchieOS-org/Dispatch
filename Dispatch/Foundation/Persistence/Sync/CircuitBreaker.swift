@@ -75,9 +75,13 @@ final class CircuitBreaker: ObservableObject {
   // MARK: Lifecycle
 
   init(
-    failureThreshold: Int = 5,
-    initialCooldown: TimeInterval = 30,
-    maxCooldown: TimeInterval = 300,
+    // These literal defaults match CircuitBreakerPolicy constants.
+    // We can't reference the constants directly because Swift 6 actor isolation
+    // prohibits non-isolated default arguments in @MainActor init.
+    // If CircuitBreakerPolicy values change, update these to match.
+    failureThreshold: Int = 5, // CircuitBreakerPolicy.failureThreshold
+    initialCooldown: TimeInterval = 30, // CircuitBreakerPolicy.initialCooldown
+    maxCooldown: TimeInterval = 300, // CircuitBreakerPolicy.maxCooldown
     dateProvider: @escaping () -> Date = { Date() }
   ) {
     self.failureThreshold = failureThreshold
