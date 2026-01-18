@@ -62,9 +62,10 @@ final class WindowUIState {
     min(DS.Spacing.sidebarMaxWidth, max(DS.Spacing.sidebarMinWidth, newWidth))
   }
 
-  /// Clamps width during drag (0...max) - no min enforcement to allow smooth drag from collapsed
+  /// Clamps width during drag to minWidth...maxWidth to prevent negative widths and smooshing.
+  /// Collapse is handled at drag end based on threshold, not by allowing sub-min widths.
   func clampedWidthDuringDrag(_ newWidth: CGFloat) -> CGFloat {
-    min(DS.Spacing.sidebarMaxWidth, max(0, newWidth))
+    min(DS.Spacing.sidebarMaxWidth, max(DS.Spacing.sidebarMinWidth, newWidth))
   }
 
   /// Toggle sidebar visibility (animation handled at view level)
