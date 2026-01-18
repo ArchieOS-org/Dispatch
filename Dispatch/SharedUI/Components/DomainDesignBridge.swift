@@ -61,6 +61,7 @@ extension SyncStatus {
     case .syncing: DS.Colors.Sync.syncing
     case .ok: DS.Colors.Sync.ok
     case .error: DS.Colors.Sync.error
+    case .circuitBreakerOpen: .orange
     }
   }
 
@@ -70,6 +71,7 @@ extension SyncStatus {
     case .syncing: DS.Icons.Sync.syncing
     case .ok: DS.Icons.Sync.ok
     case .error: DS.Icons.Sync.error
+    case .circuitBreakerOpen: "pause.circle.fill"
     }
   }
 }

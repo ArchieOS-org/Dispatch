@@ -29,33 +29,6 @@ import Testing
 
 /// Configuration for RLS integration tests
 private enum RLSTestConfig {
-  /// Test user A credentials (from environment variables)
-  static var userAEmail: String? {
-    ProcessInfo.processInfo.environment["TEST_USER1_EMAIL"]
-  }
-
-  static var userAPassword: String? {
-    ProcessInfo.processInfo.environment["TEST_USER1_PASSWORD"]
-  }
-
-  /// Test user B credentials (from environment variables)
-  static var userBEmail: String? {
-    ProcessInfo.processInfo.environment["TEST_USER2_EMAIL"]
-  }
-
-  static var userBPassword: String? {
-    ProcessInfo.processInfo.environment["TEST_USER2_PASSWORD"]
-  }
-
-  /// Check if all required credentials are configured
-  static var credentialsConfigured: Bool {
-    userAEmail != nil && userAPassword != nil &&
-      userBEmail != nil && userBPassword != nil
-  }
-
-  /// Test data prefix for cleanup
-  static let testDataPrefix = "RLS_TEST_"
-
   /// Deterministic UUIDs for test data (pattern: 00000000-0000-0000-XXXX-YYYYYYYYYYYY)
   /// XXXX = entity type, YYYYYYYYYYYY = sequential index
   enum TestUUIDs {
@@ -80,9 +53,37 @@ private enum RLSTestConfig {
     static let taskA = UUID(uuidString: "00000000-0000-0000-0002-000000000001")!
     static let taskB = UUID(uuidString: "00000000-0000-0000-0002-000000000002")!
 
-    // Task Assignees (type = 0008)
+    /// Task Assignees (type = 0008)
     static let taskAssigneeA = UUID(uuidString: "00000000-0000-0000-0008-000000000001")!
   }
+
+  /// Test data prefix for cleanup
+  static let testDataPrefix = "RLS_TEST_"
+
+  /// Test user A credentials (from environment variables)
+  static var userAEmail: String? {
+    ProcessInfo.processInfo.environment["TEST_USER1_EMAIL"]
+  }
+
+  static var userAPassword: String? {
+    ProcessInfo.processInfo.environment["TEST_USER1_PASSWORD"]
+  }
+
+  /// Test user B credentials (from environment variables)
+  static var userBEmail: String? {
+    ProcessInfo.processInfo.environment["TEST_USER2_EMAIL"]
+  }
+
+  static var userBPassword: String? {
+    ProcessInfo.processInfo.environment["TEST_USER2_PASSWORD"]
+  }
+
+  /// Check if all required credentials are configured
+  static var credentialsConfigured: Bool {
+    userAEmail != nil && userAPassword != nil &&
+      userBEmail != nil && userBPassword != nil
+  }
+
 }
 
 /// Check if RLS tests are enabled via environment variable and credentials are configured
@@ -100,7 +101,7 @@ private enum RLSTestError: Error, LocalizedError {
   var errorDescription: String? {
     switch self {
     case .credentialsNotConfigured(let envVars):
-      return "Test credentials not configured. Set environment variables: \(envVars)"
+      "Test credentials not configured. Set environment variables: \(envVars)"
     }
   }
 }
@@ -113,11 +114,17 @@ final class RLSTestClient {
 
   // MARK: Internal
 
+  /// Get the shared service-role client (bypasses RLS)
+  static var serviceClient: SupabaseClient {
+    supabase
+  }
+
   /// Get an authenticated client for test user A
   /// - Throws: If credentials are not configured or authentication fails
   static func clientAsUserA() async throws -> (client: SupabaseClient, userId: UUID) {
-    guard let email = RLSTestConfig.userAEmail,
-          let password = RLSTestConfig.userAPassword
+    guard
+      let email = RLSTestConfig.userAEmail,
+      let password = RLSTestConfig.userAPassword
     else {
       throw RLSTestError.credentialsNotConfigured("TEST_USER1_EMAIL/TEST_USER1_PASSWORD")
     }
@@ -127,17 +134,13 @@ final class RLSTestClient {
   /// Get an authenticated client for test user B
   /// - Throws: If credentials are not configured or authentication fails
   static func clientAsUserB() async throws -> (client: SupabaseClient, userId: UUID) {
-    guard let email = RLSTestConfig.userBEmail,
-          let password = RLSTestConfig.userBPassword
+    guard
+      let email = RLSTestConfig.userBEmail,
+      let password = RLSTestConfig.userBPassword
     else {
       throw RLSTestError.credentialsNotConfigured("TEST_USER2_EMAIL/TEST_USER2_PASSWORD")
     }
     return try await authenticatedClient(email: email, password: password)
-  }
-
-  /// Get the shared service-role client (bypasses RLS)
-  static var serviceClient: SupabaseClient {
-    supabase
   }
 
   /// Clean up test data using deterministic UUIDs
@@ -237,7 +240,7 @@ struct NotesRLSTests {
         "listing_type": "sale",
         "status": "active",
         "owned_by": userIdA.uuidString,
-        "created_via": "dispatch",
+        "created_via": "dispatch"
       ])
       .execute()
 
@@ -250,7 +253,7 @@ struct NotesRLSTests {
         "content": "RLS_TEST_Note for User A's listing",
         "created_by": userIdA.uuidString,
         "parent_type": "listing",
-        "parent_id": listingId.uuidString,
+        "parent_id": listingId.uuidString
       ])
       .execute()
 
@@ -283,7 +286,7 @@ struct NotesRLSTests {
         "listing_type": "sale",
         "status": "active",
         "owned_by": userIdA.uuidString,
-        "created_via": "dispatch",
+        "created_via": "dispatch"
       ])
       .execute()
 
@@ -296,7 +299,7 @@ struct NotesRLSTests {
         "content": "RLS_TEST_Private note on User A's listing",
         "created_by": userIdA.uuidString,
         "parent_type": "listing",
-        "parent_id": listingId.uuidString,
+        "parent_id": listingId.uuidString
       ])
       .execute()
 
@@ -326,7 +329,7 @@ struct NotesRLSTests {
         "listing_type": "sale",
         "status": "active",
         "owned_by": userIdA.uuidString,
-        "created_via": "dispatch",
+        "created_via": "dispatch"
       ])
       .execute()
 
@@ -342,7 +345,7 @@ struct NotesRLSTests {
         "parent_type": "listing",
         "parent_id": listingId.uuidString,
         "deleted_at": ISO8601DateFormatter().string(from: oldDeletedAt),
-        "deleted_by": userIdA.uuidString,
+        "deleted_by": userIdA.uuidString
       ])
       .execute()
 
@@ -376,7 +379,7 @@ struct ListingTypesRLSTests {
       .upsert([
         "id": listingTypeId.uuidString,
         "name": "RLS_TEST_User A's Custom Type",
-        "owned_by": userIdA.uuidString,
+        "owned_by": userIdA.uuidString
       ])
       .execute()
 
@@ -408,7 +411,7 @@ struct ListingTypesRLSTests {
       .upsert([
         "id": listingTypeId.uuidString,
         "name": "RLS_TEST_User A's Private Type",
-        "owned_by": userIdA.uuidString,
+        "owned_by": userIdA.uuidString
       ])
       .execute()
 
@@ -444,7 +447,7 @@ struct PropertiesRLSTests {
       .upsert([
         "id": propertyId.uuidString,
         "address": "RLS_TEST_100 Property Lane",
-        "owned_by": userIdA.uuidString,
+        "owned_by": userIdA.uuidString
       ])
       .execute()
 
@@ -475,7 +478,7 @@ struct PropertiesRLSTests {
       .upsert([
         "id": propertyId.uuidString,
         "address": "RLS_TEST_200 Owned by A",
-        "owned_by": userIdA.uuidString,
+        "owned_by": userIdA.uuidString
       ])
       .execute()
 
@@ -532,7 +535,7 @@ struct TaskAssigneesRLSTests {
         "title": "RLS_TEST_Task by User A",
         "status": "open",
         "declared_by": userIdA.uuidString,
-        "created_via": "dispatch",
+        "created_via": "dispatch"
       ])
       .execute()
 
@@ -543,7 +546,7 @@ struct TaskAssigneesRLSTests {
       .upsert([
         "id": assigneeId.uuidString,
         "task_id": taskId.uuidString,
-        "user_id": userIdB.uuidString,
+        "user_id": userIdB.uuidString
       ])
       .execute()
 
@@ -578,7 +581,7 @@ struct TaskAssigneesRLSTests {
         "title": "RLS_TEST_Task with assignment",
         "status": "open",
         "declared_by": userIdA.uuidString,
-        "created_via": "dispatch",
+        "created_via": "dispatch"
       ])
       .execute()
 
@@ -589,7 +592,7 @@ struct TaskAssigneesRLSTests {
       .upsert([
         "id": assigneeId.uuidString,
         "task_id": taskId.uuidString,
-        "user_id": userIdB.uuidString,
+        "user_id": userIdB.uuidString
       ])
       .execute()
 
@@ -631,7 +634,7 @@ struct UnauthenticatedAccessTests {
           "content": "RLS_TEST_Anon trying to insert",
           "created_by": UUID().uuidString,
           "parent_type": "listing",
-          "parent_id": UUID().uuidString,
+          "parent_id": UUID().uuidString
         ])
         .execute()
     } catch {
@@ -657,7 +660,7 @@ struct UnauthenticatedAccessTests {
       .upsert([
         "id": listingTypeId.uuidString,
         "name": "RLS_TEST_Should not be visible to anon",
-        "owned_by": userIdA.uuidString,
+        "owned_by": userIdA.uuidString
       ])
       .execute()
 

@@ -48,6 +48,7 @@ final class SyncManager: ObservableObject {
     realtimeManager = RealtimeManager(mode: mode)
     syncQueue = SyncQueue(mode: mode)
     retryCoordinator = RetryCoordinator(mode: mode)
+    circuitBreaker = CircuitBreaker()
 
     // Only load expensive state in live mode
     if mode == .live {
@@ -74,6 +75,11 @@ final class SyncManager: ObservableObject {
     // Configure sync queue callback
     syncQueue.onSyncRequested = { [weak self] in
       await self?.sync()
+    }
+
+    // Configure circuit breaker state change callback
+    circuitBreaker.onStateChange = { [weak self] state in
+      self?.handleCircuitBreakerStateChange(state)
     }
 
     debugLog.log("SyncManager singleton initialized (mode: \(mode))", category: .sync)
@@ -126,6 +132,9 @@ final class SyncManager: ObservableObject {
 
   /// Sync queue for coalescing sync requests
   private(set) var syncQueue: SyncQueue
+
+  /// Circuit breaker for sync retries
+  private(set) var circuitBreaker: CircuitBreaker
 
   #if DEBUG
   /// For verifying shutdown logic without side effects
@@ -525,6 +534,15 @@ final class SyncManager: ObservableObject {
       return
     }
 
+    // Check circuit breaker before attempting sync
+    guard circuitBreaker.shouldAllowSync() else {
+      debugLog.log("SKIPPING sync - circuit breaker is open", category: .sync)
+      if let remaining = circuitBreaker.remainingCooldown {
+        syncStatus = .circuitBreakerOpen(remainingSeconds: Int(remaining))
+      }
+      return
+    }
+
     // Coalescing loop pattern: queue sync requests instead of cancelling in-flight requests
     // If already syncing, set flag and return - the active sync will run another pass when done
     if isSyncing {
@@ -570,6 +588,8 @@ final class SyncManager: ObservableObject {
         lastSyncTime = syncTimestamp
         // Reset all retry counts on successful sync
         resetAllRetryCounts()
+        // Record success with circuit breaker (resets failure count)
+        circuitBreaker.recordSuccess()
         // Only update status if this is still the current sync run
         if syncRunId == runId {
           syncStatus = .ok(Date())
@@ -581,9 +601,16 @@ final class SyncManager: ObservableObject {
         debugLog.endTiming("Full Sync")
         debugLog.error("========== sync() FAILED ==========", error: error)
         syncError = error
+        // Record failure with circuit breaker (may trip circuit)
+        circuitBreaker.recordFailure()
         // Only update status if this is still the current sync run
         if syncRunId == runId {
-          syncStatus = .error
+          // Check if circuit breaker just tripped
+          if case .open = circuitBreaker.state, let remaining = circuitBreaker.remainingCooldown {
+            syncStatus = .circuitBreakerOpen(remainingSeconds: Int(remaining))
+          } else {
+            syncStatus = .error
+          }
           lastSyncErrorMessage = userFacingMessage(for: error)
         }
       }
@@ -651,6 +678,28 @@ final class SyncManager: ObservableObject {
 
   private var isAuthenticated: Bool {
     currentUserID != nil
+  }
+
+  /// Handle circuit breaker state changes to update SyncStatus for UI notification.
+  private func handleCircuitBreakerStateChange(_ state: CircuitBreakerState) {
+    switch state {
+    case .open(_, let cooldownDuration):
+      // Circuit just tripped - notify user
+      syncStatus = .circuitBreakerOpen(remainingSeconds: Int(cooldownDuration))
+      debugLog.log(
+        "SyncManager: Circuit breaker tripped - sync paused for \(Int(cooldownDuration))s",
+        category: .sync
+      )
+
+    case .halfOpen:
+      // Transitioning to half-open - ready to probe
+      debugLog.log("SyncManager: Circuit breaker half-open - will probe on next sync", category: .sync)
+
+    case .closed:
+      // Circuit recovered - resume normal operation
+      debugLog.log("SyncManager: Circuit breaker closed - sync resumed", category: .sync)
+      // Don't change syncStatus here - let the next sync set the appropriate status
+    }
   }
 
   private func fetchCurrentUser(id: UUID) {

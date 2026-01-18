@@ -14,4 +14,5 @@ enum SyncStatus: Equatable {
   case syncing // active sync in progress
   case ok(Date) // last successful sync time
   case error // some error exists; details in lastSyncErrorMessage
+  case circuitBreakerOpen(remainingSeconds: Int) // circuit breaker tripped; sync paused
 }

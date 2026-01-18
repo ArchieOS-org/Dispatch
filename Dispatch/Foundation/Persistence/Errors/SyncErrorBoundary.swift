@@ -41,12 +41,22 @@ struct SyncErrorBoundary: ViewModifier {
       } message: { message in
         Text(message)
       }
+      .alert(
+        "Sync Paused",
+        isPresented: $showCircuitBreakerAlert
+      ) {
+        Button("OK", role: .cancel) { }
+      } message: {
+        Text(circuitBreakerMessage)
+      }
   }
 
   // MARK: Private
 
   @State private var showErrorAlert = false
+  @State private var showCircuitBreakerAlert = false
   @State private var lastProcessedError: String?
+  @State private var circuitBreakerRemainingSeconds: Int = 0
 
   @ViewBuilder
   private var alertActions: some View {
@@ -78,13 +88,36 @@ struct SyncErrorBoundary: ViewModifier {
     return SyncError.from(error).isRetryable
   }
 
+  private var circuitBreakerMessage: String {
+    if circuitBreakerRemainingSeconds > 60 {
+      let minutes = circuitBreakerRemainingSeconds / 60
+      return "Sync has been paused due to repeated failures. Will retry in \(minutes) minute\(minutes == 1 ? "" : "s")."
+    } else {
+      return "Sync has been paused due to repeated failures. Will retry in \(circuitBreakerRemainingSeconds) seconds."
+    }
+  }
+
   private func handleStatusChange(_ newStatus: SyncStatus) {
-    if case .error = newStatus {
+    switch newStatus {
+    case .error:
       // Only show alert if this is a new error (avoid duplicate alerts)
       let currentError = syncManager.lastSyncErrorMessage
       if currentError != lastProcessedError {
         lastProcessedError = currentError
         showErrorAlert = true
+      }
+
+    case .circuitBreakerOpen(let remainingSeconds):
+      // Show circuit breaker alert (only once per trip)
+      if !showCircuitBreakerAlert {
+        circuitBreakerRemainingSeconds = remainingSeconds
+        showCircuitBreakerAlert = true
+      }
+
+    case .idle, .syncing, .ok:
+      // Reset circuit breaker alert state when status clears
+      if showCircuitBreakerAlert {
+        showCircuitBreakerAlert = false
       }
     }
   }
@@ -150,6 +183,8 @@ private struct SyncErrorBoundaryPreview: View {
       "OK"
     case .error:
       "Error"
+    case .circuitBreakerOpen(let seconds):
+      "Paused (\(seconds)s)"
     }
   }
 }

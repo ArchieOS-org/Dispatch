@@ -81,6 +81,7 @@ struct SyncTestHarness: View {
     case .syncing: (.blue, "SYNCING")
     case .ok: (.green, "OK")
     case .error: (.red, "ERROR")
+    case .circuitBreakerOpen(let seconds): (.orange, "PAUSED (\(seconds)s)")
     }
   }
 
