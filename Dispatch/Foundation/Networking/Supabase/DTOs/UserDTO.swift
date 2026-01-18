@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - UserDTO
 
-struct UserDTO: Codable, Identifiable {
+struct UserDTO: Codable, Identifiable, Sendable {
   enum CodingKeys: String, CodingKey {
     case id
     case name

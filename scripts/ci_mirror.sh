@@ -311,6 +311,11 @@ lint_swiftformat() {
     "$SWIFTFORMAT" "$WORKSPACE/Dispatch" --lint --config "$REPO_ROOT/.swiftformat.ci"
 }
 
+lint_binding_patterns() {
+  run_step "Binding Patterns" \
+    "$REPO_ROOT/scripts/check_binding_patterns.sh" "$WORKSPACE/Dispatch"
+}
+
 lint_design_gate() {
   run_step "Design Gate" bash -c "
     # Guard 1: DomainDesignBridge must NOT live in Design/
@@ -452,6 +457,7 @@ main() {
   # Lint
   lint_swiftlint
   lint_swiftformat
+  lint_binding_patterns
   lint_design_gate
 
   # Build (compile-only sweep)
