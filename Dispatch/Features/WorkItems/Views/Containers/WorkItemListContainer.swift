@@ -58,21 +58,14 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
   @State private var selectedFilter = AssignmentFilter.mine
   @EnvironmentObject private var lensState: LensState
 
+  // Memoized computed results - only recalculated when dependencies change
+  @State private var filteredItems: [WorkItem] = []
+  @State private var groupedItems: [(section: DateSection, items: [WorkItem])] = []
+
   #if os(macOS)
   /// Tracks the currently focused work item ID for keyboard navigation
   @FocusState private var focusedItemID: UUID?
   #endif
-
-  private var filteredItems: [WorkItem] {
-    items.filter { item in
-      selectedFilter.matches(assigneeUserIds: item.assigneeUserIds, currentUserId: currentUserId) &&
-        lensState.audience.matches(audiences: item.audiences)
-    }
-  }
-
-  private var groupedItems: [(section: DateSection, items: [WorkItem])] {
-    DateSection.sortedSections(from: filteredItems)
-  }
 
   private var isEmpty: Bool {
     filteredItems.isEmpty
@@ -140,6 +133,16 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     .onReceive(NotificationCenter.default.publisher(for: .filterUnclaimed)) { _ in
       selectedFilter = .unassigned
     }
+    // Memoization: recompute filtered/grouped items when dependencies change
+    .onChange(of: items, initial: true) { _, _ in
+      updateFilteredItems()
+    }
+    .onChange(of: selectedFilter) { _, _ in
+      updateFilteredItems()
+    }
+    .onChange(of: lensState.audience) { _, _ in
+      updateFilteredItems()
+    }
   }
 
   private var listView: some View {
@@ -175,6 +178,16 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     }
     // Frame removed to use standard alignment or assumed context
     .frame(minHeight: 300) // Ensure it takes some vertical space in the absence of list
+  }
+
+  /// Recomputes filtered and grouped items from current state
+  private func updateFilteredItems() {
+    let newFiltered = items.filter { item in
+      selectedFilter.matches(assigneeUserIds: item.assigneeUserIds, currentUserId: currentUserId) &&
+        lensState.audience.matches(audiences: item.audiences)
+    }
+    filteredItems = newFiltered
+    groupedItems = DateSection.sortedSections(from: newFiltered)
   }
 
   #if os(macOS)
