@@ -41,9 +41,12 @@ struct ListingGeneratorView: View {
       .navigationBarTitleDisplayMode(.large)
     #endif
       .task {
+        // Skip loading if data is already cached from previous navigation
+        guard isInitialLoading else { return }
         await loadPreselectedDraft()
         await loadPreselectedListing()
         await loadListings()
+        isInitialLoading = false
       }
       .onAppear { overlayState.hide(reason: .settingsScreen) }
       .onDisappear { overlayState.show(reason: .settingsScreen) }
@@ -63,6 +66,7 @@ struct ListingGeneratorView: View {
 
   @State private var state = ListingGeneratorState()
   @State private var listings: [Listing] = []
+  @State private var isInitialLoading = true
 
   private let preselectedListingId: UUID?
   private let preselectedDraftId: UUID?
@@ -88,24 +92,44 @@ struct ListingGeneratorView: View {
 
   @ViewBuilder
   private var content: some View {
-    GeometryReader { geometry in
-      #if os(macOS)
-      // macOS: Always use split layout
-      splitLayout
-        .tint(DS.Colors.accent)
-      #else
-      // iOS/iPadOS: Adaptive based on size class and orientation
-      if horizontalSizeClass == .regular, geometry.size.width > 700 {
-        // iPad landscape: Split layout
+    if isInitialLoading {
+      loadingContent
+    } else {
+      GeometryReader { geometry in
+        #if os(macOS)
+        // macOS: Always use split layout
         splitLayout
           .tint(DS.Colors.accent)
-      } else {
-        // iPhone / iPad portrait: Two-screen navigation flow
-        navigationLayout
-          .tint(DS.Colors.accent)
+        #else
+        // iOS/iPadOS: Adaptive based on size class and orientation
+        if horizontalSizeClass == .regular, geometry.size.width > 700 {
+          // iPad landscape: Split layout
+          splitLayout
+            .tint(DS.Colors.accent)
+        } else {
+          // iPhone / iPad portrait: Two-screen navigation flow
+          navigationLayout
+            .tint(DS.Colors.accent)
+        }
+        #endif
       }
-      #endif
     }
+  }
+
+  /// Loading state shown during initial data load
+  @ViewBuilder
+  private var loadingContent: some View {
+    VStack(spacing: DS.Spacing.md) {
+      ProgressView()
+        .controlSize(.regular)
+      Text("Loading...")
+        .font(DS.Typography.body)
+        .foregroundStyle(DS.Colors.Text.secondary)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(DS.Colors.Background.grouped)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("Loading listing generator")
   }
 
   // MARK: - Split Layout (macOS / iPad Landscape)
