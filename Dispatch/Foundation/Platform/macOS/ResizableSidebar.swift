@@ -28,29 +28,42 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
   @ViewBuilder let sidebar: () -> Sidebar
   @ViewBuilder let content: () -> Content
 
-  /// Display width: 0...max during drag (no min clamp), 0 or width otherwise
-  private var displayWidth: CGFloat {
+  /// The width used for the sidebar content layout.
+  /// Always stays at minWidth or above - never shrinks during collapse.
+  private var sidebarContentWidth: CGFloat {
     if windowState.isDragging {
-      return windowState.clampedWidthDuringDrag(dragStartWidth + dragDelta)
+      return windowState.clampedWidth(dragStartWidth + dragDelta)
+    }
+    return windowState.sidebarWidth
+  }
+
+  /// The container width for the sidebar slot.
+  /// Container frame changes discretely (not animated) to avoid spring overshoot to negative values.
+  /// The drag handle offset that depends on this value IS animated for smooth UX (see body).
+  private var containerWidth: CGFloat {
+    if windowState.isDragging {
+      return windowState.clampedWidth(dragStartWidth + dragDelta)
     }
     return windowState.sidebarVisible ? windowState.sidebarWidth : 0
+  }
+
+  /// Whether the sidebar should be visually visible (opacity = 1)
+  private var isContentVisible: Bool {
+    windowState.sidebarVisible || windowState.isDragging
   }
 
   var body: some View {
     GeometryReader { _ in
       HStack(spacing: 0) {
-        // Sidebar ALWAYS mounted - just width=0 when hidden
-        sidebar()
-          .frame(width: displayWidth)
-          .clipped() // Prevent overflow when width=0
-          .allowsHitTesting(windowState.sidebarVisible || windowState.isDragging)
-          .transaction { if windowState.isDragging { $0.animation = nil } }
-          .background {
-            // One unified vibrancy layer for everything in the sidebar column
-            Rectangle()
-              .fill(.thinMaterial)
-              .ignoresSafeArea(.all, edges: .top) // fills behind traffic lights
-          }
+        // Sidebar: content layout always uses full width, never shrinks
+        // Container uses clipping to hide content when collapsed
+        SidebarContainerView(
+          sidebarContentWidth: sidebarContentWidth,
+          containerWidth: containerWidth,
+          isContentVisible: isContentVisible
+        ) {
+          sidebar()
+        }
 
         content()
           .frame(maxWidth: .infinity)
@@ -63,16 +76,15 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
           reduceMotion: reduceMotion,
           onTap: { toggleSidebar() }
         )
-        .offset(x: displayWidth > 0 ? displayWidth : 0)
+        .offset(x: containerWidth)
         .gesture(dragGesture)
-        // NO .allowsHitTesting guard - always interactive
+        // Animate drag handle offset smoothly
+        .animation(
+          windowState.isDragging ? .none : (reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)),
+          value: containerWidth
+        )
       }
     }
-    // Only animate sidebarVisible changes, NOT during drag
-    .animation(
-      windowState.isDragging ? .none : (reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)),
-      value: windowState.sidebarVisible
-    )
     .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
       toggleSidebar()
     }
@@ -114,6 +126,44 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
       windowState.toggleSidebar()
     }
+  }
+}
+
+// MARK: - Sidebar Container View
+
+/// Wraps sidebar content with proper animation isolation.
+///
+/// The key insight is that we cannot animate frame width through SwiftUI's
+/// spring animation because it can overshoot to negative values, causing
+/// "Invalid view geometry: width is negative" warnings.
+///
+/// Solution:
+/// 1. Content is laid out at full `sidebarContentWidth` (never shrinks)
+/// 2. Container uses `max(0, containerWidth)` to clamp during any interpolation
+/// 3. Opacity fades out instantly for visual feedback
+/// 4. Handle offset animates for smooth UX (handled in parent)
+private struct SidebarContainerView<Content: View>: View {
+  let sidebarContentWidth: CGFloat
+  let containerWidth: CGFloat
+  let isContentVisible: Bool
+  @ViewBuilder let content: () -> Content
+
+  var body: some View {
+    content()
+      .frame(width: sidebarContentWidth)
+      .background {
+        Rectangle()
+          .fill(.thinMaterial)
+          .ignoresSafeArea(.all, edges: .top)
+      }
+      // Instant opacity change - no spring needed, prevents visual glitches
+      .opacity(isContentVisible ? 1 : 0)
+      // Use max(0, ...) to clamp any negative values from animation interpolation
+      .frame(width: max(0, containerWidth))
+      .clipped()
+      .allowsHitTesting(isContentVisible)
+      // Disable animation on this subtree to prevent frame width interpolation
+      .transaction { $0.animation = nil }
   }
 }
 
