@@ -11,6 +11,7 @@ By default, work directly on tasks without invoking agents. This is fast and app
 When the user says ANY of these (or similar):
 - "act as a manager"
 - "act as manager"
+- "you are a manager"
 - "manager mode"
 - "orchestrate this"
 - "use the agent system"
