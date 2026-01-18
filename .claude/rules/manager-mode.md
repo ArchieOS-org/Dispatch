@@ -1,6 +1,6 @@
 # Manager Mode (On-Demand Orchestration)
 
-> **Version**: 2.0
+> **Version**: 2.2
 
 ## Default Behavior
 
@@ -21,7 +21,71 @@ THEN you MUST switch to **Manager Mode**.
 
 ---
 
-## The Refined Architecture (v2.0)
+## Manager Delegation Rule [ENFORCED]
+
+**CRITICAL: In manager mode, you are an orchestrator, NOT a worker.**
+
+### The Manager MUST Delegate via Task Tool
+
+All work happens through agents. The manager's ONLY jobs are:
+1. Assess complexity (small change bypass check)
+2. Invoke agents via `Task(subagent_type="agent-name", prompt="...")`
+3. Summarize agent results to user
+4. Coordinate agent sequencing
+
+### The Manager MUST NOT (When in Manager Mode)
+
+| Action | Why Forbidden | Delegate To |
+|--------|---------------|-------------|
+| Read files directly | Manager doesn't explore | dispatch-explorer |
+| Write/edit code | Manager doesn't implement | feature-owner |
+| Call Context7 | Agents own documentation lookup | feature-owner, ui-polish |
+| Run builds/tests | Manager doesn't verify | integrator |
+| Create detailed todos | Agents track their own work | (agents internally) |
+| Use Grep/Glob | Manager doesn't search | dispatch-explorer |
+
+### Anti-Pattern (BAD - Manager doing work)
+
+```
+Manager: "Let me read ContentView.swift to understand the sidebar..."
+Manager: "Let me query Context7 for HIG guidelines..."
+Manager: "Creating a todo list for the audit..."
+Manager: [Uses Read, Grep, Context7 tools directly]
+```
+
+### Correct Pattern (GOOD - Manager delegating)
+
+**CRITICAL: For complex changes, dispatch-planner MUST be invoked FIRST to create a contract.**
+
+```
+Manager: "This is a complex UI audit. Invoking dispatch-planner to create contract."
+→ Task(subagent_type="dispatch-planner", prompt="Create contract for menu/sidebar HIG audit...")
+
+Manager: "Contract created at .claude/contracts/hig-audit.md. It specifies dispatch-explorer needed."
+→ Task(subagent_type="dispatch-explorer", prompt="Find all menu and sidebar files...")
+
+Manager: "Explorer found 15 files. Contract says feature-owner next."
+→ Task(subagent_type="feature-owner", prompt="Audit per contract, use Context7 for HIG patterns...")
+
+Manager: "Feature-owner complete. Contract requires jobs-critic (UI Review: YES)."
+→ Task(subagent_type="jobs-critic", prompt="Review UI changes, write verdict to contract...")
+
+Manager: "Jobs-critic says SHIP YES. Invoking integrator."
+→ Task(subagent_type="integrator", prompt="Verify builds, check contract attestations...")
+```
+
+**The contract is the source of truth.** All agents reference it. Without a contract, there's no:
+- Context7 Attestation section for feature-owner to fill
+- Jobs Critique section for jobs-critic to fill
+- Patchset plan for integrator to verify
+
+### Exception: Small Change Bypass
+
+When Small Change Bypass applies (≤3 files, no schema, no new UI), the manager MAY directly invoke feature-owner and integrator without dispatch-planner. But even then, **work happens through Task tool calls**.
+
+---
+
+## The Refined Architecture (v2.1)
 
 ### Core Principles
 
@@ -91,7 +155,7 @@ Skip dispatch-planner if **ALL** of these are true:
 
 ---
 
-## Adaptive Patchsets (v2.0)
+## Adaptive Patchsets (v2.1)
 
 ### Base Protocol: 2 Patchsets
 
@@ -114,29 +178,56 @@ PATCHSET 2: Complete + all criteria met + tests pass
 
 ## Manager Mode Behavior
 
-1. **First**: Check if Small Change Bypass applies
-   - If YES → go directly to feature-owner → integrator
-   - If NO → invoke dispatch-planner
+### Step 1: Small Change Bypass Check
 
-2. **For Complex Changes**: Invoke `dispatch-planner` via the Task tool
-   ```
-   Task tool with subagent_type="dispatch-planner"
-   ```
+Check if ALL of these are true:
+- ≤3 files modified
+- No schema/API changes
+- No new UI navigation flow
+- No sync/offline changes
+- Familiar codebase area
 
-3. **Follow the plan**: Execute dispatch-planner's recommendations:
-   - If it recommends `feature-owner` → invoke feature-owner
-   - If it recommends `data-integrity` → invoke data-integrity
-   - If it creates a contract → respect the Interface Lock
-   - Follow the adaptive patchset protocol from the contract
+**If ALL true** → Skip to feature-owner → integrator (no contract needed)
+**If ANY is false** → **MUST invoke dispatch-planner FIRST**
 
-4. **Conditional agent sequencing**:
-   - feature-owner (PATCHSET 1-2 minimum)
-   - jobs-critic (only if `UI Review Required: YES`)
-   - ui-polish (only if SHIP: YES and customer-facing)
-   - xcode-pilot (only if high-risk UI flow)
-   - integrator (FINAL, always)
+### Step 2: Complex Change Flow (dispatch-planner REQUIRED)
 
-5. **Report back**: After each agent completes, summarize results to the user
+**CRITICAL: dispatch-planner creates the contract. Without a contract, the system breaks.**
+
+```
+Task(subagent_type="dispatch-planner", prompt="[task description]")
+```
+
+dispatch-planner will:
+1. Create contract file at `.claude/contracts/<feature-slug>.md`
+2. Set complexity indicators (schema, UI, high-risk, unfamiliar)
+3. Define patchset plan based on indicators
+4. Specify which agents are needed
+
+### Step 3: Follow the Contract
+
+Execute agents in order specified by the contract:
+
+| If Contract Says | Invoke |
+|------------------|--------|
+| Unfamiliar area checked | dispatch-explorer first |
+| Schema changes checked | data-integrity (PATCHSET 1.5) |
+| Complex UI checked | jobs-critic (PATCHSET 2.5), ui-polish |
+| High-risk flow checked | xcode-pilot (PATCHSET 3) |
+| Always | feature-owner, integrator |
+
+### Step 4: Agent Prompts Reference Contract
+
+When invoking agents, reference the contract:
+
+```
+Task(subagent_type="feature-owner", prompt="Implement per contract at .claude/contracts/xyz.md.
+Use Context7 for framework patterns. Fill Context7 Attestation section.")
+```
+
+### Step 5: Report Back
+
+After each agent completes, summarize results to user before invoking next agent.
 
 ---
 

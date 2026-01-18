@@ -30,10 +30,13 @@ struct SidebarMenuRow: View {
         .font(.system(size: 16, weight: .medium))
     }
     .frame(maxWidth: .infinity, alignment: .leading)
-    .contentShape(Rectangle())
-    .tag(tab)
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel(accessibilityLabelText)
+    #if os(iOS)
+      .frame(minHeight: DS.Spacing.minTouchTarget)
+    #endif
+      .contentShape(Rectangle())
+      .tag(tab)
+      .accessibilityElement(children: .combine)
+      .accessibilityLabel(accessibilityLabelText)
   }
 
   // MARK: Private
