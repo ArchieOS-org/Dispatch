@@ -15,8 +15,6 @@ import XCTest
 @MainActor
 final class ErrorPathTests: XCTestCase {
 
-  // MARK: Internal
-
   // swiftlint:disable implicitly_unwrapped_optional
   var container: ModelContainer!
   var context: ModelContext!
@@ -153,16 +151,31 @@ final class ErrorPathTests: XCTestCase {
       taskDescription: "Should be eligible for retry",
       declaredBy: userId
     )
-    task.retryCount = RetryPolicy.maxRetries - 1 // One below max
+    task.retryCount = RetryPolicy.maxRetries - 1 // One below max (4)
     task.syncState = .failed
     context.insert(task)
     try context.save()
+
+    // Store initial state
+    let initialRetryCount = task.retryCount
 
     // Verify precondition
     XCTAssertTrue(
       task.retryCount < RetryPolicy.maxRetries,
       "Precondition: retryCount should be below max"
     )
+
+    // Act: Attempt retry
+    let result = await syncManager.retryTask(task)
+
+    // Assert: Retry should succeed
+    XCTAssertTrue(result, "retryTask should return true when below max retries")
+    XCTAssertEqual(
+      task.retryCount,
+      initialRetryCount + 1,
+      "retryCount should increment from \(initialRetryCount) to \(initialRetryCount + 1)"
+    )
+    XCTAssertEqual(task.syncState, .pending, "syncState should transition to .pending for retry")
   }
 
   // MARK: - Error Message Mapping Tests
@@ -408,50 +421,6 @@ final class ErrorPathTests: XCTestCase {
     }
   }
 
-  // MARK: Private
-
-  // MARK: - Helper Methods
-
-  /// Local helper to test error message mapping
-  /// This replicates the logic in SyncManager.userFacingMessage(for:)
-  private func userFacingMessage(for error: Error) -> String {
-    if let urlError = error as? URLError {
-      switch urlError.code {
-      case .notConnectedToInternet, .networkConnectionLost:
-        return "No internet connection."
-      case .timedOut:
-        return "Connection timed out."
-      default:
-        return "Network error."
-      }
-    }
-
-    // Detect Postgres/RLS errors with table-aware messaging
-    let errorString = String(describing: error).lowercased()
-    if errorString.contains("42501") || errorString.contains("permission denied") {
-      if errorString.contains("notes") {
-        return "Permission denied syncing notes."
-      }
-      if errorString.contains("listings") {
-        return "Permission denied syncing listings."
-      }
-      if errorString.contains("tasks") {
-        return "Permission denied syncing tasks."
-      }
-      if errorString.contains("activities") {
-        return "Permission denied syncing activities."
-      }
-      if errorString.contains("users") {
-        return "Permission denied syncing user profile."
-      }
-      if errorString.contains("properties") {
-        return "Permission denied syncing properties."
-      }
-      return "Permission denied during sync."
-    }
-
-    return "Sync failed: \(error.localizedDescription)"
-  }
 }
 
 // MARK: - MockPostgresError
