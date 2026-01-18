@@ -22,25 +22,20 @@ struct SyncHandlerDependencies {
   let fetchCurrentUser: (UUID) -> Void
   let updateListingConfigReady: (Bool) -> Void
 
-  /// Helper to convert sync errors to user-friendly messages
+  /// Converts any error to a structured SyncError.
+  /// Use this for error classification and retry decisions.
+  /// - Parameter error: The error to convert
+  /// - Returns: A classified SyncError
+  func syncError(from error: Error) -> SyncError {
+    SyncError.from(error)
+  }
+
+  /// Helper to convert sync errors to user-friendly messages.
+  /// Delegates to SyncError enum for consistent messaging across the codebase.
+  /// - Parameter error: The error to convert
+  /// - Returns: A user-friendly error message string
   func userFacingMessage(for error: Error) -> String {
-    if let urlError = error as? URLError {
-      switch urlError.code {
-      case .notConnectedToInternet, .networkConnectionLost:
-        return "No internet connection."
-      case .timedOut:
-        return "Connection timed out."
-      default:
-        return "Network error."
-      }
-    }
-
-    let errorString = String(describing: error).lowercased()
-    if errorString.contains("42501") || errorString.contains("permission denied") {
-      return "Permission denied during sync."
-    }
-
-    return "Sync failed: \(error.localizedDescription)"
+    SyncError.from(error).userFacingMessage
   }
 }
 
