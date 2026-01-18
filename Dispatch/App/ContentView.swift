@@ -208,7 +208,6 @@ struct ContentView: View {
     case .realtors: .realtorsList
     case .settings: .settingsRoot
     case .search: .workspace
-    case .listingGenerator: .listingGenerator(listingId: nil)
     }
   }
   #endif
@@ -301,7 +300,7 @@ struct ContentView: View {
       switch dest {
       case .tab(let tab): switch tab {
         case .workspace: .myWorkspace
-        case .properties, .settings, .search, .listingGenerator: .other
+        case .properties, .settings, .search: .other
         case .listings: depth > 0 ? .listingDetail : .listings
         case .realtors: .realtors
         }

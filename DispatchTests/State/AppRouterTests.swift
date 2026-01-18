@@ -695,18 +695,6 @@ struct AppRouteHashabilityTests {
     #expect(AppRoute.stagedListings(.pending) != AppRoute.stagedListings(.live))
   }
 
-  @Test("ListingGenerator routes are equal when same listingId")
-  func testListingGeneratorRoutesAreEqual() {
-    let id = UUID()
-    #expect(AppRoute.listingGenerator(listingId: id) == AppRoute.listingGenerator(listingId: id))
-    #expect(AppRoute.listingGenerator(listingId: nil) == AppRoute.listingGenerator(listingId: nil))
-  }
-
-  @Test("ListingGeneratorDraft routes are equal when same draftId")
-  func testListingGeneratorDraftRoutesAreEqual() {
-    let id = UUID()
-    #expect(AppRoute.listingGeneratorDraft(draftId: id) == AppRoute.listingGeneratorDraft(draftId: id))
-  }
 }
 
 // MARK: - AppRouterDeepLinkStateRestorationTests

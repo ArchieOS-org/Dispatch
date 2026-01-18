@@ -23,7 +23,6 @@ extension AppTab: Identifiable {
     case .realtors: "Realtors"
     case .settings: "Settings"
     case .search: "Search"
-    case .listingGenerator: "Listing Generator"
     }
   }
 
@@ -35,7 +34,6 @@ extension AppTab: Identifiable {
     case .realtors: DS.Icons.Entity.realtor
     case .settings: "gearshape"
     case .search: "magnifyingglass"
-    case .listingGenerator: "sparkles"
     }
   }
 }
