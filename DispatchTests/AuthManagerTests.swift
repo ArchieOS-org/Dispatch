@@ -42,6 +42,11 @@ final class MockAuthClient: AuthClientProtocol, @unchecked Sendable {
   var signInWithOAuthRedirectTo: URL?
   var signInWithOAuthError: Error?
 
+  var signInWithIdTokenCalled = false
+  var signInWithIdTokenCredentials: OpenIDConnectCredentials?
+  var signInWithIdTokenError: Error?
+  var signInWithIdTokenResult: Session?
+
   var signOutCalled = false
   var signOutError: Error?
 
@@ -57,6 +62,21 @@ final class MockAuthClient: AuthClientProtocol, @unchecked Sendable {
     if let error = signInWithOAuthError {
       throw error
     }
+  }
+
+  func signInWithIdToken(credentials: OpenIDConnectCredentials) async throws -> Session {
+    signInWithIdTokenCalled = true
+    signInWithIdTokenCredentials = credentials
+
+    if let error = signInWithIdTokenError {
+      throw error
+    }
+
+    guard let session = signInWithIdTokenResult else {
+      throw MockAuthError.noSessionProvided
+    }
+
+    return session
   }
 
   func signOut() async throws {
@@ -106,6 +126,7 @@ enum MockAuthError: Error, LocalizedError {
   case signInFailed
   case signOutFailed
   case redirectFailed
+  case appleSignInFailed
 
   var errorDescription: String? {
     switch self {
@@ -117,6 +138,8 @@ enum MockAuthError: Error, LocalizedError {
       "Sign out failed (mock)"
     case .redirectFailed:
       "Redirect handling failed (mock)"
+    case .appleSignInFailed:
+      "Apple Sign in failed (mock)"
     }
   }
 }
@@ -346,6 +369,56 @@ final class AuthManagerTests: XCTestCase {
     // Now sign in successfully
     mockAuthClient.signInWithOAuthError = nil
     await authManager.signInWithGoogle()
+
+    XCTAssertNil(authManager.error)
+  }
+
+  // MARK: - Apple Sign In Tests
+
+  func testSignInWithApple_success_callsAuthClient() async {
+    let session = AuthTestFixtures.makeSession()
+    mockAuthClient.signInWithIdTokenResult = session
+
+    await authManager.signInWithApple(idToken: "test-id-token", nonce: "test-nonce")
+
+    XCTAssertTrue(mockAuthClient.signInWithIdTokenCalled)
+    XCTAssertEqual(mockAuthClient.signInWithIdTokenCredentials?.provider, .apple)
+    XCTAssertEqual(mockAuthClient.signInWithIdTokenCredentials?.idToken, "test-id-token")
+    XCTAssertEqual(mockAuthClient.signInWithIdTokenCredentials?.nonce, "test-nonce")
+    XCTAssertNil(authManager.error)
+    XCTAssertFalse(authManager.isLoading)
+  }
+
+  func testSignInWithApple_failure_setsError() async {
+    mockAuthClient.signInWithIdTokenError = MockAuthError.appleSignInFailed
+
+    await authManager.signInWithApple(idToken: "test-id-token", nonce: "test-nonce")
+
+    XCTAssertTrue(mockAuthClient.signInWithIdTokenCalled)
+    XCTAssertNotNil(authManager.error)
+    XCTAssertFalse(authManager.isLoading)
+  }
+
+  func testSignInWithApple_setsLoadingDuringOperation() async {
+    let session = AuthTestFixtures.makeSession()
+    mockAuthClient.signInWithIdTokenResult = session
+
+    await authManager.signInWithApple(idToken: "test-id-token", nonce: "test-nonce")
+
+    XCTAssertFalse(authManager.isLoading)
+  }
+
+  func testSignInWithApple_clearsExistingError() async {
+    // First, set an error
+    mockAuthClient.signInWithIdTokenError = MockAuthError.appleSignInFailed
+    await authManager.signInWithApple(idToken: "test-id-token", nonce: "test-nonce")
+    XCTAssertNotNil(authManager.error)
+
+    // Now sign in successfully
+    let session = AuthTestFixtures.makeSession()
+    mockAuthClient.signInWithIdTokenError = nil
+    mockAuthClient.signInWithIdTokenResult = session
+    await authManager.signInWithApple(idToken: "test-id-token", nonce: "test-nonce")
 
     XCTAssertNil(authManager.error)
   }

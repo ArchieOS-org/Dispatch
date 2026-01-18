@@ -18,6 +18,7 @@ protocol AuthClientProtocol: Sendable {
   var authStateChanges: AsyncStream<(event: AuthChangeEvent, session: Session?)> { get }
 
   func signInWithOAuth(provider: Provider, redirectTo: URL?) async throws
+  func signInWithIdToken(credentials: OpenIDConnectCredentials) async throws -> Session
   func signOut() async throws
   func session(from url: URL) async throws -> Session
 }
@@ -34,6 +35,10 @@ extension AuthClient: AuthClientProtocol {
       scopes: nil,
       queryParams: []
     )
+  }
+
+  func signInWithIdToken(credentials: OpenIDConnectCredentials) async throws -> Session {
+    try await signInWithIdToken(credentials: credentials)
   }
 
   func signOut() async throws {
@@ -116,6 +121,27 @@ final class AuthManager: ObservableObject {
     } catch {
       self.error = error
       debugLog.error("Google Sign-in failed", error: error)
+    }
+
+    isLoading = false
+  }
+
+  func signInWithApple(idToken: String, nonce: String) async {
+    isLoading = true
+    error = nil
+
+    do {
+      let credentials = OpenIDConnectCredentials(
+        provider: .apple,
+        idToken: idToken,
+        nonce: nonce
+      )
+      _ = try await authClient.signInWithIdToken(credentials: credentials)
+      // Note: authStateChanges stream will automatically update session state
+      debugLog.log("Apple Sign-in completed, waiting for auth state update", category: .auth)
+    } catch {
+      self.error = error
+      debugLog.error("Apple Sign-in failed", error: error)
     }
 
     isLoading = false
