@@ -28,12 +28,12 @@ struct LoginView: View {
         VStack(spacing: DS.Spacing.md) {
           // Logo (Placeholder for now, using System Image gracefully)
           Image(systemName: "command") // Abstract symbol commonly associated with pro workflows
-            .font(.system(size: 64, weight: .light))
+            .font(.system(size: logoIconSize, weight: .light))
             .foregroundStyle(DS.Colors.Text.primary)
             .padding(.bottom, DS.Spacing.sm)
 
           Text("Dispatch")
-            .font(.system(size: 40, weight: .semibold, design: .default))
+            .font(.system(size: brandNameSize, weight: .semibold, design: .default))
             .tracking(-1.0) // Tight tracking for premium feel
             .foregroundStyle(DS.Colors.Text.primary)
 
@@ -86,6 +86,14 @@ struct LoginView: View {
 
   // MARK: Private
 
+  /// Scaled icon size for Dynamic Type support (base: 64pt)
+  @ScaledMetric(relativeTo: .largeTitle)
+  private var logoIconSize: CGFloat = 64
+
+  /// Scaled brand name font size for Dynamic Type support (base: 40pt)
+  @ScaledMetric(relativeTo: .largeTitle)
+  private var brandNameSize: CGFloat = 40
+
   @EnvironmentObject private var authManager: AuthManager
 
 }
@@ -94,6 +102,10 @@ struct LoginView: View {
 
 private struct GoogleSignInButton: View {
   @Environment(\.colorScheme) var colorScheme
+
+  /// Scaled icon size for Dynamic Type support (base: 20pt)
+  @ScaledMetric(relativeTo: .body)
+  private var iconSize: CGFloat = 20
 
   let action: () -> Void
 
@@ -104,7 +116,7 @@ private struct GoogleSignInButton: View {
         // In production, use the official SVG asset.
         Image(systemName: "g.circle.fill") // Fallback
           .symbolRenderingMode(.multicolor)
-          .font(.system(size: 20))
+          .font(.system(size: iconSize))
 
         Text("Continue with Google")
           .font(DS.Typography.body)

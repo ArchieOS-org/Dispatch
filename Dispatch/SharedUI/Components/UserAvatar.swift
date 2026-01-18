@@ -27,6 +27,8 @@ struct UserAvatar: View {
     case medium
     case large
 
+    // MARK: Internal
+
     var dimension: CGFloat {
       switch self {
       case .small: DS.Spacing.avatarSmall
@@ -35,6 +37,7 @@ struct UserAvatar: View {
       }
     }
 
+    /// Base font size for this avatar size (used with @ScaledMetric in parent view)
     var fontSize: CGFloat {
       switch self {
       case .small: 10
@@ -80,6 +83,27 @@ struct UserAvatar: View {
 
   // MARK: Private
 
+  /// Scaled font size for small avatars (base: 10pt, relative to caption2)
+  @ScaledMetric(relativeTo: .caption2)
+  private var smallFontSize: CGFloat = 10
+
+  /// Scaled font size for medium avatars (base: 14pt, relative to footnote)
+  @ScaledMetric(relativeTo: .footnote)
+  private var mediumFontSize: CGFloat = 14
+
+  /// Scaled font size for large avatars (base: 18pt, relative to headline)
+  @ScaledMetric(relativeTo: .headline)
+  private var largeFontSize: CGFloat = 18
+
+  /// Returns the appropriate scaled font size for the current avatar size
+  private var scaledFontSize: CGFloat {
+    switch size {
+    case .small: smallFontSize
+    case .medium: mediumFontSize
+    case .large: largeFontSize
+    }
+  }
+
   private var initials: String {
     guard let user else { return "?" }
     let components = user.name.split(separator: " ")
@@ -110,7 +134,7 @@ struct UserAvatar: View {
       Circle()
         .fill(backgroundColor)
       Text(initials)
-        .font(.system(size: size.fontSize, weight: .semibold))
+        .font(.system(size: scaledFontSize, weight: .semibold))
         .foregroundColor(.white)
     }
   }

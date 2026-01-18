@@ -81,10 +81,14 @@ struct OverflowMenu: View {
 
   @State private var showingActions = false
 
+  /// Scaled icon size for Dynamic Type support (base: 20pt, relative to body)
+  @ScaledMetric(relativeTo: .body)
+  private var iconSize: CGFloat = 20
+
   /// Menu label
   private var menuLabel: some View {
     Image(systemName: icon)
-      .font(.system(size: 20))
+      .font(.system(size: iconSize))
       .foregroundColor(iconColor)
       .frame(
         width: CGFloat(DS.Spacing.minTouchTarget),

@@ -28,7 +28,7 @@ struct FilterMenu: View {
       } label: {
         Image(systemName: audience.icon)
           .symbolRenderingMode(.monochrome)
-          .font(.system(size: DS.Spacing.bottomToolbarIconSize, weight: .medium))
+          .font(.system(size: toolbarIconSize, weight: .medium))
           .foregroundStyle(iconColor)
           .frame(
             width: DS.Spacing.bottomToolbarButtonSize,
@@ -68,6 +68,10 @@ struct FilterMenu: View {
   }
 
   // MARK: Private
+
+  /// Scaled icon size for Dynamic Type support (base: 17pt, relative to headline)
+  @ScaledMetric(relativeTo: .headline)
+  private var toolbarIconSize: CGFloat = 17
 
   @ScaledMetric(relativeTo: .caption2)
   private var chevronSize: CGFloat = 10

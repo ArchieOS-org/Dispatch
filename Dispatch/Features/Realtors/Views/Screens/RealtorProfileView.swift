@@ -35,6 +35,14 @@ struct RealtorProfileView: View {
 
   // MARK: Private
 
+  /// Scaled avatar initials font size for Dynamic Type support (base: 48pt)
+  @ScaledMetric(relativeTo: .largeTitle)
+  private var avatarInitialsSize: CGFloat = 48
+
+  /// Scaled action button icon size for Dynamic Type support (base: 18pt)
+  @ScaledMetric(relativeTo: .body)
+  private var actionIconSize: CGFloat = 18
+
   @Query private var allProperties: [Property]
   @Query private var listings: [Listing]
   @Query private var tasks: [TaskItem]
@@ -134,7 +142,7 @@ struct RealtorProfileView: View {
               .clipShape(Circle())
           } else {
             Text(user.initials)
-              .font(.system(size: 48, weight: .medium))
+              .font(.system(size: avatarInitialsSize, weight: .medium))
               .foregroundStyle(DS.Colors.Text.secondary)
           }
         }
@@ -180,7 +188,7 @@ struct RealtorProfileView: View {
           .frame(width: DS.Spacing.minTouchTarget, height: DS.Spacing.minTouchTarget)
           .overlay {
             Image(systemName: icon)
-              .font(.system(size: 18))
+              .font(.system(size: actionIconSize))
               .foregroundStyle(DS.Colors.Text.primary)
           }
         Text(label)

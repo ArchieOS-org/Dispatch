@@ -64,6 +64,10 @@ struct SearchResultRow: View {
 
   // MARK: Private
 
+  /// Scaled icon size for Dynamic Type support (base: 14pt)
+  @ScaledMetric(relativeTo: .footnote)
+  private var iconSize: CGFloat = 14
+
   private var iconView: some View {
     ZStack {
       Circle()
@@ -71,7 +75,7 @@ struct SearchResultRow: View {
         .frame(width: DS.Spacing.avatarMedium, height: DS.Spacing.avatarMedium)
 
       Image(systemName: result.icon)
-        .font(.system(size: 14, weight: .medium))
+        .font(.system(size: iconSize, weight: .medium))
         .foregroundColor(result.accentColor)
     }
   }

@@ -50,7 +50,7 @@ struct EditRealtorSheet: View {
                       .clipShape(Circle())
                   } else {
                     Image(systemName: "person.crop.circle.badge.plus")
-                      .font(.system(size: 40))
+                      .font(.system(size: placeholderIconSize))
                       .foregroundStyle(DS.Colors.Text.secondary)
                   }
                 }
@@ -95,6 +95,10 @@ struct EditRealtorSheet: View {
   }
 
   // MARK: Private
+
+  /// Scaled placeholder icon size for Dynamic Type support (base: 40pt)
+  @ScaledMetric(relativeTo: .largeTitle)
+  private var placeholderIconSize: CGFloat = 40
 
   @Environment(\.dismiss) private var dismiss
   @Environment(\.modelContext) private var modelContext

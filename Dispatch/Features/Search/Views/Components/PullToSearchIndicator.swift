@@ -39,7 +39,7 @@ struct PullToSearchIndicator: View {
     #if os(iOS)
     // Icon with optional armed background - sizes to content, no infinite frames
     Image(systemName: "magnifyingglass")
-      .font(.system(size: DS.Spacing.searchPullIndicatorSize, weight: .semibold))
+      .font(.system(size: searchIconSize, weight: .semibold))
       .foregroundStyle(isArmed ? .white : DS.Colors.Text.secondary)
       .padding(.horizontal, isArmed ? DS.Spacing.searchPullArmedPadding : 0)
       .padding(.vertical, isArmed ? DS.Spacing.searchPullArmedPadding / 2 : 0)
@@ -59,6 +59,10 @@ struct PullToSearchIndicator: View {
   }
 
   // MARK: Private
+
+  /// Scaled search icon size for Dynamic Type support (base: 24pt)
+  @ScaledMetric(relativeTo: .title3)
+  private var searchIconSize: CGFloat = DS.Spacing.searchPullIndicatorSize
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

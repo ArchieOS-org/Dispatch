@@ -22,7 +22,7 @@ struct StatusCheckbox: View {
   var body: some View {
     Button(action: onToggle) {
       Image(systemName: iconName)
-        .font(.system(size: 14, weight: .medium))
+        .font(.system(size: iconSize, weight: .medium))
         .foregroundStyle(color)
         .frame(width: 14, height: 14) // Match text visual height
         .frame(minWidth: DS.Spacing.minTouchTarget, minHeight: DS.Spacing.minTouchTarget)
@@ -40,6 +40,10 @@ struct StatusCheckbox: View {
   }
 
   // MARK: Private
+
+  /// Scaled icon size for Dynamic Type support (base: 14pt, relative to footnote)
+  @ScaledMetric(relativeTo: .footnote)
+  private var iconSize: CGFloat = 14
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

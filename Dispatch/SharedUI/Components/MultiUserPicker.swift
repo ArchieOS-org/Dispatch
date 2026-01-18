@@ -49,6 +49,10 @@ struct MultiUserPicker: View {
 
   // MARK: Private
 
+  /// Scaled checkmark size for Dynamic Type support (base: 14pt, relative to footnote)
+  @ScaledMetric(relativeTo: .footnote)
+  private var checkmarkSize: CGFloat = 14
+
   private var currentUserLookup: User? {
     availableUsers.first { $0.id == currentUserId }
   }
@@ -110,7 +114,7 @@ struct MultiUserPicker: View {
 
         if isSelected {
           Image(systemName: "checkmark")
-            .font(.system(size: 14, weight: .semibold))
+            .font(.system(size: checkmarkSize, weight: .semibold))
             .foregroundStyle(DS.Colors.accent)
         }
       }

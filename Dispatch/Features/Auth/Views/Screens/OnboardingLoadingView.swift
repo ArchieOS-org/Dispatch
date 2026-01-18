@@ -21,7 +21,7 @@ struct OnboardingLoadingView: View {
 
         if let error = syncManager.lastSyncErrorMessage {
           Image(systemName: "exclamationmark.triangle.fill")
-            .font(.system(size: 48))
+            .font(.system(size: errorIconSize))
             .foregroundStyle(DS.Colors.Sync.error)
             .padding(.bottom, DS.Spacing.sm)
 
@@ -73,6 +73,10 @@ struct OnboardingLoadingView: View {
   }
 
   // MARK: Private
+
+  /// Scaled error icon size for Dynamic Type support (base: 48pt)
+  @ScaledMetric(relativeTo: .largeTitle)
+  private var errorIconSize: CGFloat = 48
 
   @EnvironmentObject private var syncManager: SyncManager
   @State private var message = "Setting up your workspace..."

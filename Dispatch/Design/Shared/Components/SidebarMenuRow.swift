@@ -27,7 +27,7 @@ struct SidebarMenuRow: View {
     } icon: {
       Image(systemName: tab.icon)
         .symbolRenderingMode(.hierarchical)
-        .font(.system(size: 16, weight: .medium))
+        .font(.system(size: iconSize, weight: .medium))
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     #if os(iOS)
@@ -40,6 +40,10 @@ struct SidebarMenuRow: View {
   }
 
   // MARK: Private
+
+  /// Scaled icon size for Dynamic Type support (base: 16pt, relative to callout)
+  @ScaledMetric(relativeTo: .callout)
+  private var iconSize: CGFloat = 16
 
   private var accessibilityLabelText: String {
     var label = tab.title

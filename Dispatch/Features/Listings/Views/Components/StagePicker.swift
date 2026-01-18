@@ -46,6 +46,10 @@ struct StagePicker: View {
 
   // MARK: Private
 
+  /// Scaled stage icon size for Dynamic Type support (base: 12pt)
+  @ScaledMetric(relativeTo: .caption)
+  private var stageIconSize: CGFloat = 12
+
   @Namespace private var animationNamespace
 
   private let horizontalInset: CGFloat
@@ -63,7 +67,7 @@ struct StagePicker: View {
     } label: {
       HStack(spacing: DS.Spacing.xs) {
         Image(systemName: stageOption.icon)
-          .font(.system(size: 12, weight: .medium))
+          .font(.system(size: stageIconSize, weight: .medium))
         Text(stageOption.displayName)
           .font(DS.Typography.caption)
           .fontWeight(isSelected ? .semibold : .regular)
