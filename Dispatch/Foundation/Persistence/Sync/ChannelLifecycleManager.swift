@@ -109,7 +109,7 @@ final class ChannelLifecycleManager {
         if Task.isCancelled { return }
         await MainActor.run {
           guard let self else { return }
-          delegate?.lifecycleManager(self, statusDidChange: mapRealtimeStatus(status))
+          self.delegate?.lifecycleManager(self, statusDidChange: self.mapRealtimeStatus(status))
         }
       }
     }

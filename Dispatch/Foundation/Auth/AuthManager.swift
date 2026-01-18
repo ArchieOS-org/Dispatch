@@ -195,6 +195,11 @@ final class AuthManager: ObservableObject {
       session = newSession
       debugLog.log("MFA challenge verified", category: .auth)
 
+    case .userDeleted:
+      session = nil
+      user = nil
+      debugLog.log("User deleted", category: .auth)
+
     @unknown default:
       debugLog.log("Unknown auth event received", category: .auth)
     }

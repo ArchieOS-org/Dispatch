@@ -177,7 +177,7 @@ final class RetryCoordinator {
   @discardableResult
   func autoRecoverFailedEntities(
     container: ModelContainer,
-    cooldownPeriod: TimeInterval = RetryPolicy.autoRecoveryCooldown,
+    cooldownPeriod: TimeInterval = 3600,
     performSync: () async -> Void
   ) async -> Int {
     let context = container.mainContext

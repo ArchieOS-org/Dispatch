@@ -75,9 +75,9 @@ final class CircuitBreaker: ObservableObject {
   // MARK: Lifecycle
 
   init(
-    failureThreshold: Int = CircuitBreakerPolicy.failureThreshold,
-    initialCooldown: TimeInterval = CircuitBreakerPolicy.initialCooldown,
-    maxCooldown: TimeInterval = CircuitBreakerPolicy.maxCooldown,
+    failureThreshold: Int = 5,
+    initialCooldown: TimeInterval = 30,
+    maxCooldown: TimeInterval = 300,
     dateProvider: @escaping () -> Date = { Date() }
   ) {
     self.failureThreshold = failureThreshold
