@@ -57,14 +57,10 @@ final class WindowUIState {
 
   // MARK: - Sidebar Methods
 
-  /// Clamps width for final persist (min...max)
+  /// Clamps width to valid sidebar range (minWidth...maxWidth).
+  /// Used both during drag (to prevent negative widths) and at drag end (to persist final value).
+  /// Collapse is handled separately via threshold check, not by allowing sub-min widths.
   func clampedWidth(_ newWidth: CGFloat) -> CGFloat {
-    min(DS.Spacing.sidebarMaxWidth, max(DS.Spacing.sidebarMinWidth, newWidth))
-  }
-
-  /// Clamps width during drag to minWidth...maxWidth to prevent negative widths and smooshing.
-  /// Collapse is handled at drag end based on threshold, not by allowing sub-min widths.
-  func clampedWidthDuringDrag(_ newWidth: CGFloat) -> CGFloat {
     min(DS.Spacing.sidebarMaxWidth, max(DS.Spacing.sidebarMinWidth, newWidth))
   }
 

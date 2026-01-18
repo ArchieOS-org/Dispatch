@@ -32,17 +32,17 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
   /// Always stays at minWidth or above - never shrinks during collapse.
   private var sidebarContentWidth: CGFloat {
     if windowState.isDragging {
-      return windowState.clampedWidthDuringDrag(dragStartWidth + dragDelta)
+      return windowState.clampedWidth(dragStartWidth + dragDelta)
     }
     return windowState.sidebarWidth
   }
 
   /// The container width for the sidebar slot.
-  /// Changes discretely between sidebarWidth and 0 - NOT animated.
-  /// Visual collapse effect is achieved via opacity instead.
+  /// Container frame changes discretely (not animated) to avoid spring overshoot to negative values.
+  /// The drag handle offset that depends on this value IS animated for smooth UX (see body).
   private var containerWidth: CGFloat {
     if windowState.isDragging {
-      return windowState.clampedWidthDuringDrag(dragStartWidth + dragDelta)
+      return windowState.clampedWidth(dragStartWidth + dragDelta)
     }
     return windowState.sidebarVisible ? windowState.sidebarWidth : 0
   }
@@ -60,9 +60,7 @@ struct ResizableSidebar<Sidebar: View, Content: View>: View {
         SidebarContainerView(
           sidebarContentWidth: sidebarContentWidth,
           containerWidth: containerWidth,
-          isContentVisible: isContentVisible,
-          isDragging: windowState.isDragging,
-          reduceMotion: reduceMotion
+          isContentVisible: isContentVisible
         ) {
           sidebar()
         }
@@ -148,14 +146,11 @@ private struct SidebarContainerView<Content: View>: View {
   let sidebarContentWidth: CGFloat
   let containerWidth: CGFloat
   let isContentVisible: Bool
-  let isDragging: Bool
-  let reduceMotion: Bool
   @ViewBuilder let content: () -> Content
 
   var body: some View {
     content()
       .frame(width: sidebarContentWidth)
-      .clipped()
       .background {
         Rectangle()
           .fill(.thinMaterial)
