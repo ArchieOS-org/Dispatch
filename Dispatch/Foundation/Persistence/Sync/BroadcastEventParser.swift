@@ -58,13 +58,15 @@ final class BroadcastEventParser {
   /// Handles broadcast events - parses payload and routes to delegate
   func handleBroadcastEvent(_ event: JSONObject) async {
     do {
+      // JSONObject is [String: AnyJSON] - use JSONEncoder for AnyJSON (Codable)
+      // Defined outside DEBUG block since it's also used for payload encoding below
+      let encoder = JSONEncoder()
+
       #if DEBUG
       // Log raw payload for debugging (DEBUG only to avoid PII exposure in release)
       debugLog.log("", category: .event)
       debugLog.log("RAW BROADCAST EVENT RECEIVED", category: .event)
 
-      /// JSONObject is [String: AnyJSON] - use JSONEncoder for AnyJSON (Codable)
-      let encoder = JSONEncoder()
       encoder.outputFormatting = .prettyPrinted
       if
         let jsonData = try? encoder.encode(event),

@@ -111,15 +111,30 @@ final class ChannelLifecycleManager {
     tasksSubscriptionTask = Task { [weak self] in
       guard let self else { return }
       await withTaskGroup(of: Void.self) { group in
-        group.addTask { for await a in tasksIns { if Task.isCancelled { return }
-          await self.handleDTO(a, TaskDTO.self) { self.delegate?.lifecycleManager(self, didReceiveTaskDTO: $0) }
-        } }
-        group.addTask { for await a in tasksUpd { if Task.isCancelled { return }
-          await self.handleDTO(a, TaskDTO.self) { self.delegate?.lifecycleManager(self, didReceiveTaskDTO: $0) }
-        } }
-        group.addTask { for await a in tasksDel { if Task.isCancelled { return }
-          await self.handleDelete(a) { self.delegate?.lifecycleManager(self, didReceiveTaskDelete: $0) }
-        } }
+        group.addTask {
+          for await action in tasksIns {
+            if Task.isCancelled { return }
+            await self.handleDTO(action, TaskDTO.self) {
+              self.delegate?.lifecycleManager(self, didReceiveTaskDTO: $0)
+            }
+          }
+        }
+        group.addTask {
+          for await action in tasksUpd {
+            if Task.isCancelled { return }
+            await self.handleDTO(action, TaskDTO.self) {
+              self.delegate?.lifecycleManager(self, didReceiveTaskDTO: $0)
+            }
+          }
+        }
+        group.addTask {
+          for await action in tasksDel {
+            if Task.isCancelled { return }
+            await self.handleDelete(action) {
+              self.delegate?.lifecycleManager(self, didReceiveTaskDelete: $0)
+            }
+          }
+        }
       }
     }
 
@@ -127,15 +142,30 @@ final class ChannelLifecycleManager {
     activitiesSubscriptionTask = Task { [weak self] in
       guard let self else { return }
       await withTaskGroup(of: Void.self) { group in
-        group.addTask { for await a in actIns { if Task.isCancelled { return }
-          await self.handleDTO(a, ActivityDTO.self) { self.delegate?.lifecycleManager(self, didReceiveActivityDTO: $0) }
-        } }
-        group.addTask { for await a in actUpd { if Task.isCancelled { return }
-          await self.handleDTO(a, ActivityDTO.self) { self.delegate?.lifecycleManager(self, didReceiveActivityDTO: $0) }
-        } }
-        group.addTask { for await a in actDel { if Task.isCancelled { return }
-          await self.handleDelete(a) { self.delegate?.lifecycleManager(self, didReceiveActivityDelete: $0) }
-        } }
+        group.addTask {
+          for await action in actIns {
+            if Task.isCancelled { return }
+            await self.handleDTO(action, ActivityDTO.self) {
+              self.delegate?.lifecycleManager(self, didReceiveActivityDTO: $0)
+            }
+          }
+        }
+        group.addTask {
+          for await action in actUpd {
+            if Task.isCancelled { return }
+            await self.handleDTO(action, ActivityDTO.self) {
+              self.delegate?.lifecycleManager(self, didReceiveActivityDTO: $0)
+            }
+          }
+        }
+        group.addTask {
+          for await action in actDel {
+            if Task.isCancelled { return }
+            await self.handleDelete(action) {
+              self.delegate?.lifecycleManager(self, didReceiveActivityDelete: $0)
+            }
+          }
+        }
       }
     }
 
@@ -143,15 +173,30 @@ final class ChannelLifecycleManager {
     listingsSubscriptionTask = Task { [weak self] in
       guard let self else { return }
       await withTaskGroup(of: Void.self) { group in
-        group.addTask { for await a in listIns { if Task.isCancelled { return }
-          await self.handleDTO(a, ListingDTO.self) { self.delegate?.lifecycleManager(self, didReceiveListingDTO: $0) }
-        } }
-        group.addTask { for await a in listUpd { if Task.isCancelled { return }
-          await self.handleDTO(a, ListingDTO.self) { self.delegate?.lifecycleManager(self, didReceiveListingDTO: $0) }
-        } }
-        group.addTask { for await a in listDel { if Task.isCancelled { return }
-          await self.handleDelete(a) { self.delegate?.lifecycleManager(self, didReceiveListingDelete: $0) }
-        } }
+        group.addTask {
+          for await action in listIns {
+            if Task.isCancelled { return }
+            await self.handleDTO(action, ListingDTO.self) {
+              self.delegate?.lifecycleManager(self, didReceiveListingDTO: $0)
+            }
+          }
+        }
+        group.addTask {
+          for await action in listUpd {
+            if Task.isCancelled { return }
+            await self.handleDTO(action, ListingDTO.self) {
+              self.delegate?.lifecycleManager(self, didReceiveListingDTO: $0)
+            }
+          }
+        }
+        group.addTask {
+          for await action in listDel {
+            if Task.isCancelled { return }
+            await self.handleDelete(action) {
+              self.delegate?.lifecycleManager(self, didReceiveListingDelete: $0)
+            }
+          }
+        }
       }
     }
 
@@ -159,15 +204,30 @@ final class ChannelLifecycleManager {
     usersSubscriptionTask = Task { [weak self] in
       guard let self else { return }
       await withTaskGroup(of: Void.self) { group in
-        group.addTask { for await a in usersIns { if Task.isCancelled { return }
-          await self.handleDTO(a, UserDTO.self) { self.delegate?.lifecycleManager(self, didReceiveUserDTO: $0) }
-        } }
-        group.addTask { for await a in usersUpd { if Task.isCancelled { return }
-          await self.handleDTO(a, UserDTO.self) { self.delegate?.lifecycleManager(self, didReceiveUserDTO: $0) }
-        } }
-        group.addTask { for await a in usersDel { if Task.isCancelled { return }
-          await self.handleDelete(a) { self.delegate?.lifecycleManager(self, didReceiveUserDelete: $0) }
-        } }
+        group.addTask {
+          for await action in usersIns {
+            if Task.isCancelled { return }
+            await self.handleDTO(action, UserDTO.self) {
+              self.delegate?.lifecycleManager(self, didReceiveUserDTO: $0)
+            }
+          }
+        }
+        group.addTask {
+          for await action in usersUpd {
+            if Task.isCancelled { return }
+            await self.handleDTO(action, UserDTO.self) {
+              self.delegate?.lifecycleManager(self, didReceiveUserDTO: $0)
+            }
+          }
+        }
+        group.addTask {
+          for await action in usersDel {
+            if Task.isCancelled { return }
+            await self.handleDelete(action) {
+              self.delegate?.lifecycleManager(self, didReceiveUserDelete: $0)
+            }
+          }
+        }
       }
     }
 
@@ -175,15 +235,30 @@ final class ChannelLifecycleManager {
     notesSubscriptionTask = Task { [weak self] in
       guard let self else { return }
       await withTaskGroup(of: Void.self) { group in
-        group.addTask { for await a in noteIns { if Task.isCancelled { return }
-          await self.handleDTO(a, NoteDTO.self) { self.delegate?.lifecycleManager(self, didReceiveNoteDTO: $0) }
-        } }
-        group.addTask { for await a in noteUpd { if Task.isCancelled { return }
-          await self.handleDTO(a, NoteDTO.self) { self.delegate?.lifecycleManager(self, didReceiveNoteDTO: $0) }
-        } }
-        group.addTask { for await a in noteDel { if Task.isCancelled { return }
-          await self.handleDelete(a) { self.delegate?.lifecycleManager(self, didReceiveNoteDelete: $0) }
-        } }
+        group.addTask {
+          for await action in noteIns {
+            if Task.isCancelled { return }
+            await self.handleDTO(action, NoteDTO.self) {
+              self.delegate?.lifecycleManager(self, didReceiveNoteDTO: $0)
+            }
+          }
+        }
+        group.addTask {
+          for await action in noteUpd {
+            if Task.isCancelled { return }
+            await self.handleDTO(action, NoteDTO.self) {
+              self.delegate?.lifecycleManager(self, didReceiveNoteDTO: $0)
+            }
+          }
+        }
+        group.addTask {
+          for await action in noteDel {
+            if Task.isCancelled { return }
+            await self.handleDelete(action) {
+              self.delegate?.lifecycleManager(self, didReceiveNoteDelete: $0)
+            }
+          }
+        }
       }
     }
 

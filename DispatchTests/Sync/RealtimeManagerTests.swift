@@ -277,6 +277,86 @@ final class BroadcastEventParserTests: XCTestCase {
     XCTAssertEqual(delegate.receivedTaskDTOs.count, 1)
   }
 
+  // MARK: - INSERT Event Tests
+
+  func test_insertEvent_tasks() async {
+    // Given
+    let taskId = UUID()
+    delegate.currentUserID = UUID()
+
+    let payload = createBroadcastPayload(
+      table: .tasks,
+      type: .insert,
+      record: createTaskRecord(id: taskId, originUserId: UUID())
+    )
+
+    // When
+    await parser.handleBroadcastEvent(wrapPayload(payload))
+
+    // Then
+    XCTAssertEqual(delegate.receivedTaskDTOs.count, 1)
+    XCTAssertEqual(delegate.receivedTaskDTOs.first?.id, taskId)
+  }
+
+  func test_insertEvent_activities() async {
+    // Given
+    let activityId = UUID()
+    delegate.currentUserID = UUID()
+
+    let payload = createBroadcastPayload(
+      table: .activities,
+      type: .insert,
+      record: createActivityRecord(id: activityId, originUserId: UUID())
+    )
+
+    // When
+    await parser.handleBroadcastEvent(wrapPayload(payload))
+
+    // Then
+    XCTAssertEqual(delegate.receivedActivityDTOs.count, 1)
+    XCTAssertEqual(delegate.receivedActivityDTOs.first?.id, activityId)
+  }
+
+  // MARK: - UPDATE Event Tests
+
+  func test_updateEvent_tasks() async {
+    // Given
+    let taskId = UUID()
+    delegate.currentUserID = UUID()
+
+    let payload = createBroadcastPayload(
+      table: .tasks,
+      type: .update,
+      record: createTaskRecord(id: taskId, originUserId: UUID())
+    )
+
+    // When
+    await parser.handleBroadcastEvent(wrapPayload(payload))
+
+    // Then
+    XCTAssertEqual(delegate.receivedTaskDTOs.count, 1)
+    XCTAssertEqual(delegate.receivedTaskDTOs.first?.id, taskId)
+  }
+
+  func test_updateEvent_activities() async {
+    // Given
+    let activityId = UUID()
+    delegate.currentUserID = UUID()
+
+    let payload = createBroadcastPayload(
+      table: .activities,
+      type: .update,
+      record: createActivityRecord(id: activityId, originUserId: UUID())
+    )
+
+    // When
+    await parser.handleBroadcastEvent(wrapPayload(payload))
+
+    // Then
+    XCTAssertEqual(delegate.receivedActivityDTOs.count, 1)
+    XCTAssertEqual(delegate.receivedActivityDTOs.first?.id, activityId)
+  }
+
   // MARK: - DELETE Event Tests
 
   func test_deleteEvent_tasks() async {
@@ -398,6 +478,28 @@ final class BroadcastEventParserTests: XCTestCase {
       "listing": UUID().uuidString,
       "declared_by": UUID().uuidString,
       "created_via": "api",
+      "created_at": ISO8601DateFormatter().string(from: Date()),
+      "updated_at": ISO8601DateFormatter().string(from: Date()),
+      "_event_version": eventVersion
+    ]
+    if let originUserId {
+      record["_origin_user_id"] = originUserId.uuidString
+    }
+    return record
+  }
+
+  private func createActivityRecord(
+    id: UUID = UUID(),
+    originUserId: UUID?,
+    eventVersion: Int = 1
+  ) -> [String: Any] {
+    var record: [String: Any] = [
+      "id": id.uuidString,
+      "title": "Test Activity",
+      "status": "open",
+      "listing": UUID().uuidString,
+      "declared_by": UUID().uuidString,
+      "created_via": "dispatch",
       "created_at": ISO8601DateFormatter().string(from: Date()),
       "updated_at": ISO8601DateFormatter().string(from: Date()),
       "_event_version": eventVersion
