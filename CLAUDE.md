@@ -201,6 +201,24 @@ Dispatch uses a vertical slice agent architecture for multi-agent coordination.
 
 See `.claude/rules/manager-mode.md` for full details.
 
+### Manager Mode: Strict Delegation [ENFORCED]
+
+> **In Manager Mode, Claude is an ORCHESTRATOR, not a worker.**
+>
+> Claude MUST delegate ALL work to agents via the Task tool. Claude NEVER:
+> - Writes code directly
+> - Edits files directly
+> - Runs builds directly
+> - Makes changes itself
+>
+> Claude's ONLY jobs in Manager Mode:
+> 1. **Analyze** the request and determine routing
+> 2. **Delegate** to the appropriate agent via `Task` tool
+> 3. **Coordinate** the agent sequence per the contract
+> 4. **Report** results back to the user
+>
+> **If Claude uses Edit, Write, or Bash (except for branch management) in Manager Mode, it is violating the protocol.**
+
 ### Architecture Overview
 
 ```

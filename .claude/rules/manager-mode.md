@@ -1,6 +1,6 @@
 # Manager Mode (On-Demand Orchestration)
 
-> **Version**: 2.0
+> **Version**: 2.1
 
 ## Default Behavior
 
@@ -18,6 +18,26 @@ When the user says ANY of these (or similar):
 - "plan this properly"
 
 THEN you MUST switch to **Manager Mode**.
+
+---
+
+## The Cardinal Rule [ENFORCED]
+
+> **In Manager Mode, you are an ORCHESTRATOR, not a worker.**
+>
+> You MUST delegate ALL work to agents via the Task tool. You NEVER:
+> - Write code directly
+> - Edit files directly
+> - Run builds directly
+> - Make changes yourself
+>
+> Your ONLY jobs are:
+> 1. **Analyze** the request and determine routing
+> 2. **Delegate** to the appropriate agent via `Task` tool
+> 3. **Coordinate** the agent sequence per the contract
+> 4. **Report** results back to the user
+>
+> **If you find yourself using Edit, Write, or Bash (except for branch management), you are violating Manager Mode.**
 
 ---
 
@@ -112,24 +132,28 @@ PATCHSET 2: Complete + all criteria met + tests pass
 
 ---
 
-## Manager Mode Behavior
+## Manager Mode Behavior [ENFORCED]
+
+**Remember: You are the manager. You delegate. You do NOT do the work yourself.**
 
 1. **First**: Check if Small Change Bypass applies
-   - If YES → go directly to feature-owner → integrator
-   - If NO → invoke dispatch-planner
+   - If YES → **delegate** to feature-owner → integrator
+   - If NO → **delegate** to dispatch-planner
 
 2. **For Complex Changes**: Invoke `dispatch-planner` via the Task tool
    ```
    Task tool with subagent_type="dispatch-planner"
    ```
+   **You do NOT analyze the codebase yourself. The planner does that.**
 
-3. **Follow the plan**: Execute dispatch-planner's recommendations:
-   - If it recommends `feature-owner` → invoke feature-owner
-   - If it recommends `data-integrity` → invoke data-integrity
+3. **Follow the plan**: Execute dispatch-planner's recommendations via Task tool:
+   - If it recommends `feature-owner` → **delegate** to feature-owner
+   - If it recommends `data-integrity` → **delegate** to data-integrity
    - If it creates a contract → respect the Interface Lock
    - Follow the adaptive patchset protocol from the contract
+   **You do NOT implement anything. The agents do that.**
 
-4. **Conditional agent sequencing**:
+4. **Conditional agent sequencing** (all via Task tool):
    - feature-owner (PATCHSET 1-2 minimum)
    - jobs-critic (only if `UI Review Required: YES`)
    - ui-polish (only if SHIP: YES and customer-facing)
@@ -137,6 +161,27 @@ PATCHSET 2: Complete + all criteria met + tests pass
    - integrator (FINAL, always)
 
 5. **Report back**: After each agent completes, summarize results to the user
+
+### What You DO in Manager Mode
+
+| Action | Tool | Example |
+|--------|------|---------|
+| Delegate work | `Task` | `Task(subagent_type="feature-owner")` |
+| Rename branch | `Bash` | `git branch -m new-name` |
+| Summarize results | Text output | "feature-owner completed PATCHSET 1..." |
+| Ask clarifying questions | Text output | "Should I proceed with...?" |
+
+### What You NEVER DO in Manager Mode
+
+| Forbidden Action | Why |
+|------------------|-----|
+| `Edit` files | Agents edit, managers delegate |
+| `Write` files | Agents write, managers delegate |
+| `Read` files for implementation | Agents read, managers delegate |
+| `Bash` for builds/tests | Agents build, managers delegate |
+| `Grep`/`Glob` for code exploration | Agents explore, managers delegate |
+
+**Exception**: Reading files to understand user's question is OK. Implementing changes is NOT.
 
 ---
 
