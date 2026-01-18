@@ -14,22 +14,6 @@ import PostgREST
 import Supabase
 import SwiftData
 
-// MARK: - RetryPolicy
-
-/// Defines exponential backoff policy for failed sync retries.
-/// Delays: 1s, 2s, 4s, 8s, 16s, capped at 30s.
-enum RetryPolicy {
-  static let maxRetries = 5
-  static let maxDelay: TimeInterval = 30
-
-  /// Calculate delay for a given retry attempt (0-indexed).
-  /// Attempt 0 = 1s, Attempt 1 = 2s, Attempt 2 = 4s, etc.
-  static func delay(for attempt: Int) -> TimeInterval {
-    let baseDelay = pow(2.0, Double(attempt))
-    return min(maxDelay, baseDelay)
-  }
-}
-
 // MARK: - SyncRunMode
 
 enum SyncRunMode: Sendable {
@@ -62,6 +46,8 @@ final class SyncManager: ObservableObject {
   init(mode: SyncRunMode = .live) {
     self.mode = mode
     realtimeManager = RealtimeManager(mode: mode)
+    syncQueue = SyncQueue(mode: mode)
+    retryCoordinator = RetryCoordinator(mode: mode)
 
     // Only load expensive state in live mode
     if mode == .live {
@@ -84,6 +70,11 @@ final class SyncManager: ObservableObject {
       fetchCurrentUser: { [weak self] id in self?.fetchCurrentUser(id: id) },
       updateListingConfigReady: { [weak self] ready in self?.isListingConfigReady = ready }
     )
+
+    // Configure sync queue callback
+    syncQueue.onSyncRequested = { [weak self] in
+      await self?.sync()
+    }
 
     debugLog.log("SyncManager singleton initialized (mode: \(mode))", category: .sync)
     if mode == .live {
@@ -119,7 +110,7 @@ final class SyncManager: ObservableObject {
   @Published private(set) var isSyncing = false
   @Published private(set) var isListingConfigReady = false // UI gate for AddListingSheet
   @Published private(set) var syncError: Error?
-  @Published private(set) var syncStatus = SyncStatus.idle
+  @Published internal(set) var syncStatus = SyncStatus.idle
   @Published var currentUser: User? // The actual profile object, for UI state
 
   /// User-facing error message when syncStatus is .error
@@ -131,21 +122,38 @@ final class SyncManager: ObservableObject {
   /// Realtime manager for channel lifecycle and event handling
   private(set) var realtimeManager: RealtimeManager
 
-  /// Core Tasks
-  var syncLoopTask: Task<Void, Never>?
+  /// Sync queue for coalescing sync requests
+  private(set) var syncQueue: SyncQueue
 
   #if DEBUG
   /// For verifying shutdown logic without side effects
   var debugHangingTask: Task<Void, Never>?
   #endif
 
-  #if DEBUG
-  /// Allows testing the coalescing loop logic without actual network syncs
-  var _simulateCoalescingInTest = false
-  #endif
-
   /// Model container - internal for RealtimeManagerDelegate access
   private(set) var modelContainer: ModelContainer?
+
+  /// Conflict resolver for in-flight tracking and conflict decisions
+  let conflictResolver = ConflictResolver()
+
+  /// Entity sync handler for all sync operations
+  // swiftlint:disable:next implicitly_unwrapped_optional
+  var entitySyncHandler: EntitySyncHandler!
+
+  var isShutdown = false // Jobs Standard: Track lifecycle state
+
+  /// Core Tasks - delegated to syncQueue for loop management
+  var syncLoopTask: Task<Void, Never>? {
+    syncQueue.syncLoopTask
+  }
+
+  #if DEBUG
+  /// Allows testing the coalescing loop logic without actual network syncs
+  var _simulateCoalescingInTest: Bool {
+    get { syncQueue._simulateCoalescingInTest }
+    set { syncQueue._simulateCoalescingInTest = newValue }
+  }
+  #endif
 
   @Published private(set) var lastSyncTime: Date? {
     didSet {
@@ -230,63 +238,13 @@ final class SyncManager: ObservableObject {
   }
 
   /// Coalescing sync request - replaces "fire and forget" tasks with a single consumer.
-  /// Guaranteed to run on MainActor.
+  /// Guaranteed to run on MainActor. Delegates to SyncQueue for loop management.
   func requestSync() {
-    // Strict Preview Guard
+    // Telemetry tracking for preview mode
     if mode == .preview {
       _telemetry_syncRequests += 1
-      return
     }
-
-    // Test Mode Guard
-    // In .test, syncs must be manually triggered via `await sync()`
-    // UNLESS we are specifically verifying the coalescing logic.
-    if mode == .test {
-      #if DEBUG
-      if !_simulateCoalescingInTest {
-        return
-      }
-      #else
-      return
-      #endif
-    }
-
-    // 1. Set Flag
-    syncRequested = true
-
-    // 2. Ensure Loop Exists
-    if syncLoopTask == nil {
-      debugLog.log("Starting sync loop...", category: .sync)
-      syncLoopTask = Task {
-        // Guaranteed Nil-ing: Clear property on exit (finish or cancel)
-        // RULE: cleanup at bottom of scope via MainActor.run. NO defer watcher.
-
-        // Drain Loop
-        while !Task.isCancelled {
-          // Check logic on MainActor
-          let shouldRun = await MainActor.run {
-            if self.syncRequested {
-              self.syncRequested = false
-              return true
-            }
-            return false
-          }
-
-          if !shouldRun { break }
-
-          // Do the work (holds self strongly during execution)
-          await self.sync()
-        }
-
-        // Explicit Cleanup: Must happen on MainActor
-        await MainActor.run {
-          self.syncLoopTask = nil
-          debugLog.log("Sync loop exited.", category: .sync)
-        }
-      }
-    } else {
-      debugLog.log("Sync request coalesced into existing loop.", category: .sync)
-    }
+    syncQueue.requestSync()
   }
 
   /// Resets lastSyncTime to nil, forcing the next sync to run full reconciliation.
@@ -371,123 +329,27 @@ final class SyncManager: ObservableObject {
   /// - Returns: true if retry was attempted, false if max retries exceeded.
   @discardableResult
   func retryTask(_ task: TaskItem) async -> Bool {
-    let entityId = task.id
-
-    // Check if max retries exceeded (using persisted retryCount)
-    if task.retryCount >= RetryPolicy.maxRetries {
-      debugLog.log(
-        "retryTask() for \(entityId): max retries exceeded (\(task.retryCount)), leaving in .failed state",
-        category: .sync
-      )
-      return false
+    await retryCoordinator.retryTask(task) { [weak self] in
+      await self?.sync()
     }
-
-    // Increment retry count (persisted on entity) and calculate delay
-    task.retryCount += 1
-    let delay = RetryPolicy.delay(for: task.retryCount - 1) // 0-indexed for delay calculation
-
-    debugLog.log(
-      "retryTask() for \(entityId): attempt \(task.retryCount)/\(RetryPolicy.maxRetries), delay: \(delay)s",
-      category: .sync
-    )
-
-    // Apply backoff delay (skip in test mode for fast, deterministic tests)
-    if mode != .test {
-      do {
-        try await Task.sleep(for: .seconds(delay))
-      } catch {
-        debugLog.log("retryTask() cancelled during backoff delay", category: .sync)
-        return false
-      }
-    }
-
-    // Reset state and sync
-    task.syncState = .pending
-    task.lastSyncError = nil
-    await sync()
-    return true
   }
 
   /// Retry syncing a specific Activity with exponential backoff.
   /// - Returns: true if retry was attempted, false if max retries exceeded.
   @discardableResult
   func retryActivity(_ activity: Activity) async -> Bool {
-    let entityId = activity.id
-
-    // Check if max retries exceeded (using persisted retryCount)
-    if activity.retryCount >= RetryPolicy.maxRetries {
-      debugLog.log(
-        "retryActivity() for \(entityId): max retries exceeded (\(activity.retryCount)), leaving in .failed state",
-        category: .sync
-      )
-      return false
+    await retryCoordinator.retryActivity(activity) { [weak self] in
+      await self?.sync()
     }
-
-    // Increment retry count (persisted on entity) and calculate delay
-    activity.retryCount += 1
-    let delay = RetryPolicy.delay(for: activity.retryCount - 1)
-
-    debugLog.log(
-      "retryActivity() for \(entityId): attempt \(activity.retryCount)/\(RetryPolicy.maxRetries), delay: \(delay)s",
-      category: .sync
-    )
-
-    // Apply backoff delay (skip in test mode for fast, deterministic tests)
-    if mode != .test {
-      do {
-        try await Task.sleep(for: .seconds(delay))
-      } catch {
-        debugLog.log("retryActivity() cancelled during backoff delay", category: .sync)
-        return false
-      }
-    }
-
-    // Reset state and sync
-    activity.syncState = .pending
-    activity.lastSyncError = nil
-    await sync()
-    return true
   }
 
   /// Retry syncing a specific Listing with exponential backoff.
   /// - Returns: true if retry was attempted, false if max retries exceeded.
   @discardableResult
   func retryListing(_ listing: Listing) async -> Bool {
-    let entityId = listing.id
-
-    // Check if max retries exceeded (using persisted retryCount)
-    if listing.retryCount >= RetryPolicy.maxRetries {
-      debugLog.log(
-        "retryListing() for \(entityId): max retries exceeded (\(listing.retryCount)), leaving in .failed state",
-        category: .sync
-      )
-      return false
+    await retryCoordinator.retryListing(listing) { [weak self] in
+      await self?.sync()
     }
-
-    // Increment retry count (persisted on entity) and calculate delay
-    listing.retryCount += 1
-    let delay = RetryPolicy.delay(for: listing.retryCount - 1)
-
-    debugLog.log(
-      "retryListing() for \(entityId): attempt \(listing.retryCount)/\(RetryPolicy.maxRetries), delay: \(delay)s",
-      category: .sync
-    )
-
-    // Apply backoff delay (skip in test mode for fast, deterministic tests)
-    if mode != .test {
-      do {
-        try await Task.sleep(for: .seconds(delay))
-      } catch {
-        debugLog.log("retryListing() cancelled during backoff delay", category: .sync)
-        return false
-      }
-    }
-
-    // Reset state and sync
-    listing.syncState = .pending
-    listing.lastSyncError = nil
-    await sync()
-    return true
   }
 
   /// Retry all failed entities with exponential backoff.
@@ -499,76 +361,9 @@ final class SyncManager: ObservableObject {
       return
     }
 
-    let context = container.mainContext
-
-    // Fetch all entities and filter for failed ones (SwiftData predicate limitations)
-    var failedTasks: [TaskItem] = []
-    var failedActivities: [Activity] = []
-    var failedListings: [Listing] = []
-
-    do {
-      let taskDescriptor = FetchDescriptor<TaskItem>()
-      let allTasks = try context.fetch(taskDescriptor)
-      failedTasks = allTasks.filter { $0.syncState == .failed }
-
-      let activityDescriptor = FetchDescriptor<Activity>()
-      let allActivities = try context.fetch(activityDescriptor)
-      failedActivities = allActivities.filter { $0.syncState == .failed }
-
-      let listingDescriptor = FetchDescriptor<Listing>()
-      let allListings = try context.fetch(listingDescriptor)
-      failedListings = allListings.filter { $0.syncState == .failed }
-    } catch {
-      debugLog.error("retryFailedEntities(): Failed to fetch entities", error: error)
-      return
+    await retryCoordinator.retryFailedEntities(container: container) { [weak self] in
+      await self?.sync()
     }
-
-    let totalFailed = failedTasks.count + failedActivities.count + failedListings.count
-    if totalFailed == 0 {
-      debugLog.log("retryFailedEntities(): No failed entities to retry", category: .sync)
-      return
-    }
-
-    debugLog.log(
-      "retryFailedEntities(): Found \(totalFailed) failed entities (\(failedTasks.count) tasks, \(failedActivities.count) activities, \(failedListings.count) listings)",
-      category: .sync
-    )
-
-    // Filter to only entities that haven't exceeded max retries (using persisted retryCount)
-    let retriableTasks = failedTasks.filter { $0.retryCount < RetryPolicy.maxRetries }
-    let retriableActivities = failedActivities.filter { $0.retryCount < RetryPolicy.maxRetries }
-    let retriableListings = failedListings.filter { $0.retryCount < RetryPolicy.maxRetries }
-
-    let totalRetriable = retriableTasks.count + retriableActivities.count + retriableListings.count
-    if totalRetriable == 0 {
-      debugLog.log("retryFailedEntities(): All failed entities have exceeded max retries", category: .sync)
-      return
-    }
-
-    debugLog.log("retryFailedEntities(): \(totalRetriable) entities eligible for retry", category: .sync)
-
-    // Mark all retriable entities as pending (increment persisted retryCount and reset state)
-    for task in retriableTasks {
-      task.retryCount += 1
-      task.syncState = .pending
-      task.lastSyncError = nil
-    }
-    for activity in retriableActivities {
-      activity.retryCount += 1
-      activity.syncState = .pending
-      activity.lastSyncError = nil
-    }
-    for listing in retriableListings {
-      listing.retryCount += 1
-      listing.syncState = .pending
-      listing.lastSyncError = nil
-    }
-
-    // Trigger a sync to process the pending entities
-    // Note: We don't apply individual backoff delays here because this is a batch retry
-    // triggered by network restoration or app foreground. The sync itself will process
-    // all pending entities together.
-    await sync()
   }
 
   func sync() async {
@@ -682,89 +477,6 @@ final class SyncManager: ObservableObject {
     await realtimeManager.startListening()
   }
 
-  /// Deterministic shutdown with strict ordering: Unsubscribe -> Cancel -> Await -> Cleanup.
-  /// Prevents deadlocks and ensures test isolation.
-  func shutdown() async {
-    if isShutdown { return }
-    isShutdown = true
-
-    debugLog.log("shutdown() called - starting deterministic teardown", category: .sync)
-
-    // 1. Stop realtime listening (unsubscribe channels)
-    await realtimeManager.stopListening()
-
-    // 2. Cancel Tasks (Signal listeners to stop)
-    debugLog.log("  Cancelling active tasks...", category: .sync)
-    realtimeManager.cancelAllTasks()
-    syncLoopTask?.cancel()
-
-    #if DEBUG
-    debugHangingTask?.cancel()
-    #endif
-
-    // 3. Await Tasks (Quiescence)
-    debugLog.log("  Awaiting task quiescence...", category: .sync)
-
-    if mode == .test {
-      // Provable Termination: Fail if tasks don't exit
-      do {
-        try await withTimeout(seconds: 2.0) {
-          await self.realtimeManager.awaitAllTasks()
-          _ = await self.syncLoopTask?.result
-
-          #if DEBUG
-          _ = await self.debugHangingTask?.result
-          #endif
-        }
-      } catch {
-        debugLog.error("SyncManager.shutdown() timed out! Tasks stuck.")
-      }
-    } else {
-      // In live/preview, just await (logging ensures visibility)
-      await realtimeManager.awaitAllTasks()
-      _ = await syncLoopTask?.result
-
-      #if DEBUG
-      _ = await debugHangingTask?.result
-      #endif
-    }
-
-    // 4. Cleanup References
-    realtimeManager.clearTaskReferences()
-    syncLoopTask = nil
-
-    #if DEBUG
-    debugHangingTask = nil
-    #endif
-
-    // Clear observer tokens
-    observerTokens.removeAll()
-
-    debugLog.log("shutdown() complete. SyncManager is quiescent.", category: .sync)
-  }
-
-  #if DEBUG
-  /// Spawns a dummy task for testing deterministic shutdown.
-  /// Cooperative: Sleeps in small chunks to allow cancellation.
-  /// Updates `debugHangingTask` so shutdown() can find it.
-  func performDebugTask(duration: TimeInterval) {
-    debugLog.log("DEBUG: performDebugTask started", category: .sync)
-    debugHangingTask = Task { [weak self] in
-      let chunk = 0.1
-      var elapsed = 0.0
-      while elapsed < duration {
-        if Task.isCancelled { return }
-        try? await Task.sleep(nanoseconds: UInt64(chunk * 1_000_000_000))
-        elapsed += chunk
-      }
-      // Self-clearing
-      await MainActor.run { [weak self] in
-        self?.debugHangingTask = nil
-      }
-    }
-  }
-  #endif
-
   func stopListening() async {
     await realtimeManager.stopListening()
   }
@@ -790,21 +502,18 @@ final class SyncManager: ObservableObject {
     debugLog.log("Retry counts managed via entity.retryCount (persisted)", category: .sync)
   }
 
+  /// Clears observer tokens (called from lifecycle extension)
+  func clearObserverTokens() {
+    observerTokens.removeAll()
+  }
+
   // MARK: Private
 
-  /// Conflict resolver for in-flight tracking and conflict decisions
-  private let conflictResolver = ConflictResolver()
-
-  /// Entity sync handler for all sync operations
-  // swiftlint:disable:next implicitly_unwrapped_optional
-  private var entitySyncHandler: EntitySyncHandler!
-
-  private var isShutdown = false // Jobs Standard: Track lifecycle state
+  /// Retry coordinator for exponential backoff retry logic
+  private let retryCoordinator: RetryCoordinator
 
   private var syncRequestedDuringSync = false
   private var wasDisconnected = false // Track disconnection for reconnect sync
-
-  private var syncRequested = false
 
   /// Tracks all active observer tokens for deterministic cleanup.
   private var observerTokens = [NSObjectProtocol]()
@@ -829,259 +538,5 @@ final class SyncManager: ObservableObject {
     } catch {
       debugLog.error("Failed to fetch current user", error: error)
     }
-  }
-
-  private func syncDown(context: ModelContext) async throws {
-    let lastSync = lastSyncTime ?? Date.distantPast
-    let lastSyncISO = ISO8601DateFormatter().string(from: lastSync)
-    debugLog.log("syncDown() - fetching records updated since: \(lastSyncISO)", category: .sync)
-
-    // Determine if we should run full reconciliation
-    // Run on first sync (no lastSyncTime) to ensure clean slate
-    let shouldReconcile = lastSyncTime == nil
-    if shouldReconcile {
-      debugLog.log("Warning: First sync detected - will run FULL RECONCILIATION to remove orphan local records", category: .sync)
-    }
-
-    // Sync in order: ListingTypes -> ActivityTemplates -> Users -> Listings -> Tasks -> Activities (respects FK dependencies)
-    // Types/Templates first since Listings reference them
-    debugLog.log("Sync order: ListingTypes -> ActivityTemplates -> Users -> Listings -> Tasks -> Activities", category: .sync)
-
-    debugLog.startTiming("syncDownListingTypes")
-    try await entitySyncHandler.syncDownListingTypes(context: context)
-    debugLog.endTiming("syncDownListingTypes")
-
-    debugLog.startTiming("syncDownActivityTemplates")
-    try await entitySyncHandler.syncDownActivityTemplates(context: context)
-    debugLog.endTiming("syncDownActivityTemplates")
-
-    debugLog.startTiming("syncDownUsers")
-    try await entitySyncHandler.syncDownUsers(context: context, since: lastSyncISO)
-    debugLog.endTiming("syncDownUsers")
-
-    debugLog.startTiming("syncDownProperties")
-    try await entitySyncHandler.syncDownProperties(context: context, since: lastSyncISO)
-    debugLog.endTiming("syncDownProperties")
-
-    debugLog.startTiming("syncDownListings")
-    try await entitySyncHandler.syncDownListings(context: context, since: lastSyncISO)
-    debugLog.endTiming("syncDownListings")
-
-    debugLog.startTiming("syncDownTasks")
-    try await entitySyncHandler.syncDownTasks(context: context, since: lastSyncISO)
-    debugLog.endTiming("syncDownTasks")
-
-    debugLog.startTiming("syncDownActivities")
-    try await entitySyncHandler.syncDownActivities(context: context, since: lastSyncISO)
-    debugLog.endTiming("syncDownActivities")
-
-    debugLog.startTiming("syncDownTaskAssignees")
-    try await entitySyncHandler.syncDownTaskAssignees(context: context, since: lastSyncISO)
-    debugLog.endTiming("syncDownTaskAssignees")
-
-    debugLog.startTiming("syncDownActivityAssignees")
-    try await entitySyncHandler.syncDownActivityAssignees(context: context, since: lastSyncISO)
-    debugLog.endTiming("syncDownActivityAssignees")
-
-    // Notes (Incremental, Soft-Delete Aware)
-    debugLog.startTiming("syncDownNotes")
-    try await entitySyncHandler.syncDownNotes(context: context)
-    debugLog.endTiming("syncDownNotes")
-
-    // Notes Reconciliation - catches any notes missed by incremental sync
-    debugLog.startTiming("reconcileMissingNotes")
-    _ = try await entitySyncHandler.reconcileMissingNotes(context: context)
-    debugLog.endTiming("reconcileMissingNotes")
-
-    // JOBS-STANDARD: Order-Independent Relationship Reconciliation
-    // Ensure Listing.owner is resolved regardless of sync order
-    debugLog.startTiming("reconcileListingRelationships")
-    try entitySyncHandler.reconcileListingRelationships(context: context)
-    debugLog.endTiming("reconcileListingRelationships")
-
-    // Reconcile Listing -> Property relationships
-    debugLog.startTiming("reconcileListingPropertyRelationships")
-    try entitySyncHandler.reconcileListingPropertyRelationships(context: context)
-    debugLog.endTiming("reconcileListingPropertyRelationships")
-
-    // ORPHAN RECONCILIATION: Remove local records that no longer exist on Supabase
-    // This handles the case where records are hard-deleted on the server
-    if shouldReconcile {
-      debugLog.startTiming("reconcileOrphans")
-      try await entitySyncHandler.reconcileOrphans(context: context)
-      debugLog.endTiming("reconcileOrphans")
-    }
-  }
-
-  private func syncUp(context: ModelContext) async throws {
-    debugLog.log("syncUp() - pushing dirty entities to Supabase", category: .sync)
-
-    // 0. Reconcile legacy "phantom" users (local-only but marked synced)
-    // This is a lightweight local migration measure.
-    try? await entitySyncHandler.reconcileLegacyLocalUsers(context: context)
-
-    // Admin-only: ListingTypes and ActivityTemplates
-    // Check if current user is admin
-    let isAdmin = currentUser?.userType == .admin
-    if isAdmin {
-      debugLog.log("Admin user - syncing ListingTypes and ActivityTemplates", category: .sync)
-      try await entitySyncHandler.syncUpListingTypes(context: context)
-      try await entitySyncHandler.syncUpActivityTemplates(context: context)
-    } else {
-      debugLog.log("Non-admin user - skipping ListingTypes/Templates SyncUp", category: .sync)
-    }
-
-    debugLog.log(
-      "Sync order: Users -> Properties -> Listings -> Tasks -> Activities -> Assignees -> Notes (FK dependencies)",
-      category: .sync
-    )
-
-    // Sync in FK dependency order: Users first (owners), then Properties, then Listings, then Tasks/Activities
-    try await entitySyncHandler.syncUpUsers(context: context)
-    try await entitySyncHandler.syncUpProperties(context: context)
-    try await entitySyncHandler.syncUpListings(context: context)
-    try await entitySyncHandler.syncUpTasks(context: context)
-    try await entitySyncHandler.syncUpActivities(context: context)
-    try await entitySyncHandler.syncUpTaskAssignees(context: context)
-    try await entitySyncHandler.syncUpActivityAssignees(context: context)
-    try await entitySyncHandler.syncUpNotes(context: context)
-    debugLog.log("syncUp() complete", category: .sync)
-  }
-
-  /// Helper for test timeout
-  private func withTimeout(seconds: TimeInterval, operation: @escaping @Sendable () async -> Void) async throws {
-    try await withThrowingTaskGroup(of: Void.self) { group in
-      // Task 1: Operation
-      group.addTask {
-        await operation()
-      }
-
-      // Task 2: Timer
-      group.addTask {
-        try await Task.sleep(for: .seconds(seconds))
-        throw CancellationError() // Timer won
-      }
-
-      // Wait for first completion
-      do {
-        try await group.next()
-        // If operation finished first, cancel timer
-        group.cancelAll()
-      } catch {
-        // If timer finished first (threw), cancel operation and rethrow
-        group.cancelAll()
-        if mode == .test {
-          struct TimeoutError: Error { }
-          throw TimeoutError()
-        } else {
-          debugLog.error("Operation timed out after \(seconds)s")
-        }
-      }
-    }
-  }
-
-}
-
-// MARK: RealtimeManagerDelegate
-
-extension SyncManager: RealtimeManagerDelegate {
-
-  func realtimeManager(_: RealtimeManager, didReceiveTaskDTO dto: TaskDTO) {
-    guard let context = modelContainer?.mainContext else { return }
-    do {
-      try entitySyncHandler.upsertTask(dto: dto, context: context)
-    } catch {
-      debugLog.error("Failed to upsert task from realtime", error: error)
-    }
-  }
-
-  func realtimeManager(_: RealtimeManager, didReceiveActivityDTO dto: ActivityDTO) {
-    guard let context = modelContainer?.mainContext else { return }
-    do {
-      try entitySyncHandler.upsertActivity(dto: dto, context: context)
-    } catch {
-      debugLog.error("Failed to upsert activity from realtime", error: error)
-    }
-  }
-
-  func realtimeManager(_: RealtimeManager, didReceiveListingDTO dto: ListingDTO) {
-    guard let context = modelContainer?.mainContext else { return }
-    do {
-      try entitySyncHandler.upsertListing(dto: dto, context: context)
-    } catch {
-      debugLog.error("Failed to upsert listing from realtime", error: error)
-    }
-  }
-
-  func realtimeManager(_: RealtimeManager, didReceiveUserDTO dto: UserDTO) {
-    guard let context = modelContainer?.mainContext else { return }
-    Task {
-      do {
-        try await entitySyncHandler.upsertUser(dto: dto, context: context)
-      } catch {
-        debugLog.error("Failed to upsert user from realtime", error: error)
-      }
-    }
-  }
-
-  func realtimeManager(_: RealtimeManager, didReceiveNoteDTO dto: NoteDTO) {
-    guard let context = modelContainer?.mainContext else { return }
-
-    // Check pending protection before applying
-    let descriptor = FetchDescriptor<Note>(predicate: #Predicate { $0.id == dto.id })
-    if let existing = try? context.fetch(descriptor).first {
-      if existing.syncState == .pending || existing.syncState == .failed {
-        debugLog.log("RT: Ignoring remote note for .pending Note \(dto.id)", category: .realtime)
-        existing.hasRemoteChangeWhilePending = true
-        return
-      }
-    }
-
-    do {
-      try entitySyncHandler.applyRemoteNote(dto: dto, source: .broadcast, context: context)
-    } catch {
-      debugLog.error("Failed to apply note from realtime", error: error)
-    }
-  }
-
-  func realtimeManager(_: RealtimeManager, didReceiveDeleteFor table: BroadcastTable, id: UUID) {
-    guard let context = modelContainer?.mainContext else { return }
-    do {
-      switch table {
-      case .tasks:
-        _ = try entitySyncHandler.deleteLocalTask(id: id, context: context)
-      case .activities:
-        _ = try entitySyncHandler.deleteLocalActivity(id: id, context: context)
-      case .listings:
-        _ = try entitySyncHandler.deleteLocalListing(id: id, context: context)
-      case .users:
-        _ = try entitySyncHandler.deleteLocalUser(id: id, context: context)
-      case .notes:
-        // Hard delete from server = hard delete locally for notes
-        let descriptor = FetchDescriptor<Note>(predicate: #Predicate { $0.id == id })
-        if let existing = try? context.fetch(descriptor).first {
-          context.delete(existing)
-          debugLog.log("RT: Hard deleted note \(id)", category: .realtime)
-        }
-      }
-    } catch {
-      debugLog.error("Failed to delete \(table) from realtime", error: error)
-    }
-  }
-
-  func realtimeManager(_: RealtimeManager, statusDidChange status: SyncStatus) {
-    syncStatus = status
-  }
-
-  func realtimeManager(_: RealtimeManager, isInFlightTaskId id: UUID) -> Bool {
-    conflictResolver.isTaskInFlight(id)
-  }
-
-  func realtimeManager(_: RealtimeManager, isInFlightActivityId id: UUID) -> Bool {
-    conflictResolver.isActivityInFlight(id)
-  }
-
-  func realtimeManager(_: RealtimeManager, isInFlightNoteId id: UUID) -> Bool {
-    conflictResolver.isNoteInFlight(id)
   }
 }
