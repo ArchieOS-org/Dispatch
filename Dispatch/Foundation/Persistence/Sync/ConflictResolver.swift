@@ -28,6 +28,12 @@ final class ConflictResolver {
   /// Notes currently being synced up - skip realtime echoes for these
   private(set) var inFlightNoteIds = Set<UUID>()
 
+  /// Task assignees currently being synced up - skip realtime echoes for these
+  private(set) var inFlightTaskAssigneeIds = Set<UUID>()
+
+  /// Activity assignees currently being synced up - skip realtime echoes for these
+  private(set) var inFlightActivityAssigneeIds = Set<UUID>()
+
   // MARK: - Mark In-Flight
 
   /// Mark task IDs as in-flight before sync up to prevent realtime echo overwrites
@@ -43,6 +49,16 @@ final class ConflictResolver {
   /// Mark note IDs as in-flight before sync up to prevent realtime echo overwrites
   func markNotesInFlight(_ ids: Set<UUID>) {
     inFlightNoteIds = ids
+  }
+
+  /// Mark task assignee IDs as in-flight before sync up to prevent realtime echo overwrites
+  func markTaskAssigneesInFlight(_ ids: Set<UUID>) {
+    inFlightTaskAssigneeIds = ids
+  }
+
+  /// Mark activity assignee IDs as in-flight before sync up to prevent realtime echo overwrites
+  func markActivityAssigneesInFlight(_ ids: Set<UUID>) {
+    inFlightActivityAssigneeIds = ids
   }
 
   // MARK: - Clear In-Flight
@@ -62,11 +78,23 @@ final class ConflictResolver {
     inFlightNoteIds.removeAll()
   }
 
+  /// Clear all task assignee in-flight IDs after sync completes
+  func clearTaskAssigneesInFlight() {
+    inFlightTaskAssigneeIds.removeAll()
+  }
+
+  /// Clear all activity assignee in-flight IDs after sync completes
+  func clearActivityAssigneesInFlight() {
+    inFlightActivityAssigneeIds.removeAll()
+  }
+
   /// Clear all in-flight IDs (used during shutdown or error recovery)
   func clearAllInFlight() {
     inFlightTaskIds.removeAll()
     inFlightActivityIds.removeAll()
     inFlightNoteIds.removeAll()
+    inFlightTaskAssigneeIds.removeAll()
+    inFlightActivityAssigneeIds.removeAll()
   }
 
   // MARK: - In-Flight Checks
@@ -84,6 +112,16 @@ final class ConflictResolver {
   /// Check if a note is currently in-flight (being synced up)
   func isNoteInFlight(_ id: UUID) -> Bool {
     inFlightNoteIds.contains(id)
+  }
+
+  /// Check if a task assignee is currently in-flight (being synced up)
+  func isTaskAssigneeInFlight(_ id: UUID) -> Bool {
+    inFlightTaskAssigneeIds.contains(id)
+  }
+
+  /// Check if an activity assignee is currently in-flight (being synced up)
+  func isActivityAssigneeInFlight(_ id: UUID) -> Bool {
+    inFlightActivityAssigneeIds.contains(id)
   }
 
   // MARK: - Conflict Resolution
