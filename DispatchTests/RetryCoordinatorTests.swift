@@ -13,11 +13,8 @@ import XCTest
 @MainActor
 final class RetryCoordinatorTests: XCTestCase {
 
-  // MARK: - Properties
+  // MARK: Internal
 
-  // swiftlint:disable implicitly_unwrapped_optional
-  private var coordinator: RetryCoordinator!
-  private var container: ModelContainer!
   // swiftlint:enable implicitly_unwrapped_optional
 
   // MARK: - Setup / Teardown
@@ -39,7 +36,7 @@ final class RetryCoordinatorTests: XCTestCase {
       TaskAssignee.self,
       ActivityAssignee.self,
       Subtask.self,
-      StatusChange.self,
+      StatusChange.self
     ])
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     container = try ModelContainer(for: schema, configurations: [config])
@@ -62,8 +59,12 @@ final class RetryCoordinatorTests: XCTestCase {
     let expected: [TimeInterval] = [1, 2, 4, 8, 16, 30]
     for (attempt, expectedDelay) in expected.enumerated() {
       let actual = RetryPolicy.delay(for: attempt)
-      XCTAssertEqual(actual, expectedDelay, accuracy: 0.001,
-                     "Attempt \(attempt) should have delay \(expectedDelay)")
+      XCTAssertEqual(
+        actual,
+        expectedDelay,
+        accuracy: 0.001,
+        "Attempt \(attempt) should have delay \(expectedDelay)"
+      )
     }
   }
 
@@ -318,4 +319,12 @@ final class RetryCoordinatorTests: XCTestCase {
     // In test mode, should be nearly instant (no 16s delay)
     XCTAssertLessThan(elapsed, 1.0, "Test mode should skip backoff delay")
   }
+
+  // MARK: Private
+
+  // MARK: - Properties
+
+  // swiftlint:disable implicitly_unwrapped_optional
+  private var coordinator: RetryCoordinator!
+  private var container: ModelContainer!
 }

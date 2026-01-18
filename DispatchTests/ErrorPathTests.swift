@@ -209,7 +209,11 @@ final class ErrorPathTests: XCTestCase {
     let error = URLError(.cannotFindHost)
     let message = userFacingMessage(for: error)
 
-    XCTAssertEqual(message, "Network error: Unable to reach server.", "Unknown URLError should produce network error with details")
+    XCTAssertEqual(
+      message,
+      "Network error: Unable to reach server.",
+      "Unknown URLError should produce network error with details"
+    )
   }
 
   /// Test permission denied (42501) produces correct message

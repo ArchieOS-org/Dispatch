@@ -130,7 +130,7 @@ final class ChannelLifecycleManagerRetryTests: XCTestCase {
 
   func test_retryPolicy_delay_cappedAt30_forHighAttempts() {
     // Attempts beyond 5 should all be capped at 30 seconds
-    for attempt in 6...10 {
+    for attempt in 6 ... 10 {
       let delay = RetryPolicy.delay(for: attempt)
       XCTAssertEqual(delay, 30.0, "Attempt \(attempt) should be capped at 30s")
     }
@@ -502,7 +502,7 @@ final class BackoffDelayCalculationTests: XCTestCase {
     // Attempts 0-4 (5 attempts), then degraded
     // Total: 1 + 2 + 4 + 8 + 16 = 31 seconds
     var totalDelay: TimeInterval = 0
-    for attempt in 0..<RetryPolicy.maxRetries {
+    for attempt in 0 ..< RetryPolicy.maxRetries {
       totalDelay += RetryPolicy.delay(for: attempt)
     }
     XCTAssertEqual(totalDelay, 31.0, accuracy: 0.001)
@@ -531,7 +531,7 @@ final class StateTransitionSequenceTests: XCTestCase {
     XCTAssertEqual(states.last, .degraded)
 
     // Verify reconnecting attempts increment
-    for i in 1...5 {
+    for i in 1 ... 5 {
       if case .reconnecting(let attempt, _) = states[i] {
         XCTAssertEqual(attempt, i)
       } else {

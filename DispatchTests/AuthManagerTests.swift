@@ -532,6 +532,7 @@ final class AuthManagerTests: XCTestCase {
   // swiftlint:disable implicitly_unwrapped_optional
   private var mockAuthClient: MockAuthClient!
   private var authManager: AuthManager!
+
   // swiftlint:enable implicitly_unwrapped_optional
 
   // MARK: - Test Helper
