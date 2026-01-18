@@ -42,10 +42,26 @@ struct SearchResultsList: View {
         resultsList
       }
     }
-    // Removed debounce logic to rule out Task creation loops
+    // Memoization: recompute filtered/grouped results when dependencies change
+    .onChange(of: searchText, initial: true) { _, _ in
+      updateFilteredResults()
+    }
+    .onChange(of: tasks) { _, _ in
+      updateFilteredResults()
+    }
+    .onChange(of: activities) { _, _ in
+      updateFilteredResults()
+    }
+    .onChange(of: listings) { _, _ in
+      updateFilteredResults()
+    }
   }
 
   // MARK: Private
+
+  // Memoized computed results - only recalculated when dependencies change
+  @State private var filteredResults: [SearchResult] = []
+  @State private var groupedResults: [(section: String, results: [SearchResult])] = []
 
   /// All items converted to SearchResult
   private var allResults: [SearchResult] {
@@ -54,16 +70,6 @@ struct SearchResultsList: View {
     results.append(contentsOf: activities.map { .activity($0) })
     results.append(contentsOf: listings.map { .listing($0) })
     return results
-  }
-
-  /// Filtered and ranked results
-  private var filteredResults: [SearchResult] {
-    allResults.filtered(by: searchText)
-  }
-
-  /// Results grouped by section
-  private var groupedResults: [(section: String, results: [SearchResult])] {
-    filteredResults.groupedBySectionWithLimit(20)
   }
 
   /// Whether results are empty
@@ -142,6 +148,13 @@ struct SearchResultsList: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .padding(DS.Spacing.xxl)
+  }
+
+  /// Recomputes filtered and grouped results from current state
+  private func updateFilteredResults() {
+    let newFiltered = allResults.filtered(by: searchText)
+    filteredResults = newFiltered
+    groupedResults = newFiltered.groupedBySectionWithLimit(20)
   }
 
   private func sectionHeader(_ title: String) -> some View {

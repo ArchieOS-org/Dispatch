@@ -108,6 +108,13 @@ struct StagedListingsView: View {
         )
       }
     }
+    // Memoization: recompute grouped listings when dependencies change
+    .onChange(of: allListingsRaw, initial: true) { _, _ in
+      updateGroupedByOwner()
+    }
+    .onChange(of: users) { _, _ in
+      updateGroupedByOwner()
+    }
   }
 
   // MARK: Private
@@ -122,27 +129,33 @@ struct StagedListingsView: View {
 
   @EnvironmentObject private var syncManager: SyncManager
 
+  /// Memoized computed result - only recalculated when dependencies change
+  @State private var groupedByOwner: [ListingGroup] = []
+
   /// Filter to this stage only (excluding deleted)
-  private var filteredListings: [Listing] {
+  private func computeFilteredListings() -> [Listing] {
     allListingsRaw.filter {
       $0.status != .deleted && $0.stage == stage
     }
   }
 
   /// Pre-computed user lookup dictionary for O(1) access
-  private var userCache: [UUID: User] {
+  private func computeUserCache() -> [UUID: User] {
     Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
   }
 
-  /// Listings grouped by owner, sorted by owner name
-  private var groupedByOwner: [ListingGroup] {
+  /// Recomputes grouped listings from current state
+  private func updateGroupedByOwner() {
+    let filteredListings = computeFilteredListings()
+    let userCache = computeUserCache()
+
     let grouped = Dictionary(grouping: filteredListings) { $0.ownedBy }
 
     let groups = grouped.map { key, value in
       ListingGroup(owner: userCache[key], listings: value)
     }
 
-    return groups.sorted { a, b in
+    groupedByOwner = groups.sorted { a, b in
       let nameA = a.owner?.name ?? "~"
       let nameB = b.owner?.name ?? "~"
       return nameA < nameB
