@@ -77,6 +77,10 @@ final class ListingSyncHandler: EntitySyncHandlerProtocol {
       return
     }
 
+    // Mark as in-flight before upsert to prevent realtime echo from overwriting local state
+    dependencies.conflictResolver.markListingsInFlight(Set(pendingListings.map { $0.id }))
+    defer { dependencies.conflictResolver.clearListingsInFlight() } // Always clear, even on error
+
     // Try batch first for efficiency
     do {
       let dtos = pendingListings.map { ListingDTO(from: $0) }
@@ -128,8 +132,12 @@ final class ListingSyncHandler: EntitySyncHandlerProtocol {
 
     if let existing = try context.fetch(descriptor).first {
       // Local-first: skip ALL updates if local-authoritative
-      // Note: No inFlightListingIds needed for V1 as listings are rarely user-edited locally
-      if dependencies.conflictResolver.isLocalAuthoritative(existing, inFlight: false) {
+      if
+        dependencies.conflictResolver.isLocalAuthoritative(
+          existing,
+          inFlight: dependencies.conflictResolver.isListingInFlight(existing.id)
+        )
+      {
         debugLog.log(
           "[SyncDown] Skip update for listing \(dto.id) - local-authoritative (state=\(existing.syncState))",
           category: .sync

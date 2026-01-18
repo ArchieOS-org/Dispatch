@@ -300,8 +300,76 @@ final class ListingSyncHandlerTests: XCTestCase {
     XCTAssertEqual(listings.first?.syncState, .synced)
   }
 
-  func test_upsertListing_noInFlightProtectionForListings() throws {
-    // Given: A synced listing (no in-flight tracking for listings in V1)
+  // MARK: - In-Flight Protection Tests
+
+  func test_upsertListing_skipsInFlightListing() throws {
+    // Given: A listing that is currently being synced up (in-flight)
+    let listingId = UUID()
+    let ownerId = UUID()
+    let existingListing = makeListing(id: listingId, address: "Local edit", ownedBy: ownerId)
+    existingListing.markSynced()
+    context.insert(existingListing)
+    try context.save()
+
+    // Mark as in-flight (simulating syncUp in progress)
+    conflictResolver.markListingsInFlight([listingId])
+
+    // When: Remote update arrives (realtime echo)
+    let dto = makeListingDTO(
+      id: listingId,
+      address: "Remote echo",
+      ownedBy: ownerId
+    )
+    try handler.upsertListing(dto: dto, context: context)
+
+    // Then: Local content should be preserved (in-flight protection)
+    let descriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingId })
+    let listings = try context.fetch(descriptor)
+    XCTAssertEqual(listings.first?.address, "Local edit")
+
+    // Cleanup
+    conflictResolver.clearListingsInFlight()
+  }
+
+  func test_upsertListing_preservesAllFieldsWhenInFlight() throws {
+    // Given: An in-flight listing with local values
+    let listingId = UUID()
+    let ownerId = UUID()
+    let existingListing = makeListing(id: listingId, address: "Local Address", ownedBy: ownerId)
+    existingListing.city = "Local City"
+    existingListing.price = Decimal(500000)
+    existingListing.stage = .live
+    existingListing.markSynced()
+    context.insert(existingListing)
+    try context.save()
+
+    conflictResolver.markListingsInFlight([listingId])
+
+    // When: Remote update with different values arrives
+    let dto = makeListingDTO(
+      id: listingId,
+      address: "Remote Address",
+      city: "Remote City",
+      price: 750000.0,
+      stage: "sold",
+      ownedBy: ownerId
+    )
+    try handler.upsertListing(dto: dto, context: context)
+
+    // Then: All local values should be preserved
+    let descriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingId })
+    let listings = try context.fetch(descriptor)
+    let listing = listings.first
+    XCTAssertEqual(listing?.address, "Local Address")
+    XCTAssertEqual(listing?.city, "Local City")
+    XCTAssertEqual(listing?.price, Decimal(500000))
+    XCTAssertEqual(listing?.stage, .live)
+
+    conflictResolver.clearListingsInFlight()
+  }
+
+  func test_upsertListing_acceptsUpdateAfterInFlightCleared() throws {
+    // Given: A synced listing that was in-flight but is now cleared
     let listingId = UUID()
     let ownerId = UUID()
     let existingListing = makeListing(id: listingId, address: "Original", ownedBy: ownerId)
@@ -309,10 +377,11 @@ final class ListingSyncHandlerTests: XCTestCase {
     context.insert(existingListing)
     try context.save()
 
-    // Note: ListingSyncHandler uses hardcoded `inFlight: false`
-    // because listings are rarely user-edited locally in V1
+    // Mark and immediately clear in-flight (sync completed)
+    conflictResolver.markListingsInFlight([listingId])
+    conflictResolver.clearListingsInFlight()
 
-    // When: Remote update arrives
+    // When: Remote update arrives after in-flight is cleared
     let dto = makeListingDTO(
       id: listingId,
       address: "Remote update",
@@ -320,10 +389,180 @@ final class ListingSyncHandlerTests: XCTestCase {
     )
     try handler.upsertListing(dto: dto, context: context)
 
-    // Then: Update should be applied (no in-flight protection for listings)
+    // Then: Update SHOULD be applied (no longer in-flight)
     let descriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingId })
     let listings = try context.fetch(descriptor)
     XCTAssertEqual(listings.first?.address, "Remote update")
+  }
+
+  // MARK: - In-Flight Tracking Tests
+
+  func test_markListingsInFlight_and_clearListingsInFlight_cycle() {
+    // Given: Some listing IDs
+    let listingId1 = UUID()
+    let listingId2 = UUID()
+
+    // Initially not in-flight
+    XCTAssertFalse(conflictResolver.isListingInFlight(listingId1))
+    XCTAssertFalse(conflictResolver.isListingInFlight(listingId2))
+
+    // When: Mark as in-flight
+    conflictResolver.markListingsInFlight([listingId1, listingId2])
+
+    // Then: Should be in-flight
+    XCTAssertTrue(conflictResolver.isListingInFlight(listingId1))
+    XCTAssertTrue(conflictResolver.isListingInFlight(listingId2))
+
+    // When: Clear in-flight
+    conflictResolver.clearListingsInFlight()
+
+    // Then: No longer in-flight
+    XCTAssertFalse(conflictResolver.isListingInFlight(listingId1))
+    XCTAssertFalse(conflictResolver.isListingInFlight(listingId2))
+  }
+
+  func test_isListingInFlight_returnsCorrectValues() {
+    let inFlightId = UUID()
+    let notInFlightId = UUID()
+
+    conflictResolver.markListingsInFlight([inFlightId])
+
+    XCTAssertTrue(conflictResolver.isListingInFlight(inFlightId))
+    XCTAssertFalse(conflictResolver.isListingInFlight(notInFlightId))
+
+    conflictResolver.clearListingsInFlight()
+  }
+
+  func test_isLocalAuthoritative_respectsListingInFlightState() throws {
+    // Given: A synced listing
+    let listingId = UUID()
+    let listing = makeListing(id: listingId, address: "Test", ownedBy: UUID())
+    listing.markSynced()
+    context.insert(listing)
+    try context.save()
+
+    // When: Not in-flight
+    var isAuthoritative = conflictResolver.isLocalAuthoritative(
+      listing,
+      inFlight: conflictResolver.isListingInFlight(listingId)
+    )
+
+    // Then: Not local-authoritative
+    XCTAssertFalse(isAuthoritative)
+
+    // When: Marked in-flight
+    conflictResolver.markListingsInFlight([listingId])
+    isAuthoritative = conflictResolver.isLocalAuthoritative(
+      listing,
+      inFlight: conflictResolver.isListingInFlight(listingId)
+    )
+
+    // Then: Is local-authoritative
+    XCTAssertTrue(isAuthoritative)
+
+    conflictResolver.clearListingsInFlight()
+  }
+
+  func test_clearAllInFlight_includesListings() {
+    // Given: In-flight listings
+    let listingId = UUID()
+    conflictResolver.markListingsInFlight([listingId])
+    XCTAssertTrue(conflictResolver.isListingInFlight(listingId))
+
+    // When: Clear all in-flight
+    conflictResolver.clearAllInFlight()
+
+    // Then: Listings should be cleared
+    XCTAssertFalse(conflictResolver.isListingInFlight(listingId))
+  }
+
+  // MARK: - Race Condition / Rapid Edit Tests
+
+  func test_rapidEdits_duringSyncDoNotOverwrite() throws {
+    // This test simulates the race condition described in the contract:
+    // 1. User edits listing locally -> listing.syncState = .pending
+    // 2. syncUp() starts -> batch upsert sent to Supabase
+    // 3. Supabase realtime broadcasts the change back (echo)
+    // 4. Realtime handler receives echo, calls upsertListing()
+    // 5. WITHOUT in-flight protection, the echo would overwrite local state
+    // 6. WITH in-flight protection, the echo is skipped
+
+    // Given: A listing with a local edit being synced
+    let listingId = UUID()
+    let ownerId = UUID()
+    let listing = makeListing(id: listingId, address: "User's new address", ownedBy: ownerId)
+    listing.markSynced() // Start synced, then simulate edit
+    context.insert(listing)
+    try context.save()
+
+    // Simulate: syncUp marks it in-flight before upsert
+    conflictResolver.markListingsInFlight([listingId])
+
+    // Simulate: During syncUp, Supabase echoes back a slightly stale version
+    // (This is the race condition - the echo arrives before syncUp completes)
+    let echoDTO = makeListingDTO(
+      id: listingId,
+      address: "Old stale address", // This is the data BEFORE user's edit
+      ownedBy: ownerId
+    )
+
+    // When: The realtime echo arrives (via upsertListing)
+    try handler.upsertListing(dto: echoDTO, context: context)
+
+    // Then: User's local edit should be preserved
+    let descriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingId })
+    let listings = try context.fetch(descriptor)
+    XCTAssertEqual(listings.first?.address, "User's new address")
+
+    // Simulate: syncUp completes and clears in-flight
+    conflictResolver.clearListingsInFlight()
+  }
+
+  func test_rapidEdits_multipleListingsProtected() throws {
+    // Given: Multiple listings being synced simultaneously
+    let listingId1 = UUID()
+    let listingId2 = UUID()
+    let listingId3 = UUID()
+    let ownerId = UUID()
+
+    let listing1 = makeListing(id: listingId1, address: "Listing 1 local", ownedBy: ownerId)
+    let listing2 = makeListing(id: listingId2, address: "Listing 2 local", ownedBy: ownerId)
+    let listing3 = makeListing(id: listingId3, address: "Listing 3 synced", ownedBy: ownerId)
+    listing1.markSynced()
+    listing2.markSynced()
+    listing3.markSynced()
+    context.insert(listing1)
+    context.insert(listing2)
+    context.insert(listing3)
+    try context.save()
+
+    // Only listing1 and listing2 are being synced (in-flight)
+    conflictResolver.markListingsInFlight([listingId1, listingId2])
+
+    // When: Remote updates arrive for all three
+    try handler.upsertListing(
+      dto: makeListingDTO(id: listingId1, address: "Remote 1", ownedBy: ownerId),
+      context: context
+    )
+    try handler.upsertListing(
+      dto: makeListingDTO(id: listingId2, address: "Remote 2", ownedBy: ownerId),
+      context: context
+    )
+    try handler.upsertListing(
+      dto: makeListingDTO(id: listingId3, address: "Remote 3", ownedBy: ownerId),
+      context: context
+    )
+
+    // Then: In-flight listings (1 & 2) preserve local, non-in-flight (3) accepts remote
+    let desc1 = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingId1 })
+    let desc2 = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingId2 })
+    let desc3 = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingId3 })
+
+    XCTAssertEqual(try context.fetch(desc1).first?.address, "Listing 1 local")
+    XCTAssertEqual(try context.fetch(desc2).first?.address, "Listing 2 local")
+    XCTAssertEqual(try context.fetch(desc3).first?.address, "Remote 3")
+
+    conflictResolver.clearListingsInFlight()
   }
 
   // MARK: - markSynced Tests
