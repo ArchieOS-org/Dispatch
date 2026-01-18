@@ -78,5 +78,13 @@ struct DispatchCommands: Commands {
       }
       .keyboardShortcut("/", modifiers: .command)
     }
+
+    // Navigation menu - keyboard shortcuts for macOS navigation
+    CommandMenu("Navigate") {
+      Button("Back") {
+        dispatch(.popNavigation)
+      }
+      .keyboardShortcut(.escape, modifiers: [])
+    }
   }
 }

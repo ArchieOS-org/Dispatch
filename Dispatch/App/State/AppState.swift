@@ -236,6 +236,20 @@ final class AppState: ObservableObject {
     case .removeRoute(let route):
       router.removeRoute(route)
 
+    // MARK: - Keyboard Navigation (macOS)
+
+    case .popNavigation:
+      // Pop one level from navigation stack (standard macOS Back behavior)
+      // On iPad/macOS: pop current destination's stack
+      let currentPath = router.paths[router.selectedDestination] ?? []
+      if !currentPath.isEmpty {
+        router.popLast(for: router.selectedDestination)
+      }
+      // Also pop phone path for iPhone consistency
+      if !router.phonePath.isEmpty {
+        router.phonePopLast()
+      }
+
     case .debugSimulateCrash:
       fatalError("Debug Crash Triggered")
     }

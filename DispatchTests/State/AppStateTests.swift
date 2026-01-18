@@ -81,6 +81,36 @@ class AppStateTests: XCTestCase {
     }
   }
 
+  // MARK: - Keyboard Navigation Tests (macOS)
+
+  func test_dispatch_popNavigation_popsOneLevelOnly() {
+    // Navigate to two routes on current destination
+    let route1 = AppRoute.listing(UUID())
+    let route2 = AppRoute.listing(UUID())
+    appState.dispatch(.navigateTo(route1, on: appState.router.selectedDestination))
+    appState.dispatch(.navigateTo(route2, on: appState.router.selectedDestination))
+
+    let pathBefore = appState.router.paths[appState.router.selectedDestination] ?? []
+    XCTAssertEqual(pathBefore.count, 2, "Path should have 2 routes before pop")
+
+    // Pop via keyboard navigation command - should pop ONE level (standard Back behavior)
+    appState.dispatch(.popNavigation)
+
+    let pathAfter = appState.router.paths[appState.router.selectedDestination] ?? []
+    XCTAssertEqual(pathAfter.count, 1, "Path should have 1 route after popNavigation (not empty)")
+    XCTAssertEqual(pathAfter.first, route1, "First route should remain after pop")
+  }
+
+  func test_dispatch_popNavigation_noOpWhenPathEmpty() {
+    // Ensure path is empty
+    XCTAssertTrue(appState.router.paths[appState.router.selectedDestination]?.isEmpty ?? true)
+
+    // Pop navigation should be safe (no crash, no-op)
+    appState.dispatch(.popNavigation)
+
+    XCTAssertTrue(appState.router.paths[appState.router.selectedDestination]?.isEmpty ?? true)
+  }
+
   // MARK: Private
 
   private var appState = AppState()

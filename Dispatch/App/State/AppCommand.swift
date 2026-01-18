@@ -68,6 +68,11 @@ enum AppCommand: Equatable {
   case toggleSidebar
   case syncNow
 
+  // MARK: - Keyboard Navigation (macOS)
+
+  /// Pop one level from the navigation stack (Escape key / Back)
+  case popNavigation
+
   // MARK: - Filtering/View Options
 
   case filterMine
