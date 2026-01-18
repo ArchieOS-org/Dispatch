@@ -109,7 +109,7 @@ struct MenuPageView: View {
 
 }
 
-// MARK: - Preview Helpers
+// MARK: - MenuPagePreviewData
 
 private enum MenuPagePreviewData {
   static let stageCounts: [ListingStage: Int] = [
