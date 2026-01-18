@@ -143,13 +143,6 @@ struct ContentView: View {
     #endif
   }
 
-  private func pathBinding(for destination: SidebarDestination) -> Binding<[AppRoute]> {
-    Binding(
-      get: { appState.router.paths[destination] ?? [] },
-      set: { appState.dispatch(.setPath($0, for: destination)) }
-    )
-  }
-
   #if os(iOS)
   /// Overdue count for MenuPageView badge.
   private var sidebarOverdueCount: Int {
@@ -168,6 +161,13 @@ struct ContentView: View {
     ]
   }
   #endif
+
+  private func pathBinding(for destination: SidebarDestination) -> Binding<[AppRoute]> {
+    Binding(
+      get: { appState.router.paths[destination] ?? [] },
+      set: { appState.dispatch(.setPath($0, for: destination)) }
+    )
+  }
 
   private func selectSearchResult(_ result: SearchResult) {
     switch result {
