@@ -116,9 +116,9 @@ final class SyncManager: ObservableObject {
   @Published private(set) var isSyncing = false
   @Published private(set) var isListingConfigReady = false // UI gate for AddListingSheet
   @Published private(set) var syncError: Error?
-  @Published internal(set) var syncStatus = SyncStatus.idle
+  @Published var syncStatus = SyncStatus.idle
   /// Current realtime connection state for error recovery UI.
-  @Published internal(set) var realtimeConnectionState = RealtimeConnectionState.connected
+  @Published var realtimeConnectionState = RealtimeConnectionState.connected
   @Published var currentUser: User? // The actual profile object, for UI state
 
   /// User-facing error message when syncStatus is .error

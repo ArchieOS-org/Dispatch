@@ -90,7 +90,7 @@ final class MockAIService: AIServiceProtocol, Sendable {
 
   // MARK: Lifecycle
 
-  init(simulatedDelay: Duration = .seconds(2)) {
+  nonisolated init(simulatedDelay: Duration = .seconds(2)) {
     self.simulatedDelay = simulatedDelay
   }
 
