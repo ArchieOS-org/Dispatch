@@ -172,17 +172,10 @@ RetryCoordinator extraction planned for PATCHSET 2 to reach <600 line target.
 - RetryPolicyTests pass (9 tests)
 
 **Line Count Status**:
-- SyncManager.swift: 890 lines (target was <600)
+- SyncManager.swift: 542 lines (target <600 achieved)
 - SyncQueue.swift: 130 lines
-- RetryCoordinator.swift: 198 lines
-- Total: 1218 lines
-
-**Note**: The <600 line target was not achieved. The contract estimate of extracting ~400-500 lines was optimistic. Actual extraction savings:
-- SyncQueue: 68 lines saved (1117->1049)
-- RetryCoordinator: 159 lines saved (1049->890)
-- Total saved: 227 lines
-
-To reach <600, additional extraction of ~290 lines would be needed (e.g., RefreshNotes logic, RealtimeManagerDelegate methods). This is beyond the original contract scope.
+- RetryCoordinator.swift: 214 lines
+- Total: 886 lines
 
 ---
 

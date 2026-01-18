@@ -30,10 +30,10 @@ extension SyncManager {
       )
     }
 
-    // Sync in order: ListingTypes -> ActivityTemplates -> Users -> Listings -> Tasks -> Activities
+    // Sync in order: ListingTypes -> ActivityTemplates -> Users -> Properties -> Listings -> Tasks -> Activities -> TaskAssignees -> ActivityAssignees -> Notes
     // Types/Templates first since Listings reference them
     debugLog.log(
-      "Sync order: ListingTypes -> ActivityTemplates -> Users -> Listings -> Tasks -> Activities",
+      "Sync order: ListingTypes -> ActivityTemplates -> Users -> Properties -> Listings -> Tasks -> Activities -> TaskAssignees -> ActivityAssignees -> Notes",
       category: .sync
     )
 

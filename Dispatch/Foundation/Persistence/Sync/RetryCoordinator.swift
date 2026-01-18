@@ -85,12 +85,12 @@ final class RetryCoordinator {
       return false
     }
 
-    // Increment retry count (persisted on entity) and calculate delay
-    entity.retryCount += 1
-    let delay = RetryPolicy.delay(for: entity.retryCount - 1) // 0-indexed for delay calculation
+    // Calculate delay from current retryCount (0-indexed) BEFORE incrementing
+    let attempt = entity.retryCount
+    let delay = RetryPolicy.delay(for: attempt)
 
     debugLog.log(
-      "retry\(entityType)() for \(entityId): attempt \(entity.retryCount)/\(RetryPolicy.maxRetries), delay: \(delay)s",
+      "retry\(entityType)() for \(entityId): attempt \(attempt + 1)/\(RetryPolicy.maxRetries), delay: \(delay)s",
       category: .sync
     )
 
@@ -103,6 +103,9 @@ final class RetryCoordinator {
         return false
       }
     }
+
+    // Increment retry count only after backoff completes successfully
+    entity.retryCount += 1
 
     // Reset state and sync
     entity.syncState = .pending

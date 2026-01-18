@@ -48,6 +48,11 @@ extension SyncManager {
         }
       } catch {
         debugLog.error("SyncManager.shutdown() timed out! Tasks stuck.")
+        #if DEBUG
+        if mode == .test {
+          assertionFailure("SyncManager.shutdown() timed out in test mode")
+        }
+        #endif
       }
     } else {
       // In live/preview, just await (logging ensures visibility)
