@@ -16,6 +16,18 @@ import UIKit
 
 struct MenuPageView: View {
 
+  // MARK: Lifecycle
+
+  init(
+    stageCounts: [ListingStage: Int],
+    tabCounts: [AppTab: Int],
+    overdueCount: Int
+  ) {
+    self.stageCounts = stageCounts
+    self.tabCounts = tabCounts
+    self.overdueCount = overdueCount
+  }
+
   // MARK: Internal
 
   var body: some View {
@@ -62,48 +74,16 @@ struct MenuPageView: View {
 
   // MARK: Private
 
+  /// Stage counts passed from parent (ContentView owns the @Query)
+  private let stageCounts: [ListingStage: Int]
+
+  /// Tab item counts passed from parent (ContentView owns the @Query)
+  private let tabCounts: [AppTab: Int]
+
+  /// Overdue work item count passed from parent
+  private let overdueCount: Int
+
   @EnvironmentObject private var appState: AppState
-  @EnvironmentObject private var syncManager: SyncManager
-
-  @Query private var allTasksRaw: [TaskItem]
-  @Query private var allActivitiesRaw: [Activity]
-  @Query private var allPropertiesRaw: [Property]
-  @Query private var allListingsRaw: [Listing]
-  @Query private var allRealtors: [User]
-
-  private var workspaceTasks: [TaskItem] {
-    guard let currentUserID = syncManager.currentUserID else { return [] }
-    return allTasksRaw.filter { $0.assigneeUserIds.contains(currentUserID) && $0.status != .deleted }
-  }
-
-  private var workspaceActivities: [Activity] {
-    guard let currentUserID = syncManager.currentUserID else { return [] }
-    return allActivitiesRaw.filter { $0.assigneeUserIds.contains(currentUserID) && $0.status != .deleted }
-  }
-
-  private var activeProperties: [Property] {
-    allPropertiesRaw.filter { $0.deletedAt == nil }
-  }
-
-  private var activeListings: [Listing] {
-    allListingsRaw.filter { $0.status != .deleted }
-  }
-
-  private var activeRealtors: [User] {
-    allRealtors.filter { $0.userType == .realtor }
-  }
-
-  /// Stage counts computed once per render cycle from activeListings.
-  private var stageCounts: [ListingStage: Int] {
-    activeListings.stageCounts()
-  }
-
-  private var overdueCount: Int {
-    let startOfToday = Calendar.current.startOfDay(for: Date())
-    let overdueTasks = workspaceTasks.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
-    let overdueActivities = workspaceActivities.filter { ($0.dueDate ?? .distantFuture) < startOfToday }
-    return overdueTasks.count + overdueActivities.count
-  }
 
   /// Stage card tap - uses phonePath via dispatch for iPhone navigation.
   private func handleStageCardTap(_ stage: ListingStage) {
@@ -111,13 +91,7 @@ struct MenuPageView: View {
   }
 
   private func count(for tab: AppTab) -> Int {
-    switch tab {
-    case .workspace: workspaceTasks.count + workspaceActivities.count
-    case .properties: activeProperties.count
-    case .listings: activeListings.count
-    case .realtors: activeRealtors.count
-    case .settings, .search, .listingGenerator: 0
-    }
+    tabCounts[tab] ?? 0
   }
 
   /// Maps menu tabs to navigation routes for push navigation
@@ -135,6 +109,39 @@ struct MenuPageView: View {
 
 }
 
+// MARK: - MenuPagePreviewData
+
+private enum MenuPagePreviewData {
+  static let stageCounts: [ListingStage: Int] = [
+    .pending: 2,
+    .workingOn: 1,
+    .live: 3,
+    .sold: 1,
+    .done: 5
+  ]
+
+  static let tabCounts: [AppTab: Int] = [
+    .workspace: 8,
+    .properties: 6,
+    .listings: 4,
+    .realtors: 3
+  ]
+
+  static let emptyTabCounts: [AppTab: Int] = [
+    .workspace: 0,
+    .properties: 0,
+    .listings: 1,
+    .realtors: 0
+  ]
+
+  static let richTabCounts: [AppTab: Int] = [
+    .workspace: 12,
+    .properties: 8,
+    .listings: 4,
+    .realtors: 6
+  ]
+}
+
 // MARK: - Previews
 
 #Preview("Menu - Pull to Search") {
@@ -148,7 +155,11 @@ struct MenuPageView: View {
       PreviewDataFactory.seed(context)
     }
   ) { _ in
-    MenuPageView()
+    MenuPageView(
+      stageCounts: MenuPagePreviewData.stageCounts,
+      tabCounts: MenuPagePreviewData.tabCounts,
+      overdueCount: 0
+    )
   }
 }
 
@@ -187,7 +198,11 @@ struct MenuPageView: View {
       listing?.activities.append(activity)
     }
   ) { _ in
-    MenuPageView()
+    MenuPageView(
+      stageCounts: MenuPagePreviewData.stageCounts,
+      tabCounts: MenuPagePreviewData.tabCounts,
+      overdueCount: 0
+    )
   }
 }
 
@@ -238,7 +253,11 @@ struct MenuPageView: View {
       listing.tasks.append(unclaimedTask)
     }
   ) { _ in
-    MenuPageView()
+    MenuPageView(
+      stageCounts: [:],
+      tabCounts: MenuPagePreviewData.emptyTabCounts,
+      overdueCount: 0
+    )
   }
 }
 
@@ -290,7 +309,11 @@ struct MenuPageView: View {
       listing?.activities.append(overdueActivity)
     }
   ) { _ in
-    MenuPageView()
+    MenuPageView(
+      stageCounts: MenuPagePreviewData.stageCounts,
+      tabCounts: MenuPagePreviewData.tabCounts,
+      overdueCount: 3
+    )
   }
 }
 
@@ -380,7 +403,11 @@ struct MenuPageView: View {
       }
     }
   ) { _ in
-    MenuPageView()
+    MenuPageView(
+      stageCounts: MenuPagePreviewData.stageCounts,
+      tabCounts: MenuPagePreviewData.richTabCounts,
+      overdueCount: 0
+    )
   }
 }
 
@@ -414,8 +441,12 @@ struct MenuPageView: View {
     }
   ) { _ in
     NavigationSplitView {
-      MenuPageView()
-        .navigationTitle("Dispatch")
+      MenuPageView(
+        stageCounts: MenuPagePreviewData.stageCounts,
+        tabCounts: MenuPagePreviewData.tabCounts,
+        overdueCount: 0
+      )
+      .navigationTitle("Dispatch")
     } detail: {
       Text("Detail View")
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -453,8 +484,12 @@ struct MenuPageView: View {
     }
   ) { _ in
     NavigationSplitView {
-      MenuPageView()
-        .navigationTitle("Dispatch")
+      MenuPageView(
+        stageCounts: MenuPagePreviewData.stageCounts,
+        tabCounts: MenuPagePreviewData.richTabCounts,
+        overdueCount: 0
+      )
+      .navigationTitle("Dispatch")
     } detail: {
       Text("Select an item")
         .foregroundStyle(.secondary)
@@ -479,9 +514,13 @@ struct MenuPageView: View {
   ) { _ in
     HStack(spacing: 0) {
       // Simulated sidebar at typical width
-      MenuPageView()
-        .frame(width: 320)
-        .background(Color(uiColor: .systemGroupedBackground))
+      MenuPageView(
+        stageCounts: MenuPagePreviewData.stageCounts,
+        tabCounts: MenuPagePreviewData.tabCounts,
+        overdueCount: 0
+      )
+      .frame(width: 320)
+      .background(Color(uiColor: .systemGroupedBackground))
 
       Divider()
 

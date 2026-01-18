@@ -21,6 +21,15 @@ struct iPhoneContentView: View {
   /// Global Quick Find text state
   @Binding var quickFindText: String
 
+  /// Stage counts for MenuPageView
+  let stageCounts: [ListingStage: Int]
+
+  /// Tab counts for MenuPageView
+  let phoneTabCounts: [AppTab: Int]
+
+  /// Overdue count for MenuPageView
+  let overdueCount: Int
+
   /// Active tasks for search overlay
   let activeTasks: [TaskItem]
 
@@ -46,7 +55,11 @@ struct iPhoneContentView: View {
     ZStack {
       NavigationStack(path: phonePathBinding) {
         PullToSearchHost {
-          MenuPageView()
+          MenuPageView(
+            stageCounts: stageCounts,
+            tabCounts: phoneTabCounts,
+            overdueCount: overdueCount
+          )
         }
         .appDestinations()
       }

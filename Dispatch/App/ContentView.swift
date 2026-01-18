@@ -127,6 +127,7 @@ struct ContentView: View {
     if isPhone {
       iPhoneContentView(
         phonePathBinding: phonePathBinding, quickFindText: $quickFindText,
+        stageCounts: stageCounts, phoneTabCounts: phoneTabCounts, overdueCount: sidebarOverdueCount,
         activeTasks: activeTasks, activeActivities: activeActivities, activeListings: activeListings,
         users: users, currentUserId: currentUserId,
         onSelectSearchResult: selectSearchResult(_:), onRequestSync: { syncManager.requestSync() }
@@ -148,6 +149,25 @@ struct ContentView: View {
       set: { appState.dispatch(.setPath($0, for: destination)) }
     )
   }
+
+  #if os(iOS)
+  /// Overdue count for MenuPageView badge.
+  private var sidebarOverdueCount: Int {
+    let startOfToday = Calendar.current.startOfDay(for: Date())
+    return workspaceTasks.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
+      + workspaceActivities.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
+  }
+
+  /// Tab counts for MenuPageView (iPhone menu).
+  private var phoneTabCounts: [AppTab: Int] {
+    [
+      .workspace: workspaceTasks.count + workspaceActivities.count,
+      .properties: activeProperties.count,
+      .listings: activeListings.count,
+      .realtors: activeRealtors.count
+    ]
+  }
+  #endif
 
   private func selectSearchResult(_ result: SearchResult) {
     switch result {
