@@ -76,8 +76,6 @@ enum AppCommand: Equatable {
   // MARK: - Filtering/View Options
 
   case filterMine
-  case filterOthers
-  case filterUnclaimed
 
   // MARK: - Deep Linking
 

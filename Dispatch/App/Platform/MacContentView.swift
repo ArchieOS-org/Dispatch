@@ -288,10 +288,6 @@ struct MacContentView: View {
           currentTab: appState.router.selectedTab,
           onNavigate: { tab in
             appState.dispatch(.selectTab(tab))
-
-            // Post filters logic
-            // TODO: Refine this logic in next step
-            appState.dispatch(tab == .listings ? .filterUnclaimed : .filterMine)
             windowUIState.closeOverlay()
           },
           onSelectResult: { result in

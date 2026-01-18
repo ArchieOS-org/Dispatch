@@ -204,17 +204,8 @@ final class AppState: ObservableObject {
       }
 
     case .filterMine:
-      // TODO: Implement AssignmentFilter in LensState (AudienceLens is for Role, not Assignment)
-      // lensState.audience = .me
-      break
-
-    case .filterOthers:
-      // lensState.audience = .everyone
-      break
-
-    case .filterUnclaimed:
-      // lensState.audience = .unclaimed
-      break
+      // Navigate to My Workspace tab
+      router.userSelectDestination(.tab(.workspace))
 
     case .deepLink(let url):
       // Parse and route deep link URL

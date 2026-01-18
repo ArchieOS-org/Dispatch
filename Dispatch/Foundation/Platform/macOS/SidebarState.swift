@@ -21,10 +21,8 @@ extension Notification.Name {
   /// Posted when the search keyboard shortcut is triggered (Cmd+F)
   static let openSearch = Notification.Name("openSearch")
 
-  /// Posted when filter shortcuts are triggered (Cmd+1/2/3)
+  /// Posted when filter shortcut is triggered (Cmd+1) - legacy, now navigates to workspace
   static let filterMine = Notification.Name("filterMine")
-  static let filterOthers = Notification.Name("filterOthers")
-  static let filterUnclaimed = Notification.Name("filterUnclaimed")
 
   /// Posted when a search result is selected from the popover
   static let navigateSearchResult = Notification.Name("navigateSearchResult")
