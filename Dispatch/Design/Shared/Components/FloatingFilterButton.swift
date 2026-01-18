@@ -41,6 +41,7 @@ struct FloatingFilterButton: View {
     .menuIndicator(.hidden)
     .sensoryFeedback(.selection, trigger: audience)
     .accessibilityIdentifier("AudienceFilterButton")
+    .accessibilityAddTraits(.isButton)
     .accessibilityLabel("Filter: \(audience.label)")
     .accessibilityValue("\(audience.rawValue)|\(audience.icon)")
     .accessibilityHint("Tap to cycle, hold for options")
