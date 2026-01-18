@@ -77,3 +77,20 @@ custom_rules:
     match_kinds:
       - identifier
       - typeidentifier
+
+  # Prevent synchronous mutations in Binding setters (causes SwiftUI runtime warnings)
+  # Wrap dispatch() or appState mutations in Task { @MainActor in ... }
+  #
+  # NOTE: This regex has limitations with nested braces (e.g., closures within the setter).
+  # The pattern `[^}]*` cannot match balanced braces, so complex setters may not be detected.
+  # For definitive checking, the shell script `scripts/check_binding_patterns.sh` uses
+  # Perl recursive regex which properly handles nested structures.
+  # This SwiftLint rule serves as advisory first-line defense during development.
+  binding_sync_mutation:
+    name: "Binding Synchronous Mutation"
+    regex: 'set:\s*\{[^}]*(?:dispatch\s*\(|appState\.)[^}]*\}'
+    message: "Binding setter contains synchronous dispatch() or appState mutation. Wrap in Task { @MainActor in ... } to avoid 'Publishing changes from within view updates' warnings."
+    severity: warning
+    match_kinds:
+      - identifier
+      - argument

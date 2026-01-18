@@ -67,14 +67,26 @@ struct ContentView: View {
   private var selectedDestinationBinding: Binding<SidebarDestination> {
     Binding(
       get: { appState.router.selectedDestination },
-      set: { appState.dispatch(.userSelectedDestination($0)) }
+      set: { newValue in
+        // Defer state change to avoid "Publishing changes from within view updates" warning.
+        // Task schedules the dispatch for the next run loop iteration.
+        Task { @MainActor in
+          appState.dispatch(.userSelectedDestination(newValue))
+        }
+      }
     )
   }
 
   private var phonePathBinding: Binding<[AppRoute]> {
     Binding(
       get: { appState.router.phonePath },
-      set: { appState.dispatch(.setPhonePath($0)) }
+      set: { newValue in
+        // Defer state change to avoid "Publishing changes from within view updates" warning.
+        // Task schedules the dispatch for the next run loop iteration.
+        Task { @MainActor in
+          appState.dispatch(.setPhonePath(newValue))
+        }
+      }
     )
   }
 
@@ -172,7 +184,13 @@ struct ContentView: View {
   private func pathBinding(for destination: SidebarDestination) -> Binding<[AppRoute]> {
     Binding(
       get: { appState.router.paths[destination] ?? [] },
-      set: { appState.dispatch(.setPath($0, for: destination)) }
+      set: { newValue in
+        // Defer state change to avoid "Publishing changes from within view updates" warning.
+        // Task schedules the dispatch for the next run loop iteration.
+        Task { @MainActor in
+          appState.dispatch(.setPath(newValue, for: destination))
+        }
+      }
     )
   }
 

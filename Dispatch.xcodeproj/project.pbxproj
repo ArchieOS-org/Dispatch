@@ -40,7 +40,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				Archive,
 			);
 			target = 0A773E752EE4C35000C0189F /* Dispatch */;
 		};
@@ -217,6 +216,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				Base,
 			);
 			mainGroup = 0A773E6D2EE4C35000C0189F;
 			minimizedProjectReferenceProxies = 1;

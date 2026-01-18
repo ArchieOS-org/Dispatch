@@ -94,7 +94,11 @@ struct MacContentView: View {
       },
       set: { newValue in
         guard let dest = newValue, dest != appState.router.selectedDestination else { return }
-        appState.dispatch(.userSelectedDestination(dest))
+        // Defer state change to avoid "Publishing changes from within view updates" error.
+        // Task schedules the dispatch for the next run loop iteration.
+        Task { @MainActor in
+          appState.dispatch(.userSelectedDestination(dest))
+        }
       }
     )
   }
@@ -316,7 +320,11 @@ struct MacContentView: View {
         appState.sheetState == .none ? nil : appState.sheetState
       },
       set: { newValue in
-        appState.sheetState = newValue ?? .none
+        // Defer state change to avoid "Publishing changes from within view updates" warning.
+        // Task schedules the mutation for the next run loop iteration.
+        Task { @MainActor in
+          appState.sheetState = newValue ?? .none
+        }
       }
     )
   }

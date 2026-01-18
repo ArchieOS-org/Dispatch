@@ -73,7 +73,15 @@ struct iPhoneContentView: View {
           SearchOverlay(
             isPresented: Binding(
               get: { appState.overlayState.isSearch },
-              set: { if !$0 { appState.overlayState = .none } }
+              set: { newValue in
+                // Defer state change to avoid "Publishing changes from within view updates" warning.
+                // Task schedules the dispatch for the next run loop iteration.
+                Task { @MainActor in
+                  if !newValue {
+                    appState.overlayState = .none
+                  }
+                }
+              }
             ),
             searchText: $quickFindText,
             tasks: activeTasks,
