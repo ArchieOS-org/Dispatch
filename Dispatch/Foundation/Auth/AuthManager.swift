@@ -11,12 +11,52 @@ import Combine
 import Foundation
 import Supabase
 
+// MARK: - AuthClientProtocol
+
+/// Protocol abstracting auth operations for testability
+protocol AuthClientProtocol: Sendable {
+  var authStateChanges: AsyncStream<(event: AuthChangeEvent, session: Session?)> { get }
+
+  func signInWithOAuth(provider: Provider, redirectTo: URL?) async throws
+  func signOut() async throws
+  func session(from url: URL) async throws -> Session
+}
+
+// MARK: - AuthClient + AuthClientProtocol
+
+extension AuthClient: AuthClientProtocol {
+  func signInWithOAuth(provider: Provider, redirectTo: URL?) async throws {
+    // Wrapper that calls the full method with defaults, discarding the returned Session
+    // since the protocol doesn't require it (auth state changes handle session updates)
+    _ = try await signInWithOAuth(
+      provider: provider,
+      redirectTo: redirectTo,
+      scopes: nil,
+      queryParams: []
+    )
+  }
+
+  func signOut() async throws {
+    // Wrapper that calls signOut with default global scope
+    try await signOut(scope: .global)
+  }
+}
+
+// MARK: - AuthManager
+
 @MainActor
 final class AuthManager: ObservableObject {
 
   // MARK: Lifecycle
 
   private init() {
+    authClient = supabase.auth
+    startAuthStateListener()
+  }
+
+  /// Testing-only initializer for dependency injection
+  init(authClient: AuthClientProtocol) {
+    self.authClient = authClient
     startAuthStateListener()
   }
 
@@ -46,7 +86,7 @@ final class AuthManager: ObservableObject {
     debugLog.log("handleRedirect called with URL: \(url.absoluteString)", category: .auth)
     Task {
       do {
-        let session = try await supabase.auth.session(from: url)
+        let session = try await authClient.session(from: url)
         debugLog.log(
           "Session extracted from URL successfully for user: \(session.user.email ?? "unknown")",
           category: .auth
@@ -67,7 +107,7 @@ final class AuthManager: ObservableObject {
       // Native flow: Uses ASWebAuthenticationSession under the hood via Supabase Swift
       // Does NOT use the 'redirectTo' param for iOS apps in the same way as web.
       // The URL Scheme must be registered in Xcode.
-      try await supabase.auth.signInWithOAuth(
+      try await authClient.signInWithOAuth(
         provider: .google,
         redirectTo: URL(string: "com.googleusercontent.apps.428022180682-9fm6p0e0l3o8j1bnmf78b5uon8lkhntt://google-auth")
       )
@@ -84,7 +124,7 @@ final class AuthManager: ObservableObject {
   func signOut() async {
     isLoading = true
     do {
-      try await supabase.auth.signOut()
+      try await authClient.signOut()
       // Note: authStateChanges stream will automatically clear session/user state
       debugLog.log("Sign out completed, waiting for auth state update", category: .auth)
     } catch {
@@ -96,12 +136,13 @@ final class AuthManager: ObservableObject {
 
   // MARK: Private
 
+  private let authClient: AuthClientProtocol
   private var authStateTask: Task<Void, Never>?
 
   private func startAuthStateListener() {
     authStateTask?.cancel()
     authStateTask = Task {
-      for await (event, session) in supabase.auth.authStateChanges {
+      for await (event, session) in authClient.authStateChanges {
         await handleAuthStateChange(event: event, newSession: session)
       }
     }
