@@ -601,16 +601,15 @@ final class SyncManager: ObservableObject {
         debugLog.endTiming("Full Sync")
         debugLog.error("========== sync() FAILED ==========", error: error)
         syncError = error
-        // Record failure with circuit breaker (may trip circuit)
+        // Record failure with circuit breaker (may trip circuit).
+        // Note: If circuit trips, handleCircuitBreakerStateChange callback sets syncStatus.
         circuitBreaker.recordFailure()
-        // Only update status if this is still the current sync run
-        if syncRunId == runId {
-          // Check if circuit breaker just tripped
-          if case .open = circuitBreaker.state, let remaining = circuitBreaker.remainingCooldown {
-            syncStatus = .circuitBreakerOpen(remainingSeconds: Int(remaining))
-          } else {
-            syncStatus = .error
-          }
+        // Only update status if this is still the current sync run and circuit didn't trip
+        if syncRunId == runId, !circuitBreaker.isBlocking {
+          syncStatus = .error
+          lastSyncErrorMessage = userFacingMessage(for: error)
+        } else if syncRunId == runId {
+          // Circuit tripped - callback already set status, just update error message
           lastSyncErrorMessage = userFacingMessage(for: error)
         }
       }

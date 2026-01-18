@@ -111,23 +111,10 @@ final class CircuitBreaker: ObservableObject {
   let maxCooldown: TimeInterval
 
   /// Whether the circuit breaker is currently blocking sync attempts.
+  /// This is a pure getter with no side effects - use `shouldAllowSync()` for the
+  /// method that transitions state when cooldown expires.
   var isBlocking: Bool {
-    // First check if we're in an open state
-    guard case .open(let since, let cooldownDuration) = state else {
-      return false
-    }
-
-    // Check if cooldown has elapsed
-    let now = dateProvider()
-    let elapsed = now.timeIntervalSince(since)
-
-    if elapsed >= cooldownDuration {
-      // Cooldown elapsed - transition to half-open
-      transitionTo(.halfOpen)
-      return false
-    }
-
-    return true
+    checkAndTransitionFromOpenIfNeeded()
   }
 
   /// Time remaining until cooldown expires (nil if not in open state).
@@ -147,29 +134,22 @@ final class CircuitBreaker: ObservableObject {
   /// - Returns: true if sync should proceed, false if blocked.
   func shouldAllowSync() -> Bool {
     switch state {
-    case .closed:
+    case .closed, .halfOpen:
       return true
 
-    case .halfOpen:
-      // Allow single probe sync
-      return true
-
-    case .open(let since, let cooldownDuration):
-      // Check if cooldown has elapsed
-      let now = dateProvider()
-      let elapsed = now.timeIntervalSince(since)
-
-      if elapsed >= cooldownDuration {
-        // Transition to half-open and allow probe
-        transitionTo(.halfOpen)
-        return true
+    case .open:
+      // Check if cooldown has elapsed and transition if needed
+      if checkAndTransitionFromOpenIfNeeded() {
+        if let remaining = remainingCooldown {
+          debugLog.log(
+            "CircuitBreaker: Blocking sync - \(Int(remaining))s remaining in cooldown",
+            category: .sync
+          )
+        }
+        return false
       }
-
-      debugLog.log(
-        "CircuitBreaker: Blocking sync - \(Int(cooldownDuration - elapsed))s remaining in cooldown",
-        category: .sync
-      )
-      return false
+      // Transitioned to halfOpen, allow probe
+      return true
     }
   }
 
@@ -221,6 +201,22 @@ final class CircuitBreaker: ObservableObject {
 
   /// Provider for current time (injectable for testing).
   private let dateProvider: () -> Date
+
+  /// Checks if the circuit is in open state and transitions to halfOpen if cooldown has elapsed.
+  /// - Returns: true if still blocking (in open state with cooldown not elapsed), false otherwise.
+  private func checkAndTransitionFromOpenIfNeeded() -> Bool {
+    guard case .open(let since, let cooldownDuration) = state else {
+      return false // not in open state
+    }
+
+    let elapsed = dateProvider().timeIntervalSince(since)
+    if elapsed >= cooldownDuration {
+      transitionTo(.halfOpen)
+      return false // transitioned to halfOpen, not blocking
+    }
+
+    return true // still blocking
+  }
 
   private func trip() {
     let cooldown = calculateCooldown(for: tripCount)
