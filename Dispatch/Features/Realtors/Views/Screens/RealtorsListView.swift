@@ -160,11 +160,16 @@ private struct RealtorRow: View {
 // MARK: - Preview
 
 #Preview {
-  let container = try! ModelContainer(
-    for: User.self,
-    Listing.self,
-    configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-  )
+  let container: ModelContainer
+  do {
+    container = try ModelContainer(
+      for: User.self,
+      Listing.self,
+      configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+    )
+  } catch {
+    fatalError("Failed to create Preview ModelContainer: \(error)")
+  }
 
   let context = container.mainContext
   let user = User(
