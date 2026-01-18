@@ -1,0 +1,2 @@
+# This file ensures the logs directory is tracked by git.
+# Agent execution logs should be committed here for system improvement.

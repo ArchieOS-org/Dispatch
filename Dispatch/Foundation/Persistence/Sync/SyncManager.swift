@@ -391,12 +391,14 @@ final class SyncManager: ObservableObject {
       category: .sync
     )
 
-    // Apply backoff delay
-    do {
-      try await Task.sleep(for: .seconds(delay))
-    } catch {
-      debugLog.log("retryTask() cancelled during backoff delay", category: .sync)
-      return false
+    // Apply backoff delay (skip in test mode for fast, deterministic tests)
+    if mode != .test {
+      do {
+        try await Task.sleep(for: .seconds(delay))
+      } catch {
+        debugLog.log("retryTask() cancelled during backoff delay", category: .sync)
+        return false
+      }
     }
 
     // Reset state and sync
@@ -430,12 +432,14 @@ final class SyncManager: ObservableObject {
       category: .sync
     )
 
-    // Apply backoff delay
-    do {
-      try await Task.sleep(for: .seconds(delay))
-    } catch {
-      debugLog.log("retryActivity() cancelled during backoff delay", category: .sync)
-      return false
+    // Apply backoff delay (skip in test mode for fast, deterministic tests)
+    if mode != .test {
+      do {
+        try await Task.sleep(for: .seconds(delay))
+      } catch {
+        debugLog.log("retryActivity() cancelled during backoff delay", category: .sync)
+        return false
+      }
     }
 
     // Reset state and sync
@@ -469,12 +473,14 @@ final class SyncManager: ObservableObject {
       category: .sync
     )
 
-    // Apply backoff delay
-    do {
-      try await Task.sleep(for: .seconds(delay))
-    } catch {
-      debugLog.log("retryListing() cancelled during backoff delay", category: .sync)
-      return false
+    // Apply backoff delay (skip in test mode for fast, deterministic tests)
+    if mode != .test {
+      do {
+        try await Task.sleep(for: .seconds(delay))
+      } catch {
+        debugLog.log("retryListing() cancelled during backoff delay", category: .sync)
+        return false
+      }
     }
 
     // Reset state and sync
@@ -823,48 +829,6 @@ final class SyncManager: ObservableObject {
     } catch {
       debugLog.error("Failed to fetch current user", error: error)
     }
-  }
-
-  /// Convert sync errors to user-friendly messages
-  private func userFacingMessage(for error: Error) -> String {
-    if let urlError = error as? URLError {
-      switch urlError.code {
-      case .notConnectedToInternet, .networkConnectionLost:
-        return "No internet connection."
-      case .timedOut:
-        return "Connection timed out."
-      default:
-        return "Network error."
-      }
-    }
-
-    // Detect Postgres/RLS errors with table-aware messaging
-    // Note: PostgrestError handling ideally involves checking the error code (e.g. 42501 or PGRST102)
-    let errorString = String(describing: error).lowercased()
-    if errorString.contains("42501") || errorString.contains("permission denied") {
-      // Provide table-specific error messages for better debugging
-      if errorString.contains("notes") {
-        return "Permission denied syncing notes."
-      }
-      if errorString.contains("listings") {
-        return "Permission denied syncing listings."
-      }
-      if errorString.contains("tasks") {
-        return "Permission denied syncing tasks."
-      }
-      if errorString.contains("activities") {
-        return "Permission denied syncing activities."
-      }
-      if errorString.contains("users") {
-        return "Permission denied syncing user profile."
-      }
-      if errorString.contains("properties") {
-        return "Permission denied syncing properties."
-      }
-      return "Permission denied during sync."
-    }
-
-    return "Sync failed: \(error.localizedDescription)"
   }
 
   private func syncDown(context: ModelContext) async throws {

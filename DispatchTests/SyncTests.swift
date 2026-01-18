@@ -13,27 +13,8 @@ final class SyncTests: XCTestCase {
   // For V1 "clean room", we will test the observable behaviors on the Models and DTOs,
   // and verify Hash Logic directly if we can access it.
 
-  /// 1. Test Hash Determinism
-  func test_avatarHash_isComputedFromNormalizedJPEGBytes() async throws {
-    // Given
-    _ = Data([0x01, 0x02, 0x03, 0x04])
-    _ = Data([0x01, 0x02, 0x03, 0x04])
-    _ = Data([0x05, 0x06]) // Different
-
-    // When (We need to access normalizeAndHash, which is private.
-    // We might need to expose it or test via a public wrapper.
-    // For this test, verifying the SHA256 logic we implanted is sufficient if we can't access private.)
-
-    // However, we can verify the User model behavior or SyncManager if we have a testable instance.
-    // Let's assume we can't access private methods easily and test the contract:
-    // "SyncUp uploads avatar when hash differs" -> We can mock the network?
-    // Current SyncManager uses `supabase` global or singleton.
-
-    // If we cannot easily mock Supabase, verifying the "Logic" part might be limited to
-    // checking the state transitions in the Model.
-
-    // Let's implement what we CAN test: Model logic and DTO mapping.
-  }
+  // NOTE: Avatar hash determinism testing requires access to private `normalizeAndHash` method.
+  // This would require either exposing the method or refactoring SyncManager for testability.
 
   // MARK: - DTO & Model Tests (The "Logic Brain" parts)
 
@@ -97,20 +78,8 @@ final class SyncTests: XCTestCase {
   }
 
   // MARK: - Integration / Logic Flow Verification
-  // These tests simulate the flow logic we implemented in SyncManager
-
-  func test_syncUp_flow_logic_SKIP_upsert_on_upload_failure() {
-    // Logic Verification:
-    // If we have a pending user with avatar change, and upload fails -> we return (skip upsert).
-    // This ensures serverside data isn't clobbered.
-    // We can't easily execute `SyncManager.syncUpUsers` without a real Supabase connection,
-    // but we can document this behavior is enforced by the `guard !uploadFailed else { return }` line.
-    XCTAssertTrue(true, "Verified by code inspection: SyncManager.swiftL1116 'guard !uploadFailed else { return }'")
-  }
-
-  func test_syncUp_flow_logic_SKIP_hashing_if_avatar_nil() {
-    // Logic Verification:
-    // If avatar is nil, we set path/hash to nil and proceed.
-    XCTAssertTrue(true, "Verified by code inspection: SyncManager.swift handles nil avatar by setting nil path/hash.")
-  }
+  // NOTE: SyncManager's sync flow logic (e.g., upload failure handling, nil avatar handling)
+  // requires integration testing with a real or mocked Supabase connection.
+  // These behaviors are enforced by guards in SyncManager but cannot be unit tested
+  // without refactoring to inject dependencies. See SyncManager.swift for implementation.
 }
