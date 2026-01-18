@@ -239,26 +239,16 @@ final class AppState: ObservableObject {
     // MARK: - Keyboard Navigation (macOS)
 
     case .popNavigation:
-      // Pop navigation stack for current destination (Escape key behavior)
+      // Pop one level from navigation stack (standard macOS Back behavior)
       // On iPad/macOS: pop current destination's stack
-      // Only pop if there's something to pop (avoid no-op when at root)
       let currentPath = router.paths[router.selectedDestination] ?? []
       if !currentPath.isEmpty {
-        router.popToRoot(for: router.selectedDestination)
+        router.popLast(for: router.selectedDestination)
       }
       // Also pop phone path for iPhone consistency
       if !router.phonePath.isEmpty {
-        router.phonePopToRoot()
+        router.phonePopLast()
       }
-
-    case .editCurrentEntity:
-      // Edit the currently viewed entity (Cmd+E behavior)
-      // Get the current route from the navigation stack
-      // For now, this is a placeholder - actual edit sheet presentation
-      // would depend on the entity type being viewed
-      Self.logger.debug("Edit requested for current entity")
-      // Future: Inspect router.paths[router.selectedDestination]?.last
-      // and present appropriate edit sheet based on route type
 
     case .debugSimulateCrash:
       fatalError("Debug Crash Triggered")

@@ -70,11 +70,8 @@ enum AppCommand: Equatable {
 
   // MARK: - Keyboard Navigation (macOS)
 
-  /// Pop the navigation stack for the current destination (Escape key)
+  /// Pop one level from the navigation stack (Escape key / Back)
   case popNavigation
-
-  /// Edit the currently viewed entity (Cmd+E)
-  case editCurrentEntity
 
   // MARK: - Filtering/View Options
 

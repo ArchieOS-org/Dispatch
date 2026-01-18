@@ -124,6 +124,15 @@ struct AppRouter {
     }
   }
 
+  /// Pop one level from the navigation stack for a specific destination.
+  /// Standard macOS "Back" behavior - removes the last route only.
+  mutating func popLast(for destination: SidebarDestination? = nil) {
+    let target = destination ?? selectedDestination
+    if !(paths[target]?.isEmpty ?? true) {
+      paths[target]?.removeLast()
+    }
+  }
+
   /// User tapped destination - always shows root screen.
   /// Pops to root whether re-selecting current destination or switching to a new one.
   /// Used when user physically taps a sidebar item or tab.
@@ -166,6 +175,14 @@ struct AppRouter {
   mutating func phonePopToRoot() {
     if !phonePath.isEmpty {
       phonePath.removeAll()
+    }
+  }
+
+  /// Pop one level on iPhone.
+  /// Standard "Back" behavior - removes the last route only.
+  mutating func phonePopLast() {
+    if !phonePath.isEmpty {
+      phonePath.removeLast()
     }
   }
 

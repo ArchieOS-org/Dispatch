@@ -85,13 +85,6 @@ struct DispatchCommands: Commands {
         dispatch(.popNavigation)
       }
       .keyboardShortcut(.escape, modifiers: [])
-
-      Divider()
-
-      Button("Edit") {
-        dispatch(.editCurrentEntity)
-      }
-      .keyboardShortcut("e", modifiers: .command)
     }
   }
 }
