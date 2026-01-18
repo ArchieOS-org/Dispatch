@@ -78,7 +78,20 @@ extension SyncManager {
     try await entitySyncHandler.syncDownNotes(context: context)
     debugLog.endTiming("syncDownNotes")
 
-    // Notes Reconciliation - catches any notes missed by incremental sync
+    // Reconciliation for all entity types - catches any records missed by incremental sync
+    // This ensures data integrity regardless of lastSyncTime state (e.g., after DB reset)
+    debugLog.startTiming("reconcileMissingListings")
+    _ = try await entitySyncHandler.reconcileMissingListings(context: context)
+    debugLog.endTiming("reconcileMissingListings")
+
+    debugLog.startTiming("reconcileMissingTasks")
+    _ = try await entitySyncHandler.reconcileMissingTasks(context: context)
+    debugLog.endTiming("reconcileMissingTasks")
+
+    debugLog.startTiming("reconcileMissingActivities")
+    _ = try await entitySyncHandler.reconcileMissingActivities(context: context)
+    debugLog.endTiming("reconcileMissingActivities")
+
     debugLog.startTiming("reconcileMissingNotes")
     _ = try await entitySyncHandler.reconcileMissingNotes(context: context)
     debugLog.endTiming("reconcileMissingNotes")

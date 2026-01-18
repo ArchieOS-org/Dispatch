@@ -130,6 +130,11 @@ final class Activity: WorkItemProtocol, NotableProtocol {
   /// Reset to 0 on successful sync.
   var retryCount: Int = 0
 
+  /// Tracks when auto-recovery last reset this entity. Used to enforce cooldown period
+  /// to prevent rapid re-reset loops when underlying issues persist.
+  /// Marked @Transient to exclude from persistence - this is a runtime-only value.
+  @Transient var lastResetAttempt: Date?
+
   /// Relationships
   @Relationship(deleteRule: .cascade)
   var notes = [Note]()

@@ -127,19 +127,27 @@ class SyncCoordinator: ObservableObject {
 
       guard !Task.isCancelled else { return }
 
-      // 3. Retry failed entities with exponential backoff (on app foreground)
-      // This also triggers a sync internally
+      // 3. Auto-recover permanently failed entities (exceeded max retries)
+      // This gives stuck entities a chance to sync after server-side fixes
+      // Only recovers if cooldown period (1 hour) has elapsed since last recovery
+      Self.logger.info("App foregrounded - auto-recovering permanently failed entities")
+      await syncManager.autoRecoverFailedEntities()
+
+      guard !Task.isCancelled else { return }
+
+      // 4. Retry failed entities with exponential backoff (on app foreground)
+      // This handles entities still within retry limit (normal exponential backoff)
       Self.logger.info("App foregrounded - retrying failed entities")
       await syncManager.retryFailedEntities()
 
       guard !Task.isCancelled else { return }
 
-      // 4. Initial Sync (if retryFailedEntities didn't run one, or to catch other changes)
+      // 5. Initial Sync (if retryFailedEntities didn't run one, or to catch other changes)
       await syncManager.sync()
 
       guard !Task.isCancelled else { return }
 
-      // 5. Start Realtime Listening
+      // 6. Start Realtime Listening
       if !isListening {
         await syncManager.startListening()
         isListening = true

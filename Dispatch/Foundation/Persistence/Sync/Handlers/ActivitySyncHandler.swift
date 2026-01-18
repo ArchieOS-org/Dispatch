@@ -170,6 +170,54 @@ final class ActivitySyncHandler: EntitySyncHandlerProtocol {
     }
   }
 
+  // MARK: - Reconcile Missing Activities
+
+  /// Reconciles missing activities - finds activities on server that don't exist locally and fetches them.
+  /// This is a failsafe to catch activities that were missed due to watermark issues or other sync gaps.
+  /// Runs on every sync to ensure data consistency.
+  func reconcileMissingActivities(context: ModelContext) async throws -> Int {
+    // 1. Fetch all activity IDs from server (lightweight query)
+    let remoteDTOs: [IDOnlyDTO] = try await supabase
+      .from("activities")
+      .select("id")
+      .execute()
+      .value
+    let remoteIds = Set(remoteDTOs.map { $0.id })
+    debugLog.log("  Remote activities: \(remoteIds.count)", category: .sync)
+
+    // 2. Get all local activity IDs
+    let localDescriptor = FetchDescriptor<Activity>()
+    let localActivities = try context.fetch(localDescriptor)
+    let localIds = Set(localActivities.map { $0.id })
+    debugLog.log("  Local activities: \(localIds.count)", category: .sync)
+
+    // 3. Find IDs that exist on server but not locally
+    let missingIds = remoteIds.subtracting(localIds)
+
+    guard !missingIds.isEmpty else {
+      debugLog.log("  No missing activities", category: .sync)
+      return 0
+    }
+
+    debugLog.log("  Warning: Found \(missingIds.count) missing activities, fetching...", category: .sync)
+
+    // 4. Fetch full activity data for missing IDs (batch query)
+    let missingDTOs: [ActivityDTO] = try await supabase
+      .from("activities")
+      .select()
+      .in("id", values: Array(missingIds).map { $0.uuidString })
+      .execute()
+      .value
+
+    // 5. Upsert missing activities
+    for dto in missingDTOs {
+      try upsertActivity(dto: dto, context: context, establishListingRelationship: nil)
+    }
+
+    debugLog.log("  Reconciled \(missingDTOs.count) missing activities", category: .sync)
+    return missingDTOs.count
+  }
+
   // MARK: - Delete Activity
 
   func deleteLocalActivity(id: UUID, context: ModelContext) throws -> Bool {
@@ -474,5 +522,12 @@ final class ActivitySyncHandler: EntitySyncHandlerProtocol {
       newTemplate.markSynced()
       context.insert(newTemplate)
     }
+  }
+
+  // MARK: Private
+
+  /// Lightweight DTO for fetching only IDs from Supabase
+  private struct IDOnlyDTO: Codable {
+    let id: UUID
   }
 }

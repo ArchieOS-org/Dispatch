@@ -255,6 +255,41 @@ final class SyncManager: ObservableObject {
     // Also reset per-table watermarks so all entities are re-fetched
     lastSyncNotes = nil
     debugLog.log("  -> Also reset notes watermark", category: .sync)
+    // Reset handler-specific watermarks
+    UserDefaults.standard.removeObject(forKey: Self.lastSyncListingTypesKey)
+    UserDefaults.standard.removeObject(forKey: Self.lastSyncActivityTemplatesKey)
+    debugLog.log("  -> Also reset listing types and activity templates watermarks", category: .sync)
+  }
+
+  /// Detects if the local database is empty but sync timestamps are set (stale state).
+  /// This can happen after app reinstall or database reset when UserDefaults survive via iCloud backup.
+  /// If detected, automatically resets sync timestamps to trigger full reconciliation.
+  func detectAndResetStaleTimestamp() {
+    guard let container = modelContainer else { return }
+    guard lastSyncTime != nil else { return } // Already needs full sync
+
+    let context = container.mainContext
+
+    do {
+      let listingCount = try context.fetchCount(FetchDescriptor<Listing>())
+      let taskCount = try context.fetchCount(FetchDescriptor<TaskItem>())
+      let activityCount = try context.fetchCount(FetchDescriptor<Activity>())
+
+      // If all core entity types are empty but we have a lastSyncTime, something is wrong
+      if listingCount == 0, taskCount == 0, activityCount == 0 {
+        debugLog.log(
+          "Warning: Database appears empty but lastSyncTime is set - resetting for full reconciliation",
+          category: .sync
+        )
+        debugLog.log(
+          "  Counts: listings=\(listingCount), tasks=\(taskCount), activities=\(activityCount)",
+          category: .sync
+        )
+        resetLastSyncTime()
+      }
+    } catch {
+      debugLog.error("Failed to check entity counts for stale timestamp detection", error: error)
+    }
   }
 
   /// Refreshes notes for a specific parent (listing, task, or activity).
@@ -366,6 +401,90 @@ final class SyncManager: ObservableObject {
     }
   }
 
+  /// Auto-recover entities that have permanently failed (exceeded max retries).
+  /// This resets entities so they can try syncing again, but only if enough time
+  /// has passed since the last recovery attempt (cooldown period of 1 hour).
+  ///
+  /// Called on app foreground to give stuck entities a chance to sync after
+  /// server-side fixes have been deployed.
+  ///
+  /// - Returns: Number of entities that were recovered
+  @discardableResult
+  func autoRecoverFailedEntities() async -> Int {
+    guard let container = modelContainer else {
+      debugLog.log("autoRecoverFailedEntities(): No modelContainer", category: .sync)
+      return 0
+    }
+
+    return await retryCoordinator.autoRecoverFailedEntities(container: container) { [weak self] in
+      await self?.sync()
+    }
+  }
+
+  /// Resets all failed entities so they can be retried, regardless of retry count.
+  /// Use this when a schema issue or server bug has been fixed and you want to retry
+  /// entities that previously exceeded maxRetries.
+  /// - Parameter triggerSync: If true (default), triggers a sync after resetting entities.
+  func resetFailedEntities(triggerSync: Bool = true) async {
+    guard let container = modelContainer else {
+      debugLog.log("resetFailedEntities(): No modelContainer", category: .sync)
+      return
+    }
+
+    let context = container.mainContext
+
+    var resetCounts = (tasks: 0, activities: 0, listings: 0)
+
+    do {
+      // Fetch and reset failed TaskItems
+      let taskDescriptor = FetchDescriptor<TaskItem>()
+      let allTasks = try context.fetch(taskDescriptor)
+      for task in allTasks where task.syncState == .failed {
+        task.retryCount = 0
+        task.markPending()
+        resetCounts.tasks += 1
+      }
+
+      // Fetch and reset failed Activities
+      let activityDescriptor = FetchDescriptor<Activity>()
+      let allActivities = try context.fetch(activityDescriptor)
+      for activity in allActivities where activity.syncState == .failed {
+        activity.retryCount = 0
+        activity.markPending()
+        resetCounts.activities += 1
+      }
+
+      // Fetch and reset failed Listings
+      let listingDescriptor = FetchDescriptor<Listing>()
+      let allListings = try context.fetch(listingDescriptor)
+      for listing in allListings where listing.syncState == .failed {
+        listing.retryCount = 0
+        listing.markPending()
+        resetCounts.listings += 1
+      }
+
+      let totalReset = resetCounts.tasks + resetCounts.activities + resetCounts.listings
+
+      if totalReset == 0 {
+        debugLog.log("resetFailedEntities(): No failed entities to reset", category: .sync)
+        return
+      }
+
+      debugLog.log(
+        "resetFailedEntities(): Reset \(totalReset) entities (\(resetCounts.tasks) tasks, \(resetCounts.activities) activities, \(resetCounts.listings) listings)",
+        category: .sync
+      )
+
+      // Trigger sync if requested
+      if triggerSync {
+        debugLog.log("resetFailedEntities(): Triggering sync to retry reset entities", category: .sync)
+        await sync()
+      }
+    } catch {
+      debugLog.error("resetFailedEntities(): Failed to fetch entities", error: error)
+    }
+  }
+
   func sync() async {
     // Increment sync run ID for correlating claim actions with sync results
     syncRunId &+= 1
@@ -428,6 +547,10 @@ final class SyncManager: ObservableObject {
         // that couldn't see unsaved entities from the UI's @Environment(\.modelContext)
         let context = container.mainContext
         debugLog.log("Using container.mainContext (shared context)", category: .sync)
+
+        // Auto-detect and reset stale timestamps when database is empty
+        // This handles the case where app was reinstalled but UserDefaults survived via iCloud backup
+        detectAndResetStaleTimestamp()
 
         debugLog.startTiming("syncDown")
         try await syncDown(context: context)
