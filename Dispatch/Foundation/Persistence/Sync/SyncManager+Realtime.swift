@@ -100,6 +100,10 @@ extension SyncManager: RealtimeManagerDelegate {
     syncStatus = status
   }
 
+  func realtimeManager(_: RealtimeManager, connectionStateDidChange state: RealtimeConnectionState) {
+    realtimeConnectionState = state
+  }
+
   func realtimeManager(_: RealtimeManager, isInFlightTaskId id: UUID) -> Bool {
     conflictResolver.isTaskInFlight(id)
   }

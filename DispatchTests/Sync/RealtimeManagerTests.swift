@@ -83,6 +83,7 @@ final class MockBroadcastEventParserDelegate: BroadcastEventParserDelegate {
 final class MockChannelLifecycleDelegate: ChannelLifecycleDelegate {
 
   var statusChanges = [SyncStatus]()
+  var connectionStateChanges = [RealtimeConnectionState]()
   var receivedTaskDTOs = [TaskDTO]()
   var receivedTaskDeletes = [UUID]()
   var receivedActivityDTOs = [ActivityDTO]()
@@ -97,6 +98,10 @@ final class MockChannelLifecycleDelegate: ChannelLifecycleDelegate {
 
   func lifecycleManager(_: ChannelLifecycleManager, statusDidChange status: SyncStatus) {
     statusChanges.append(status)
+  }
+
+  func lifecycleManager(_: ChannelLifecycleManager, connectionStateDidChange state: RealtimeConnectionState) {
+    connectionStateChanges.append(state)
   }
 
   func lifecycleManager(_: ChannelLifecycleManager, didReceiveTaskDTO dto: TaskDTO) {
@@ -145,6 +150,7 @@ final class MockChannelLifecycleDelegate: ChannelLifecycleDelegate {
 
   func reset() {
     statusChanges.removeAll()
+    connectionStateChanges.removeAll()
     receivedTaskDTOs.removeAll()
     receivedTaskDeletes.removeAll()
     receivedActivityDTOs.removeAll()

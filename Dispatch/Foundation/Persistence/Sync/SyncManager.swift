@@ -111,6 +111,8 @@ final class SyncManager: ObservableObject {
   @Published private(set) var isListingConfigReady = false // UI gate for AddListingSheet
   @Published private(set) var syncError: Error?
   @Published internal(set) var syncStatus = SyncStatus.idle
+  /// Current realtime connection state for error recovery UI.
+  @Published internal(set) var realtimeConnectionState = RealtimeConnectionState.connected
   @Published var currentUser: User? // The actual profile object, for UI state
 
   /// User-facing error message when syncStatus is .error
@@ -602,6 +604,12 @@ final class SyncManager: ObservableObject {
 
   func stopListening() async {
     await realtimeManager.stopListening()
+  }
+
+  /// Attempt to reconnect realtime when network is restored.
+  /// Resets retry counts and attempts a fresh connection.
+  func attemptRealtimeReconnection() {
+    realtimeManager.attemptReconnection()
   }
 
   // MARK: - Test Accessors (Internal API for white-box testing)

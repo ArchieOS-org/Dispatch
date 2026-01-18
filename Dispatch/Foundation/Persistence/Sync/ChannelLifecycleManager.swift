@@ -14,6 +14,7 @@ import Supabase
 @MainActor
 protocol ChannelLifecycleDelegate: AnyObject {
   func lifecycleManager(_ manager: ChannelLifecycleManager, statusDidChange status: SyncStatus)
+  func lifecycleManager(_ manager: ChannelLifecycleManager, connectionStateDidChange state: RealtimeConnectionState)
   func lifecycleManager(_ manager: ChannelLifecycleManager, didReceiveTaskDTO dto: TaskDTO)
   func lifecycleManager(_ manager: ChannelLifecycleManager, didReceiveTaskDelete id: UUID)
   func lifecycleManager(_ manager: ChannelLifecycleManager, didReceiveActivityDTO dto: ActivityDTO)
@@ -44,7 +45,8 @@ final class ChannelLifecycleManager {
   weak var delegate: ChannelLifecycleDelegate?
   private(set) var realtimeChannel: RealtimeChannelV2?
   private(set) var isListening = false
-
+  private(set) var connectionState: RealtimeConnectionState = .connected
+  private(set) var retryAttempt = 0
   var statusTask: Task<Void, Never>?
   var tasksSubscriptionTask: Task<Void, Never>?
   var activitiesSubscriptionTask: Task<Void, Never>?
@@ -93,8 +95,13 @@ final class ChannelLifecycleManager {
       realtimeChannel = nil
       isListening = false
       await channel.unsubscribe()
+      // Start retry loop on subscription failure
+      startRetryLoop(useBroadcastRealtime: useBroadcastRealtime)
       return
     }
+    // Subscription succeeded - reset retry state and notify delegate
+    retryAttempt = 0
+    updateConnectionState(.connected)
 
     // Status monitoring
     statusTask = Task { [weak self] in
@@ -268,12 +275,16 @@ final class ChannelLifecycleManager {
   }
 
   func stopListening() async {
+    // Cancel any active retry loop
+    retryTask?.cancel()
+    retryTask = nil
     if let channel = realtimeChannel { await channel.unsubscribe() }
     realtimeChannel = nil
     isListening = false
   }
 
   func cancelAllTasks() {
+    retryTask?.cancel()
     [
       statusTask,
       tasksSubscriptionTask,
@@ -285,6 +296,7 @@ final class ChannelLifecycleManager {
   }
 
   func awaitAllTasks() async {
+    _ = await retryTask?.result
     _ = await statusTask?.result
     _ = await tasksSubscriptionTask?.result
     _ = await activitiesSubscriptionTask?.result
@@ -294,12 +306,28 @@ final class ChannelLifecycleManager {
   }
 
   func clearTaskReferences() {
+    retryTask = nil
     statusTask = nil
     tasksSubscriptionTask = nil
     activitiesSubscriptionTask = nil
     listingsSubscriptionTask = nil
     usersSubscriptionTask = nil
     notesSubscriptionTask = nil
+  }
+
+  /// Reset retry state and attempt immediate reconnection.
+  /// Called when network is restored or user triggers manual reconnect.
+  func resetAndReconnect(useBroadcastRealtime: Bool) {
+    // Cancel any existing retry loop
+    retryTask?.cancel()
+    retryTask = nil
+    // Reset retry state
+    retryAttempt = 0
+    updateConnectionState(.connected)
+    // Attempt fresh connection
+    Task { [weak self] in
+      await self?.startListening(useBroadcastRealtime: useBroadcastRealtime)
+    }
   }
 
   func mapRealtimeStatus(_ status: RealtimeChannelStatus) -> SyncStatus {
@@ -323,6 +351,8 @@ final class ChannelLifecycleManager {
 
   // MARK: Private
 
+  private var retryTask: Task<Void, Never>?
+
   private func handleDTO<DTO: Decodable>(_ action: some HasRecord, _ type: DTO.Type, _ callback: @MainActor (DTO) -> Void) async {
     if let dto = try? action.decodeRecord(as: type, decoder: PostgrestClient.Configuration.jsonDecoder) {
       await callback(dto)
@@ -333,5 +363,90 @@ final class ChannelLifecycleManager {
     if let id = extractUUID(from: action.oldRecord, key: "id") {
       await callback(id)
     }
+  }
+
+  /// Start retry loop with exponential backoff.
+  /// Uses RetryPolicy constants: 1s, 2s, 4s, 8s, 16s, capped at 30s.
+  /// After maxRetries (5), enters degraded state but continues background retries.
+  private func startRetryLoop(useBroadcastRealtime: Bool) {
+    // Cancel any existing retry task
+    retryTask?.cancel()
+    retryTask = Task { [weak self] in
+      guard let self else { return }
+      await performRetryLoop(useBroadcastRealtime: useBroadcastRealtime)
+    }
+  }
+
+  private func performRetryLoop(useBroadcastRealtime: Bool) async {
+    // Skip retries in test mode for deterministic behavior
+    if mode == .test { return }
+
+    while !Task.isCancelled {
+      retryAttempt += 1
+      let maxAttempts = RetryPolicy.maxRetries
+
+      if retryAttempt <= maxAttempts {
+        // Still within retry limit - show reconnecting state
+        updateConnectionState(.reconnecting(attempt: retryAttempt, maxAttempts: maxAttempts))
+      } else if retryAttempt == maxAttempts + 1 {
+        // Just exceeded limit - transition to degraded
+        updateConnectionState(.degraded)
+      }
+      // If already degraded, continue background retries silently
+
+      // Calculate delay: 1s, 2s, 4s, 8s, 16s, capped at 30s
+      let delay = RetryPolicy.delay(for: retryAttempt - 1)
+      debugLog.log(
+        "Realtime retry attempt \(retryAttempt), delay: \(delay)s",
+        category: .sync
+      )
+
+      do {
+        try await Task.sleep(for: .seconds(delay))
+      } catch {
+        // Task was cancelled - exit retry loop
+        debugLog.log("Realtime retry loop cancelled during sleep", category: .sync)
+        return
+      }
+
+      // Attempt reconnection
+      let success = await attemptReconnection(useBroadcastRealtime: useBroadcastRealtime)
+      if success {
+        // Success - reset state and exit retry loop
+        retryAttempt = 0
+        updateConnectionState(.connected)
+        debugLog.log("Realtime reconnection successful", category: .sync)
+        return
+      }
+    }
+  }
+
+  /// Attempt a single reconnection. Returns true on success.
+  private func attemptReconnection(useBroadcastRealtime: Bool) async -> Bool {
+    let channel = supabase.realtimeV2.channel("dispatch-sync")
+
+    do {
+      try await channel.subscribeWithError()
+      // Success - set up the channel
+      realtimeChannel = channel
+      isListening = true
+      // Note: We don't set up the stream listeners here because startListening
+      // will be called fresh on success. For retry, we just verify connectivity.
+      await channel.unsubscribe()
+      realtimeChannel = nil
+      isListening = false
+      // Now call startListening to set up everything properly
+      await startListening(useBroadcastRealtime: useBroadcastRealtime)
+      return isListening
+    } catch {
+      debugLog.error("Realtime retry subscription failed", error: error)
+      await channel.unsubscribe()
+      return false
+    }
+  }
+
+  private func updateConnectionState(_ newState: RealtimeConnectionState) {
+    connectionState = newState
+    delegate?.lifecycleManager(self, connectionStateDidChange: newState)
   }
 }
