@@ -73,10 +73,6 @@ enum AppCommand: Equatable {
   /// Pop one level from the navigation stack (Escape key / Back)
   case popNavigation
 
-  // MARK: - Filtering/View Options
-
-  case filterMine
-
   // MARK: - Deep Linking
 
   /// Handle an incoming deep link URL (dispatch://...)

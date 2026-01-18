@@ -203,10 +203,6 @@ final class AppState: ObservableObject {
         syncCoordinator.forceSync()
       }
 
-    case .filterMine:
-      // Navigate to My Workspace tab
-      router.userSelectDestination(.tab(.workspace))
-
     case .deepLink(let url):
       // Parse and route deep link URL
       guard let route = DeepLinkHandler.route(from: url) else {
