@@ -16,41 +16,43 @@ struct DeepLinkHandlerTests {
   // MARK: - URL Detection Tests
 
   @Test
-  func isDeepLink_withDispatchScheme_returnsTrue() {
-    let url = URL(string: "dispatch://listing/123")!
+  func isDeepLink_withDispatchScheme_returnsTrue() throws {
+    let url = try #require(URL(string: "dispatch://listing/123"))
     #expect(DeepLinkHandler.isDeepLink(url) == true)
   }
 
   @Test
-  func isDeepLink_withOAuthScheme_returnsFalse() {
-    let url = URL(string: "com.googleusercontent.apps.123://callback")!
+  func isDeepLink_withOAuthScheme_returnsFalse() throws {
+    let url = try #require(URL(string: "com.googleusercontent.apps.123://callback"))
     #expect(DeepLinkHandler.isDeepLink(url) == false)
   }
 
   @Test
-  func isDeepLink_withHTTPSScheme_returnsFalse() {
-    let url = URL(string: "https://example.com")!
+  func isDeepLink_withHTTPSScheme_returnsFalse() throws {
+    let url = try #require(URL(string: "https://example.com"))
     #expect(DeepLinkHandler.isDeepLink(url) == false)
   }
 
   @Test
-  func isOAuthCallback_withGoogleScheme_returnsTrue() {
-    let url = URL(string: "com.googleusercontent.apps.428022180682-9fm6p0e0l3o8j1bnmf78b5uon8lkhntt://oauth")!
+  func isOAuthCallback_withGoogleScheme_returnsTrue() throws {
+    let url = try #require(
+      URL(string: "com.googleusercontent.apps.428022180682-9fm6p0e0l3o8j1bnmf78b5uon8lkhntt://oauth")
+    )
     #expect(DeepLinkHandler.isOAuthCallback(url) == true)
   }
 
   @Test
-  func isOAuthCallback_withDispatchScheme_returnsFalse() {
-    let url = URL(string: "dispatch://listing/123")!
+  func isOAuthCallback_withDispatchScheme_returnsFalse() throws {
+    let url = try #require(URL(string: "dispatch://listing/123"))
     #expect(DeepLinkHandler.isOAuthCallback(url) == false)
   }
 
   // MARK: - Listing URL Parsing Tests
 
   @Test
-  func parse_validListingURL_returnsListingResult() {
+  func parse_validListingURL_returnsListingResult() throws {
     let uuid = UUID()
-    let url = URL(string: "dispatch://listing/\(uuid.uuidString)")!
+    let url = try #require(URL(string: "dispatch://listing/\(uuid.uuidString)"))
 
     let result = DeepLinkHandler.parse(url)
 
@@ -58,9 +60,9 @@ struct DeepLinkHandlerTests {
   }
 
   @Test
-  func parse_validListingURL_lowercaseUUID_returnsListingResult() {
+  func parse_validListingURL_lowercaseUUID_returnsListingResult() throws {
     let uuid = UUID()
-    let url = URL(string: "dispatch://listing/\(uuid.uuidString.lowercased())")!
+    let url = try #require(URL(string: "dispatch://listing/\(uuid.uuidString.lowercased())"))
 
     let result = DeepLinkHandler.parse(url)
 
@@ -70,9 +72,9 @@ struct DeepLinkHandlerTests {
   // MARK: - Task URL Parsing Tests
 
   @Test
-  func parse_validTaskURL_returnsTaskResult() {
+  func parse_validTaskURL_returnsTaskResult() throws {
     let uuid = UUID()
-    let url = URL(string: "dispatch://task/\(uuid.uuidString)")!
+    let url = try #require(URL(string: "dispatch://task/\(uuid.uuidString)"))
 
     let result = DeepLinkHandler.parse(url)
 
@@ -82,9 +84,9 @@ struct DeepLinkHandlerTests {
   // MARK: - Property URL Parsing Tests
 
   @Test
-  func parse_validPropertyURL_returnsPropertyResult() {
+  func parse_validPropertyURL_returnsPropertyResult() throws {
     let uuid = UUID()
-    let url = URL(string: "dispatch://property/\(uuid.uuidString)")!
+    let url = try #require(URL(string: "dispatch://property/\(uuid.uuidString)"))
 
     let result = DeepLinkHandler.parse(url)
 
@@ -94,8 +96,8 @@ struct DeepLinkHandlerTests {
   // MARK: - Invalid URL Parsing Tests
 
   @Test
-  func parse_wrongScheme_returnsInvalid() {
-    let url = URL(string: "https://listing/\(UUID().uuidString)")!
+  func parse_wrongScheme_returnsInvalid() throws {
+    let url = try #require(URL(string: "https://listing/\(UUID().uuidString)"))
 
     let result = DeepLinkHandler.parse(url)
 
@@ -107,9 +109,9 @@ struct DeepLinkHandlerTests {
   }
 
   @Test
-  func parse_missingHost_returnsInvalid() {
+  func parse_missingHost_returnsInvalid() throws {
     // URL without host component
-    let url = URL(string: "dispatch:///\(UUID().uuidString)")!
+    let url = try #require(URL(string: "dispatch:///\(UUID().uuidString)"))
 
     let result = DeepLinkHandler.parse(url)
 
@@ -121,8 +123,8 @@ struct DeepLinkHandlerTests {
   }
 
   @Test
-  func parse_invalidUUID_returnsInvalid() {
-    let url = URL(string: "dispatch://listing/not-a-valid-uuid")!
+  func parse_invalidUUID_returnsInvalid() throws {
+    let url = try #require(URL(string: "dispatch://listing/not-a-valid-uuid"))
 
     let result = DeepLinkHandler.parse(url)
 
@@ -134,8 +136,8 @@ struct DeepLinkHandlerTests {
   }
 
   @Test
-  func parse_unknownEntityType_returnsInvalid() {
-    let url = URL(string: "dispatch://unknown/\(UUID().uuidString)")!
+  func parse_unknownEntityType_returnsInvalid() throws {
+    let url = try #require(URL(string: "dispatch://unknown/\(UUID().uuidString)"))
 
     let result = DeepLinkHandler.parse(url)
 
@@ -147,8 +149,8 @@ struct DeepLinkHandlerTests {
   }
 
   @Test
-  func parse_missingUUID_returnsInvalid() {
-    let url = URL(string: "dispatch://listing")!
+  func parse_missingUUID_returnsInvalid() throws {
+    let url = try #require(URL(string: "dispatch://listing"))
 
     let result = DeepLinkHandler.parse(url)
 
@@ -160,8 +162,8 @@ struct DeepLinkHandlerTests {
   }
 
   @Test
-  func parse_extraPathComponents_returnsInvalid() {
-    let url = URL(string: "dispatch://listing/\(UUID().uuidString)/extra")!
+  func parse_extraPathComponents_returnsInvalid() throws {
+    let url = try #require(URL(string: "dispatch://listing/\(UUID().uuidString)/extra"))
 
     let result = DeepLinkHandler.parse(url)
 
@@ -216,9 +218,9 @@ struct DeepLinkHandlerTests {
   // MARK: - Convenience Method Tests
 
   @Test
-  func route_validURL_returnsRoute() {
+  func route_validURL_returnsRoute() throws {
     let uuid = UUID()
-    let url = URL(string: "dispatch://listing/\(uuid.uuidString)")!
+    let url = try #require(URL(string: "dispatch://listing/\(uuid.uuidString)"))
 
     let route = DeepLinkHandler.route(from: url)
 
@@ -226,8 +228,8 @@ struct DeepLinkHandlerTests {
   }
 
   @Test
-  func route_invalidURL_returnsNil() {
-    let url = URL(string: "dispatch://listing/invalid")!
+  func route_invalidURL_returnsNil() throws {
+    let url = try #require(URL(string: "dispatch://listing/invalid"))
 
     let route = DeepLinkHandler.route(from: url)
 

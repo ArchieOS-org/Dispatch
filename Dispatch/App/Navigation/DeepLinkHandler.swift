@@ -79,13 +79,13 @@ enum DeepLinkHandler {
   static func toRoute(_ result: ParseResult) -> AppRoute? {
     switch result {
     case .listing(let uuid):
-      return .listing(uuid)
+      .listing(uuid)
     case .task(let uuid):
-      return .workItem(.task(id: uuid))
+      .workItem(.task(id: uuid))
     case .property(let uuid):
-      return .property(uuid)
+      .property(uuid)
     case .invalid:
-      return nil
+      nil
     }
   }
 

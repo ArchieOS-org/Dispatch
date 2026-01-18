@@ -128,20 +128,22 @@ At PATCHSET 4, verify Context7 attestation in the contract.
 Report: `CONTEXT7: [PASS | BLOCKED | N/A] + reason`
 
 # Style Enforcement Commands (PATCHSET 4)
-Run in this order:
 
+**Recommended**: Run the CI mirror script which executes all gates in correct order:
 ```bash
-# 1. Format check (if swiftformat exists)
-if command -v swiftformat &> /dev/null; then
-  swiftformat . --lint
-fi
+./scripts/ci_mirror.sh
+```
+
+**Manual alternative** (run in this order):
+```bash
+# 1. Format check
+./tools/swiftformat Dispatch --lint --config .swiftformat.ci
 
 # 2. Lint
-swiftlint lint
+./tools/swiftlint lint --strict Dispatch --config .swiftlint.yml
 ```
 
 If either command fails → BLOCKED.
-If swiftformat not found → skip with "N/A", continue to lint.
 
 # Tool Fallback
 If MCP tools unavailable (background mode), use Bash with xcodebuild commands directly.

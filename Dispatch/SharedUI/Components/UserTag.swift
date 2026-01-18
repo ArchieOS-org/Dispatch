@@ -54,7 +54,8 @@ struct UserTag: View {
   // MARK: Private
 
   /// Scaled icon size for Dynamic Type support (base: 8pt)
-  @ScaledMetric(relativeTo: .caption2) private var iconSize: CGFloat = 8
+  @ScaledMetric(relativeTo: .caption2)
+  private var iconSize: CGFloat = 8
 
   private var initials: String {
     let components = user.name.components(separatedBy: .whitespaces)

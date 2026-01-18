@@ -142,45 +142,6 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     }
   }
 
-  #if os(macOS)
-  /// Handles arrow key navigation in the work items list
-  private func handleMoveCommand(_ direction: MoveCommandDirection) {
-    let ids = allItemIDs
-    guard !ids.isEmpty else { return }
-
-    switch direction {
-    case .up:
-      if let currentID = focusedItemID,
-         let currentIndex = ids.firstIndex(of: currentID),
-         currentIndex > 0
-      {
-        focusedItemID = ids[currentIndex - 1]
-      } else {
-        // No selection or at top - select first item
-        focusedItemID = ids.first
-      }
-
-    case .down:
-      if let currentID = focusedItemID,
-         let currentIndex = ids.firstIndex(of: currentID),
-         currentIndex < ids.count - 1
-      {
-        focusedItemID = ids[currentIndex + 1]
-      } else if focusedItemID == nil {
-        // No selection - select first item
-        focusedItemID = ids.first
-      }
-
-    case .left, .right:
-      // Left/right not used for vertical lists
-      break
-
-    @unknown default:
-      break
-    }
-  }
-  #endif
-
   private var listView: some View {
     List {
       ForEach(groupedItems, id: \.section) { section, sectionItems in
@@ -215,6 +176,47 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
     // Frame removed to use standard alignment or assumed context
     .frame(minHeight: 300) // Ensure it takes some vertical space in the absence of list
   }
+
+  #if os(macOS)
+  /// Handles arrow key navigation in the work items list
+  private func handleMoveCommand(_ direction: MoveCommandDirection) {
+    let ids = allItemIDs
+    guard !ids.isEmpty else { return }
+
+    switch direction {
+    case .up:
+      if
+        let currentID = focusedItemID,
+        let currentIndex = ids.firstIndex(of: currentID),
+        currentIndex > 0
+      {
+        focusedItemID = ids[currentIndex - 1]
+      } else {
+        // No selection or at top - select first item
+        focusedItemID = ids.first
+      }
+
+    case .down:
+      if
+        let currentID = focusedItemID,
+        let currentIndex = ids.firstIndex(of: currentID),
+        currentIndex < ids.count - 1
+      {
+        focusedItemID = ids[currentIndex + 1]
+      } else if focusedItemID == nil {
+        // No selection - select first item
+        focusedItemID = ids.first
+      }
+
+    case .left, .right:
+      // Left/right not used for vertical lists
+      break
+
+    @unknown default:
+      break
+    }
+  }
+  #endif
 
 }
 

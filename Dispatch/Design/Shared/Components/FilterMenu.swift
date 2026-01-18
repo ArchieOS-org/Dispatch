@@ -19,7 +19,6 @@ struct FilterMenu: View {
   // MARK: Internal
 
   @Binding var audience: AudienceLens
-  @ScaledMetric(relativeTo: .caption2) private var chevronSize: CGFloat = 10
 
   var body: some View {
     HStack(spacing: 0) {
@@ -69,6 +68,9 @@ struct FilterMenu: View {
   }
 
   // MARK: Private
+
+  @ScaledMetric(relativeTo: .caption2)
+  private var chevronSize: CGFloat = 10
 
   /// Icon color: uses tint color for active filters, standard toolbar color otherwise
   private var iconColor: Color {

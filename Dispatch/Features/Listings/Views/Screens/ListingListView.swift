@@ -51,7 +51,7 @@ struct ListingListView: View {
       } message: {
         Text("This draft will be permanently deleted.")
       }
-      #if os(macOS)
+    #if os(macOS)
       .alert("Delete Listing?", isPresented: $showDeleteListingAlert) {
         Button("Cancel", role: .cancel) {
           listingToDelete = nil
@@ -62,7 +62,7 @@ struct ListingListView: View {
       } message: {
         Text("This listing will be marked as deleted.")
       }
-      #endif
+    #endif
   }
 
   // MARK: Private
@@ -238,9 +238,10 @@ struct ListingListView: View {
 
     switch direction {
     case .up:
-      if let currentID = focusedListingID,
-         let currentIndex = ids.firstIndex(of: currentID),
-         currentIndex > 0
+      if
+        let currentID = focusedListingID,
+        let currentIndex = ids.firstIndex(of: currentID),
+        currentIndex > 0
       {
         focusedListingID = ids[currentIndex - 1]
       } else {
@@ -249,9 +250,10 @@ struct ListingListView: View {
       }
 
     case .down:
-      if let currentID = focusedListingID,
-         let currentIndex = ids.firstIndex(of: currentID),
-         currentIndex < ids.count - 1
+      if
+        let currentID = focusedListingID,
+        let currentIndex = ids.firstIndex(of: currentID),
+        currentIndex < ids.count - 1
       {
         focusedListingID = ids[currentIndex + 1]
       } else if focusedListingID == nil {
@@ -270,8 +272,9 @@ struct ListingListView: View {
 
   /// Handles Delete key press - shows confirmation alert for focused listing
   private func handleDeleteCommand() {
-    guard let focusedID = focusedListingID,
-          let listing = allListings.first(where: { $0.id == focusedID })
+    guard
+      let focusedID = focusedListingID,
+      let listing = allListings.first(where: { $0.id == focusedID })
     else { return }
 
     listingToDelete = listing

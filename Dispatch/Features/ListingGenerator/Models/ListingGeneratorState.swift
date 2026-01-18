@@ -176,11 +176,6 @@ final class ListingGeneratorState {
   /// ID of the current draft (if loaded from or saved to persistence)
   var currentDraftId: UUID?
 
-  // MARK: - Task Management
-
-  /// Task for the agent send workflow (auto-transition after delay)
-  private var sendToAgentTask: Task<Void, Never>?
-
   /// Whether the generate button should be enabled
   var canGenerate: Bool {
     switch inputMode {
@@ -302,8 +297,8 @@ final class ListingGeneratorState {
       guard !Task.isCancelled else { return }
       await MainActor.run { [weak self] in
         guard let self else { return }
-        if self.status == .sent {
-          self.status = .ready
+        if status == .sent {
+          status = .ready
         }
       }
     }
@@ -653,6 +648,11 @@ final class ListingGeneratorState {
   }
 
   // MARK: Private
+
+  // MARK: - Task Management
+
+  /// Task for the agent send workflow (auto-transition after delay)
+  private var sendToAgentTask: Task<Void, Never>?
 
   private let trainingService = MockTrainingDataService()
 

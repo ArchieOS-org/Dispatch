@@ -67,25 +67,7 @@ enum DemoListingType: String, CaseIterable, Identifiable {
 @Observable
 final class DemoListingDraft {
 
-  // MARK: - Snapshot (for dirty tracking)
-
-  private struct Snapshot: Equatable {
-    let address: String
-    let unit: String
-    let city: String
-    let province: String
-    let postalCode: String
-    let price: Decimal
-    let listingType: DemoListingType
-    let bedrooms: Int
-    let bathrooms: Int
-    let squareFeet: Int
-    let headline: String
-    let description: String
-    let features: [String]
-    let photoIDs: [UUID]
-    let stage: ListingStage
-  }
+  // MARK: Internal
 
   // MARK: - Property Details
 
@@ -143,33 +125,9 @@ final class DemoListingDraft {
 
   var stage: ListingStage = .workingOn
 
-  // MARK: - Edit State
-
-  private var originalSnapshot: Snapshot?
-
   var isDirty: Bool {
     guard let original = originalSnapshot else { return false }
     return currentSnapshot != original
-  }
-
-  private var currentSnapshot: Snapshot {
-    Snapshot(
-      address: address,
-      unit: unit,
-      city: city,
-      province: province,
-      postalCode: postalCode,
-      price: price,
-      listingType: listingType,
-      bedrooms: bedrooms,
-      bathrooms: bathrooms,
-      squareFeet: squareFeet,
-      headline: headline,
-      description: description,
-      features: features,
-      photoIDs: photos.map(\.id),
-      stage: stage
-    )
   }
 
   // MARK: - Factory
@@ -196,6 +154,52 @@ final class DemoListingDraft {
 
   func movePhotos(from source: IndexSet, to destination: Int) {
     photos.move(fromOffsets: source, toOffset: destination)
+  }
+
+  // MARK: Private
+
+  // MARK: - Snapshot (for dirty tracking)
+
+  private struct Snapshot: Equatable {
+    let address: String
+    let unit: String
+    let city: String
+    let province: String
+    let postalCode: String
+    let price: Decimal
+    let listingType: DemoListingType
+    let bedrooms: Int
+    let bathrooms: Int
+    let squareFeet: Int
+    let headline: String
+    let description: String
+    let features: [String]
+    let photoIDs: [UUID]
+    let stage: ListingStage
+  }
+
+  // MARK: - Edit State
+
+  private var originalSnapshot: Snapshot?
+
+  private var currentSnapshot: Snapshot {
+    Snapshot(
+      address: address,
+      unit: unit,
+      city: city,
+      province: province,
+      postalCode: postalCode,
+      price: price,
+      listingType: listingType,
+      bedrooms: bedrooms,
+      bathrooms: bathrooms,
+      squareFeet: squareFeet,
+      headline: headline,
+      description: description,
+      features: features,
+      photoIDs: photos.map(\.id),
+      stage: stage
+    )
   }
 
 }

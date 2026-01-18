@@ -132,9 +132,10 @@ struct PropertiesListView: View {
 
     switch direction {
     case .up:
-      if let currentID = focusedPropertyID,
-         let currentIndex = ids.firstIndex(of: currentID),
-         currentIndex > 0
+      if
+        let currentID = focusedPropertyID,
+        let currentIndex = ids.firstIndex(of: currentID),
+        currentIndex > 0
       {
         focusedPropertyID = ids[currentIndex - 1]
       } else {
@@ -143,9 +144,10 @@ struct PropertiesListView: View {
       }
 
     case .down:
-      if let currentID = focusedPropertyID,
-         let currentIndex = ids.firstIndex(of: currentID),
-         currentIndex < ids.count - 1
+      if
+        let currentID = focusedPropertyID,
+        let currentIndex = ids.firstIndex(of: currentID),
+        currentIndex < ids.count - 1
       {
         focusedPropertyID = ids[currentIndex + 1]
       } else if focusedPropertyID == nil {
@@ -164,8 +166,9 @@ struct PropertiesListView: View {
 
   /// Handles Delete key press - shows confirmation alert for focused property
   private func handleDeleteCommand() {
-    guard let focusedID = focusedPropertyID,
-          let property = allProperties.first(where: { $0.id == focusedID })
+    guard
+      let focusedID = focusedPropertyID,
+      let property = allProperties.first(where: { $0.id == focusedID })
     else { return }
 
     propertyToDelete = property

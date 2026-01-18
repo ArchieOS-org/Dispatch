@@ -26,12 +26,13 @@ This keeps enforcement predictable and prevents bike-shedding. If you want somet
 ### 1. Formatting (swiftformat)
 - Non-destructive formatting only
 - Must preserve semantics
-- Command: `swiftformat . --lint` (if swiftformat exists)
+- Uses Airbnb Swift style via `.swiftformat.ci` config
+- Command: `./tools/swiftformat Dispatch --lint --config .swiftformat.ci`
 
 ### 2. Linting (swiftlint)
-- Enforces code style rules in `.swiftlint.yml`
-- Command: `swiftlint lint`
-- Build FAILS if lint fails
+- Enforces Airbnb Swift rules via `.swiftlint.yml` (inherits `.swiftlint.airbnb.yml`)
+- Command: `./tools/swiftlint lint --strict Dispatch --config .swiftlint.yml`
+- Build FAILS if lint fails (--strict flag)
 
 ### 3. Build
 - Type errors caught by compiler
@@ -46,15 +47,21 @@ This keeps enforcement predictable and prevents bike-shedding. If you want somet
 Integrator MUST run these commands in order:
 
 ```bash
-# 1. Format check (if available)
-if command -v swiftformat &> /dev/null; then
-  swiftformat . --lint
-fi
+# Ensure tools are installed
+./scripts/install_tools.sh
 
-# 2. Lint
-swiftlint lint
+# 1. Format check (Airbnb rules)
+./tools/swiftformat Dispatch --lint --config .swiftformat.ci
+
+# 2. Lint (Airbnb rules, strict mode)
+./tools/swiftlint lint --strict Dispatch --config .swiftlint.yml
 
 # 3. Build + Test (via MCP or xcodebuild)
+```
+
+Or use the CI mirror script which runs all gates:
+```bash
+./scripts/ci_mirror.sh
 ```
 
 If ANY step fails → build is BLOCKED.

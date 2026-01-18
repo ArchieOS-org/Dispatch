@@ -81,9 +81,10 @@ struct RealtorsListView: View {
 
     switch direction {
     case .up:
-      if let currentID = focusedRealtorID,
-         let currentIndex = ids.firstIndex(of: currentID),
-         currentIndex > 0
+      if
+        let currentID = focusedRealtorID,
+        let currentIndex = ids.firstIndex(of: currentID),
+        currentIndex > 0
       {
         focusedRealtorID = ids[currentIndex - 1]
       } else {
@@ -92,9 +93,10 @@ struct RealtorsListView: View {
       }
 
     case .down:
-      if let currentID = focusedRealtorID,
-         let currentIndex = ids.firstIndex(of: currentID),
-         currentIndex < ids.count - 1
+      if
+        let currentID = focusedRealtorID,
+        let currentIndex = ids.firstIndex(of: currentID),
+        currentIndex < ids.count - 1
       {
         focusedRealtorID = ids[currentIndex + 1]
       } else if focusedRealtorID == nil {

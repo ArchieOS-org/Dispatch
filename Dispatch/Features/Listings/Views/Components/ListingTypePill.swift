@@ -29,7 +29,8 @@ struct ListingTypePill: View {
   // MARK: Private
 
   /// Scaled font size for Dynamic Type support (base: 10pt)
-  @ScaledMetric(relativeTo: .caption2) private var fontSize: CGFloat = 10
+  @ScaledMetric(relativeTo: .caption2)
+  private var fontSize: CGFloat = 10
 
   private var title: String {
     switch type {
