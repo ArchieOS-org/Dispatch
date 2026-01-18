@@ -329,9 +329,15 @@ final class SyncManager: ObservableObject {
       // Get context AFTER async work to avoid stale reference
       guard let context = modelContainer?.mainContext else { return }
 
-      // Get local note IDs for this parent
-      // Note: SwiftData predicates cannot call methods (.rawValue) on enum properties.
-      // Fetch by parentId only, then filter by parentType in memory.
+      // Get local note IDs for this parent.
+      //
+      // SwiftData Limitation: Predicates cannot use enum properties directly because
+      // #Predicate cannot call .rawValue on enums at compile time. We fetch by parentId
+      // only, then filter by parentType in memory.
+      //
+      // Performance Note: This in-memory filter is acceptable given expected data patterns
+      // (few notes per parent). If a parentId ever has many notes, this could become a
+      // bottleneck requiring a different approach (e.g., storing rawValue separately).
       let localDescriptor = FetchDescriptor<Note>(predicate: #Predicate {
         $0.parentId == parentId
       })
