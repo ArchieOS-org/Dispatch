@@ -509,6 +509,81 @@ DS.Shadows.bottomFadeGradient    // Bottom fade
 
 ## Components
 
+### ToolbarIconButton (macOS only)
+
+A 36pt icon-only button for macOS bottom toolbar. Follows Things 3 styling: icon-only, no labels, tooltip on hover.
+
+```swift
+ToolbarIconButton(
+    icon: "plus",
+    action: { addItem() },
+    accessibilityLabel: "New item",
+    isDestructive: false  // Optional, defaults to false
+)
+```
+
+**Styling:**
+- Uses `.buttonStyle(.plain)` for NO visible background
+- Icon: `.font(.system(size: DS.Spacing.bottomToolbarIconSize, weight: .medium))`
+- Color: `.primary.opacity(0.6)` (or `.red.opacity(0.7)` for destructive)
+- Frame: `DS.Spacing.bottomToolbarButtonSize` (36pt) square
+- Tooltip via `.help()` modifier
+
+**Key Pattern - Plain Icon Button:**
+```swift
+Button(action: action) {
+    Image(systemName: icon)
+        .font(.system(size: DS.Spacing.bottomToolbarIconSize, weight: .medium))
+        .foregroundStyle(.primary.opacity(0.6))
+        .frame(width: DS.Spacing.bottomToolbarButtonSize, height: DS.Spacing.bottomToolbarButtonSize)
+        .contentShape(Rectangle())
+}
+.buttonStyle(.plain)  // Critical: NO background
+.help(accessibilityLabel)
+```
+
+---
+
+### OverflowMenu
+
+A reusable overflow menu button displaying an ellipsis icon with platform-native behavior.
+
+```swift
+OverflowMenu(actions: [
+    OverflowMenu.Action(id: "edit", title: "Edit", icon: "pencil") { editItem() },
+    OverflowMenu.Action(id: "delete", title: "Delete", icon: "trash", role: .destructive) { deleteItem() }
+])
+```
+
+**Platform Behavior:**
+- **macOS**: Native `Menu` dropdown attached directly to the button with proper popover styling. Uses `.menuStyle(.button)` + `.buttonStyle(.plain)` for minimal chrome matching ToolbarIconButton.
+- **iOS**: `confirmationDialog` for native action sheet presentation from bottom of screen
+
+**Features:**
+- macOS: Matches ToolbarIconButton styling (36pt, medium weight, 0.6 opacity)
+- iOS: 44pt x 44pt touch target (`DS.Spacing.minTouchTarget`)
+- Dynamic Type support via `@ScaledMetric` icon sizing (iOS)
+- Destructive action support with proper role styling
+- Customizable icon, color, and accessibility label
+- Tooltip via `.help()` on macOS
+
+**Key Pattern - Menu with Plain Button Style:**
+```swift
+// IMPORTANT: .menuStyle(.borderlessButton) is DEPRECATED and creates pill-shaped background
+// Use this pattern instead:
+Menu {
+    // menu content
+} label: {
+    // custom label view
+}
+.menuStyle(.button)      // Required for custom styling
+.buttonStyle(.plain)     // NO visible background - matches ToolbarIconButton
+.menuIndicator(.hidden)  // Hide dropdown arrow
+.fixedSize()             // Prevent unwanted expansion
+```
+
+---
+
 ### AudienceLensButton
 
 A glass-styled button for audience lens filtering. Uses palette rendering for tinted inner lines.
