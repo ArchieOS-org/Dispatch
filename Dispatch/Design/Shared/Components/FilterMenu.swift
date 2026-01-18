@@ -37,9 +37,12 @@ struct FilterMenu: View {
           .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
-      .accessibilityIdentifier("AudienceFilterButton")
-      .accessibilityLabel("Cycle filter")
-      .accessibilityValue("\(audience.rawValue)|\(audience.icon)")
+      #if os(macOS)
+        .help("Filter")
+      #endif
+        .accessibilityIdentifier("AudienceFilterButton")
+        .accessibilityLabel("Cycle filter")
+        .accessibilityValue("\(audience.rawValue)|\(audience.icon)")
 
       // Right: Chevron menu trigger with Picker
       Menu {
@@ -61,8 +64,11 @@ struct FilterMenu: View {
       .menuStyle(.borderlessButton)
       .menuIndicator(.hidden)
       .tint(.secondary)
-      .accessibilityLabel("Choose filter")
-      .accessibilityValue(audience.label)
+      #if os(macOS)
+        .help("Choose filter")
+      #endif
+        .accessibilityLabel("Choose filter")
+        .accessibilityValue(audience.label)
     }
     .sensoryFeedback(.selection, trigger: audience)
   }

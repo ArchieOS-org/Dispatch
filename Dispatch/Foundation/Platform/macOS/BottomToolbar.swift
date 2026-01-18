@@ -87,23 +87,6 @@ struct BottomToolbar: View {
           accessibilityLabel: "New item"
         )
       }
-
-      // Placeholder buttons for future features
-      ToolbarIconButton(
-        icon: "plus.square",
-        action: { },
-        accessibilityLabel: "Add subtask"
-      )
-      .disabled(true)
-      .opacity(0.4)
-
-      ToolbarIconButton(
-        icon: "calendar",
-        action: { },
-        accessibilityLabel: "Schedule"
-      )
-      .disabled(true)
-      .opacity(0.4)
     }
     .padding(.leading, DS.Spacing.bottomToolbarPadding)
 
@@ -111,14 +94,6 @@ struct BottomToolbar: View {
 
     // Right group
     HStack(spacing: 0) {
-      ToolbarIconButton(
-        icon: "arrow.right",
-        action: { },
-        accessibilityLabel: "Move"
-      )
-      .disabled(true)
-      .opacity(0.4)
-
       if let onSearch {
         ToolbarIconButton(
           icon: "magnifyingglass",
