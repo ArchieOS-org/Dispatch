@@ -23,7 +23,7 @@ struct SubtaskRow: View {
       // Checkbox
       Button(action: onToggle) {
         Image(systemName: subtask.completed ? DS.Icons.StatusIcons.completed : DS.Icons.StatusIcons.open)
-          .font(.system(size: 18))
+          .font(.system(size: checkboxIconSize))
           .foregroundColor(subtask.completed ? DS.Colors.success : DS.Colors.Text.tertiary)
           .scaleEffect(subtask.completed ? 1.0 : 0.95)
           .animation(
@@ -47,7 +47,7 @@ struct SubtaskRow: View {
       if let onDelete {
         Button(action: onDelete) {
           Image(systemName: DS.Icons.Action.delete)
-            .font(.system(size: 14))
+            .font(.system(size: deleteIconSize))
             .foregroundColor(DS.Colors.destructive)
         }
         .buttonStyle(.plain)
@@ -63,6 +63,14 @@ struct SubtaskRow: View {
   }
 
   // MARK: Private
+
+  /// Scaled checkbox icon size for Dynamic Type support (base: 18pt)
+  @ScaledMetric(relativeTo: .body)
+  private var checkboxIconSize: CGFloat = 18
+
+  /// Scaled delete icon size for Dynamic Type support (base: 14pt)
+  @ScaledMetric(relativeTo: .footnote)
+  private var deleteIconSize: CGFloat = 14
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

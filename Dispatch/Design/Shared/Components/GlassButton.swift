@@ -11,6 +11,9 @@ import SwiftUI
 /// Uses `glassEffect` on iOS 26+, falls back to `ultraThinMaterial` on earlier versions.
 /// Used for the FAB and similar simple glass buttons.
 struct GlassButton: View {
+
+  // MARK: Internal
+
   let icon: String
   let accessibilityLabel: String
   let action: () -> Void
@@ -26,7 +29,7 @@ struct GlassButton: View {
           .glassCircleBackground()
           .overlay {
             Image(systemName: icon)
-              .font(.system(size: 24, weight: .semibold))
+              .font(.system(size: iconSize, weight: .semibold))
               .foregroundStyle(.primary)
           }
 
@@ -43,6 +46,13 @@ struct GlassButton: View {
     .accessibilityLabel(accessibilityLabel)
     .accessibilityAddTraits(.isButton)
   }
+
+  // MARK: Private
+
+  /// Scaled icon size for Dynamic Type support (base: 24pt, relative to title3)
+  @ScaledMetric(relativeTo: .title3)
+  private var iconSize: CGFloat = 24
+
 }
 
 // MARK: - Previews

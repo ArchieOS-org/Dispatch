@@ -49,6 +49,10 @@ struct FloatingFilterButton: View {
 
   // MARK: Private
 
+  /// Scaled icon size for Dynamic Type support (base: 20pt, relative to body)
+  @ScaledMetric(relativeTo: .body)
+  private var iconSize: CGFloat = 20
+
   @ViewBuilder
   private var filterButtonVisual: some View {
     ZStack {
@@ -62,7 +66,7 @@ struct FloatingFilterButton: View {
       Image(systemName: audience.icon)
         .symbolRenderingMode(.monochrome)
         .foregroundStyle(audience == .all ? .primary : audience.tintColor)
-        .font(.system(size: DS.Spacing.floatingButtonIconSize, weight: .semibold))
+        .font(.system(size: iconSize, weight: .semibold))
     }
     .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
     .contentShape(Circle())

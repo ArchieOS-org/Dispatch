@@ -22,7 +22,7 @@ struct DueDateBadge: View {
     if dueDate != nil {
       HStack(spacing: DS.Spacing.xxs) {
         Image(systemName: DS.Icons.Time.clock)
-          .font(.system(size: 10))
+          .font(.system(size: iconSize))
         Text(formattedDate)
           .font(DS.Typography.caption)
       }
@@ -47,6 +47,10 @@ struct DueDateBadge: View {
   }()
 
   private static let calendar = Calendar.current
+
+  /// Scaled icon size for Dynamic Type support (base: 10pt, relative to caption2)
+  @ScaledMetric(relativeTo: .caption2)
+  private var iconSize: CGFloat = 10
 
   private var dateColor: Color {
     guard let dueDate else { return DS.Colors.Text.tertiary }

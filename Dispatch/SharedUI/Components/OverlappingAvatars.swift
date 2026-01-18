@@ -55,8 +55,29 @@ struct OverlappingAvatars: View {
 
   // MARK: Private
 
+  /// Scaled font size for small avatars (base: 10pt, relative to caption2)
+  @ScaledMetric(relativeTo: .caption2)
+  private var smallFontSize: CGFloat = 10
+
+  /// Scaled font size for medium avatars (base: 14pt, relative to footnote)
+  @ScaledMetric(relativeTo: .footnote)
+  private var mediumFontSize: CGFloat = 14
+
+  /// Scaled font size for large avatars (base: 18pt, relative to headline)
+  @ScaledMetric(relativeTo: .headline)
+  private var largeFontSize: CGFloat = 18
+
   @State private var isHovered = false
   @State private var showPopover = false
+
+  /// Returns the appropriate scaled font size for the current avatar size
+  private var scaledFontSize: CGFloat {
+    switch size {
+    case .small: smallFontSize
+    case .medium: mediumFontSize
+    case .large: largeFontSize
+    }
+  }
 
   private var overlapOffset: CGFloat {
     -size.dimension * 0.33
@@ -118,7 +139,7 @@ struct OverlappingAvatars: View {
       Circle()
         .fill(DS.Colors.Background.secondary)
       Text("+\(overflowCount)")
-        .font(.system(size: size.fontSize, weight: .semibold))
+        .font(.system(size: scaledFontSize, weight: .semibold))
         .foregroundStyle(DS.Colors.Text.secondary)
     }
     .frame(width: size.dimension, height: size.dimension)

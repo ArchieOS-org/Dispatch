@@ -222,7 +222,7 @@ private struct NoteComposer: View {
       if hasValidInput, isFocused {
         Button(action: commitNote) {
           Image(systemName: "arrow.up.circle.fill")
-            .font(.system(size: 24))
+            .font(.system(size: sendButtonSize))
             .foregroundColor(DS.Colors.accent)
         }
         .buttonStyle(.plain)
@@ -243,6 +243,10 @@ private struct NoteComposer: View {
   }
 
   // MARK: Private
+
+  /// Scaled send button icon size for Dynamic Type support (base: 24pt)
+  @ScaledMetric(relativeTo: .title3)
+  private var sendButtonSize: CGFloat = 24
 
   @State private var isCommitting = false
 

@@ -37,6 +37,10 @@ struct PropertyDetailView: View {
 
   // MARK: Private
 
+  /// Scaled empty state icon size for Dynamic Type support (base: 32pt)
+  @ScaledMetric(relativeTo: .title)
+  private var emptyStateIconSize: CGFloat = 32
+
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var syncManager: SyncManager
   @Environment(\.modelContext) private var modelContext
@@ -159,7 +163,7 @@ struct PropertyDetailView: View {
   private func emptyStateView(icon: String, title: String, message: String) -> some View {
     VStack(spacing: DS.Spacing.sm) {
       Image(systemName: icon)
-        .font(.system(size: 32))
+        .font(.system(size: emptyStateIconSize))
         .foregroundColor(DS.Colors.Text.tertiary)
       Text(title)
         .font(DS.Typography.headline)

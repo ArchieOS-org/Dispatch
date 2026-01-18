@@ -36,7 +36,7 @@ struct FloatingActionButton: View {
       action()
     } label: {
       Image(systemName: icon)
-        .font(.system(size: iconSize, weight: .semibold))
+        .font(.system(size: scaledIconSize, weight: .semibold))
         .foregroundColor(foregroundColor)
         .frame(width: size, height: size)
         .background(backgroundColor)
@@ -52,6 +52,14 @@ struct FloatingActionButton: View {
 
   // MARK: Private
 
+  /// Scaled large icon size for Dynamic Type support (base: 24pt, relative to title3)
+  @ScaledMetric(relativeTo: .title3)
+  private var scaledLargeIconSize: CGFloat = 24
+
+  /// Scaled standard icon size for Dynamic Type support (base: 20pt, relative to body)
+  @ScaledMetric(relativeTo: .body)
+  private var scaledStandardIconSize: CGFloat = 20
+
   /// Haptic trigger - increments on each tap
   @State private var tapCount = 0
 
@@ -60,11 +68,11 @@ struct FloatingActionButton: View {
     DS.Colors.accent
   }
 
-  /// Icon size scales with button size
-  private var iconSize: CGFloat {
+  /// Icon size scales with button size and Dynamic Type
+  private var scaledIconSize: CGFloat {
     size >= DS.Spacing.floatingButtonSizeLarge
-      ? DS.Spacing.floatingButtonIconSizeLarge // 24pt
-      : DS.Spacing.floatingButtonIconSize // 20pt
+      ? scaledLargeIconSize // 24pt base, scaled
+      : scaledStandardIconSize // 20pt base, scaled
   }
 
 }

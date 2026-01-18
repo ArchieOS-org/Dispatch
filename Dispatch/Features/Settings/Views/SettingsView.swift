@@ -129,7 +129,7 @@ private struct ProfileRow: View {
           Spacer()
 
           Image(systemName: "chevron.right")
-            .font(.system(size: 14, weight: .semibold))
+            .font(.system(size: chevronIconSize, weight: .semibold))
             .foregroundStyle(DS.Colors.Text.tertiary)
         }
         .padding(DS.Spacing.md)
@@ -144,6 +144,10 @@ private struct ProfileRow: View {
 
   // MARK: Private
 
+  /// Scaled chevron icon size for Dynamic Type support (base: 14pt)
+  @ScaledMetric(relativeTo: .footnote)
+  private var chevronIconSize: CGFloat = 14
+
   @EnvironmentObject private var syncManager: SyncManager
 
   private var currentUser: User? {
@@ -155,6 +159,9 @@ private struct ProfileRow: View {
 // MARK: - SettingsRow
 
 private struct SettingsRow: View {
+
+  // MARK: Internal
+
   let section: SettingsSection
 
   var body: some View {
@@ -164,7 +171,7 @@ private struct SettingsRow: View {
         .frame(width: 40, height: 40)
         .overlay {
           Image(systemName: section.icon)
-            .font(.system(size: 18, weight: .medium))
+            .font(.system(size: iconSize, weight: .medium))
             .foregroundStyle(DS.Colors.Text.primary)
         }
 
@@ -185,6 +192,13 @@ private struct SettingsRow: View {
     .accessibilityElement(children: .combine)
     .accessibilityLabel("\(section.title). \(section.description)")
   }
+
+  // MARK: Private
+
+  /// Scaled icon size for Dynamic Type support (base: 18pt)
+  @ScaledMetric(relativeTo: .body)
+  private var iconSize: CGFloat = 18
+
 }
 
 // MARK: - Preview

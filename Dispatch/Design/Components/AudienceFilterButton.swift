@@ -30,7 +30,7 @@ struct AudienceFilterButton: View {
       Image(systemName: lens.icon)
         .symbolRenderingMode(.monochrome)
         .foregroundStyle(lens == .all ? .secondary : lens.tintColor)
-        .font(.system(size: 17, weight: .semibold)) // Legible Toolbar Weight
+        .font(.system(size: iconSize, weight: .semibold)) // Legible Toolbar Weight
         .imageScale(.medium) // Balance within frame
       #if os(macOS)
         .frame(width: DS.Spacing.bottomToolbarButtonSize, height: DS.Spacing.bottomToolbarButtonSize)
@@ -59,6 +59,10 @@ struct AudienceFilterButton: View {
   }
 
   // MARK: Private
+
+  /// Scaled icon size for Dynamic Type support (base: 17pt, relative to headline)
+  @ScaledMetric(relativeTo: .headline)
+  private var iconSize: CGFloat = 17
 
   #if os(macOS)
   @State private var isHovering = false

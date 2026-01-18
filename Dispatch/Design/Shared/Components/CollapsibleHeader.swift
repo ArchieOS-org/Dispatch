@@ -29,7 +29,8 @@ private func lerp(_ start: CGFloat, _ end: CGFloat, _ progress: CGFloat) -> CGFl
 // MARK: - CollapsibleHeader
 
 /// A scroll-aware header that collapses as the user scrolls.
-/// Title font interpolates from 32pt → 18pt as collapse progresses.
+/// Title font interpolates from 32pt -> 18pt as collapse progresses.
+/// Uses @ScaledMetric for Dynamic Type support.
 struct CollapsibleHeader<Content: View>: View {
 
   // MARK: Lifecycle
@@ -84,14 +85,22 @@ struct CollapsibleHeader<Content: View>: View {
 
   // MARK: Private
 
+  /// Scaled expanded title size for Dynamic Type support (base: 32pt)
+  @ScaledMetric(relativeTo: .largeTitle)
+  private var expandedTitleSize: CGFloat = 32
+
+  /// Scaled collapsed title size for Dynamic Type support (base: 18pt)
+  @ScaledMetric(relativeTo: .headline)
+  private var collapsedTitleSize: CGFloat = 18
+
   /// Progress of collapse animation (0 = expanded, 1 = collapsed)
   private var collapseProgress: CGFloat {
     min(1, max(0, scrollOffset / maxOffset))
   }
 
-  /// Interpolated title font size
+  /// Interpolated title font size (scales with Dynamic Type)
   private var titleFontSize: CGFloat {
-    lerp(32, 18, collapseProgress)
+    lerp(expandedTitleSize, collapsedTitleSize, collapseProgress)
   }
 
   /// Interpolated header height

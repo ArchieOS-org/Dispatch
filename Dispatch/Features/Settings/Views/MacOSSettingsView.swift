@@ -38,6 +38,10 @@ struct MacOSSettingsView: View {
     case about
   }
 
+  /// Scaled icon size for Dynamic Type support (base: 48pt)
+  @ScaledMetric(relativeTo: .largeTitle)
+  private var buildingIconSize: CGFloat = 48
+
   private var generalTab: some View {
     Form {
       Section {
@@ -57,7 +61,7 @@ struct MacOSSettingsView: View {
   private var aboutTab: some View {
     VStack(spacing: DS.Spacing.lg) {
       Image(systemName: "building.2")
-        .font(.system(size: 48))
+        .font(.system(size: buildingIconSize))
         .foregroundStyle(.secondary)
 
       Text("Dispatch")

@@ -102,6 +102,10 @@ struct ProfilePageView: View {
 
   // MARK: Private
 
+  /// Scaled chevron icon size for Dynamic Type support (base: 12pt)
+  @ScaledMetric(relativeTo: .caption)
+  private var chevronIconSize: CGFloat = 12
+
   @EnvironmentObject private var authManager: AuthManager
   @EnvironmentObject private var syncManager: SyncManager
 
@@ -173,7 +177,7 @@ struct ProfilePageView: View {
               .foregroundStyle(DS.Colors.Text.secondary)
             #if os(iOS)
             Image(systemName: "chevron.up.chevron.down")
-              .font(.system(size: 12))
+              .font(.system(size: chevronIconSize))
               .foregroundStyle(DS.Colors.Text.tertiary)
             #endif
           }

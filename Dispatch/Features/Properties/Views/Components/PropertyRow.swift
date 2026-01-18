@@ -42,7 +42,7 @@ struct PropertyRow: View {
         if !property.activeListings.isEmpty {
           HStack(spacing: 2) {
             Image(systemName: DS.Icons.Entity.listing)
-              .font(.system(size: 10))
+              .font(.system(size: listingIconSize))
             Text("\(property.activeListings.count)")
               .font(DS.Typography.caption)
           }
@@ -66,6 +66,10 @@ struct PropertyRow: View {
   }
 
   // MARK: Private
+
+  /// Scaled listing icon size for Dynamic Type support (base: 10pt)
+  @ScaledMetric(relativeTo: .caption2)
+  private var listingIconSize: CGFloat = 10
 
   private var locationText: String {
     [property.city, property.province]

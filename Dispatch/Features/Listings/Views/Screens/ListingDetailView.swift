@@ -58,6 +58,10 @@ struct ListingDetailView: View {
 
   private static let unauthenticatedUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000000") ?? UUID()
 
+  /// Scaled empty state icon size for Dynamic Type support (base: 32pt)
+  @ScaledMetric(relativeTo: .title)
+  private var emptyStateIconSize: CGFloat = 32
+
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var syncManager: SyncManager
   @EnvironmentObject private var lensState: LensState
@@ -345,7 +349,7 @@ struct ListingDetailView: View {
   private func emptyStateView(icon: String, title: String, message: String) -> some View {
     VStack(spacing: DS.Spacing.sm) {
       Image(systemName: icon)
-        .font(.system(size: 32))
+        .font(.system(size: emptyStateIconSize))
         .foregroundColor(DS.Colors.Text.tertiary)
       Text(title)
         .font(DS.Typography.headline)

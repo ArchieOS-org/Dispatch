@@ -200,7 +200,7 @@ struct ListingWorkspaceSection: View {
           }
         } label: {
           Image(systemName: "chevron.right")
-            .font(.system(size: 12, weight: .semibold))
+            .font(.system(size: chevronIconSize, weight: .semibold))
             .foregroundStyle(DS.Colors.Text.tertiary)
             .rotationEffect(.degrees(isExpanded ? 90 : 0))
             .frame(width: 44, height: 44)
@@ -272,6 +272,10 @@ struct ListingWorkspaceSection: View {
   }
 
   // MARK: Private
+
+  /// Scaled chevron icon size for Dynamic Type support (base: 12pt)
+  @ScaledMetric(relativeTo: .caption)
+  private var chevronIconSize: CGFloat = 12
 
   @State private var isExpanded = true
   @EnvironmentObject private var actions: WorkItemActions

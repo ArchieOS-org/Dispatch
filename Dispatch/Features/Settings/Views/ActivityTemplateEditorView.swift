@@ -179,7 +179,7 @@ private struct AudienceToggleChip: View {
       HStack(spacing: DS.Spacing.xxs) {
         if isSelected {
           Image(systemName: "checkmark")
-            .font(.system(size: 10, weight: .bold))
+            .font(.system(size: checkmarkSize, weight: .bold))
         }
         Text(audience.capitalized)
           .font(DS.Typography.body)
@@ -194,6 +194,10 @@ private struct AudienceToggleChip: View {
   }
 
   // MARK: Private
+
+  /// Scaled checkmark icon size for Dynamic Type support (base: 10pt)
+  @ScaledMetric(relativeTo: .caption2)
+  private var checkmarkSize: CGFloat = 10
 
   private var color: Color {
     switch audience.lowercased() {
