@@ -107,24 +107,25 @@ struct MacContentView: View {
     )
   }
 
-  private var toolbarContext: ToolbarContext {
+  /// Bottom toolbar context derived from selected destination (for Things 3-style toolbar)
+  private var bottomToolbarContext: ToolbarContext {
     switch appState.router.selectedDestination {
     case .tab(let tab):
       switch tab {
+      case .workspace:
+        .taskList
       case .properties:
-        .listingList // Properties uses listing-style toolbar
+        .listingList // Properties list context
       case .listings:
         .listingList
       case .realtors:
         .realtorList
-      case .settings:
-        .taskList // Settings uses default toolbar
-      case .workspace, .search:
-        .taskList // Re-use task actions for now
+      case .settings, .search:
+        .taskList // Default context
       }
 
     case .stage:
-      .listingList // All stage views use listing toolbar
+      .listingList
     }
   }
 
@@ -135,43 +136,20 @@ struct MacContentView: View {
   }
 
   /// macOS: Things 3-style resizable sidebar with native selection.
-  /// Stage cards and tabs scroll together as a single unified List.
+  /// Uses UnifiedSidebarContent for consistent sidebar UI across platforms.
   /// Settings uses SettingsLink via inline row.
   private var sidebarNavigation: some View {
     ResizableSidebar {
-      // Unified scrolling: stage cards + tabs in single List
-      List(selection: sidebarSelectionBinding) {
-        // Stage cards section (scrolls with tabs)
-        Section {
-          StageCardsSection(
-            stageCounts: stageCounts,
-            onSelectStage: { stage in
-              appState.dispatch(.setSelectedDestination(.stage(stage)))
-            }
-          )
+      // Unified sidebar content component (shared with iPad)
+      UnifiedSidebarContent(
+        stageCounts: stageCounts,
+        tabCounts: macTabCounts,
+        overdueCount: sidebarOverdueCount,
+        selection: sidebarSelectionBinding,
+        onSelectStage: { stage in
+          appState.dispatch(.setSelectedDestination(.stage(stage)))
         }
-        .listRowInsets(EdgeInsets(top: DS.Spacing.sm, leading: DS.Spacing.md, bottom: DS.Spacing.md, trailing: DS.Spacing.md))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Listing stages")
-
-        // Navigation tabs section
-        Section {
-          ForEach(AppTab.sidebarTabs) { tab in
-            SidebarMenuRow(
-              tab: tab,
-              itemCount: macTabCounts[tab] ?? 0,
-              overdueCount: tab == .workspace ? sidebarOverdueCount : 0
-            )
-            .tag(SidebarDestination.tab(tab))
-          }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Navigation")
-      }
-      .listStyle(.sidebar)
-      .scrollContentBackground(.hidden)
+      )
     } content: {
       NavigationStack(path: pathBindingProvider(appState.router.selectedDestination)) {
         destinationRootView(for: appState.router.selectedDestination)
@@ -184,9 +162,10 @@ struct MacContentView: View {
           Color.clear.frame(width: 0, height: 0)
         }
       }
+      // Things 3-style bottom toolbar
       .safeAreaInset(edge: .bottom, spacing: 0) {
         BottomToolbar(
-          context: toolbarContext,
+          context: bottomToolbarContext,
           audience: $appState.lensState.audience,
           onNew: {
             switch appState.router.selectedDestination {

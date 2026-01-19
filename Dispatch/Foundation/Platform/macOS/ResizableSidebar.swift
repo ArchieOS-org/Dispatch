@@ -6,6 +6,7 @@
 //  Created for DIS-39: Things 3-style collapsible side menu
 //
 
+import DesignSystem
 import SwiftUI
 
 #if os(macOS)
@@ -151,9 +152,11 @@ private struct SidebarContainerView<Content: View>: View {
   var body: some View {
     content()
       .frame(width: sidebarContentWidth)
+      // WWDC25: Full-height glass material for sidebar
+      // Uses glassSidebarBackground() from DesignSystem for consistent styling
       .background {
         Rectangle()
-          .fill(.thinMaterial)
+          .glassSidebarBackground()
           .ignoresSafeArea(.all, edges: .top)
       }
       // Instant opacity change - no spring needed, prevents visual glitches

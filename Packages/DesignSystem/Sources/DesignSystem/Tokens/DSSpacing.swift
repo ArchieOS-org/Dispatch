@@ -206,6 +206,20 @@ extension DS {
     /// Bottom toolbar horizontal padding
     public static let bottomToolbarPadding: CGFloat = 12
 
+    // MARK: - Liquid Glass Toolbar (WWDC25)
+
+    /// Liquid Glass floating toolbar height
+    public static let liquidGlassToolbarHeight: CGFloat = 48
+
+    /// Liquid Glass toolbar icon button size (touch target)
+    public static let liquidGlassToolbarButtonSize: CGFloat = 44
+
+    /// Liquid Glass toolbar icon size
+    public static let liquidGlassToolbarIconSize: CGFloat = 18
+
+    /// Liquid Glass toolbar horizontal padding
+    public static let liquidGlassToolbarPadding: CGFloat = 16
+
     // MARK: - Floating Buttons
 
     /// Standard floating button size (44pt - Apple HIG minimum touch target)
