@@ -155,13 +155,17 @@ struct GlobalFloatingButtons: View {
   }
 
   /// Visual representation of FAB (used as Menu label for multi-option contexts)
+  /// Uses Circle() as root view to ensure circular bounds propagate to Menu's internal button wrapper.
   private var fabVisual: some View {
-    Image(systemName: "plus")
-      .font(.system(size: scaledIconSize, weight: .semibold))
-      .foregroundColor(.white)
+    Circle()
+      .fill(DS.Colors.accent)
       .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
-      .background(DS.Colors.accent)
-      .clipShape(Circle())
+      .overlay {
+        Image(systemName: "plus")
+          .font(.system(size: scaledIconSize, weight: .semibold))
+          .foregroundColor(.white)
+      }
+      .compositingGroup()
       .dsShadow(DS.Shadows.elevated)
   }
 

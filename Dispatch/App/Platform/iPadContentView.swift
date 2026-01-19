@@ -136,30 +136,30 @@ struct iPadContentView: View {
 
   @EnvironmentObject private var appState: AppState
 
-  /// Derived FAB context from router state (environment doesn't propagate to overlay sibling)
-  private var derivedFABContext: FABContext {
-    switch appState.router.selectedDestination {
-    case .tab(.workspace):
-      return .workspace
-    case .tab(.listings):
-      return .listingList
-    case .tab(.properties):
-      return .properties
-    case .tab(.realtors):
-      return .workspace // Realtor list uses workspace context
-    case .stage:
-      return .listingList
-    default:
-      return .workspace
-    }
-  }
-
   /// Controls stage picker sheet visibility (for tab-bar mode fallback)
   @State private var showStagePicker = false
 
   /// Scaled icon size for Dynamic Type support (base: 24pt, relative to title3)
   @ScaledMetric(relativeTo: .title3)
   private var scaledIconSize: CGFloat = 24
+
+  /// Derived FAB context from router state (environment doesn't propagate to overlay sibling)
+  private var derivedFABContext: FABContext {
+    switch appState.router.selectedDestination {
+    case .tab(.workspace):
+      .workspace
+    case .tab(.listings):
+      .listingList
+    case .tab(.properties):
+      .properties
+    case .tab(.realtors):
+      .workspace // Realtor list uses workspace context
+    case .stage:
+      .listingList
+    default:
+      .workspace
+    }
+  }
 
   /// Overdue count for workspace badge
   private var sidebarOverdueCount: Int {
@@ -315,13 +315,17 @@ struct iPadContentView: View {
   }
 
   /// Visual representation of FAB (used as Menu label for multi-option contexts)
+  /// Uses Circle() as root view to ensure circular bounds propagate to Menu's internal button wrapper.
   private var fabVisual: some View {
-    Image(systemName: "plus")
-      .font(.system(size: scaledIconSize, weight: .semibold))
-      .foregroundColor(.white)
+    Circle()
+      .fill(DS.Colors.accent)
       .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
-      .background(DS.Colors.accent)
-      .clipShape(Circle())
+      .overlay {
+        Image(systemName: "plus")
+          .font(.system(size: scaledIconSize, weight: .semibold))
+          .foregroundColor(.white)
+      }
+      .compositingGroup()
       .dsShadow(DS.Shadows.elevated)
   }
 
