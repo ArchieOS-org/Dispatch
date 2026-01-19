@@ -265,13 +265,21 @@ final class AuthManagerTests: XCTestCase {
   }
 
   func testAuthStateChange_initialSession_withoutSession_remainsUnauthenticated() async {
-    // For this test, we need to wait a bit to ensure the event was processed
-    // Since the state should remain nil, we just give it time to process
+    // For this test, we verify nothing changes after the event is processed.
+    // We use a short wait with condition checking to be deterministic:
+    // If the state DOES change (a bug), the test will catch it quickly.
+    // If the state stays nil (expected), we verify it stayed nil after giving
+    // the event processing time to complete.
     mockAuthClient.emitAuthStateChange(event: .initialSession, session: nil)
-    await Task.yield()
-    try? await Task.sleep(nanoseconds: 100_000_000) // 100ms is enough
 
-    XCTAssertNil(authManager.session)
+    // Give event processing time to complete by waiting briefly
+    // Use a short timeout since we expect the condition to NEVER become true
+    await waitForCondition(timeout: 0.1) {
+      self.authManager.session != nil
+    }
+
+    // Verify the state did NOT change - session should still be nil
+    XCTAssertNil(authManager.session, "Session should have remained nil")
     XCTAssertNil(authManager.user)
     XCTAssertFalse(authManager.isAuthenticated)
     XCTAssertNil(authManager.currentUserID)
