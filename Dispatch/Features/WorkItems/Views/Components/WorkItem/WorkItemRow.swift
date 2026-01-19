@@ -25,6 +25,8 @@ struct WorkItemRow: View {
   var onComplete: () -> Void = { }
   var onEdit: () -> Void = { }
   var onDelete: () -> Void = { }
+  var onClaim: () -> Void = { }
+  var onAssign: () -> Void = { }
 
   // Display options
   var hideDueDate = false
@@ -73,7 +75,9 @@ struct WorkItemRow: View {
             userIds: item.assigneeUserIds,
             users: userLookup,
             maxVisible: 3,
-            size: .small
+            size: .small,
+            onClaim: onClaim,
+            onAssign: onAssign
           )
         }
       }

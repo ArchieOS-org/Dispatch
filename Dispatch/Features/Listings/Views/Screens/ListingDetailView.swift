@@ -267,6 +267,14 @@ struct ListingDetailView: View {
                 onComplete: { actions.onComplete(.task(task)) },
                 onEdit: { },
                 onDelete: { },
+                onClaim: {
+                  var newAssignees = task.assigneeUserIds
+                  if !newAssignees.contains(currentUserId) {
+                    newAssignees.append(currentUserId)
+                  }
+                  actions.onAssigneesChanged(.task(task), newAssignees)
+                },
+                onAssign: { },
                 hideDueDate: true
               )
             }
@@ -338,6 +346,14 @@ struct ListingDetailView: View {
             onComplete: { actions.onComplete(.activity(activity)) },
             onEdit: { },
             onDelete: { },
+            onClaim: {
+              var newAssignees = activity.assigneeUserIds
+              if !newAssignees.contains(currentUserId) {
+                newAssignees.append(currentUserId)
+              }
+              actions.onAssigneesChanged(.activity(activity), newAssignees)
+            },
+            onAssign: { },
             hideDueDate: true
           )
         }

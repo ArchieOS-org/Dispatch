@@ -117,7 +117,15 @@ struct RealtorProfileView: View {
                 userLookup: actions.userLookupDict,
                 onComplete: { actions.onComplete(item) },
                 onEdit: { },
-                onDelete: { }
+                onDelete: { },
+                onClaim: {
+                  var newAssignees = item.assigneeUserIds
+                  if !newAssignees.contains(actions.currentUserId) {
+                    newAssignees.append(actions.currentUserId)
+                  }
+                  actions.onAssigneesChanged(item, newAssignees)
+                },
+                onAssign: { }
               )
             }
             .buttonStyle(.plain)

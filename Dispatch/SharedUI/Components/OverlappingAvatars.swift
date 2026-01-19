@@ -40,7 +40,7 @@ struct OverlappingAvatars: View {
 
   var body: some View {
     if userIds.isEmpty {
-      ClaimButton(state: .available, onClaim: onClaim, onAssign: onAssign)
+      ClaimButton(onClaim: onClaim, onAssign: onAssign)
     } else {
       avatarStack
         .accessibilityElement(children: .ignore)

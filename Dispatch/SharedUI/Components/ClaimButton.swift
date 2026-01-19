@@ -2,26 +2,19 @@
 //  ClaimButton.swift
 //  Dispatch
 //
-//  A tappable icon button for claiming work items.
+//  A tappable icon button for claiming unassigned work items.
 //  Tap/click to claim for self, long-press/right-click for assignment menu.
 //
 
 import DesignSystem
 import SwiftUI
 
-/// State representing who owns a work item
-enum ClaimState {
-  /// No one is assigned - available to claim
-  case available
+// MARK: - ClaimButton
 
-  /// Current user has claimed this item
-  case claimedBySelf
-
-  /// Another user has claimed this item
-  case claimedByOther(name: String)
-}
-
-/// A tappable icon button for claiming work items.
+/// A tappable icon button for claiming unassigned work items.
+///
+/// This button is displayed when a work item has no assignees. When users are assigned,
+/// `OverlappingAvatars` shows user avatars instead of this button.
 ///
 /// Interaction patterns:
 /// - iOS: Tap to claim, long-press for assignment menu
@@ -33,19 +26,14 @@ struct ClaimButton: View {
   // MARK: Lifecycle
 
   init(
-    state: ClaimState = .available,
     onClaim: @escaping () -> Void,
     onAssign: @escaping () -> Void
   ) {
-    self.state = state
     self.onClaim = onClaim
     self.onAssign = onAssign
   }
 
   // MARK: Internal
-
-  /// Current claim state of the work item
-  let state: ClaimState
 
   /// Action to perform when user wants to claim for themselves
   let onClaim: () -> Void
@@ -55,7 +43,7 @@ struct ClaimButton: View {
 
   var body: some View {
     Button {
-      handleTap()
+      onClaim()
     } label: {
       iconView
     }
@@ -66,171 +54,88 @@ struct ClaimButton: View {
       contextMenuContent
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(accessibilityLabel)
-    .accessibilityHint(accessibilityHint)
+    .accessibilityLabel(Text("Claim task"))
+    .accessibilityHint(Text("Tap to claim, hold for options"))
     .accessibilityAddTraits(.isButton)
   }
 
   // MARK: Private
 
-  private var iconName: String {
-    switch state {
-    case .available:
-      DS.Icons.Claim.unclaimed
-    case .claimedBySelf:
-      DS.Icons.Claim.claimed
-    case .claimedByOther:
-      DS.Icons.Claim.claimedByOther
-    }
-  }
-
-  private var iconColor: Color {
-    switch state {
-    case .available:
-      DS.Colors.Claim.unclaimed
-    case .claimedBySelf:
-      DS.Colors.Claim.claimedByMe
-    case .claimedByOther:
-      DS.Colors.Claim.claimedByOther
-    }
-  }
-
   private var iconView: some View {
-    Image(systemName: iconName)
+    Image(systemName: DS.Icons.Claim.unclaimed)
       .font(.system(size: 16, weight: .medium))
-      .foregroundStyle(iconColor)
+      .foregroundStyle(DS.Colors.Claim.unclaimed)
   }
 
   @ViewBuilder
   private var contextMenuContent: some View {
-    switch state {
-    case .available:
-      Button {
-        onClaim()
-      } label: {
-        Label("Claim for Myself", systemImage: DS.Icons.Claim.claimed)
-      }
-
-      Button {
-        onAssign()
-      } label: {
-        Label("Assign to...", systemImage: DS.Icons.Entity.team)
-      }
-
-    case .claimedBySelf:
-      Button {
-        onAssign()
-      } label: {
-        Label("Reassign...", systemImage: DS.Icons.Entity.team)
-      }
-
-      Button(role: .destructive) {
-        onClaim() // Release is handled by parent via onClaim
-      } label: {
-        Label("Release Claim", systemImage: DS.Icons.Claim.release)
-      }
-
-    case .claimedByOther(let name):
-      Text("Claimed by \(name)")
-
-      Button {
-        onAssign()
-      } label: {
-        Label("Reassign...", systemImage: DS.Icons.Entity.team)
-      }
-    }
-  }
-
-  private var accessibilityLabel: String {
-    switch state {
-    case .available:
-      "Available to claim"
-    case .claimedBySelf:
-      "Claimed by you"
-    case .claimedByOther(let name):
-      "Claimed by \(name)"
-    }
-  }
-
-  private var accessibilityHint: String {
-    switch state {
-    case .available:
-      "Tap to claim, hold for options"
-    case .claimedBySelf:
-      "Tap to reassign, hold for options"
-    case .claimedByOther:
-      "Tap to reassign, hold for options"
-    }
-  }
-
-  private func handleTap() {
-    switch state {
-    case .available:
-      // Tap claims for self
+    Button {
       onClaim()
-    case .claimedBySelf, .claimedByOther:
-      // Tap opens assignment options when already claimed
+    } label: {
+      Label("Claim for Myself", systemImage: DS.Icons.Claim.claimed)
+    }
+
+    Button {
       onAssign()
+    } label: {
+      Label("Assign to...", systemImage: DS.Icons.Entity.team)
     }
   }
 }
 
 // MARK: - Preview
 
-#Preview("ClaimButton - States") {
+#Preview("ClaimButton") {
   VStack(spacing: DS.Spacing.xl) {
-    Group {
-      Text("Available")
+    // Section 1: Standalone
+    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+      Text("Standalone")
         .font(DS.Typography.caption)
-      ClaimButton(
-        state: .available,
-        onClaim: { },
-        onAssign: { }
-      )
+        .foregroundStyle(.secondary)
+
+      ClaimButton(onClaim: { }, onAssign: { })
     }
 
     Divider()
 
-    Group {
-      Text("Claimed by Self")
+    // Section 2: In Row Context
+    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+      Text("In Row Context")
         .font(DS.Typography.caption)
-      ClaimButton(
-        state: .claimedBySelf,
-        onClaim: { },
-        onAssign: { }
-      )
-    }
+        .foregroundStyle(.secondary)
 
-    Divider()
-
-    Group {
-      Text("Claimed by Other")
-        .font(DS.Typography.caption)
-      ClaimButton(
-        state: .claimedByOther(name: "Alice Smith"),
-        onClaim: { },
-        onAssign: { }
-      )
-    }
-
-    Divider()
-
-    Group {
-      Text("In Context (Row)")
-        .font(DS.Typography.caption)
       HStack {
-        Text("Some Task Title")
+        Text("Review offer documents")
           .font(DS.Typography.body)
         Spacer()
-        ClaimButton(
-          state: .available,
-          onClaim: { },
-          onAssign: { }
-        )
+        ClaimButton(onClaim: { }, onAssign: { })
       }
       .padding(DS.Spacing.cardPadding)
       .background(DS.Colors.Background.card)
       .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium))
+    }
+
+    Divider()
+
+    // Section 3: Multiple Rows
+    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+      Text("Multiple Rows")
+        .font(DS.Typography.caption)
+        .foregroundStyle(.secondary)
+
+      VStack(spacing: DS.Spacing.xs) {
+        ForEach(["Schedule showing", "Send disclosure", "Order inspection"], id: \.self) { task in
+          HStack {
+            Text(task)
+              .font(DS.Typography.body)
+            Spacer()
+            ClaimButton(onClaim: { }, onAssign: { })
+          }
+          .padding(DS.Spacing.cardPadding)
+          .background(DS.Colors.Background.card)
+          .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium))
+        }
+      }
     }
   }
   .padding()
