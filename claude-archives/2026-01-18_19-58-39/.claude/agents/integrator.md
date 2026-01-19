@@ -8,7 +8,7 @@ description: |
   <example>
   Context: Need to verify a patchset
   user: "Check if PATCHSET 2 is ready"
-  assistant: "I'll build iOS and macOS to verify the patchset compiles."
+  assistant: "I'll build iOS to verify the patchset compiles."
   <commentary>
   Patchset verification - integrator runs appropriate checks per patchset
   </commentary>
