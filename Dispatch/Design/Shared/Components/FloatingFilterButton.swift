@@ -22,29 +22,35 @@ struct FloatingFilterButton: View {
   @Binding var audience: AudienceLens
 
   var body: some View {
-    Menu {
-      // Long-press menu content
-      Picker(selection: $audience) {
-        ForEach(AudienceLens.allCases, id: \.self) { lens in
-          Label(lens.label, systemImage: lens.icon)
-            .tag(lens)
+    // Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
+    filterButtonVisual
+      .overlay {
+        Menu {
+          // Long-press menu content
+          Picker(selection: $audience) {
+            ForEach(AudienceLens.allCases, id: \.self) { lens in
+              Label(lens.label, systemImage: lens.icon)
+                .tag(lens)
+            }
+          } label: {
+            EmptyView()
+          }
+        } label: {
+          Color.clear
+            .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
+            .contentShape(Circle())
+        } primaryAction: {
+          // Tap action: cycle to next filter
+          audience = audience.next
         }
-      } label: {
-        EmptyView()
+        .menuIndicator(.hidden)
       }
-    } label: {
-      filterButtonVisual
-    } primaryAction: {
-      // Tap action: cycle to next filter
-      audience = audience.next
-    }
-    .menuIndicator(.hidden)
-    .sensoryFeedback(.selection, trigger: audience)
-    .accessibilityIdentifier("AudienceFilterButton")
-    .accessibilityAddTraits(.isButton)
-    .accessibilityLabel("Filter: \(audience.label)")
-    .accessibilityValue("\(audience.rawValue)|\(audience.icon)")
-    .accessibilityHint("Tap to cycle, hold for options")
+      .sensoryFeedback(.selection, trigger: audience)
+      .accessibilityIdentifier("AudienceFilterButton")
+      .accessibilityAddTraits(.isButton)
+      .accessibilityLabel("Filter: \(audience.label)")
+      .accessibilityValue("\(audience.rawValue)|\(audience.icon)")
+      .accessibilityHint("Tap to cycle, hold for options")
   }
 
   // MARK: Private

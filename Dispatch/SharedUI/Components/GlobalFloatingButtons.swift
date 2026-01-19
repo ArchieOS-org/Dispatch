@@ -48,9 +48,6 @@ struct GlobalFloatingButtons: View {
   @EnvironmentObject private var overlayState: AppOverlayState
   @Environment(\.fabContext) private var fabContext
 
-  /// Tracks whether the FAB menu is currently open (for hide animation)
-  @State private var isMenuOpen = false
-
   /// Single source of truth for button visibility
   private var shouldHideButtons: Bool {
     overlayState.isOverlayHidden
@@ -96,29 +93,23 @@ struct GlobalFloatingButtons: View {
     case .workspace:
       // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
       fabVisual
-        .opacity(isMenuOpen ? 0 : 1)
-        .animation(.easeInOut(duration: 0.15), value: isMenuOpen)
         .overlay {
           Menu {
-            Group {
-              Button {
-                appState.sheetState = .quickEntry(type: .task)
-              } label: {
-                Label("New Task", systemImage: DS.Icons.Entity.task)
-              }
-              Button {
-                appState.sheetState = .quickEntry(type: .activity)
-              } label: {
-                Label("New Activity", systemImage: DS.Icons.Entity.activity)
-              }
-              Button {
-                appState.sheetState = .addListing()
-              } label: {
-                Label("New Listing", systemImage: DS.Icons.Entity.listing)
-              }
+            Button {
+              appState.sheetState = .quickEntry(type: .task)
+            } label: {
+              Label("New Task", systemImage: DS.Icons.Entity.task)
             }
-            .onAppear { isMenuOpen = true }
-            .onDisappear { isMenuOpen = false }
+            Button {
+              appState.sheetState = .quickEntry(type: .activity)
+            } label: {
+              Label("New Activity", systemImage: DS.Icons.Entity.activity)
+            }
+            Button {
+              appState.sheetState = .addListing()
+            } label: {
+              Label("New Listing", systemImage: DS.Icons.Entity.listing)
+            }
           } label: {
             Color.clear
               .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
@@ -130,24 +121,18 @@ struct GlobalFloatingButtons: View {
     case .listingDetail(let listingId):
       // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
       fabVisual
-        .opacity(isMenuOpen ? 0 : 1)
-        .animation(.easeInOut(duration: 0.15), value: isMenuOpen)
         .overlay {
           Menu {
-            Group {
-              Button {
-                appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
-              } label: {
-                Label("New Task", systemImage: DS.Icons.Entity.task)
-              }
-              Button {
-                appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
-              } label: {
-                Label("New Activity", systemImage: DS.Icons.Entity.activity)
-              }
+            Button {
+              appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
+            } label: {
+              Label("New Task", systemImage: DS.Icons.Entity.task)
             }
-            .onAppear { isMenuOpen = true }
-            .onDisappear { isMenuOpen = false }
+            Button {
+              appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
+            } label: {
+              Label("New Activity", systemImage: DS.Icons.Entity.activity)
+            }
           } label: {
             Color.clear
               .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
@@ -159,24 +144,18 @@ struct GlobalFloatingButtons: View {
     case .realtor(let realtorId):
       // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
       fabVisual
-        .opacity(isMenuOpen ? 0 : 1)
-        .animation(.easeInOut(duration: 0.15), value: isMenuOpen)
         .overlay {
           Menu {
-            Group {
-              Button {
-                appState.sheetState = .addProperty(forRealtorId: realtorId)
-              } label: {
-                Label("New Property", systemImage: DS.Icons.Entity.property)
-              }
-              Button {
-                appState.sheetState = .addListing(forRealtorId: realtorId)
-              } label: {
-                Label("New Listing", systemImage: DS.Icons.Entity.listing)
-              }
+            Button {
+              appState.sheetState = .addProperty(forRealtorId: realtorId)
+            } label: {
+              Label("New Property", systemImage: DS.Icons.Entity.property)
             }
-            .onAppear { isMenuOpen = true }
-            .onDisappear { isMenuOpen = false }
+            Button {
+              appState.sheetState = .addListing(forRealtorId: realtorId)
+            } label: {
+              Label("New Listing", systemImage: DS.Icons.Entity.listing)
+            }
           } label: {
             Color.clear
               .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
