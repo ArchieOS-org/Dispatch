@@ -124,8 +124,7 @@ struct RealtorProfileView: View {
                     newAssignees.append(actions.currentUserId)
                   }
                   actions.onAssigneesChanged(item, newAssignees)
-                },
-                onAssign: { }
+                }
               )
             }
             .buttonStyle(.plain)

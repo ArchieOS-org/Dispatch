@@ -274,7 +274,6 @@ struct ListingDetailView: View {
                   }
                   actions.onAssigneesChanged(.task(task), newAssignees)
                 },
-                onAssign: { },
                 hideDueDate: true
               )
             }
@@ -353,7 +352,6 @@ struct ListingDetailView: View {
               }
               actions.onAssigneesChanged(.activity(activity), newAssignees)
             },
-            onAssign: { },
             hideDueDate: true
           )
         }

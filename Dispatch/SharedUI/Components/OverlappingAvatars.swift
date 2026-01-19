@@ -19,7 +19,7 @@ struct OverlappingAvatars: View {
     maxVisible: Int = 3,
     size: UserAvatar.AvatarSize = .small,
     onClaim: @escaping () -> Void = { },
-    onAssign: @escaping () -> Void = { }
+    onAssign: (() -> Void)? = nil
   ) {
     self.userIds = userIds
     self.users = users
@@ -36,7 +36,7 @@ struct OverlappingAvatars: View {
   let maxVisible: Int
   let size: UserAvatar.AvatarSize
   let onClaim: () -> Void
-  let onAssign: () -> Void
+  let onAssign: (() -> Void)?
 
   var body: some View {
     if userIds.isEmpty {
@@ -215,8 +215,7 @@ struct OverlappingAvatars: View {
       OverlappingAvatars(
         userIds: [],
         users: [:],
-        onClaim: { },
-        onAssign: { }
+        onClaim: { }
       )
     }
 

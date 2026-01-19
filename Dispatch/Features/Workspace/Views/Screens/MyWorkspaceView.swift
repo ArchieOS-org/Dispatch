@@ -266,7 +266,6 @@ struct ListingWorkspaceSection: View {
                   }
                   actions.onAssigneesChanged(item, newAssignees)
                 },
-                onAssign: { },
                 hideAssignees: true // In workspace, we know it's assigned to me
               )
               .workItemRowStyle()

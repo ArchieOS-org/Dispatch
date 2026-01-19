@@ -26,7 +26,7 @@ struct WorkItemRow: View {
   var onEdit: () -> Void = { }
   var onDelete: () -> Void = { }
   var onClaim: () -> Void = { }
-  var onAssign: () -> Void = { }
+  var onAssign: (() -> Void)?
 
   // Display options
   var hideDueDate = false

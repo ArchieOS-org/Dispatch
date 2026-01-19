@@ -27,7 +27,7 @@ struct ClaimButton: View {
 
   init(
     onClaim: @escaping () -> Void,
-    onAssign: @escaping () -> Void
+    onAssign: (() -> Void)? = nil
   ) {
     self.onClaim = onClaim
     self.onAssign = onAssign
@@ -38,8 +38,8 @@ struct ClaimButton: View {
   /// Action to perform when user wants to claim for themselves
   let onClaim: () -> Void
 
-  /// Action to perform when user wants to open assignment menu/sheet
-  let onAssign: () -> Void
+  /// Action to perform when user wants to open assignment menu/sheet (nil hides menu item)
+  let onAssign: (() -> Void)?
 
   var body: some View {
     Button {
@@ -54,7 +54,7 @@ struct ClaimButton: View {
       contextMenuContent
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(Text("Claim task"))
+    .accessibilityLabel(Text("Available to claim"))
     .accessibilityHint(Text("Tap to claim, hold for options"))
     .accessibilityAddTraits(.isButton)
   }
@@ -75,10 +75,12 @@ struct ClaimButton: View {
       Label("Claim for Myself", systemImage: DS.Icons.Claim.claimed)
     }
 
-    Button {
-      onAssign()
-    } label: {
-      Label("Assign to...", systemImage: DS.Icons.Entity.team)
+    if let onAssign {
+      Button {
+        onAssign()
+      } label: {
+        Label("Assign to...", systemImage: DS.Icons.Entity.team)
+      }
     }
   }
 }
