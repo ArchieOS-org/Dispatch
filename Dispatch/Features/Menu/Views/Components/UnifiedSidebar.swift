@@ -82,14 +82,14 @@ struct UnifiedSidebarContent: View {
       .accessibilityLabel("Navigation")
     }
     .listStyle(.sidebar)
-    .scrollContentBackground(.hidden)
-    // MARK: - Platform Material Strategy (WWDC25 Liquid Glass)
-    // iOS/iPadOS: Use containerBackground for NavigationSplitView glass material
-    // macOS: Material comes from ResizableSidebar's SidebarContainerView container
-    // This split is intentional because macOS needs material on the outer container
-    // for proper clipping behavior during sidebar collapse/expand animations.
-    // See ResizableSidebar.swift:SidebarContainerView for the macOS implementation.
     #if os(iOS)
+      .scrollContentBackground(.hidden)
+      // MARK: - Platform Material Strategy (WWDC25 Liquid Glass)
+      // iOS/iPadOS: Use containerBackground for NavigationSplitView glass material
+      // macOS: Material comes from ResizableSidebar's SidebarContainerView container
+      // This split is intentional because macOS needs material on the outer container
+      // for proper clipping behavior during sidebar collapse/expand animations.
+      // See ResizableSidebar.swift:SidebarContainerView for the macOS implementation.
       // iOS 18+: Use containerBackground for proper NavigationSplitView integration
       // Fallback: Direct background for older versions
       .background {

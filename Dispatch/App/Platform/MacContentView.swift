@@ -185,10 +185,6 @@ struct MacContentView: View {
         destinationRootView(for: appState.router.selectedDestination)
           .appDestinations()
       }
-      // Use visible material background for the window toolbar.
-      // This ensures the toolbar area is properly styled in fullscreen mode.
-      .toolbarBackground(.regularMaterial, for: .windowToolbar)
-      .toolbarBackground(.visible, for: .windowToolbar)
       .toolbar {
         // FORCE the NSToolbar to exist at all times.
         // This prevents the window corner radius from flickering (Large vs Small) when navigating between views.
@@ -251,9 +247,6 @@ struct MacContentView: View {
       }
     }
     .navigationSplitViewStyle(.balanced)
-    // Toolbar background for NavigationSplitView root - ensures proper styling in fullscreen
-    .toolbarBackground(.regularMaterial, for: .windowToolbar)
-    .toolbarBackground(.visible, for: .windowToolbar)
     // Handle sidebar toggle via notification (Cmd+/)
     .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
       withAnimation {
