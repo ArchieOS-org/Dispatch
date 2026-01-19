@@ -36,8 +36,17 @@ struct iPadContentView: View {
   /// Active realtors for badge counts
   let activeRealtors: [User]
 
+  /// All users for sheet
+  let users: [User]
+
+  /// Current user ID for sheets
+  let currentUserId: UUID
+
   /// Function to create path binding for a destination
   let pathBindingProvider: (SidebarDestination) -> Binding<[AppRoute]>
+
+  /// Callback to request sync after save
+  let onRequestSync: () -> Void
 
   var body: some View {
     ZStack {
@@ -117,6 +126,10 @@ struct iPadContentView: View {
       // FAB overlay for iPad
       iPadFABOverlay
     }
+    // iPad Sheet Handling driven by AppState
+    .sheet(item: appState.sheetBinding) { state in
+      sheetContent(for: state)
+    }
   }
 
   // MARK: Private
@@ -127,7 +140,9 @@ struct iPadContentView: View {
   /// Controls stage picker sheet visibility (for tab-bar mode fallback)
   @State private var showStagePicker = false
 
-  @State private var showFABMenu = false
+  /// Scaled icon size for Dynamic Type support (base: 24pt, relative to title3)
+  @ScaledMetric(relativeTo: .title3)
+  private var scaledIconSize: CGFloat = 24
 
   /// Overdue count for workspace badge
   private var sidebarOverdueCount: Int {
@@ -194,96 +209,136 @@ struct iPadContentView: View {
         // Spacer layer - pass through all touches
         Color.clear.allowsHitTesting(false)
 
-        // FAB - receives taps normally, context-aware
-        FloatingActionButton {
-          handleFABTap()
-        }
-        .padding(.trailing, DS.Spacing.floatingButtonMargin)
-        .safeAreaPadding(.bottom, DS.Spacing.floatingButtonBottomInset)
-      }
-      .confirmationDialog(
-        "Create New",
-        isPresented: $showFABMenu,
-        titleVisibility: .visible
-      ) {
-        fabMenuActions
+        // FAB - context-aware with Menu for multi-option contexts
+        fabButton
+          .padding(.trailing, DS.Spacing.floatingButtonMargin)
+          .safeAreaPadding(.bottom, DS.Spacing.floatingButtonBottomInset)
       }
     }
   }
 
-  /// Context-aware FAB menu actions for iPad
+  /// Context-aware FAB: direct action for single-option contexts, Menu for multi-option contexts
   @ViewBuilder
-  private var fabMenuActions: some View {
+  private var fabButton: some View {
     switch fabContext {
-    case .workspace:
-      Button {
-        appState.sheetState = .quickEntry(type: .task)
-      } label: {
-        Label("New Task", systemImage: DS.Icons.Entity.task)
-      }
-      Button {
-        appState.sheetState = .quickEntry(type: .activity)
-      } label: {
-        Label("New Activity", systemImage: DS.Icons.Entity.activity)
-      }
-      Button {
-        appState.sheetState = .addListing()
-      } label: {
-        Label("New Listing", systemImage: DS.Icons.Entity.listing)
-      }
-
-    case .listingDetail(let listingId):
-      Button {
-        appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
-      } label: {
-        Label("New Task", systemImage: DS.Icons.Entity.task)
-      }
-      Button {
-        appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
-      } label: {
-        Label("New Activity", systemImage: DS.Icons.Entity.activity)
-      }
-
-    case .realtor(let realtorId):
-      Button {
-        appState.sheetState = .addProperty(forRealtorId: realtorId)
-      } label: {
-        Label("New Property", systemImage: DS.Icons.Entity.property)
-      }
-      Button {
-        appState.sheetState = .addListing(forRealtorId: realtorId)
-      } label: {
-        Label("New Listing", systemImage: DS.Icons.Entity.listing)
-      }
-
-    case .listingList, .properties:
-      // Single action contexts - no menu needed
-      EmptyView()
-    }
-  }
-
-  /// Handles FAB tap based on current context
-  private func handleFABTap() {
-    switch fabContext {
-    case .workspace:
-      // Multi-option: Task, Activity, Listing
-      showFABMenu = true
-
     case .listingList:
-      // Single action: create Listing
-      appState.sheetState = .addListing()
-
-    case .listingDetail(let listingId):
-      // Multi-option: Task or Activity (pre-select listing)
-      showFABMenu = true
-
-    case .realtor(let realtorId):
-      // Multi-option: Property or Listing for realtor
-      showFABMenu = true
+      // Single action: create Listing - direct tap
+      FloatingActionButton {
+        appState.sheetState = .addListing()
+      }
 
     case .properties:
-      // Single action: create Property
-      appState.sheetState = .addProperty()
+      // Single action: create Property - direct tap
+      FloatingActionButton {
+        appState.sheetState = .addProperty()
+      }
+
+    case .workspace:
+      // Multi-option: Menu anchored to FAB
+      Menu {
+        Button {
+          appState.sheetState = .quickEntry(type: .task)
+        } label: {
+          Label("New Task", systemImage: DS.Icons.Entity.task)
+        }
+        Button {
+          appState.sheetState = .quickEntry(type: .activity)
+        } label: {
+          Label("New Activity", systemImage: DS.Icons.Entity.activity)
+        }
+        Button {
+          appState.sheetState = .addListing()
+        } label: {
+          Label("New Listing", systemImage: DS.Icons.Entity.listing)
+        }
+      } label: {
+        fabVisual
+      }
+      .menuIndicator(.hidden)
+
+    case .listingDetail(let listingId):
+      // Multi-option: Menu anchored to FAB (Task/Activity only, pre-select listing)
+      Menu {
+        Button {
+          appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
+        } label: {
+          Label("New Task", systemImage: DS.Icons.Entity.task)
+        }
+        Button {
+          appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
+        } label: {
+          Label("New Activity", systemImage: DS.Icons.Entity.activity)
+        }
+      } label: {
+        fabVisual
+      }
+      .menuIndicator(.hidden)
+
+    case .realtor(let realtorId):
+      // Multi-option: Menu anchored to FAB
+      Menu {
+        Button {
+          appState.sheetState = .addProperty(forRealtorId: realtorId)
+        } label: {
+          Label("New Property", systemImage: DS.Icons.Entity.property)
+        }
+        Button {
+          appState.sheetState = .addListing(forRealtorId: realtorId)
+        } label: {
+          Label("New Listing", systemImage: DS.Icons.Entity.listing)
+        }
+      } label: {
+        fabVisual
+      }
+      .menuIndicator(.hidden)
+    }
+  }
+
+  /// Visual representation of FAB (used as Menu label for multi-option contexts)
+  private var fabVisual: some View {
+    Image(systemName: "plus")
+      .font(.system(size: scaledIconSize, weight: .semibold))
+      .foregroundColor(.white)
+      .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
+      .background(DS.Colors.accent)
+      .clipShape(Circle())
+      .dsShadow(DS.Shadows.elevated)
+  }
+
+  // MARK: - Sheet Content
+
+  @ViewBuilder
+  private func sheetContent(for state: AppState.SheetState) -> some View {
+    switch state {
+    case .quickEntry(let type, let preSelectedListingId):
+      QuickEntrySheet(
+        defaultItemType: type ?? .task,
+        currentUserId: currentUserId,
+        listings: activeListings,
+        availableUsers: users,
+        preSelectedListingId: preSelectedListingId,
+        onSave: { onRequestSync() }
+      )
+
+    case .addListing(let forRealtorId):
+      AddListingSheet(
+        currentUserId: currentUserId,
+        onSave: { onRequestSync() }
+      )
+      // Note: AddListingSheet doesn't yet support forRealtorId - future enhancement
+
+    case .addRealtor:
+      EditRealtorSheet()
+
+    case .addProperty(let forRealtorId):
+      AddPropertySheet(
+        currentUserId: currentUserId,
+        forRealtorId: forRealtorId,
+        onSave: { onRequestSync() }
+      )
+
+    case .none:
+      EmptyView()
     }
   }
 
