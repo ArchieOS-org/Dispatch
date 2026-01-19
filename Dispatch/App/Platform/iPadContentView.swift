@@ -139,6 +139,9 @@ struct iPadContentView: View {
   /// Controls stage picker sheet visibility (for tab-bar mode fallback)
   @State private var showStagePicker = false
 
+  /// Tracks whether the FAB menu is currently open (for hide animation)
+  @State private var isMenuOpen = false
+
   /// Scaled icon size for Dynamic Type support (base: 24pt, relative to title3)
   @ScaledMetric(relativeTo: .title3)
   private var scaledIconSize: CGFloat = 24
@@ -253,23 +256,29 @@ struct iPadContentView: View {
     case .workspace:
       // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
       fabVisual
+        .opacity(isMenuOpen ? 0 : 1)
+        .animation(.easeInOut(duration: 0.15), value: isMenuOpen)
         .overlay {
           Menu {
-            Button {
-              appState.sheetState = .quickEntry(type: .task)
-            } label: {
-              Label("New Task", systemImage: DS.Icons.Entity.task)
+            Group {
+              Button {
+                appState.sheetState = .quickEntry(type: .task)
+              } label: {
+                Label("New Task", systemImage: DS.Icons.Entity.task)
+              }
+              Button {
+                appState.sheetState = .quickEntry(type: .activity)
+              } label: {
+                Label("New Activity", systemImage: DS.Icons.Entity.activity)
+              }
+              Button {
+                appState.sheetState = .addListing()
+              } label: {
+                Label("New Listing", systemImage: DS.Icons.Entity.listing)
+              }
             }
-            Button {
-              appState.sheetState = .quickEntry(type: .activity)
-            } label: {
-              Label("New Activity", systemImage: DS.Icons.Entity.activity)
-            }
-            Button {
-              appState.sheetState = .addListing()
-            } label: {
-              Label("New Listing", systemImage: DS.Icons.Entity.listing)
-            }
+            .onAppear { isMenuOpen = true }
+            .onDisappear { isMenuOpen = false }
           } label: {
             Color.clear
               .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
@@ -281,18 +290,24 @@ struct iPadContentView: View {
     case .listingDetail(let listingId):
       // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
       fabVisual
+        .opacity(isMenuOpen ? 0 : 1)
+        .animation(.easeInOut(duration: 0.15), value: isMenuOpen)
         .overlay {
           Menu {
-            Button {
-              appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
-            } label: {
-              Label("New Task", systemImage: DS.Icons.Entity.task)
+            Group {
+              Button {
+                appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
+              } label: {
+                Label("New Task", systemImage: DS.Icons.Entity.task)
+              }
+              Button {
+                appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
+              } label: {
+                Label("New Activity", systemImage: DS.Icons.Entity.activity)
+              }
             }
-            Button {
-              appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
-            } label: {
-              Label("New Activity", systemImage: DS.Icons.Entity.activity)
-            }
+            .onAppear { isMenuOpen = true }
+            .onDisappear { isMenuOpen = false }
           } label: {
             Color.clear
               .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
