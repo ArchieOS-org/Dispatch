@@ -64,7 +64,18 @@ struct BottomToolbar: View {
     }
     .frame(height: DS.Spacing.bottomToolbarHeight)
     .frame(maxWidth: .infinity)
-    .glassFullWidthToolbarBackground()
+    .padding(.horizontal, DS.Spacing.md)
+    .padding(.bottom, DS.Spacing.sm)
+    .background {
+      if #available(macOS 26, *) {
+        Color.clear
+          .glassEffect(.regular, in: .rect(cornerRadius: 18))
+      } else {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+          .fill(.regularMaterial)
+      }
+    }
+    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
   }
 
   // MARK: Private
