@@ -268,6 +268,7 @@ struct ListingDetailView: View {
                 onEdit: { },
                 onDelete: { },
                 onClaim: {
+                  guard syncManager.currentUserID != nil else { return }
                   var newAssignees = task.assigneeUserIds
                   if !newAssignees.contains(currentUserId) {
                     newAssignees.append(currentUserId)
@@ -346,6 +347,7 @@ struct ListingDetailView: View {
             onEdit: { },
             onDelete: { },
             onClaim: {
+              guard syncManager.currentUserID != nil else { return }
               var newAssignees = activity.assigneeUserIds
               if !newAssignees.contains(currentUserId) {
                 newAssignees.append(currentUserId)

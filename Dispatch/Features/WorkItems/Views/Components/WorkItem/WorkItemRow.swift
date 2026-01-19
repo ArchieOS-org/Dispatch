@@ -160,7 +160,7 @@ struct WorkItemRow: View {
 
     // Assignee description
     let assigneeNames = item.assigneeUserIds.compactMap { userLookup[$0]?.name }
-    if assigneeNames.isEmpty, item.assigneeUserIds.isEmpty {
+    if item.assigneeUserIds.isEmpty {
       parts.append("Available to claim")
     } else if assigneeNames.isEmpty {
       parts.append("Assigned to \(item.assigneeUserIds.count) unknown user\(item.assigneeUserIds.count == 1 ? "" : "s")")

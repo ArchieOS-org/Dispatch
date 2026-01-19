@@ -191,69 +191,71 @@ struct OverlappingAvatars: View {
 // MARK: - Preview
 
 #Preview("OverlappingAvatars - Multiple Users") {
-  let users: [UUID: User] = {
-    var dict = [UUID: User]()
-    let ids = [UUID(), UUID(), UUID(), UUID(), UUID()]
-    let names = ["Alice Smith", "Bob Jones", "Carol White", "Dave Brown", "Eve Green"]
-    for (id, name) in zip(ids, names) {
-      dict[id] = User(
-        id: id,
-        name: name,
-        email: "\(name.lowercased().replacingOccurrences(of: " ", with: "."))@example.com",
-        userType: .realtor
-      )
-    }
-    return dict
-  }()
+  PreviewShell { _ in
+    let users: [UUID: User] = {
+      var dict = [UUID: User]()
+      let ids = [UUID(), UUID(), UUID(), UUID(), UUID()]
+      let names = ["Alice Smith", "Bob Jones", "Carol White", "Dave Brown", "Eve Green"]
+      for (id, name) in zip(ids, names) {
+        dict[id] = User(
+          id: id,
+          name: name,
+          email: "\(name.lowercased().replacingOccurrences(of: " ", with: "."))@example.com",
+          userType: .realtor
+        )
+      }
+      return dict
+    }()
 
-  let allIds = Array(users.keys)
+    let allIds = Array(users.keys)
 
-  VStack(alignment: .leading, spacing: DS.Spacing.xl) {
-    Group {
-      Text("Empty (Available)")
-        .font(DS.Typography.caption)
-      OverlappingAvatars(
-        userIds: [],
-        users: [:],
-        onClaim: { }
-      )
-    }
+    VStack(alignment: .leading, spacing: DS.Spacing.xl) {
+      Group {
+        Text("Empty (Available)")
+          .font(DS.Typography.caption)
+        OverlappingAvatars(
+          userIds: [],
+          users: [:],
+          onClaim: { }
+        )
+      }
 
-    Group {
-      Text("Single User")
-        .font(DS.Typography.caption)
-      OverlappingAvatars(userIds: [allIds[0]], users: users)
-    }
+      Group {
+        Text("Single User")
+          .font(DS.Typography.caption)
+        OverlappingAvatars(userIds: [allIds[0]], users: users)
+      }
 
-    Group {
-      Text("Two Users")
-        .font(DS.Typography.caption)
-      OverlappingAvatars(userIds: Array(allIds.prefix(2)), users: users)
-    }
+      Group {
+        Text("Two Users")
+          .font(DS.Typography.caption)
+        OverlappingAvatars(userIds: Array(allIds.prefix(2)), users: users)
+      }
 
-    Group {
-      Text("Three Users (Max)")
-        .font(DS.Typography.caption)
-      OverlappingAvatars(userIds: Array(allIds.prefix(3)), users: users)
-    }
+      Group {
+        Text("Three Users (Max)")
+          .font(DS.Typography.caption)
+        OverlappingAvatars(userIds: Array(allIds.prefix(3)), users: users)
+      }
 
-    Group {
-      Text("Five Users (Overflow)")
-        .font(DS.Typography.caption)
-      OverlappingAvatars(userIds: allIds, users: users)
-    }
+      Group {
+        Text("Five Users (Overflow)")
+          .font(DS.Typography.caption)
+        OverlappingAvatars(userIds: allIds, users: users)
+      }
 
-    Group {
-      Text("Unknown User (Cache Miss)")
-        .font(DS.Typography.caption)
-      OverlappingAvatars(userIds: [UUID()], users: [:])
-    }
+      Group {
+        Text("Unknown User (Cache Miss)")
+          .font(DS.Typography.caption)
+        OverlappingAvatars(userIds: [UUID()], users: [:])
+      }
 
-    Group {
-      Text("Medium Size")
-        .font(DS.Typography.caption)
-      OverlappingAvatars(userIds: Array(allIds.prefix(3)), users: users, size: .medium)
+      Group {
+        Text("Medium Size")
+          .font(DS.Typography.caption)
+        OverlappingAvatars(userIds: Array(allIds.prefix(3)), users: users, size: .medium)
+      }
     }
+    .padding()
   }
-  .padding()
 }
