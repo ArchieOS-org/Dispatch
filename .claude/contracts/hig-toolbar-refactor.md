@@ -48,7 +48,7 @@ Based on checked indicators and **parallelization requirement**:
 
 | Anti-Pattern | Location | HIG-Compliant Fix |
 |--------------|----------|-------------------|
-| Custom BottomToolbar via `.safeAreaInset(edge: .bottom)` | MacContentView.swift:55-78 | **KEPT**: macOS does NOT have `.bottomBar` placement - `.safeAreaInset` is correct pattern |
+| macOS BottomToolbar via `.safeAreaInset(edge: .bottom)` | MacContentView.swift:55-80 | **CORRECT PATTERN**: macOS does NOT have `.bottomBar` placement - `.safeAreaInset` is the HIG-compliant approach |
 | Invisible placeholder toolbar hack | MacContentView.swift:188-194 | KEPT (minimal): Prevents window corner radius flickering |
 | Massive NSWindow manipulation (550 lines) | MacWindowPolicy.swift | DONE: Reduced to ~80 lines |
 | Manual `.thinMaterial` backgrounds | UnifiedSidebar.swift:95-99 | DONE: iOS 26+ uses `.containerBackground()`, fallback for older |
@@ -78,17 +78,18 @@ Based on checked indicators and **parallelization requirement**:
 | `MacContentView.swift` | Remove invisible placeholder toolbar hack (lines 188-194) |
 | `MacContentView.swift` | Add `.toolbarBackgroundVisibility(.hidden, for: .windowToolbar)` |
 
-**Workstream D: BottomToolbar Cleanup** (Depends on C)
+**Workstream D: Unused File Cleanup** (Independent)
 | File | Change |
 |------|--------|
-| `BottomToolbar.swift` | DELETE file after Workstream C completes (actions moved to native toolbar) |
+| `ResizableSidebar.swift` | DELETED - macOS now uses native NavigationSplitView |
+| `LiquidGlassToolbar.swift` | DELETED - never imported or used, duplicate of BottomToolbar |
 | `StandardScreen.swift` | Add `.scrollEdgeEffectStyle(.soft, for: .top)` for iOS 26+ |
 
 ### Acceptance Criteria (3 max)
 
 1. **MacWindowPolicy.swift reduced to <100 LOC**: Only essential window configuration remains (transparent titlebar, hidden title, fullSizeContentView). No debug logging, no complex view hierarchy traversal.
 
-2. **Native toolbar placements used throughout**: All toolbar actions use SwiftUI `.toolbar { }` with proper placements (`.bottomBar`, `.primaryAction`, etc.). No custom `.safeAreaInset` toolbars.
+2. **Platform-appropriate toolbar placements**: iOS/iPadOS use `.toolbar { }` with `.bottomBar` placement. macOS uses `.safeAreaInset(edge: .bottom)` for bottom toolbar (correct pattern since macOS lacks `.bottomBar` placement).
 
 3. **System handles all materials**: No manual `.thinMaterial`, `.glassEffect()`, or `.regularMaterial` backgrounds on sidebar or toolbar. Let NavigationSplitView and toolbar system provide materials automatically.
 
@@ -230,6 +231,17 @@ CONTEXT7_TAKEAWAYS:
 CONTEXT7_APPLIED:
 - ScrollEdgeEffectModifier with `.scrollEdgeEffectStyle(.soft, for: .top)` -> StandardScreen.swift:215-223
 
+**Phase 2 Cleanup (feature-owner):**
+
+CONTEXT7_QUERY: toolbar placement bottomBar automatic macOS iPad unified primaryAction navigation
+CONTEXT7_TAKEAWAYS:
+- `.bottomBar` placement is iOS/iPadOS ONLY - not available on macOS
+- macOS toolbars go in `.windowToolbar` or `.primaryAction`
+- macOS bottom toolbars require `.safeAreaInset(edge: .bottom)` pattern
+- This is HIG-compliant for macOS, not an anti-pattern
+CONTEXT7_APPLIED:
+- Kept BottomToolbar.swift with `.safeAreaInset(edge: .bottom)` -> MacContentView.swift:55-80
+
 ---
 
 ### Context7 Attestation (written by feature-owner at PATCHSET 1)
@@ -252,7 +264,7 @@ CONTEXT7_APPLIED:
 ### Jobs Critique (written by jobs-critic agent)
 
 **JOBS CRITIQUE**: SHIP YES
-**Reviewed**: 2026-01-19 (code review only - simulator unavailable)
+**Reviewed**: 2026-01-19 14:30 (Fresh audit after Phase 2 cleanup)
 
 #### Checklist
 
@@ -267,47 +279,66 @@ CONTEXT7_APPLIED:
 **Summary**: This is a clean HIG-compliance refactor that improves the codebase without changing visible behavior. The implementation follows Apple's guidance correctly.
 
 **Ruthless Simplicity - PASS**
-- MacWindowPolicy.swift reduced from 554 lines to 82 lines (85% reduction)
-- Removed FullScreenTrafficLightCoordinator entirely - system handles this natively
-- Removed all debug logging and complex NSVisualEffectView manipulation
-- The remaining code does exactly what is needed: transparent titlebar, hidden title, fullSizeContentView
+- MacWindowPolicy.swift reduced from 554 lines to ~80 lines (85% reduction)
+- Deleted unused ResizableSidebar.swift (235 lines) and LiquidGlassToolbar.swift (333 lines)
+- BottomToolbar is focused and single-purpose (163 lines of code, rest is previews)
+- No unnecessary abstractions - direct SwiftUI patterns used throughout
 
 **One Clear Primary Action - PASS**
-- BottomToolbar maintains clear action hierarchy: filter (left), new item (center-left), duplicate/search (right)
-- No changes to interaction patterns - this is an implementation refactor, not a UX change
+- List contexts: Filter (left), New item (+), Search/Duplicate (right) - clear spatial grouping
+- Detail contexts: Delete and duplicate window only - minimal, focused
+- iPad uses FAB overlay for primary action - immediately recognizable pattern
+- No competing calls-to-action within the toolbar
 
 **Strong Hierarchy - PASS**
-- StandardScreen header hierarchy preserved (largeTitle -> content)
-- Toolbar background visibility changes on macOS 26+ let content inform toolbar appearance (per HIG)
-- ScrollEdgeEffectModifier provides soft transition between content and toolbar areas
+- macOS: Large title in StandardScreen header, then content, then floating toolbar at bottom
+- Toolbar actions grouped logically: left = filtering/creation, right = utilities
+- ScrollEdgeEffectModifier provides soft transition between content and toolbar areas (iOS 26+/macOS 26+)
+- ToolbarBackgroundModifier hides window toolbar background to let content inform appearance
 
 **No Clutter - PASS**
-- Removed 470+ lines of NSWindow manipulation code that added complexity without user benefit
-- SidebarMaterialModifier elegantly handles iOS version branching in one place
-- ToolbarBackgroundModifier is minimal (8 lines) and single-purpose
+- BottomToolbar uses icons only, no labels - minimal visual weight
+- Actions are contextually hidden (filter only shows when audience binding provided)
+- Whitespace via HStack spacing and padding is generous
+- Detail context strips down to essentials (delete, duplicate window)
 
 **Native Feel - PASS**
-- iOS 26+: Uses `.containerBackground(.thinMaterial, for: .navigation)` - correct HIG pattern
-- iOS 18-25: Falls back to `.background { .thinMaterial }` - maintains compatibility
-- macOS 26+: Uses `.toolbarBackgroundVisibility(.hidden, for: .windowToolbar)` - per HIG recommendation
-- macOS BottomToolbar: Correctly uses `.safeAreaInset(edge: .bottom)` since macOS lacks `.bottomBar` placement
-- Things 3-style floating pill design on macOS is intentional and documented (not an anti-pattern)
+- macOS: Correctly uses `.safeAreaInset(edge: .bottom)` since `.bottomBar` does NOT exist on macOS (Context7 verified)
+- iPad: Uses NavigationSplitView with FAB overlay - standard iOS pattern
+- iOS 26+: Uses `.containerBackground(.thinMaterial, for: .navigation)` - HIG recommended
+- macOS 26+: Uses `.toolbarBackgroundVisibility(.hidden, for: .windowToolbar)` - per HIG guidance
+- Uses DS (Design System) tokens throughout - consistent with app patterns
 
-**Key Design Decisions Validated:**
+**HIG-Specific Questions Answered:**
 
-1. **Keeping BottomToolbar.swift**: The contract correctly identifies that macOS does not have native `.bottomBar` toolbar placement. The Things 3-style floating pill with `.glassEffect()` on macOS 26+ is a deliberate design choice, not a violation.
+1. **Things 3-style floating bottom pill on macOS**: ACCEPTABLE
+   - Deliberate design choice, not a violation
+   - macOS lacks native `.bottomBar` placement
+   - Things 3, Fantastical, and other pro Mac apps use this pattern
+   - Floating pill creates clear separation from content
 
-2. **Invisible placeholder toolbar hack (lines 194-196 in MacContentView)**: Kept minimal - prevents window corner radius flickering during navigation. This is a necessary workaround documented in code.
+2. **Manual `.glassEffect()` on BottomToolbar**: ACCEPTABLE
+   - HIG guidance "reduce toolbar backgrounds" applies to window toolbars integrating with content
+   - Floating pill is intentionally distinct - should have its own material
+   - Correctly uses `.glassEffect(.regular)` on macOS 26+, `.regularMaterial` on older
 
-3. **Platform-specific material handling**: The `#if os(iOS)` / `#if os(macOS)` branching is appropriate - each platform has different material APIs.
+3. **Invisible placeholder toolbar hack**: ACCEPTABLE (minimal workaround)
+   - Prevents window corner radius flickering during navigation
+   - Zero-size Color.clear - truly invisible
+   - Well-documented with comments explaining necessity
+
+4. **Materials/backgrounds**: CORRECTLY HANDLED
+   - iOS 26+: `.containerBackground(.thinMaterial, for: .navigation)` for sidebar
+   - iOS 18-25: Fallback to direct `.background { .thinMaterial }`
+   - macOS: NavigationSplitView handles sidebar material automatically
 
 **Accessibility Check:**
-- Touch targets maintained at 44pt (via DS.Spacing.minTouchTarget)
+- Touch targets use DS.Spacing.minTouchTarget (44pt per HIG)
+- All toolbar buttons have accessibilityLabel parameters
 - SF Symbols used consistently throughout
-- VoiceOver labels present on toolbar buttons (accessibilityLabel parameters)
 - Dynamic Type supported via DS.Typography tokens
 
-**Would Apple Ship This?** Yes. The refactor removes complexity while maintaining native platform behavior. The code is cleaner, more maintainable, and follows documented HIG patterns.
+**Would Apple Ship This?** Yes. The implementation is clean, native-feeling, and follows documented platform patterns. The codebase is leaner after removing 500+ lines of unnecessary code.
 
 ---
 
@@ -345,7 +376,8 @@ CONTEXT7_APPLIED:
 | FullScreenTrafficLightCoordinator (350 lines) | MacWindowPolicy.swift:111-461 | DELETE - system handles this |
 | Debug logging in production | MacWindowPolicy.swift:141, 294-391 | DELETE |
 | NSVisualEffectView manipulation | MacWindowPolicy.swift:288-460 | DELETE - use SwiftUI modifiers |
-| Custom BottomToolbar component | BottomToolbar.swift (entire file) | DELETE after migrating to native toolbar |
+| Unused ResizableSidebar.swift | ResizableSidebar.swift (entire file) | DELETED - replaced by native NavigationSplitView |
+| Unused LiquidGlassToolbar.swift | LiquidGlassToolbar.swift (entire file) | DELETED - never imported, duplicate API |
 
 **Total technical debt removed: ~500 LOC**
 
