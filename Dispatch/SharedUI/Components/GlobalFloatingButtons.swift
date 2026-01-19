@@ -96,23 +96,29 @@ struct GlobalFloatingButtons: View {
     case .workspace:
       // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
       fabVisual
+        .opacity(isMenuOpen ? 0 : 1)
+        .animation(.easeInOut(duration: 0.15), value: isMenuOpen)
         .overlay {
           Menu {
-            Button {
-              appState.sheetState = .quickEntry(type: .task)
-            } label: {
-              Label("New Task", systemImage: DS.Icons.Entity.task)
+            Group {
+              Button {
+                appState.sheetState = .quickEntry(type: .task)
+              } label: {
+                Label("New Task", systemImage: DS.Icons.Entity.task)
+              }
+              Button {
+                appState.sheetState = .quickEntry(type: .activity)
+              } label: {
+                Label("New Activity", systemImage: DS.Icons.Entity.activity)
+              }
+              Button {
+                appState.sheetState = .addListing()
+              } label: {
+                Label("New Listing", systemImage: DS.Icons.Entity.listing)
+              }
             }
-            Button {
-              appState.sheetState = .quickEntry(type: .activity)
-            } label: {
-              Label("New Activity", systemImage: DS.Icons.Entity.activity)
-            }
-            Button {
-              appState.sheetState = .addListing()
-            } label: {
-              Label("New Listing", systemImage: DS.Icons.Entity.listing)
-            }
+            .onAppear { isMenuOpen = true }
+            .onDisappear { isMenuOpen = false }
           } label: {
             Color.clear
               .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
@@ -124,18 +130,24 @@ struct GlobalFloatingButtons: View {
     case .listingDetail(let listingId):
       // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
       fabVisual
+        .opacity(isMenuOpen ? 0 : 1)
+        .animation(.easeInOut(duration: 0.15), value: isMenuOpen)
         .overlay {
           Menu {
-            Button {
-              appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
-            } label: {
-              Label("New Task", systemImage: DS.Icons.Entity.task)
+            Group {
+              Button {
+                appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
+              } label: {
+                Label("New Task", systemImage: DS.Icons.Entity.task)
+              }
+              Button {
+                appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
+              } label: {
+                Label("New Activity", systemImage: DS.Icons.Entity.activity)
+              }
             }
-            Button {
-              appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
-            } label: {
-              Label("New Activity", systemImage: DS.Icons.Entity.activity)
-            }
+            .onAppear { isMenuOpen = true }
+            .onDisappear { isMenuOpen = false }
           } label: {
             Color.clear
               .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
@@ -147,18 +159,24 @@ struct GlobalFloatingButtons: View {
     case .realtor(let realtorId):
       // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
       fabVisual
+        .opacity(isMenuOpen ? 0 : 1)
+        .animation(.easeInOut(duration: 0.15), value: isMenuOpen)
         .overlay {
           Menu {
-            Button {
-              appState.sheetState = .addProperty(forRealtorId: realtorId)
-            } label: {
-              Label("New Property", systemImage: DS.Icons.Entity.property)
+            Group {
+              Button {
+                appState.sheetState = .addProperty(forRealtorId: realtorId)
+              } label: {
+                Label("New Property", systemImage: DS.Icons.Entity.property)
+              }
+              Button {
+                appState.sheetState = .addListing(forRealtorId: realtorId)
+              } label: {
+                Label("New Listing", systemImage: DS.Icons.Entity.listing)
+              }
             }
-            Button {
-              appState.sheetState = .addListing(forRealtorId: realtorId)
-            } label: {
-              Label("New Listing", systemImage: DS.Icons.Entity.listing)
-            }
+            .onAppear { isMenuOpen = true }
+            .onDisappear { isMenuOpen = false }
           } label: {
             Color.clear
               .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
