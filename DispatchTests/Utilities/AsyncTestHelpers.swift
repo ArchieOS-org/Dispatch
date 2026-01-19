@@ -17,6 +17,11 @@ extension XCTestCase {
   /// Waits for a condition to become true with a timeout.
   /// Uses polling with short sleep intervals instead of arbitrary long sleeps.
   ///
+  /// - Note: The `try? await Task.sleep` intentionally swallows cancellation errors.
+  ///   If a test is cancelled, this loop continues until the deadline. This is
+  ///   acceptable for test utilities since test cancellation typically terminates
+  ///   the entire test process anyway.
+  ///
   /// - Parameters:
   ///   - timeout: Maximum time to wait for the condition (default: 1.0 seconds)
   ///   - pollInterval: Time between condition checks (default: 10ms)
@@ -119,7 +124,7 @@ extension XCTestCase {
   /// Waits for a count to reach at least a minimum value.
   ///
   /// - Parameters:
-  ///   - description: Description of what is being counted
+  ///   - description: Description of what is being counted (used in failure message)
   ///   - timeout: Maximum time to wait
   ///   - getCount: Closure that returns the current count
   ///   - minimum: Minimum count to wait for
@@ -131,9 +136,12 @@ extension XCTestCase {
     getCount: @escaping () -> Int,
     atLeast minimum: Int
   ) async -> Bool {
-    _ = description // Used for documentation purposes at call site
-    return await waitForCondition(timeout: timeout) {
+    let result = await waitForCondition(timeout: timeout) {
       getCount() >= minimum
     }
+    if !result {
+      XCTFail("\(description) did not reach minimum \(minimum) within \(timeout)s. Actual: \(getCount())")
+    }
+    return result
   }
 }

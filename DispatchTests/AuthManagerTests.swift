@@ -272,9 +272,10 @@ final class AuthManagerTests: XCTestCase {
     // the event processing time to complete.
     mockAuthClient.emitAuthStateChange(event: .initialSession, session: nil)
 
-    // Give event processing time to complete by waiting briefly
-    // Use a short timeout since we expect the condition to NEVER become true
-    await waitForCondition(timeout: 0.1) {
+    // NEGATIVE TEST: We're testing that session does NOT change.
+    // The return value is intentionally discarded - we expect this to timeout.
+    // Use 0.2s for CI resilience (slow machines may need more event processing time).
+    _ = await waitForCondition(timeout: 0.2) {
       self.authManager.session != nil
     }
 
