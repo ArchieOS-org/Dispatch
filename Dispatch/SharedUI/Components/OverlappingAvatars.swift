@@ -192,11 +192,18 @@ struct OverlappingAvatars: View {
 
 #Preview("OverlappingAvatars - Multiple Users") {
   PreviewShell { _ in
+    let allIds = [
+      PreviewDataFactory.aliceID,
+      PreviewDataFactory.bobID,
+      PreviewDataFactory.carolID,
+      PreviewDataFactory.daveID,
+      PreviewDataFactory.eveID
+    ]
+    let names = ["Alice Smith", "Bob Jones", "Carol White", "Dave Brown", "Eve Green"]
+
     let users: [UUID: User] = {
       var dict = [UUID: User]()
-      let ids = [UUID(), UUID(), UUID(), UUID(), UUID()]
-      let names = ["Alice Smith", "Bob Jones", "Carol White", "Dave Brown", "Eve Green"]
-      for (id, name) in zip(ids, names) {
+      for (id, name) in zip(allIds, names) {
         dict[id] = User(
           id: id,
           name: name,
@@ -206,8 +213,6 @@ struct OverlappingAvatars: View {
       }
       return dict
     }()
-
-    let allIds = Array(users.keys)
 
     VStack(alignment: .leading, spacing: DS.Spacing.xl) {
       Group {
@@ -247,7 +252,7 @@ struct OverlappingAvatars: View {
       Group {
         Text("Unknown User (Cache Miss)")
           .font(DS.Typography.caption)
-        OverlappingAvatars(userIds: [UUID()], users: [:])
+        OverlappingAvatars(userIds: [PreviewDataFactory.unknownUserID], users: [:])
       }
 
       Group {
