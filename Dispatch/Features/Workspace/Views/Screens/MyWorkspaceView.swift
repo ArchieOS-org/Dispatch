@@ -17,7 +17,7 @@ struct WorkspaceGroup: Identifiable {
   let listing: Listing?
   var items: [WorkItem]
 
-  /// Stable ID for the General/Unassigned section (avoids UUID() instability)
+  /// Stable ID for the General/Available section (avoids UUID() instability)
   static let generalGroupID = UUID()
 }
 
@@ -234,9 +234,9 @@ struct ListingWorkspaceSection: View {
           .accessibilityLabel(listing.address)
           .accessibilityHint("Opens listing details")
         } else {
-          // General/Unassigned
+          // General/Available
           HStack(spacing: 12) {
-            Text("General / Unassigned")
+            Text("General / Available")
               .font(DS.Typography.headline)
               .foregroundStyle(DS.Colors.Text.primary)
             Spacer()
@@ -423,7 +423,7 @@ extension User {
   }
 }
 
-#Preview("Listing Section - General/Unassigned") {
+#Preview("Listing Section - General/Available") {
   PreviewShell { _ in
     let group = WorkspaceGroup(
       id: UUID(),

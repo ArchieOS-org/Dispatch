@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// Displays assignee avatars in an overlapping stack with overflow indicator.
-/// Shows UnassignedBadge when no users are assigned.
+/// Shows ClaimButton when no users are assigned.
 struct OverlappingAvatars: View {
 
   // MARK: Lifecycle
@@ -17,12 +17,16 @@ struct OverlappingAvatars: View {
     userIds: [UUID],
     users: [UUID: User],
     maxVisible: Int = 3,
-    size: UserAvatar.AvatarSize = .small
+    size: UserAvatar.AvatarSize = .small,
+    onClaim: @escaping () -> Void = { },
+    onAssign: @escaping () -> Void = { }
   ) {
     self.userIds = userIds
     self.users = users
     self.maxVisible = maxVisible
     self.size = size
+    self.onClaim = onClaim
+    self.onAssign = onAssign
   }
 
   // MARK: Internal
@@ -31,10 +35,12 @@ struct OverlappingAvatars: View {
   let users: [UUID: User]
   let maxVisible: Int
   let size: UserAvatar.AvatarSize
+  let onClaim: () -> Void
+  let onAssign: () -> Void
 
   var body: some View {
     if userIds.isEmpty {
-      UnassignedBadge()
+      ClaimButton(state: .available, onClaim: onClaim, onAssign: onAssign)
     } else {
       avatarStack
         .accessibilityElement(children: .ignore)
@@ -204,9 +210,14 @@ struct OverlappingAvatars: View {
 
   VStack(alignment: .leading, spacing: DS.Spacing.xl) {
     Group {
-      Text("Empty (Unassigned)")
+      Text("Empty (Available)")
         .font(DS.Typography.caption)
-      OverlappingAvatars(userIds: [], users: [:])
+      OverlappingAvatars(
+        userIds: [],
+        users: [:],
+        onClaim: { },
+        onAssign: { }
+      )
     }
 
     Group {

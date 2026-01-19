@@ -71,14 +71,14 @@ struct ClaimFilterTests {
   func testDisplayNameTasks() {
     #expect(AssignmentFilter.mine.displayName(forActivities: false) == "My Tasks")
     #expect(AssignmentFilter.others.displayName(forActivities: false) == "Others'")
-    #expect(AssignmentFilter.unassigned.displayName(forActivities: false) == "Unassigned")
+    #expect(AssignmentFilter.unassigned.displayName(forActivities: false) == "Available")
   }
 
   @Test("AssignmentFilter displayName returns correct value for activities")
   func testDisplayNameActivities() {
     #expect(AssignmentFilter.mine.displayName(forActivities: true) == "My Activities")
     #expect(AssignmentFilter.others.displayName(forActivities: true) == "Others'")
-    #expect(AssignmentFilter.unassigned.displayName(forActivities: true) == "Unassigned")
+    #expect(AssignmentFilter.unassigned.displayName(forActivities: true) == "Available")
   }
 
   @Test("AssignmentFilter raw values are correct")

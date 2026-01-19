@@ -93,8 +93,8 @@ struct WorkItemListContainer<Row: View, Destination: View>: View {
 
     case .unassigned:
       isActivityList
-        ? "Unassigned activities will appear here"
-        : "Unassigned tasks will appear here"
+        ? "Activities available to claim will appear here"
+        : "Tasks available to claim will appear here"
     }
   }
 

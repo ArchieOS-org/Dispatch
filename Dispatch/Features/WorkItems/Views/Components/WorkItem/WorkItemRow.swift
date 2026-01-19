@@ -157,7 +157,7 @@ struct WorkItemRow: View {
     // Assignee description
     let assigneeNames = item.assigneeUserIds.compactMap { userLookup[$0]?.name }
     if assigneeNames.isEmpty, item.assigneeUserIds.isEmpty {
-      parts.append("Unassigned")
+      parts.append("Available to claim")
     } else if assigneeNames.isEmpty {
       parts.append("Assigned to \(item.assigneeUserIds.count) unknown user\(item.assigneeUserIds.count == 1 ? "" : "s")")
     } else if assigneeNames.count == 1 {
@@ -211,7 +211,7 @@ struct WorkItemRow: View {
       onDelete: { }
     )
 
-    // Activity example - unassigned
+    // Activity example - available to claim (no assignees)
     WorkItemRow(
       item: .activity(Activity(
         title: "Client follow-up call",
