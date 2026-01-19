@@ -2,13 +2,16 @@
 //  FABMenuOverlay.swift
 //  Dispatch
 //
-//  Custom floating menu overlay for FAB with iOS 26 effects.
-//  - Liquid glass material background
-//  - Bounce-out spring animation
+//  System-native menu for FAB choices.
+//  - Uses system-native Menu anchored to the FAB button
+//  - Simplified UI with native styling and behavior
 //  - Positioned over the FAB button location
 //
 
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - FABMenuItem
 
@@ -23,7 +26,7 @@ struct FABMenuItem: Identifiable {
 // MARK: - FABMenuOverlay
 
 /// A floating menu overlay that appears above the FAB button.
-/// Uses iOS 26 liquid glass material and spring animation.
+/// Uses system-native Menu anchored to the FAB.
 ///
 /// Usage:
 /// ```swift
@@ -45,137 +48,189 @@ struct FABMenuOverlay: View {
   /// Alignment for the menu (default: bottom trailing for FAB)
   var alignment: Alignment = .bottomTrailing
 
+  private struct FABLiquidGlassIfAvailable: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+      if #available(iOS 26.0, *) {
+        content
+          .glassEffect(.regular.interactive())
+      } else {
+        content
+      }
+    }
+  }
+
+  #if os(iOS)
+  private struct FABMenuButton: UIViewRepresentable {
+    @Binding var isPresented: Bool
+    let items: [FABMenuItem]
+
+    func makeCoordinator() -> Coordinator {
+      Coordinator(isPresented: $isPresented, items: items)
+    }
+
+    func makeUIView(context: Context) -> UIButton {
+      let button = UIButton(type: .system)
+      button.backgroundColor = UIColor(DS.Colors.accent)
+      button.layer.cornerRadius = DS.Spacing.floatingButtonSizeLarge / 2
+      button.clipsToBounds = true
+
+      let image = UIImage(systemName: "plus")
+      button.setImage(image, for: .normal)
+      button.tintColor = .white
+      button.imageView?.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 24, weight: .semibold)
+
+      // Provide a native menu anchored to the button.
+      button.showsMenuAsPrimaryAction = true
+      button.menu = context.coordinator.makeMenu()
+
+      // Track presentation/dismissal using the underlying context menu interaction.
+      let interaction = UIContextMenuInteraction(delegate: context.coordinator)
+      button.addInteraction(interaction)
+
+      // Accessibility
+      button.accessibilityLabel = "Create"
+
+      return button
+    }
+
+    func updateUIView(_ uiView: UIButton, context: Context) {
+      // Keep the menu up to date if items change.
+      context.coordinator.items = items
+      uiView.menu = context.coordinator.makeMenu()
+
+      // Sync visual state with isPresented.
+      // When menu is visible, fade the button out; when dismissed, fade it back in.
+      let targetAlpha: CGFloat = isPresented ? 0.0 : 1.0
+      if uiView.alpha != targetAlpha {
+        if #available(iOS 26.0, *) {
+          // iOS 26-native spring feel.
+          UIView.animate(
+            withDuration: 0.35,
+            delay: 0,
+            usingSpringWithDamping: 0.78,
+            initialSpringVelocity: 0.7,
+            options: [.allowUserInteraction, .beginFromCurrentState]
+          ) {
+            uiView.alpha = targetAlpha
+          }
+        } else {
+          UIView.animate(withDuration: 0.18, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState]) {
+            uiView.alpha = targetAlpha
+          }
+        }
+      }
+    }
+
+    final class Coordinator: NSObject, UIContextMenuInteractionDelegate {
+      var isPresented: Binding<Bool>
+      var items: [FABMenuItem]
+
+      init(isPresented: Binding<Bool>, items: [FABMenuItem]) {
+        self.isPresented = isPresented
+        self.items = items
+      }
+
+      func makeMenu() -> UIMenu {
+        let actions: [UIAction] = items.map { item in
+          UIAction(title: item.title, image: UIImage(systemName: item.icon)) { _ in
+            self.isPresented.wrappedValue = false
+            item.action()
+          }
+        }
+        return UIMenu(children: actions)
+      }
+
+      // MARK: UIContextMenuInteractionDelegate
+
+      func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        configurationForMenuAtLocation location: CGPoint
+      ) -> UIContextMenuConfiguration? {
+        // Returning a configuration enables the interaction callbacks.
+        UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ in
+          self.makeMenu()
+        }
+      }
+
+      func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willDisplayMenuFor configuration: UIContextMenuConfiguration,
+        animator: UIContextMenuInteractionAnimating?
+      ) {
+        isPresented.wrappedValue = true
+      }
+
+      func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willEndFor configuration: UIContextMenuConfiguration,
+        animator: UIContextMenuInteractionAnimating?
+      ) {
+        isPresented.wrappedValue = false
+      }
+    }
+  }
+  #endif
+
   var body: some View {
-    ZStack {
-      // Dismiss layer - tap outside to close
-      if isPresented {
-        Color.black.opacity(0.001)
-          .ignoresSafeArea()
-          .onTapGesture {
-            dismissMenu()
-          }
-      }
-
-      // Menu content - positioned at bottom trailing
-      GeometryReader { _ in
-        VStack(alignment: .trailing, spacing: 0) {
-          Spacer()
-
-          if isPresented {
-            menuContent
-              .transition(.asymmetric(
-                insertion: .scale(scale: 0.8, anchor: .bottomTrailing)
-                  .combined(with: .opacity),
-                removal: .scale(scale: 0.9, anchor: .bottomTrailing)
-                  .combined(with: .opacity)
-              ))
+    ZStack(alignment: alignment) {
+      #if os(iOS)
+      FABMenuButton(
+        isPresented: $isPresented,
+        items: items
+      )
+      .frame(
+        width: DS.Spacing.floatingButtonSizeLarge,
+        height: DS.Spacing.floatingButtonSizeLarge
+      )
+      // iOS 26: opt into interactive Liquid Glass on the control itself when available.
+      .modifier(FABLiquidGlassIfAvailable())
+      #else
+      Menu {
+        ForEach(items) { item in
+          Button {
+            isPresented = false
+            item.action()
+          } label: {
+            Label(item.title, systemImage: item.icon)
           }
         }
-        .frame(maxWidth: .infinity, alignment: .trailing)
-        .padding(.trailing, DS.Spacing.floatingButtonMargin)
-        // Position menu above FAB: FAB height (56) + spacing (12) + bottom inset (24)
-        .padding(.bottom, DS.Spacing.floatingButtonBottomInset + DS.Spacing.floatingButtonSizeLarge + 12)
+      } label: {
+        Circle()
+          .fill(DS.Colors.accent)
+          .frame(
+            width: DS.Spacing.floatingButtonSizeLarge,
+            height: DS.Spacing.floatingButtonSizeLarge
+          )
+          .overlay {
+            Image(systemName: "plus")
+              .font(.system(size: 24, weight: .semibold))
+              .foregroundColor(.white)
+          }
+          .accessibilityLabel("Create")
       }
+      .buttonStyle(.plain)
+      .modifier(FABLiquidGlassIfAvailable())
+      #endif
     }
-    .animation(menuAnimation, value: isPresented)
-  }
-
-  // MARK: Private
-
-  /// iOS 26 bounce-out spring animation (per Context7 docs)
-  private var menuAnimation: Animation {
-    .interpolatingSpring(duration: 0.35, bounce: 0.3)
-  }
-
-  @ViewBuilder
-  private var menuContent: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-        menuButton(for: item)
-
-        // Add separator between items (not after last)
-        if index < items.count - 1 {
-          Divider()
-            .padding(.leading, DS.Spacing.xl) // Align with text after icon
-        }
-      }
-    }
-    .background {
-      // iOS 26 liquid glass material effect
-      RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium)
-        .fill(.ultraThinMaterial)
-    }
-    .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium))
-    .dsShadow(DS.Shadows.elevated)
-    .frame(minWidth: 200)
-  }
-
-  @ViewBuilder
-  private func menuButton(for item: FABMenuItem) -> some View {
-    Button {
-      // Dismiss first, then perform action
-      dismissMenu()
-      // Delay action slightly to allow dismiss animation
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-        item.action()
-      }
-    } label: {
-      HStack(spacing: DS.Spacing.md) {
-        Image(systemName: item.icon)
-          .font(.system(size: 17, weight: .medium))
-          .foregroundStyle(.secondary)
-          .frame(width: 24)
-
-        Text(item.title)
-          .font(DS.Typography.body)
-          .foregroundStyle(.primary)
-
-        Spacer()
-      }
-      .padding(.horizontal, DS.Spacing.md)
-      .padding(.vertical, DS.Spacing.sm + 2)
-      .contentShape(Rectangle())
-    }
-    .buttonStyle(.plain)
-    #if os(iOS)
-      .sensoryFeedback(.selection, trigger: item.id)
-    #endif
-  }
-
-  private func dismissMenu() {
-    isPresented = false
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+    .padding(.trailing, DS.Spacing.floatingButtonMargin)
+    .padding(.bottom, DS.Spacing.floatingButtonBottomInset)
   }
 }
 
 // MARK: - Previews
 
 #Preview("FAB Menu Overlay") {
-  @Previewable @State var showMenu = true
+  @Previewable @State var showMenu = false
 
   ZStack {
     DS.Colors.Background.grouped
       .ignoresSafeArea()
 
-    // Simulated FAB button position
-    VStack {
-      Spacer()
-      HStack {
-        Spacer()
-        Circle()
-          .fill(DS.Colors.accent)
-          .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
-          .overlay {
-            Image(systemName: "plus")
-              .font(.system(size: 24, weight: .semibold))
-              .foregroundColor(.white)
-          }
-          .onTapGesture {
-            showMenu.toggle()
-          }
-      }
-      .padding(.trailing, DS.Spacing.floatingButtonMargin)
-      .padding(.bottom, DS.Spacing.floatingButtonBottomInset)
-    }
+    Text("Tap the + button")
+      .font(DS.Typography.body)
+      .foregroundStyle(.secondary)
 
     FABMenuOverlay(
       isPresented: $showMenu,
@@ -183,34 +238,44 @@ struct FABMenuOverlay: View {
         FABMenuItem(title: "New Task", icon: DS.Icons.Entity.task) { },
         FABMenuItem(title: "New Activity", icon: DS.Icons.Entity.activity) { },
         FABMenuItem(title: "New Listing", icon: DS.Icons.Entity.listing) { }
-      ]
+      ],
+      alignment: .bottomTrailing
     )
   }
 }
 
 #Preview("FAB Menu - Two Items") {
-  @Previewable @State var showMenu = true
+  @Previewable @State var showMenu = false
 
   ZStack {
     DS.Colors.Background.grouped
       .ignoresSafeArea()
+
+    Text("Tap the + button")
+      .font(DS.Typography.body)
+      .foregroundStyle(.secondary)
 
     FABMenuOverlay(
       isPresented: $showMenu,
       items: [
         FABMenuItem(title: "New Property", icon: DS.Icons.Entity.property) { },
         FABMenuItem(title: "New Listing", icon: DS.Icons.Entity.listing) { }
-      ]
+      ],
+      alignment: .bottomTrailing
     )
   }
 }
 
 #Preview("FAB Menu - Dark Mode") {
-  @Previewable @State var showMenu = true
+  @Previewable @State var showMenu = false
 
   ZStack {
     DS.Colors.Background.grouped
       .ignoresSafeArea()
+
+    Text("Tap the + button")
+      .font(DS.Typography.body)
+      .foregroundStyle(.secondary)
 
     FABMenuOverlay(
       isPresented: $showMenu,
@@ -218,7 +283,8 @@ struct FABMenuOverlay: View {
         FABMenuItem(title: "New Task", icon: DS.Icons.Entity.task) { },
         FABMenuItem(title: "New Activity", icon: DS.Icons.Entity.activity) { },
         FABMenuItem(title: "New Listing", icon: DS.Icons.Entity.listing) { }
-      ]
+      ],
+      alignment: .bottomTrailing
     )
   }
   .preferredColorScheme(.dark)

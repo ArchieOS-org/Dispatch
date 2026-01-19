@@ -2,17 +2,20 @@
 //  FilterMenuOverlay.swift
 //  Dispatch
 //
-//  Custom floating menu overlay for filter button with iOS 26 effects.
-//  - Liquid glass material background
-//  - Bounce-out spring animation
-//  - Positioned over the filter button location (bottom leading)
+//  System-native menu for filter choices.
+//  - Uses a UIKit-backed UIButton + UIMenu anchored to the filter control
+//  - Tracks menu show/hide to fade the control out while the menu is visible
+//  - Positioned at the filter button location (bottom leading)
 //
 
 #if os(iOS)
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
-/// A floating menu overlay that appears above the filter button.
-/// Uses iOS 26 liquid glass material and spring animation.
+/// A floating menu anchored to the filter control.
+/// Uses a system-native menu anchored to the filter control, not a custom overlay.
 ///
 /// Usage:
 /// ```swift
@@ -28,140 +31,177 @@ struct FilterMenuOverlay: View {
   @Binding var isPresented: Bool
   @Binding var audience: AudienceLens
 
-  var body: some View {
-    ZStack {
-      // Dismiss layer - tap outside to close
-      if isPresented {
-        Color.black.opacity(0.001)
-          .ignoresSafeArea()
-          .onTapGesture {
-            dismissMenu()
-          }
-      }
-
-      // Menu content - positioned at bottom leading (where filter button is)
-      GeometryReader { _ in
-        VStack(alignment: .leading, spacing: 0) {
-          Spacer()
-
-          if isPresented {
-            menuContent
-              .transition(.asymmetric(
-                insertion: .scale(scale: 0.8, anchor: .bottomLeading)
-                  .combined(with: .opacity),
-                removal: .scale(scale: 0.9, anchor: .bottomLeading)
-                  .combined(with: .opacity)
-              ))
-          }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, DS.Spacing.floatingButtonMargin)
-        // Position menu above filter button: button height (56) + spacing (12) + bottom inset (24)
-        .padding(.bottom, DS.Spacing.floatingButtonBottomInset + DS.Spacing.floatingButtonSizeLarge + 12)
-      }
-    }
-    .animation(menuAnimation, value: isPresented)
-  }
-
   // MARK: Private
 
-  /// iOS 26 bounce-out spring animation (per Context7 docs)
-  private var menuAnimation: Animation {
-    .interpolatingSpring(duration: 0.35, bounce: 0.3)
+  private struct FilterButtonLiquidGlassIfAvailable: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+      if #available(iOS 26.0, *) {
+        content
+          .glassEffect(.regular.interactive())
+      } else {
+        content
+      }
+    }
   }
 
-  @ViewBuilder
-  private var menuContent: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      ForEach(Array(AudienceLens.allCases.enumerated()), id: \.element) { index, lens in
-        menuButton(for: lens)
+  private struct FilterMenuButton: UIViewRepresentable {
+    @Binding var isPresented: Bool
+    @Binding var audience: AudienceLens
 
-        // Add separator between items (not after last)
-        if index < AudienceLens.allCases.count - 1 {
-          Divider()
-            .padding(.leading, DS.Spacing.xl) // Align with text after icon
+    func makeCoordinator() -> Coordinator {
+      Coordinator(isPresented: $isPresented, audience: $audience)
+    }
+
+    func makeUIView(context: Context) -> UIButton {
+      let button = UIButton(type: .system)
+
+      // Background approximates the system/material look without fighting the OS.
+      button.backgroundColor = UIColor.secondarySystemBackground
+      button.layer.cornerRadius = DS.Spacing.floatingButtonSize / 2
+      button.clipsToBounds = true
+
+      // Initial icon state.
+      context.coordinator.applyIcon(to: button)
+
+      // Provide a native menu anchored to the button.
+      button.showsMenuAsPrimaryAction = true
+      button.menu = context.coordinator.makeMenu()
+
+      // Track presentation/dismissal using context menu interaction callbacks.
+      let interaction = UIContextMenuInteraction(delegate: context.coordinator)
+      button.addInteraction(interaction)
+
+      // Accessibility
+      button.accessibilityLabel = "Filter"
+
+      return button
+    }
+
+    func updateUIView(_ uiView: UIButton, context: Context) {
+      // Keep bindings current.
+      context.coordinator.isPresented = $isPresented
+      context.coordinator.audience = $audience
+
+      // Update menu + icon when selection changes.
+      uiView.menu = context.coordinator.makeMenu()
+      context.coordinator.applyIcon(to: uiView)
+
+      // Sync visual state with isPresented.
+      // When menu is visible, fade the button out; when dismissed, fade it back in.
+      let targetAlpha: CGFloat = isPresented ? 0.0 : 1.0
+      if uiView.alpha != targetAlpha {
+        if #available(iOS 26.0, *) {
+          // iOS 26-native spring feel (matches the system more closely than custom SwiftUI springs here).
+          UIView.animate(
+            withDuration: 0.35,
+            delay: 0,
+            usingSpringWithDamping: 0.78,
+            initialSpringVelocity: 0.7,
+            options: [.allowUserInteraction, .beginFromCurrentState]
+          ) {
+            uiView.alpha = targetAlpha
+          }
+        } else {
+          UIView.animate(withDuration: 0.18, delay: 0, options: [.allowUserInteraction, .beginFromCurrentState]) {
+            uiView.alpha = targetAlpha
+          }
         }
       }
     }
-    .background {
-      // iOS 26 liquid glass material effect
-      RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium)
-        .fill(.ultraThinMaterial)
-    }
-    .clipShape(RoundedRectangle(cornerRadius: DS.Spacing.radiusMedium))
-    .dsShadow(DS.Shadows.elevated)
-    .frame(minWidth: 160)
-  }
 
-  @ViewBuilder
-  private func menuButton(for lens: AudienceLens) -> some View {
-    Button {
-      // Set audience and dismiss
-      audience = lens
-      dismissMenu()
-    } label: {
-      HStack(spacing: DS.Spacing.md) {
-        Image(systemName: lens.icon)
-          .font(.system(size: 17, weight: .medium))
-          .foregroundStyle(lens == .all ? .secondary : lens.tintColor)
-          .frame(width: 24)
+    final class Coordinator: NSObject, UIContextMenuInteractionDelegate {
+      var isPresented: Binding<Bool>
+      var audience: Binding<AudienceLens>
 
-        Text(lens.label)
-          .font(DS.Typography.body)
-          .foregroundStyle(.primary)
+      init(isPresented: Binding<Bool>, audience: Binding<AudienceLens>) {
+        self.isPresented = isPresented
+        self.audience = audience
+      }
 
-        Spacer()
+      func makeMenu() -> UIMenu {
+        let actions: [UIAction] = AudienceLens.allCases.map { lens in
+          UIAction(
+            title: lens.label,
+            image: UIImage(systemName: lens.icon),
+            state: lens == audience.wrappedValue ? .on : .off
+          ) { _ in
+            self.audience.wrappedValue = lens
+            self.isPresented.wrappedValue = false
+          }
+        }
+        return UIMenu(children: actions)
+      }
 
-        // Checkmark for selected lens
-        if lens == audience {
-          Image(systemName: "checkmark")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(DS.Colors.accent)
+      func applyIcon(to button: UIButton) {
+        let image = UIImage(systemName: audience.wrappedValue.icon)
+        button.setImage(image, for: .normal)
+        button.tintColor = UIColor.label
+        button.imageView?.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
+      }
+
+      // MARK: UIContextMenuInteractionDelegate
+
+      func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        configurationForMenuAtLocation location: CGPoint
+      ) -> UIContextMenuConfiguration? {
+        UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ in
+          self.makeMenu()
         }
       }
-      .padding(.horizontal, DS.Spacing.md)
-      .padding(.vertical, DS.Spacing.sm + 2)
-      .contentShape(Rectangle())
+
+      func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willDisplayMenuFor configuration: UIContextMenuConfiguration,
+        animator: UIContextMenuInteractionAnimating?
+      ) {
+        isPresented.wrappedValue = true
+      }
+
+      func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willEndFor configuration: UIContextMenuConfiguration,
+        animator: UIContextMenuInteractionAnimating?
+      ) {
+        isPresented.wrappedValue = false
+      }
     }
-    .buttonStyle(.plain)
-    .sensoryFeedback(.selection, trigger: lens)
   }
 
-  private func dismissMenu() {
-    isPresented = false
+  var body: some View {
+    ZStack(alignment: .bottomLeading) {
+      FilterMenuButton(
+        isPresented: $isPresented,
+        audience: $audience
+      )
+      .frame(
+        width: DS.Spacing.floatingButtonSize,
+        height: DS.Spacing.floatingButtonSize
+      )
+      // iOS 26: opt into interactive Liquid Glass on the control itself when available.
+      // This does NOT re-skin the system menu; it only affects the filter control.
+      .modifier(FilterButtonLiquidGlassIfAvailable())
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+    .padding(.leading, DS.Spacing.floatingButtonMargin)
+    .padding(.bottom, DS.Spacing.floatingButtonBottomInset)
   }
 }
 
 // MARK: - Previews
 
 #Preview("Filter Menu Overlay") {
-  @Previewable @State var showMenu = true
+  @Previewable @State var showMenu = false
   @Previewable @State var audience: AudienceLens = .all
 
   ZStack {
     DS.Colors.Background.grouped
       .ignoresSafeArea()
 
-    // Simulated filter button position
-    VStack {
-      Spacer()
-      HStack {
-        Circle()
-          .fill(.ultraThinMaterial)
-          .frame(width: DS.Spacing.floatingButtonSize, height: DS.Spacing.floatingButtonSize)
-          .overlay {
-            Image(systemName: audience.icon)
-              .font(.system(size: 20, weight: .semibold))
-              .foregroundStyle(audience == .all ? .primary : audience.tintColor)
-          }
-          .onTapGesture {
-            showMenu.toggle()
-          }
-        Spacer()
-      }
-      .padding(.leading, DS.Spacing.floatingButtonMargin)
-      .padding(.bottom, DS.Spacing.floatingButtonBottomInset)
-    }
+    Text("Tap the filter button")
+      .font(DS.Typography.body)
+      .foregroundStyle(.secondary)
 
     FilterMenuOverlay(
       isPresented: $showMenu,
@@ -171,12 +211,16 @@ struct FilterMenuOverlay: View {
 }
 
 #Preview("Filter Menu - Dark Mode") {
-  @Previewable @State var showMenu = true
+  @Previewable @State var showMenu = false
   @Previewable @State var audience: AudienceLens = .admin
 
   ZStack {
     DS.Colors.Background.grouped
       .ignoresSafeArea()
+
+    Text("Tap the filter button")
+      .font(DS.Typography.body)
+      .foregroundStyle(.secondary)
 
     FilterMenuOverlay(
       isPresented: $showMenu,
