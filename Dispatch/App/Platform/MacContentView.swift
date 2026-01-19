@@ -177,7 +177,8 @@ struct MacContentView: View {
       )
       .overlay(alignment: .leading) {
         macOSNewMenu
-          .padding(.leading, DS.Spacing.bottomToolbarPadding + 56) // After filter menu space
+          // 56 = FilterMenuButton width (28) + trailing space to separate from new menu
+          .padding(.leading, DS.Spacing.bottomToolbarPadding + 56)
       }
 
     case .listingList:

@@ -96,11 +96,11 @@ struct GlobalFloatingButtons: View {
       // Single action: create Listing
       appState.sheetState = .addListing()
 
-    case .listingDetail(let listingId):
+    case .listingDetail:
       // Multi-option: Task or Activity (pre-select listing)
       showFABMenu = true
 
-    case .realtor(let realtorId):
+    case .realtor:
       // Multi-option: Property or Listing for realtor
       showFABMenu = true
 

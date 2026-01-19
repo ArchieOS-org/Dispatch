@@ -106,7 +106,7 @@ struct AddPropertySheet: View {
     } footer: {
       if trimmedAddress.isEmpty {
         Text("Required")
-          .foregroundColor(DS.Colors.destructive)
+          .foregroundStyle(DS.Colors.destructive)
       }
     }
   }
