@@ -38,10 +38,14 @@ final class SyncCoalescingTests: XCTestCase {
       manager.requestSync()
     }
 
-    // 3. Wait for Quiescence
-    // The simulated sync takes 50ms.
-    // We wait 300ms, which is plenty of time for 1-2 loops but NOT 100 loops (which would take 5s)
-    try await Task.sleep(nanoseconds: 300_000_000)
+    // 3. Wait for at least one sync to complete using condition waiting
+    // instead of arbitrary sleep. This is deterministic because we wait for
+    // actual state change rather than elapsed time.
+    let conditionMet = await waitForCondition(timeout: 2.0) {
+      manager.syncRunId > startRunId
+    }
+
+    XCTAssertTrue(conditionMet, "Sync should have run at least once")
 
     // 4. Assert
     let endRunId = manager.syncRunId

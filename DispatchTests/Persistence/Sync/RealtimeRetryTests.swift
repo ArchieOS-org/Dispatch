@@ -257,10 +257,14 @@ final class SyncCoordinatorRealtimeTests: XCTestCase {
     // Given
     syncManager.realtimeConnectionState = .degraded
 
-    // Wait for Combine publisher to propagate (assign(to:) uses RunLoop.main)
-    try await Task.sleep(for: .milliseconds(50))
+    // Wait for Combine publisher to propagate using condition waiting
+    // This is deterministic because we wait for actual state change
+    let conditionMet = await waitForCondition(timeout: 1.0) {
+      self.syncCoordinator.showRealtimeDegraded == true
+    }
 
     // Then
+    XCTAssertTrue(conditionMet, "showRealtimeDegraded should have become true")
     XCTAssertTrue(syncCoordinator.showRealtimeDegraded)
   }
 
@@ -277,17 +281,23 @@ final class SyncCoordinatorRealtimeTests: XCTestCase {
     // Given - start in degraded state
     syncManager.realtimeConnectionState = .degraded
 
-    // Wait for Combine publisher to propagate
-    try await Task.sleep(for: .milliseconds(50))
+    // Wait for Combine publisher to propagate using condition waiting
+    let degradedConditionMet = await waitForCondition(timeout: 1.0) {
+      self.syncCoordinator.showRealtimeDegraded == true
+    }
+    XCTAssertTrue(degradedConditionMet, "Should have become degraded")
     XCTAssertTrue(syncCoordinator.showRealtimeDegraded)
 
     // When - reconnection succeeds
     syncManager.realtimeConnectionState = .connected
 
-    // Wait for Combine publisher to propagate
-    try await Task.sleep(for: .milliseconds(50))
+    // Wait for Combine publisher to propagate using condition waiting
+    let connectedConditionMet = await waitForCondition(timeout: 1.0) {
+      self.syncCoordinator.showRealtimeDegraded == false
+    }
 
     // Then - degraded indicator should clear
+    XCTAssertTrue(connectedConditionMet, "Degraded indicator should have cleared")
     XCTAssertFalse(syncCoordinator.showRealtimeDegraded)
   }
 
