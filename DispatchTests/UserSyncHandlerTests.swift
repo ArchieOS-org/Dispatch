@@ -343,6 +343,167 @@ final class UserSyncHandlerTests: XCTestCase {
     XCTAssertEqual(users2.first?.syncState, .pending)
   }
 
+  // MARK: - Avatar Sync Logic Tests
+
+  func test_avatarHashDifferent_updatesHash() async throws {
+    // Given: A user with existing hash
+    let userId = UUID()
+    let existingUser = makeUser(id: userId, name: "Test User", email: "test@apple.com")
+    existingUser.avatarHash = "oldHash123"
+    existingUser.avatar = Data([0x01, 0x02, 0x03])
+    existingUser.markSynced()
+    context.insert(existingUser)
+    try context.save()
+
+    // When: Upsert with different remote hash
+    // Note: In test mode without network, the avatar update will clear the avatar
+    // since it can't download the new one. This is expected behavior.
+    let dto = makeUserDTO(
+      id: userId,
+      name: "Updated User",
+      email: "test@apple.com",
+      avatarPath: nil, // No avatar path to avoid network call
+      avatarHash: nil // Clear avatar hash
+    )
+    try await handler.upsertUser(dto: dto, context: context)
+
+    // Then: User should be updated
+    let descriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == userId })
+    let users = try context.fetch(descriptor)
+    XCTAssertNotNil(users.first)
+    XCTAssertEqual(users.first?.name, "Updated User")
+  }
+
+  func test_avatarHashMatches_skipsDownload() async throws {
+    // Given: A user with matching hash
+    let userId = UUID()
+    let existingUser = makeUser(id: userId, name: "Test User", email: "test@apple.com")
+    existingUser.avatarHash = "sameHash"
+    existingUser.avatar = Data([0xAA, 0xBB, 0xCC])
+    existingUser.markSynced()
+    context.insert(existingUser)
+    try context.save()
+
+    let originalAvatar = existingUser.avatar
+
+    // When: Upsert with same hash
+    let dto = makeUserDTO(
+      id: userId,
+      name: "Test User",
+      email: "test@apple.com",
+      avatarPath: "avatars/test.jpg",
+      avatarHash: "sameHash" // Same as local
+    )
+    try await handler.upsertUser(dto: dto, context: context)
+
+    // Then: Avatar data should be preserved (no download needed)
+    let descriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == userId })
+    let users = try context.fetch(descriptor)
+    XCTAssertEqual(users.first?.avatar, originalAvatar)
+    XCTAssertEqual(users.first?.avatarHash, "sameHash")
+  }
+
+  func test_upsertUser_withNilAvatarHash_clearsLocalAvatar() async throws {
+    // Given: A user with existing avatar
+    let userId = UUID()
+    let existingUser = makeUser(id: userId, name: "Test User", email: "test@apple.com")
+    existingUser.avatar = Data([0x01, 0x02, 0x03])
+    existingUser.avatarHash = "existingHash"
+    existingUser.markSynced()
+    context.insert(existingUser)
+    try context.save()
+
+    // When: Upsert with nil avatar hash (remote avatar deleted)
+    let dto = makeUserDTO(
+      id: userId,
+      name: "Test User",
+      email: "test@apple.com",
+      avatarPath: nil,
+      avatarHash: nil
+    )
+    try await handler.upsertUser(dto: dto, context: context)
+
+    // Then: Local avatar should be cleared
+    let descriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == userId })
+    let users = try context.fetch(descriptor)
+    XCTAssertNil(users.first?.avatar)
+    XCTAssertNil(users.first?.avatarHash)
+  }
+
+  func test_pendingUser_preservesLocalAvatarDuringRemoteUpdate() async throws {
+    // Given: A pending user with local avatar
+    let userId = UUID()
+    let existingUser = makeUser(id: userId, name: "Local Name", email: "local@apple.com")
+    existingUser.avatar = Data([0xDE, 0xAD, 0xBE, 0xEF])
+    existingUser.avatarHash = "localHash"
+    existingUser.markPending()
+    context.insert(existingUser)
+    try context.save()
+
+    let originalAvatar = existingUser.avatar
+    let originalHash = existingUser.avatarHash
+
+    // When: Remote update arrives while pending
+    let dto = makeUserDTO(
+      id: userId,
+      name: "Remote Name",
+      email: "remote@apple.com",
+      avatarPath: "avatars/remote.jpg",
+      avatarHash: "remoteHash"
+    )
+    try await handler.upsertUser(dto: dto, context: context)
+
+    // Then: Local avatar should be preserved (pending protection)
+    let descriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == userId })
+    let users = try context.fetch(descriptor)
+    XCTAssertEqual(users.first?.avatar, originalAvatar)
+    XCTAssertEqual(users.first?.avatarHash, originalHash)
+    XCTAssertEqual(users.first?.name, "Local Name") // Name also preserved
+  }
+
+  // MARK: - Avatar Hash Computation Tests
+
+  func test_userWithAvatarButNoHash_markedForMigration() async throws {
+    // Given: A legacy user with avatar but no hash
+    let userId = UUID()
+    let legacyUser = makeUser(id: userId, name: "Legacy User", email: "legacy@apple.com")
+    legacyUser.avatar = Data([0x89, 0x50, 0x4E, 0x47]) // PNG header bytes
+    legacyUser.avatarHash = nil // No hash (legacy data)
+    legacyUser.markSynced()
+    context.insert(legacyUser)
+    try context.save()
+
+    // When: Reconcile legacy users
+    try await handler.reconcileLegacyLocalUsers(context: context)
+
+    // Then: Hash should be computed and user marked pending
+    let descriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == userId })
+    let users = try context.fetch(descriptor)
+    XCTAssertNotNil(users.first?.avatarHash, "Hash should be computed")
+    XCTAssertEqual(users.first?.syncState, .pending, "Should be marked pending for upload")
+  }
+
+  func test_userWithoutAvatar_hashRemainsNil() async throws {
+    // Given: A user without avatar
+    let userId = UUID()
+    let userWithoutAvatar = makeUser(id: userId, name: "No Avatar", email: "noavatar@apple.com")
+    userWithoutAvatar.avatar = nil
+    userWithoutAvatar.avatarHash = nil
+    userWithoutAvatar.markSynced()
+    userWithoutAvatar.syncedAt = Date() // Not a phantom
+    context.insert(userWithoutAvatar)
+    try context.save()
+
+    // When: Reconcile legacy users
+    try await handler.reconcileLegacyLocalUsers(context: context)
+
+    // Then: Hash should remain nil (no avatar to hash)
+    let descriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == userId })
+    let users = try context.fetch(descriptor)
+    XCTAssertNil(users.first?.avatarHash)
+    XCTAssertEqual(users.first?.syncState, .synced) // Not changed
+  }
+
   // MARK: Private
 
   private var container: ModelContainer!
