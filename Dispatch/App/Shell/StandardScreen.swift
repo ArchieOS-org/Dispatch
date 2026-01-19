@@ -163,6 +163,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
         .contentMargins(.bottom, DS.Spacing.floatingButtonScrollInset, for: .scrollContent)
         #endif
         .modifier(PullToSearchTrackingConditionalModifier(enabled: pullToSearch && !pullToSearchDisabled))
+        .modifier(ScrollEdgeEffectModifier())
 
       case .disabled:
         innerContent
@@ -204,6 +205,21 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     #if os(macOS)
     .navigationTitle("") // Hide system title on Mac in favor of our custom header
     #endif
+  }
+}
+
+// MARK: - ScrollEdgeEffectModifier
+
+/// Applies soft scroll edge effect on iOS 26+ and macOS 26+ for content/toolbar separation.
+/// Per HIG: Creates a soft transition between scrollable content and the toolbar area.
+private struct ScrollEdgeEffectModifier: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOS 26, macOS 26, *) {
+      content
+        .scrollEdgeEffectStyle(.soft, for: .top)
+    } else {
+      content
+    }
   }
 }
 

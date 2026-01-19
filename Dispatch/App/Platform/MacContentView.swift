@@ -54,6 +54,8 @@ struct MacContentView: View {
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       // Bottom toolbar at root level - spans full width including under sidebar
+      // Note: macOS does not have native `.bottomBar` toolbar placement,
+      // so we use `.safeAreaInset` which is the correct pattern for bottom bars on macOS.
       BottomToolbar(
         context: bottomToolbarContext,
         audience: $appState.lensState.audience,
@@ -144,13 +146,13 @@ struct MacContentView: View {
       case .workspace:
         .taskList
       case .properties:
-        .listingList // Properties list context
+        .listingList
       case .listings:
         .listingList
       case .realtors:
         .realtorList
       case .settings, .search:
-        .taskList // Default context
+        .taskList
       }
 
     case .stage:
@@ -186,8 +188,9 @@ struct MacContentView: View {
           .appDestinations()
       }
       .toolbar {
-        // FORCE the NSToolbar to exist at all times.
-        // This prevents the window corner radius from flickering (Large vs Small) when navigating between views.
+        // Ensure the NSToolbar exists at all times.
+        // This prevents the window corner radius from flickering (Large vs Small)
+        // when navigating between views.
         ToolbarItem(placement: .primaryAction) {
           Color.clear.frame(width: 0, height: 0)
         }
@@ -247,6 +250,7 @@ struct MacContentView: View {
       }
     }
     .navigationSplitViewStyle(.balanced)
+    .modifier(ToolbarBackgroundModifier())
     // Handle sidebar toggle via notification (Cmd+/)
     .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
       withAnimation {
@@ -395,5 +399,21 @@ struct MacContentView: View {
     }
   }
 
+}
+
+// MARK: - Toolbar Background Modifier
+
+/// Hides the window toolbar background on macOS 26+ to let content inform toolbar appearance.
+/// Per HIG: "Reduce the use of toolbar backgrounds and tinted controls. Instead, use the
+/// content layer to inform the color and appearance of the toolbar."
+private struct ToolbarBackgroundModifier: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(macOS 26, *) {
+      content
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+    } else {
+      content
+    }
+  }
 }
 #endif

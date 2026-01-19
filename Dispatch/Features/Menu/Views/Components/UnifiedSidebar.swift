@@ -87,22 +87,36 @@ struct UnifiedSidebarContent: View {
       // MARK: - Platform Material Strategy (WWDC25 Liquid Glass)
       // iOS/iPadOS: Use containerBackground for NavigationSplitView glass material
       // macOS: Material comes from ResizableSidebar's SidebarContainerView container
-      // This split is intentional because macOS needs material on the outer container
-      // for proper clipping behavior during sidebar collapse/expand animations.
-      // See ResizableSidebar.swift:SidebarContainerView for the macOS implementation.
-      // iOS 18+: Use containerBackground for proper NavigationSplitView integration
-      // Fallback: Direct background for older versions
-      .background {
-        Rectangle()
-          .fill(.thinMaterial)
-          .ignoresSafeArea(.all, edges: .all)
-      }
-    // WWDC25: When iOS 26 is stable, add:
-    // .containerBackground(.thinMaterial, for: .navigation)
+      // iOS 26+: Use containerBackground for proper NavigationSplitView integration (HIG recommended)
+      // iOS 18-25: Fallback to direct background
+      .modifier(SidebarMaterialModifier())
     #endif
   }
 
 }
+
+// MARK: - SidebarMaterialModifier
+
+#if os(iOS)
+/// Applies the appropriate sidebar material based on iOS version.
+/// iOS 26+: Uses containerBackground for proper NavigationSplitView integration (HIG recommended)
+/// iOS 18-25: Uses direct background modifier as fallback
+private struct SidebarMaterialModifier: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOS 26, *) {
+      content
+        .containerBackground(.thinMaterial, for: .navigation)
+    } else {
+      content
+        .background {
+          Rectangle()
+            .fill(.thinMaterial)
+            .ignoresSafeArea(.all, edges: .all)
+        }
+    }
+  }
+}
+#endif
 
 // MARK: - Previews
 
