@@ -3,13 +3,13 @@
 //  Dispatch
 //
 //  macOS-specific navigation view extracted from ContentView.
-//  Uses Things 3-style ResizableSidebar with native selection.
+//  Uses native NavigationSplitView for true Xcode/Finder sidebar appearance.
 //
 
 #if os(macOS)
 import SwiftUI
 
-/// macOS navigation container with Things 3-style resizable sidebar.
+/// macOS navigation container with native NavigationSplitView sidebar.
 /// Extracted from ContentView to reduce complexity and enable platform-specific optimizations.
 struct MacContentView: View {
 
@@ -49,20 +49,46 @@ struct MacContentView: View {
   let onRequestSync: () -> Void
 
   var body: some View {
-    sidebarNavigation
-      .overlay(alignment: .top) {
-        quickFindOverlay
-      }
-      .sheet(item: sheetStateBinding) { state in
-        sheetContent(for: state)
-      }
-      // Listen for menu bar Cmd+F notification (per-window handling)
-      // Only respond if THIS window is the key (focused) window
-      .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
-        if controlActiveState == .key {
+    ZStack {
+      sidebarNavigation
+    }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      // Bottom toolbar at root level - spans full width including under sidebar
+      BottomToolbar(
+        context: bottomToolbarContext,
+        audience: $appState.lensState.audience,
+        onNew: {
+          switch appState.router.selectedDestination {
+          case .tab(.listings), .stage:
+            appState.sheetState = .addListing
+          case .tab(.realtors):
+            appState.sheetState = .addRealtor
+          default:
+            appState.sheetState = .quickEntry(type: nil)
+          }
+        },
+        onSearch: {
           windowUIState.openSearch(initialText: nil)
-        }
+        },
+        onDuplicateWindow: {
+          openWindow(id: "main")
+        },
+        duplicateWindowDisabled: !supportsMultipleWindows
+      )
+    }
+    .overlay(alignment: .top) {
+      quickFindOverlay
+    }
+    .sheet(item: sheetStateBinding) { state in
+      sheetContent(for: state)
+    }
+    // Listen for menu bar Cmd+F notification (per-window handling)
+    // Only respond if THIS window is the key (focused) window
+    .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
+      if controlActiveState == .key {
+        windowUIState.openSearch(initialText: nil)
       }
+    }
   }
 
   // MARK: Private
@@ -85,6 +111,9 @@ struct MacContentView: View {
 
   /// Global Quick Find (Popover) State
   @State private var quickFindText = ""
+
+  /// Controls sidebar column visibility for native NavigationSplitView
+  @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
   /// Computed binding for List(selection:) that bridges non-optional AppState to optional List API.
   /// - Get: Returns nil for stage destinations (shown deselected), otherwise the destination
@@ -135,11 +164,11 @@ struct MacContentView: View {
       + workspaceActivities.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
   }
 
-  /// macOS: Things 3-style resizable sidebar with native selection.
+  /// macOS: Native NavigationSplitView for true Xcode/Finder sidebar appearance.
   /// Uses UnifiedSidebarContent for consistent sidebar UI across platforms.
   /// Settings uses SettingsLink via inline row.
   private var sidebarNavigation: some View {
-    ResizableSidebar {
+    NavigationSplitView(columnVisibility: $columnVisibility) {
       // Unified sidebar content component (shared with iPad)
       UnifiedSidebarContent(
         stageCounts: stageCounts,
@@ -150,41 +179,23 @@ struct MacContentView: View {
           appState.dispatch(.setSelectedDestination(.stage(stage)))
         }
       )
-    } content: {
+      .navigationTitle("Dispatch")
+    } detail: {
       NavigationStack(path: pathBindingProvider(appState.router.selectedDestination)) {
         destinationRootView(for: appState.router.selectedDestination)
           .appDestinations()
       }
+      // Hide the navigation bar background for transparent/glass appearance.
+      // macOS uses .windowToolbar (already hidden at AppShellView level, but NavigationStack
+      // creates its own toolbar context that needs to be hidden separately).
+      // The back button and overflow menu render on top of the content without a background.
+      .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
       .toolbar {
         // FORCE the NSToolbar to exist at all times.
         // This prevents the window corner radius from flickering (Large vs Small) when navigating between views.
         ToolbarItem(placement: .primaryAction) {
           Color.clear.frame(width: 0, height: 0)
         }
-      }
-      // Things 3-style bottom toolbar
-      .safeAreaInset(edge: .bottom, spacing: 0) {
-        BottomToolbar(
-          context: bottomToolbarContext,
-          audience: $appState.lensState.audience,
-          onNew: {
-            switch appState.router.selectedDestination {
-            case .tab(.listings), .stage:
-              appState.sheetState = .addListing
-            case .tab(.realtors):
-              appState.sheetState = .addRealtor
-            default:
-              appState.sheetState = .quickEntry(type: nil)
-            }
-          },
-          onSearch: {
-            windowUIState.openSearch(initialText: nil)
-          },
-          onDuplicateWindow: {
-            openWindow(id: "main")
-          },
-          duplicateWindowDisabled: !supportsMultipleWindows
-        )
       }
       // Type Travel: alphanumeric keys open search with typed character
       // Uses SwiftUI's native .onKeyPress() which is inherently window-scoped
@@ -238,6 +249,13 @@ struct MacContentView: View {
             contentAreaFocused = true
           }
         }
+      }
+    }
+    .navigationSplitViewStyle(.balanced)
+    // Handle sidebar toggle via notification (Cmd+/)
+    .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
+      withAnimation {
+        columnVisibility = columnVisibility == .all ? .detailOnly : .all
       }
     }
   }

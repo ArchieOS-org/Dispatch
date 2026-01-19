@@ -192,6 +192,9 @@ extension DS {
     /// Height of the visible drag handle indicator
     public static let sidebarDragHandleHeight: CGFloat = 28
 
+    /// Inset for floating panel from window edges (macOS)
+    public static let floatingPanelInset: CGFloat = 8
+
     // MARK: - Bottom Toolbar
 
     /// Bottom toolbar height

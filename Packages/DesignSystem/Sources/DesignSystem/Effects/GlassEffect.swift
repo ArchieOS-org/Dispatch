@@ -85,3 +85,67 @@ extension View {
   }
 
 }
+
+// MARK: - Shape Glass Effects
+
+extension Shape {
+
+  /// Applies a floating glass panel effect for sidebars on macOS.
+  /// Uses ultraThinMaterial for maximum translucency with shadow and stroke border.
+  /// On iOS, falls back to thinMaterial without floating panel styling.
+  /// - Note: Call on a Shape (e.g., `RoundedRectangle(cornerRadius: 16).glassFloatingSidebarBackground()`)
+  @ViewBuilder
+  public func glassFloatingSidebarBackground() -> some View {
+    #if os(macOS)
+    fill(.ultraThinMaterial)
+      .overlay {
+        RoundedRectangle(cornerRadius: DS.Radius.floatingPanel)
+          .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
+      }
+      .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
+    #else
+    fill(.thinMaterial)
+    #endif
+  }
+
+  /// Applies a floating glass panel effect for bottom toolbars on macOS.
+  /// Uses thinMaterial with rounded corners, shadow, and stroke border.
+  /// - Note: Call on a Shape (e.g., `RoundedRectangle(cornerRadius: 16).glassFloatingToolbarBackground()`)
+  @ViewBuilder
+  public func glassFloatingToolbarBackground() -> some View {
+    #if os(macOS)
+    fill(.thinMaterial)
+      .overlay {
+        RoundedRectangle(cornerRadius: DS.Radius.floatingPanel)
+          .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
+      }
+      .shadow(color: .black.opacity(0.12), radius: 10, x: 0, y: -2)
+    #else
+    fill(.regularMaterial)
+    #endif
+  }
+
+}
+
+// MARK: - View Glass Effects (Full-Width)
+
+extension View {
+
+  /// Applies a full-width glass toolbar background for macOS.
+  /// No rounded corners - spans the full window width.
+  /// Uses thin material with a top stroke for visual separation.
+  @ViewBuilder
+  public func glassFullWidthToolbarBackground() -> some View {
+    #if os(macOS)
+    background(.thinMaterial)
+      .overlay(alignment: .top) {
+        Rectangle()
+          .fill(.white.opacity(0.15))
+          .frame(height: 0.5)
+      }
+    #else
+    background(.regularMaterial)
+    #endif
+  }
+
+}

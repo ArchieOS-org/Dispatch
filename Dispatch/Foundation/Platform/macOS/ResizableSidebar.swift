@@ -152,17 +152,19 @@ private struct SidebarContainerView<Content: View>: View {
   var body: some View {
     content()
       .frame(width: sidebarContentWidth)
-      // WWDC25: Full-height glass material for sidebar
-      // Uses glassSidebarBackground() from DesignSystem for consistent styling
+      // WWDC25: Floating glass panel for sidebar
+      // Uses glassFloatingSidebarBackground() for rounded corners, shadow, stroke
       .background {
-        Rectangle()
-          .glassSidebarBackground()
-          .ignoresSafeArea(.all, edges: .top)
+        RoundedRectangle(cornerRadius: DS.Radius.floatingPanel)
+          .glassFloatingSidebarBackground()
       }
+      // Add padding for floating panel effect - inset from window edges
+      .padding(.leading, DS.Spacing.floatingPanelInset)
+      .padding(.vertical, DS.Spacing.floatingPanelInset)
       // Instant opacity change - no spring needed, prevents visual glitches
       .opacity(isContentVisible ? 1 : 0)
       // Use max(0, ...) to clamp any negative values from animation interpolation
-      .frame(width: max(0, containerWidth))
+      .frame(width: max(0, containerWidth + DS.Spacing.floatingPanelInset))
       .clipped()
       .allowsHitTesting(isContentVisible)
       // Disable animation on this subtree to prevent frame width interpolation

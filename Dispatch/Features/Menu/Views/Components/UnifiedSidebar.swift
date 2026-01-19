@@ -77,6 +77,7 @@ struct UnifiedSidebarContent: View {
           .tag(SidebarDestination.tab(tab))
         }
       }
+      .listRowBackground(Color.clear)
       .accessibilityElement(children: .contain)
       .accessibilityLabel("Navigation")
     }

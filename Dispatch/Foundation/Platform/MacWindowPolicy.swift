@@ -72,7 +72,13 @@ struct MacWindowPolicy: NSViewRepresentable {
     // Option A Strategy: Stop fighting the OS.
     // We do NOT remove the toolbar. We do NOT force title visibility constantly.
 
-    // 1. Unified/Transparent Titlebar
+    // 1a. Window Transparency for Material Backgrounds
+    // Required for NSVisualEffectView/Material to show translucency.
+    // Without these, materials render as opaque colored backgrounds.
+    window.isOpaque = false
+    window.backgroundColor = .clear
+
+    // 1b. Unified/Transparent Titlebar
     // This allows the window chrome to blend nicely, but we do NOT force content underneath
     // by removing .fullSizeContentView. This lets standard layout handle the top inset.
     window.titlebarAppearsTransparent = true

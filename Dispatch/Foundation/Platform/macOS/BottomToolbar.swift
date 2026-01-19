@@ -7,6 +7,7 @@
 //
 
 #if os(macOS)
+import DesignSystem
 import SwiftUI
 
 /// Screen context for bottom toolbar action configuration.
@@ -62,15 +63,8 @@ struct BottomToolbar: View {
       }
     }
     .frame(height: DS.Spacing.bottomToolbarHeight)
-    .background {
-      Rectangle()
-        .fill(.regularMaterial)
-        .overlay(alignment: .top) {
-          Rectangle()
-            .fill(Color.primary.opacity(0.1))
-            .frame(height: 1)
-        }
-    }
+    .frame(maxWidth: .infinity)
+    .glassFullWidthToolbarBackground()
   }
 
   // MARK: Private
