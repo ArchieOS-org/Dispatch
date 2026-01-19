@@ -37,6 +37,20 @@ struct GlobalFloatingButtons: View {
         .offset(y: shouldHideButtons ? 12 : 0)
         .allowsHitTesting(!shouldHideButtons)
         .animation(.easeInOut(duration: 0.2), value: shouldHideButtons)
+        .confirmationDialog(
+          "New",
+          isPresented: $showFABMenu,
+          titleVisibility: .hidden
+        ) {
+          fabMenuActions
+        }
+        .onChange(of: showFABMenu) { _, isPresented in
+          if isPresented {
+            overlayState.hide(reason: .fabMenuOpen)
+          } else {
+            overlayState.show(reason: .fabMenuOpen)
+          }
+        }
     }
     #endif
   }
@@ -47,6 +61,9 @@ struct GlobalFloatingButtons: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var overlayState: AppOverlayState
   @Environment(\.fabContext) private var fabContext
+
+  /// Controls FAB menu presentation (confirmationDialog)
+  @State private var showFABMenu = false
 
   /// Single source of truth for button visibility
   private var shouldHideButtons: Bool {
@@ -74,7 +91,58 @@ struct GlobalFloatingButtons: View {
     }
   }
 
-  /// Context-aware FAB: direct action for single-option contexts, Menu for multi-option contexts
+  /// Context-aware FAB menu actions based on current context
+  @ViewBuilder
+  private var fabMenuActions: some View {
+    switch fabContext {
+    case .workspace:
+      Button {
+        appState.sheetState = .quickEntry(type: .task)
+      } label: {
+        Label("New Task", systemImage: DS.Icons.Entity.task)
+      }
+      Button {
+        appState.sheetState = .quickEntry(type: .activity)
+      } label: {
+        Label("New Activity", systemImage: DS.Icons.Entity.activity)
+      }
+      Button {
+        appState.sheetState = .addListing()
+      } label: {
+        Label("New Listing", systemImage: DS.Icons.Entity.listing)
+      }
+
+    case .listingDetail(let listingId):
+      Button {
+        appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
+      } label: {
+        Label("New Task", systemImage: DS.Icons.Entity.task)
+      }
+      Button {
+        appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
+      } label: {
+        Label("New Activity", systemImage: DS.Icons.Entity.activity)
+      }
+
+    case .realtor(let realtorId):
+      Button {
+        appState.sheetState = .addProperty(forRealtorId: realtorId)
+      } label: {
+        Label("New Property", systemImage: DS.Icons.Entity.property)
+      }
+      Button {
+        appState.sheetState = .addListing(forRealtorId: realtorId)
+      } label: {
+        Label("New Listing", systemImage: DS.Icons.Entity.listing)
+      }
+
+    case .listingList, .properties:
+      // Single-action contexts don't use the menu
+      EmptyView()
+    }
+  }
+
+  /// Context-aware FAB: direct action for single-option contexts, tap to show confirmationDialog for multi-option
   @ViewBuilder
   private var fabButton: some View {
     switch fabContext {
@@ -90,84 +158,17 @@ struct GlobalFloatingButtons: View {
         appState.sheetState = .addProperty()
       }
 
-    case .workspace:
-      // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
+    case .workspace, .listingDetail, .realtor:
+      // Multi-option: tap to show confirmationDialog (proper dismiss tracking via isPresented binding)
       fabVisual
-        .overlay {
-          Menu {
-            Button {
-              appState.sheetState = .quickEntry(type: .task)
-            } label: {
-              Label("New Task", systemImage: DS.Icons.Entity.task)
-            }
-            Button {
-              appState.sheetState = .quickEntry(type: .activity)
-            } label: {
-              Label("New Activity", systemImage: DS.Icons.Entity.activity)
-            }
-            Button {
-              appState.sheetState = .addListing()
-            } label: {
-              Label("New Listing", systemImage: DS.Icons.Entity.listing)
-            }
-          } label: {
-            Color.clear
-              .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
-              .contentShape(Circle())
-          }
-          .menuIndicator(.hidden)
-        }
-
-    case .listingDetail(let listingId):
-      // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
-      fabVisual
-        .overlay {
-          Menu {
-            Button {
-              appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
-            } label: {
-              Label("New Task", systemImage: DS.Icons.Entity.task)
-            }
-            Button {
-              appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
-            } label: {
-              Label("New Activity", systemImage: DS.Icons.Entity.activity)
-            }
-          } label: {
-            Color.clear
-              .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
-              .contentShape(Circle())
-          }
-          .menuIndicator(.hidden)
-        }
-
-    case .realtor(let realtorId):
-      // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
-      fabVisual
-        .overlay {
-          Menu {
-            Button {
-              appState.sheetState = .addProperty(forRealtorId: realtorId)
-            } label: {
-              Label("New Property", systemImage: DS.Icons.Entity.property)
-            }
-            Button {
-              appState.sheetState = .addListing(forRealtorId: realtorId)
-            } label: {
-              Label("New Listing", systemImage: DS.Icons.Entity.listing)
-            }
-          } label: {
-            Color.clear
-              .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
-              .contentShape(Circle())
-          }
-          .menuIndicator(.hidden)
+        .onTapGesture {
+          showFABMenu = true
         }
     }
   }
 
-  /// Visual representation of FAB (used as Menu label for multi-option contexts)
-  /// Uses Circle() as root view to ensure circular bounds propagate to Menu's internal button wrapper.
+  /// Visual representation of FAB (used for multi-option contexts)
+  /// Uses Circle() as root view to ensure circular bounds.
   private var fabVisual: some View {
     Circle()
       .fill(DS.Colors.accent)

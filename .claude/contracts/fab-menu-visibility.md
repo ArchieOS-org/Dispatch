@@ -48,38 +48,47 @@ Bottom buttons (FAB and filter) should disappear when their menu opens and reapp
 
 ### Solution Design
 
-**Approach**: Extend `AppOverlayState` with menu-specific hide reasons, using `onAppear`/`onDisappear` on Menu content to track menu presentation state.
+**Approach**: Replace unreliable `Menu` with `confirmationDialog` which has proper `isPresented: Binding<Bool>` tracking for dismiss detection.
+
+**Note**: The original approach using `onAppear`/`onDisappear` on Menu content did NOT work reliably - `onDisappear` does not fire when Menu is dismissed. This was discovered during testing.
 
 ```swift
-// AppOverlayState.swift - add new hide reasons
+// AppOverlayState.swift - existing hide reasons (already added)
 enum HideReason: Hashable {
   case textInput
   case keyboard
   case modal
   case searchOverlay
   case settingsScreen
-  case fabMenuOpen      // NEW: FAB menu is presenting
-  case filterMenuOpen   // NEW: Filter menu is presenting
+  case fabMenuOpen      // FAB menu is presenting
+  case filterMenuOpen   // Filter menu is presenting
 }
 ```
 
-**Menu Content Tracking Pattern**:
+**confirmationDialog Pattern (ACTUAL SOLUTION)**:
 ```swift
-// Track menu open state via content lifecycle
-Menu {
-  VStack {  // Wrapper to attach lifecycle
-    // menu items...
+@State private var showFABMenu = false
+
+// Visual FAB tapped to show menu
+fabVisual
+  .onTapGesture { showFABMenu = true }
+
+// Attached to parent view
+.confirmationDialog("New", isPresented: $showFABMenu, titleVisibility: .hidden) {
+  // menu actions...
+}
+.onChange(of: showFABMenu) { _, isPresented in
+  if isPresented {
+    overlayState.hide(reason: .fabMenuOpen)
+  } else {
+    overlayState.show(reason: .fabMenuOpen)
   }
-  .onAppear { overlayState.hide(reason: .fabMenuOpen) }
-  .onDisappear { overlayState.show(reason: .fabMenuOpen) }
-} label: {
-  // button visual
 }
 ```
 
 **iPad Unification**:
-- iPad FAB overlay should also use `AppOverlayState` for visibility
-- Add same opacity/offset animation that iPhone uses
+- iPad FAB overlay uses `AppOverlayState` for visibility (already implemented)
+- Same opacity/offset animation as iPhone (already implemented)
 
 ### Files to Modify
 
@@ -122,18 +131,44 @@ Menu {
 
 Log all Context7 lookups here (see `.claude/rules/context7-mandatory.md`):
 
-- [To be filled by feature-owner at PATCHSET 1]
+CONTEXT7_QUERY: Menu view onAppear onDisappear lifecycle tracking content presentation state
+CONTEXT7_TAKEAWAYS:
+- `onAppear(perform:)` triggers before a view appears
+- `onDisappear(perform:)` triggers after a view disappears
+- Attach these modifiers to Menu content to track when menu opens/closes
+- The action closure completes before the first rendered frame appears
+CONTEXT7_APPLIED:
+- onAppear/onDisappear on Group wrapper -> GlobalFloatingButtons.swift, FloatingFilterButton.swift, iPadContentView.swift
+
+CONTEXT7_QUERY: Menu dismiss detection isPresented binding confirmationDialog presentation tracking state
+CONTEXT7_TAKEAWAYS:
+- `Menu` does not expose `isPresented` binding natively
+- `confirmationDialog` has proper `isPresented: Binding<Bool>` for tracking dismissal
+- Use `onChange(of: isPresented)` to react when dialog is dismissed
+- Dialog dismisses automatically when user selects an action or taps outside
+CONTEXT7_APPLIED:
+- confirmationDialog with isPresented binding -> GlobalFloatingButtons.swift:40, FloatingFilterButton.swift:28, iPadContentView.swift:75
+
+CONTEXT7_QUERY: Menu menuStyle button action label popover dismissal
+CONTEXT7_TAKEAWAYS:
+- `menuActionDismissBehavior` controls dismiss after action, not dismiss tracking
+- SwiftUI Menu does not support reliable dismiss callbacks
+- `confirmationDialog` is the correct pattern for tracking presentation state
+CONTEXT7_APPLIED:
+- Replaced Menu with confirmationDialog for reliable dismiss detection
 
 ---
 
 ### Context7 Attestation (written by feature-owner at PATCHSET 1)
 
-**CONTEXT7 CONSULTED**: PENDING
-**Libraries Queried**: PENDING
+**CONTEXT7 CONSULTED**: YES
+**Libraries Queried**: SwiftUI
 
 | Query | Pattern Used |
 |-------|--------------|
-| PENDING | PENDING |
+| Menu view onAppear onDisappear lifecycle tracking content presentation state | onAppear/onDisappear on Group wrapper inside Menu content |
+| Menu dismiss detection isPresented binding confirmationDialog presentation tracking state | confirmationDialog with isPresented: Binding<Bool> and onChange |
+| Menu menuStyle button action label popover dismissal | Replaced Menu with confirmationDialog for reliable dismiss detection |
 
 **N/A**: Only valid for pure refactors with no framework/library usage.
 
@@ -141,35 +176,47 @@ Log all Context7 lookups here (see `.claude/rules/context7-mandatory.md`):
 
 ### Jobs Critique (written by jobs-critic agent)
 
-**JOBS CRITIQUE**: PENDING
-**Reviewed**: PENDING
+**JOBS CRITIQUE**: SHIP YES
+**Reviewed**: 2026-01-19 17:20
 
 #### Checklist
 
-- [ ] Ruthless simplicity - nothing can be removed without losing meaning
-- [ ] One clear primary action per screen/state
-- [ ] Strong hierarchy - headline -> primary -> secondary
-- [ ] No clutter - whitespace is a feature
-- [ ] Native feel - follows platform conventions
+- [x] Ruthless simplicity - hiding trigger button when menu open is simpler than showing both
+- [x] One clear primary action per screen/state - menu becomes the sole focus during presentation
+- [x] Strong hierarchy - clear temporal sequence: button -> fade -> menu -> dismiss -> button returns
+- [x] No clutter - eliminates competing visual element during menu presentation
+- [x] Native feel - matches iOS modal focus pattern, confirmationDialog draws attention to bottom sheet
 
 #### Verdict Notes
 
-[jobs-critic writes specific feedback here]
+This is a clean design improvement. Key observations:
+
+1. **Design Decision is Correct**: Hiding the FAB when its menu is open removes visual redundancy. The button served its purpose (initiating the action) and should step aside for the menu.
+
+2. **Animation is Purposeful**: The 0.2s easeInOut with 12pt offset creates a subtle "sink and fade" effect that feels natural. Both platforms use identical timing for consistency.
+
+3. **Technical Pattern is Sound**: Using `confirmationDialog` with `isPresented` binding provides reliable dismiss detection, unlike the unreliable `onAppear`/`onDisappear` on Menu content.
+
+4. **Accessibility Preserved**: Filter button maintains full a11y attributes. Touch targets exceed HIG minimum. Hit testing disabled when hidden prevents phantom interactions.
+
+5. **Platform Consistency**: iPhone GlobalFloatingButtons, iPad iPadContentView, and FloatingFilterButton all use the same AppOverlayState ref-counted hide reason pattern.
+
+No fixes required. Would Apple ship this? Yes.
 
 ---
 
 ### Implementation Notes
 
-**Context7 Research Recommended**:
-- SwiftUI Menu presentation state tracking patterns
-- Best practices for coordinating view visibility with Menu lifecycle
-- Apple HIG guidance on floating button behavior during overlays
+**Key Findings**:
+- SwiftUI `Menu` does NOT expose `isPresented` binding
+- `onAppear`/`onDisappear` on Menu content is UNRELIABLE - `onDisappear` does not fire on dismiss
+- `confirmationDialog` is the correct pattern - has proper `isPresented: Binding<Bool>` tracking
 
 **Technical Considerations**:
-1. SwiftUI `Menu` does not expose `isPresented` binding natively
-2. `onAppear`/`onDisappear` on menu content is the idiomatic workaround
-3. The wrapper `VStack` or `Group` is needed to attach lifecycle modifiers to menu content
-4. Animation should match existing iPhone FAB animation (`.easeInOut(duration: 0.2)`)
+1. `confirmationDialog` with `titleVisibility: .hidden` provides clean action sheet UI
+2. `onChange(of: isPresented)` reliably fires on both open AND dismiss (tap outside or action selection)
+3. Filter button uses `onTapGesture` (cycle) + `onLongPressGesture` (show menu)
+4. Animation matches existing pattern: `.easeInOut(duration: 0.2)`
 
 ---
 

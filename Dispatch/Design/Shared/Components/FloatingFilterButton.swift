@@ -14,7 +14,7 @@ import SwiftUI
 
 /// A floating filter button for iPhone with glass background and haptic feedback.
 /// Tap cycles through audience filters (All → Admin → Marketing → All).
-/// Long-press opens a menu to select any filter directly.
+/// Long-press opens a confirmationDialog to select any filter directly.
 struct FloatingFilterButton: View {
 
   // MARK: Internal
@@ -22,28 +22,14 @@ struct FloatingFilterButton: View {
   @Binding var audience: AudienceLens
 
   var body: some View {
-    // Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
     filterButtonVisual
-      .overlay {
-        Menu {
-          // Long-press menu content
-          Picker(selection: $audience) {
-            ForEach(AudienceLens.allCases, id: \.self) { lens in
-              Label(lens.label, systemImage: lens.icon)
-                .tag(lens)
-            }
-          } label: {
-            EmptyView()
-          }
-        } label: {
-          Color.clear
-            .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
-            .contentShape(Circle())
-        } primaryAction: {
-          // Tap action: cycle to next filter
-          audience = audience.next
-        }
-        .menuIndicator(.hidden)
+      .onTapGesture {
+        // Tap action: cycle to next filter
+        audience = audience.next
+      }
+      .onLongPressGesture {
+        // Long-press action: show filter menu
+        showFilterMenu = true
       }
       .sensoryFeedback(.selection, trigger: audience)
       .accessibilityIdentifier("AudienceFilterButton")
@@ -51,9 +37,34 @@ struct FloatingFilterButton: View {
       .accessibilityLabel("Filter: \(audience.label)")
       .accessibilityValue("\(audience.rawValue)|\(audience.icon)")
       .accessibilityHint("Tap to cycle, hold for options")
+      .confirmationDialog(
+        "Filter by Audience",
+        isPresented: $showFilterMenu,
+        titleVisibility: .hidden
+      ) {
+        ForEach(AudienceLens.allCases, id: \.self) { lens in
+          Button {
+            audience = lens
+          } label: {
+            Label(lens.label, systemImage: lens.icon)
+          }
+        }
+      }
+      .onChange(of: showFilterMenu) { _, isPresented in
+        if isPresented {
+          overlayState.hide(reason: .filterMenuOpen)
+        } else {
+          overlayState.show(reason: .filterMenuOpen)
+        }
+      }
   }
 
   // MARK: Private
+
+  @EnvironmentObject private var overlayState: AppOverlayState
+
+  /// Controls filter menu presentation (confirmationDialog)
+  @State private var showFilterMenu = false
 
   /// Scaled icon size for Dynamic Type support (base: 20pt, relative to body)
   @ScaledMetric(relativeTo: .body)
@@ -103,6 +114,7 @@ struct FloatingFilterButton: View {
         .foregroundStyle(.tertiary)
     }
   }
+  .environmentObject(AppOverlayState(mode: .preview))
 }
 
 // MARK: All States Gallery
@@ -130,6 +142,7 @@ struct FloatingFilterButton: View {
       }
     }
   }
+  .environmentObject(AppOverlayState(mode: .preview))
 }
 
 // MARK: Dark Mode
@@ -146,6 +159,7 @@ struct FloatingFilterButton: View {
       }
     }
   }
+  .environmentObject(AppOverlayState(mode: .preview))
   .preferredColorScheme(.light)
 }
 
@@ -161,6 +175,7 @@ struct FloatingFilterButton: View {
       }
     }
   }
+  .environmentObject(AppOverlayState(mode: .preview))
   .preferredColorScheme(.dark)
 }
 
@@ -182,6 +197,7 @@ struct FloatingFilterButton: View {
       }
     }
   }
+  .environmentObject(AppOverlayState(mode: .preview))
 }
 
 /// Tests glass effect on dark content
@@ -196,6 +212,7 @@ struct FloatingFilterButton: View {
       }
     }
   }
+  .environmentObject(AppOverlayState(mode: .preview))
 }
 
 /// Tests glass effect on light content
@@ -210,6 +227,7 @@ struct FloatingFilterButton: View {
       }
     }
   }
+  .environmentObject(AppOverlayState(mode: .preview))
 }
 
 // MARK: Positioned Context
@@ -242,6 +260,7 @@ struct FloatingFilterButton: View {
       .padding(.trailing, DS.Spacing.floatingButtonBottomInset)
       .padding(.bottom, DS.Spacing.floatingButtonBottomInset)
   }
+  .environmentObject(AppOverlayState(mode: .preview))
 }
 
 // MARK: Size Reference
@@ -287,6 +306,7 @@ struct FloatingFilterButton: View {
       .foregroundStyle(.secondary)
     }
   }
+  .environmentObject(AppOverlayState(mode: .preview))
 }
 
 // MARK: Accessibility
@@ -312,6 +332,7 @@ struct FloatingFilterButton: View {
       }
     }
   }
+  .environmentObject(AppOverlayState(mode: .preview))
   .environment(\.dynamicTypeSize, .accessibility3)
 }
 
@@ -333,6 +354,7 @@ struct FloatingFilterButton: View {
       }
     }
   }
+  .environmentObject(AppOverlayState(mode: .preview))
   .environment(\.legibilityWeight, .bold)
 }
 
@@ -356,6 +378,7 @@ struct FloatingFilterButton: View {
     .padding(.horizontal, DS.Spacing.floatingButtonBottomInset)
     .padding(.bottom, DS.Spacing.floatingButtonBottomInset)
   }
+  .environmentObject(AppOverlayState(mode: .preview))
 }
 
 #endif

@@ -130,14 +130,33 @@ struct iPadContentView: View {
     .sheet(item: appState.sheetBinding) { state in
       sheetContent(for: state)
     }
+    // iPad FAB menu using confirmationDialog for proper dismiss tracking
+    .confirmationDialog(
+      "New",
+      isPresented: $showFABMenu,
+      titleVisibility: .hidden
+    ) {
+      iPadFABMenuActions
+    }
+    .onChange(of: showFABMenu) { _, isPresented in
+      if isPresented {
+        overlayState.hide(reason: .fabMenuOpen)
+      } else {
+        overlayState.show(reason: .fabMenuOpen)
+      }
+    }
   }
 
   // MARK: Private
 
   @EnvironmentObject private var appState: AppState
+  @EnvironmentObject private var overlayState: AppOverlayState
 
   /// Controls stage picker sheet visibility (for tab-bar mode fallback)
   @State private var showStagePicker = false
+
+  /// Controls FAB menu presentation (confirmationDialog)
+  @State private var showFABMenu = false
 
   /// Scaled icon size for Dynamic Type support (base: 24pt, relative to title3)
   @ScaledMetric(relativeTo: .title3)
@@ -217,24 +236,82 @@ struct iPadContentView: View {
     .presentationDetents([.medium])
   }
 
+  /// Single source of truth for button visibility (matches iPhone pattern)
+  private var shouldHideButtons: Bool {
+    overlayState.isOverlayHidden
+  }
+
   /// iPad floating FAB overlay with proper safe area handling
   @ViewBuilder
   private var iPadFABOverlay: some View {
-    if appState.overlayState == .none {
-      // ZStack so spacer doesn't block FAB taps
-      ZStack(alignment: .bottomTrailing) {
-        // Spacer layer - pass through all touches
-        Color.clear.allowsHitTesting(false)
+    // ZStack so spacer doesn't block FAB taps
+    ZStack(alignment: .bottomTrailing) {
+      // Spacer layer - pass through all touches
+      Color.clear.allowsHitTesting(false)
 
-        // FAB - context-aware with Menu for multi-option contexts
-        fabButton
-          .padding(.trailing, DS.Spacing.floatingButtonMargin)
-          .safeAreaPadding(.bottom, DS.Spacing.floatingButtonBottomInset)
+      // FAB - context-aware with Menu for multi-option contexts
+      fabButton
+        .padding(.trailing, DS.Spacing.floatingButtonMargin)
+        .safeAreaPadding(.bottom, DS.Spacing.floatingButtonBottomInset)
+    }
+    .opacity(shouldHideButtons ? 0 : 1)
+    .offset(y: shouldHideButtons ? 12 : 0)
+    .allowsHitTesting(!shouldHideButtons)
+    .animation(.easeInOut(duration: 0.2), value: shouldHideButtons)
+  }
+
+  /// iPad FAB menu actions based on current context (for confirmationDialog)
+  @ViewBuilder
+  private var iPadFABMenuActions: some View {
+    switch derivedFABContext {
+    case .workspace:
+      Button {
+        appState.sheetState = .quickEntry(type: .task)
+      } label: {
+        Label("New Task", systemImage: DS.Icons.Entity.task)
       }
+      Button {
+        appState.sheetState = .quickEntry(type: .activity)
+      } label: {
+        Label("New Activity", systemImage: DS.Icons.Entity.activity)
+      }
+      Button {
+        appState.sheetState = .addListing()
+      } label: {
+        Label("New Listing", systemImage: DS.Icons.Entity.listing)
+      }
+
+    case .listingDetail(let listingId):
+      Button {
+        appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
+      } label: {
+        Label("New Task", systemImage: DS.Icons.Entity.task)
+      }
+      Button {
+        appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
+      } label: {
+        Label("New Activity", systemImage: DS.Icons.Entity.activity)
+      }
+
+    case .realtor(let realtorId):
+      Button {
+        appState.sheetState = .addProperty(forRealtorId: realtorId)
+      } label: {
+        Label("New Property", systemImage: DS.Icons.Entity.property)
+      }
+      Button {
+        appState.sheetState = .addListing(forRealtorId: realtorId)
+      } label: {
+        Label("New Listing", systemImage: DS.Icons.Entity.listing)
+      }
+
+    case .listingList, .properties:
+      // Single-action contexts don't use the menu
+      EmptyView()
     }
   }
 
-  /// Context-aware FAB: direct action for single-option contexts, Menu for multi-option contexts
+  /// Context-aware FAB: direct action for single-option contexts, tap to show confirmationDialog for multi-option
   @ViewBuilder
   private var fabButton: some View {
     switch derivedFABContext {
@@ -250,78 +327,11 @@ struct iPadContentView: View {
         appState.sheetState = .addProperty()
       }
 
-    case .workspace:
-      // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
+    case .workspace, .listingDetail, .realtor:
+      // Multi-option: tap to show confirmationDialog (proper dismiss tracking via isPresented binding)
       fabVisual
-        .overlay {
-          Menu {
-            Button {
-              appState.sheetState = .quickEntry(type: .task)
-            } label: {
-              Label("New Task", systemImage: DS.Icons.Entity.task)
-            }
-            Button {
-              appState.sheetState = .quickEntry(type: .activity)
-            } label: {
-              Label("New Activity", systemImage: DS.Icons.Entity.activity)
-            }
-            Button {
-              appState.sheetState = .addListing()
-            } label: {
-              Label("New Listing", systemImage: DS.Icons.Entity.listing)
-            }
-          } label: {
-            Color.clear
-              .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
-              .contentShape(Circle())
-          }
-          .menuIndicator(.hidden)
-        }
-
-    case .listingDetail(let listingId):
-      // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
-      fabVisual
-        .overlay {
-          Menu {
-            Button {
-              appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
-            } label: {
-              Label("New Task", systemImage: DS.Icons.Entity.task)
-            }
-            Button {
-              appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
-            } label: {
-              Label("New Activity", systemImage: DS.Icons.Entity.activity)
-            }
-          } label: {
-            Color.clear
-              .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
-              .contentShape(Circle())
-          }
-          .menuIndicator(.hidden)
-        }
-
-    case .realtor(let realtorId):
-      // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
-      fabVisual
-        .overlay {
-          Menu {
-            Button {
-              appState.sheetState = .addProperty(forRealtorId: realtorId)
-            } label: {
-              Label("New Property", systemImage: DS.Icons.Entity.property)
-            }
-            Button {
-              appState.sheetState = .addListing(forRealtorId: realtorId)
-            } label: {
-              Label("New Listing", systemImage: DS.Icons.Entity.listing)
-            }
-          } label: {
-            Color.clear
-              .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
-              .contentShape(Circle())
-          }
-          .menuIndicator(.hidden)
+        .onTapGesture {
+          showFABMenu = true
         }
     }
   }
