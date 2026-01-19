@@ -92,7 +92,7 @@ extension SegmentedFilterBar where Filter: RawRepresentable, Filter.RawValue == 
           filter.displayName(forActivities: true)
         }
 
-        Text("Selected: \(selectedFilter.rawValue)")
+        Text("Selected: \(selectedFilter.displayName(forActivities: true))")
           .font(DS.Typography.body)
           .foregroundStyle(.secondary)
       }

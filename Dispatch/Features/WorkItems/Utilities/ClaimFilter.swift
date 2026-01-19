@@ -47,7 +47,7 @@ enum AssignmentFilter: String, CaseIterable, Identifiable {
     case .others:
       "Others'"
     case .unassigned:
-      "Unassigned"
+      "Available"
     }
   }
 }

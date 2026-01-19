@@ -60,4 +60,7 @@ final class WorkItemActions: ObservableObject {
   /// Add a note to a work item
   @MainActor var onAddNote: (String, WorkItem) -> Void = { _, _ in }
 
+  /// Claim a work item by adding current user to assignees
+  @MainActor var onClaim: (WorkItem) -> Void = { _ in }
+
 }

@@ -306,7 +306,7 @@ final class ConflictResolverTests: XCTestCase {
 
   func test_concurrentAccess_multipleMarkOperationsPreserveIsolation() async {
     // Verify that multiple async operations on the MainActor resolver
-    // maintain consistent state (no data races)
+    // maintain consistent state (no data races, no mixing)
     let taskIds1 = Set((0 ..< 10).map { _ in UUID() })
     let taskIds2 = Set((0 ..< 10).map { _ in UUID() })
 
@@ -323,10 +323,28 @@ final class ConflictResolverTests: XCTestCase {
 
     _ = await (mark1, mark2)
 
-    // After both complete, only the second set should be present
-    // (markTasksInFlight replaces, not merges)
-    for id in taskIds2 {
-      XCTAssertTrue(resolver.isTaskInFlight(id), "Second set should be present")
+    // After both complete, exactly one set should be present
+    // (markTasksInFlight replaces, not merges - last one wins)
+    let hasSet1 = taskIds1.allSatisfy { resolver.isTaskInFlight($0) }
+    let hasSet2 = taskIds2.allSatisfy { resolver.isTaskInFlight($0) }
+
+    // Exactly one should be fully present (the last one to run wins)
+    XCTAssertTrue(
+      hasSet1 != hasSet2,
+      "Exactly one set should be present - got hasSet1=\(hasSet1), hasSet2=\(hasSet2)"
+    )
+
+    // Verify no mixing (this tests isolation)
+    if hasSet1 {
+      XCTAssertTrue(
+        taskIds2.allSatisfy { !resolver.isTaskInFlight($0) },
+        "Set 2 should not be present when Set 1 won"
+      )
+    } else {
+      XCTAssertTrue(
+        taskIds1.allSatisfy { !resolver.isTaskInFlight($0) },
+        "Set 1 should not be present when Set 2 won"
+      )
     }
   }
 

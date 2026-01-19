@@ -117,7 +117,8 @@ struct RealtorProfileView: View {
                 userLookup: actions.userLookupDict,
                 onComplete: { actions.onComplete(item) },
                 onEdit: { },
-                onDelete: { }
+                onDelete: { },
+                onClaim: { actions.onClaim(item) }
               )
             }
             .buttonStyle(.plain)

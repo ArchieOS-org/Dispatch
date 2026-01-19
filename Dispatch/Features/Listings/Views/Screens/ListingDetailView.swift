@@ -267,6 +267,7 @@ struct ListingDetailView: View {
                 onComplete: { actions.onComplete(.task(task)) },
                 onEdit: { },
                 onDelete: { },
+                onClaim: { actions.onClaim(.task(task)) },
                 hideDueDate: true
               )
             }
@@ -338,6 +339,7 @@ struct ListingDetailView: View {
             onComplete: { actions.onComplete(.activity(activity)) },
             onEdit: { },
             onDelete: { },
+            onClaim: { actions.onClaim(.activity(activity)) },
             hideDueDate: true
           )
         }

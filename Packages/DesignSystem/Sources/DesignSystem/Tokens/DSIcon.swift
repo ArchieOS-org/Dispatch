@@ -282,5 +282,20 @@ extension DS {
 
     /// Simple filled circle for priority dots
     public static let priorityDot = "circle.fill"
+
+    /// Icons for claim/assignment states
+    public enum Claim {
+      /// Show when available to claim (no assignees)
+      public static let unclaimed = "person.badge.plus"
+
+      /// Show when claimed by current user
+      public static let claimed = "person.fill.checkmark"
+
+      /// Show when claimed by another user
+      public static let claimedByOther = "person.fill"
+
+      /// Action icon for releasing a claim
+      public static let release = "person.badge.minus"
+    }
   }
 }

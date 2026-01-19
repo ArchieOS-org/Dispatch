@@ -25,6 +25,8 @@ struct WorkItemRow: View {
   var onComplete: () -> Void = { }
   var onEdit: () -> Void = { }
   var onDelete: () -> Void = { }
+  var onClaim: () -> Void = { }
+  var onAssign: (() -> Void)?
 
   // Display options
   var hideDueDate = false
@@ -73,7 +75,9 @@ struct WorkItemRow: View {
             userIds: item.assigneeUserIds,
             users: userLookup,
             maxVisible: 3,
-            size: .small
+            size: .small,
+            onClaim: onClaim,
+            onAssign: onAssign
           )
         }
       }
@@ -156,8 +160,8 @@ struct WorkItemRow: View {
 
     // Assignee description
     let assigneeNames = item.assigneeUserIds.compactMap { userLookup[$0]?.name }
-    if assigneeNames.isEmpty, item.assigneeUserIds.isEmpty {
-      parts.append("Unassigned")
+    if item.assigneeUserIds.isEmpty {
+      parts.append("Available to claim")
     } else if assigneeNames.isEmpty {
       parts.append("Assigned to \(item.assigneeUserIds.count) unknown user\(item.assigneeUserIds.count == 1 ? "" : "s")")
     } else if assigneeNames.count == 1 {
@@ -211,7 +215,7 @@ struct WorkItemRow: View {
       onDelete: { }
     )
 
-    // Activity example - unassigned
+    // Activity example - available to claim (no assignees)
     WorkItemRow(
       item: .activity(Activity(
         title: "Client follow-up call",

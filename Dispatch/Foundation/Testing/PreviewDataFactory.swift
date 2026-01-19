@@ -17,6 +17,10 @@ enum PreviewDataFactory {
   static let aliceID = UUID(uuidString: "550e8400-e29b-41d4-a716-446655440000")!
   static let bobID = UUID(uuidString: "660e8400-e29b-41d4-a716-446655440001")!
   static let listingID = UUID(uuidString: "770e8400-e29b-41d4-a716-446655440002")!
+  static let carolID = UUID(uuidString: "880e8400-e29b-41d4-a716-446655440003")!
+  static let daveID = UUID(uuidString: "990e8400-e29b-41d4-a716-446655440004")!
+  static let eveID = UUID(uuidString: "aa0e8400-e29b-41d4-a716-446655440005")!
+  static let unknownUserID = UUID(uuidString: "bb0e8400-e29b-41d4-a716-446655440006")!
 
   /// Seeds the context with a complete graph:
   /// - User Alice (Owner)

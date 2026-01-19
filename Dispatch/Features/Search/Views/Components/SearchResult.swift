@@ -61,14 +61,14 @@ enum SearchResult: Identifiable, Hashable {
       return task.taskDescription.isEmpty ? "No description" : task.taskDescription
 
     case .activity(let activity):
-      // Show due date if available, otherwise assignee count or unassigned
+      // Show due date if available, otherwise assignee count or available
       if let dueDate = activity.dueDate {
         return dueDateSubtitle(for: dueDate)
       } else if !activity.assigneeUserIds.isEmpty {
         let count = activity.assigneeUserIds.count
         return count == 1 ? "1 assignee" : "\(count) assignees"
       } else {
-        return "Unassigned"
+        return "Available"
       }
 
     case .listing(let listing):

@@ -3,11 +3,14 @@
 //  Dispatch
 //
 //  Badge shown when no users are assigned to a work item.
+//  DEPRECATED: Use ClaimButton instead.
 //
 
 import SwiftUI
 
 /// Gray pill badge indicating no one is assigned to a work item.
+/// - Important: This component is deprecated. Use ``ClaimButton`` with state `.available` instead.
+@available(*, deprecated, message: "Use ClaimButton with state .available instead")
 struct UnassignedBadge: View {
 
   var body: some View {

@@ -44,6 +44,18 @@ extension DS {
       public static let error = Color.red
     }
 
+    /// Colors for claim/assignment states
+    public enum Claim {
+      /// Available to claim (no assignees) - neutral gray
+      public static let unclaimed = Color.gray
+
+      /// Claimed by current user - positive green
+      public static let claimedByMe = Color.green
+
+      /// Claimed by another user - attention orange
+      public static let claimedByOther = Color.orange
+    }
+
     /// Semantic background colors that adapt to light/dark mode
     public enum Background {
       /// Primary background - custom theme colors
