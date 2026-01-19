@@ -251,66 +251,78 @@ struct iPadContentView: View {
       }
 
     case .workspace:
-      // Multi-option: Menu anchored to FAB
-      Menu {
-        Button {
-          appState.sheetState = .quickEntry(type: .task)
-        } label: {
-          Label("New Task", systemImage: DS.Icons.Entity.task)
+      // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
+      fabVisual
+        .overlay {
+          Menu {
+            Button {
+              appState.sheetState = .quickEntry(type: .task)
+            } label: {
+              Label("New Task", systemImage: DS.Icons.Entity.task)
+            }
+            Button {
+              appState.sheetState = .quickEntry(type: .activity)
+            } label: {
+              Label("New Activity", systemImage: DS.Icons.Entity.activity)
+            }
+            Button {
+              appState.sheetState = .addListing()
+            } label: {
+              Label("New Listing", systemImage: DS.Icons.Entity.listing)
+            }
+          } label: {
+            Color.clear
+              .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
+              .contentShape(Circle())
+          }
+          .menuIndicator(.hidden)
         }
-        Button {
-          appState.sheetState = .quickEntry(type: .activity)
-        } label: {
-          Label("New Activity", systemImage: DS.Icons.Entity.activity)
-        }
-        Button {
-          appState.sheetState = .addListing()
-        } label: {
-          Label("New Listing", systemImage: DS.Icons.Entity.listing)
-        }
-      } label: {
-        fabVisual
-      }
-      .menuIndicator(.hidden)
-      .buttonStyle(.borderless)
 
     case .listingDetail(let listingId):
-      // Multi-option: Menu anchored to FAB (Task/Activity only, pre-select listing)
-      Menu {
-        Button {
-          appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
-        } label: {
-          Label("New Task", systemImage: DS.Icons.Entity.task)
+      // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
+      fabVisual
+        .overlay {
+          Menu {
+            Button {
+              appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
+            } label: {
+              Label("New Task", systemImage: DS.Icons.Entity.task)
+            }
+            Button {
+              appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
+            } label: {
+              Label("New Activity", systemImage: DS.Icons.Entity.activity)
+            }
+          } label: {
+            Color.clear
+              .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
+              .contentShape(Circle())
+          }
+          .menuIndicator(.hidden)
         }
-        Button {
-          appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
-        } label: {
-          Label("New Activity", systemImage: DS.Icons.Entity.activity)
-        }
-      } label: {
-        fabVisual
-      }
-      .menuIndicator(.hidden)
-      .buttonStyle(.borderless)
 
     case .realtor(let realtorId):
-      // Multi-option: Menu anchored to FAB
-      Menu {
-        Button {
-          appState.sheetState = .addProperty(forRealtorId: realtorId)
-        } label: {
-          Label("New Property", systemImage: DS.Icons.Entity.property)
+      // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
+      fabVisual
+        .overlay {
+          Menu {
+            Button {
+              appState.sheetState = .addProperty(forRealtorId: realtorId)
+            } label: {
+              Label("New Property", systemImage: DS.Icons.Entity.property)
+            }
+            Button {
+              appState.sheetState = .addListing(forRealtorId: realtorId)
+            } label: {
+              Label("New Listing", systemImage: DS.Icons.Entity.listing)
+            }
+          } label: {
+            Color.clear
+              .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
+              .contentShape(Circle())
+          }
+          .menuIndicator(.hidden)
         }
-        Button {
-          appState.sheetState = .addListing(forRealtorId: realtorId)
-        } label: {
-          Label("New Listing", systemImage: DS.Icons.Entity.listing)
-        }
-      } label: {
-        fabVisual
-      }
-      .menuIndicator(.hidden)
-      .buttonStyle(.borderless)
     }
   }
 
@@ -325,8 +337,8 @@ struct iPadContentView: View {
           .font(.system(size: scaledIconSize, weight: .semibold))
           .foregroundColor(.white)
       }
-      .compositingGroup()
       .dsShadow(DS.Shadows.elevated)
+      .compositingGroup()
   }
 
   // MARK: - Sheet Content
