@@ -134,8 +134,25 @@ struct iPadContentView: View {
 
   // MARK: Private
 
-  @Environment(\.fabContext) private var fabContext
   @EnvironmentObject private var appState: AppState
+
+  /// Derived FAB context from router state (environment doesn't propagate to overlay sibling)
+  private var derivedFABContext: FABContext {
+    switch appState.router.selectedDestination {
+    case .tab(.workspace):
+      return .workspace
+    case .tab(.listings):
+      return .listingList
+    case .tab(.properties):
+      return .properties
+    case .tab(.realtors):
+      return .workspace // Realtor list uses workspace context
+    case .stage:
+      return .listingList
+    default:
+      return .workspace
+    }
+  }
 
   /// Controls stage picker sheet visibility (for tab-bar mode fallback)
   @State private var showStagePicker = false
@@ -220,7 +237,7 @@ struct iPadContentView: View {
   /// Context-aware FAB: direct action for single-option contexts, Menu for multi-option contexts
   @ViewBuilder
   private var fabButton: some View {
-    switch fabContext {
+    switch derivedFABContext {
     case .listingList:
       // Single action: create Listing - direct tap
       FloatingActionButton {

@@ -36,7 +36,7 @@ struct AddPropertySheet: View {
   let forRealtorId: UUID?
 
   /// Callback when save completes (for triggering sync)
-  var onSave: () -> Void
+  let onSave: () -> Void
 
   var body: some View {
     NavigationStack {
@@ -55,6 +55,9 @@ struct AddPropertySheet: View {
           }
         }
         .onAppear { setSmartDefaults() }
+        .task(id: allUsers.count) {
+          setSmartDefaults()
+        }
     }
     #if os(iOS)
     .presentationDetents([.medium, .large])
@@ -66,7 +69,6 @@ struct AddPropertySheet: View {
 
   @Environment(\.modelContext) private var modelContext
   @Environment(\.dismiss) private var dismiss
-  @EnvironmentObject private var syncManager: SyncManager
 
   @Query(sort: \User.name)
   private var allUsers: [User]
@@ -173,7 +175,6 @@ struct AddPropertySheet: View {
     )
 
     modelContext.insert(property)
-    syncManager.requestSync()
     onSave()
     dismiss()
   }
@@ -182,18 +183,20 @@ struct AddPropertySheet: View {
 // MARK: - Preview
 
 #Preview("Add Property Sheet") {
-  AddPropertySheet(
-    currentUserId: UUID(),
-    onSave: { }
-  )
-  .environmentObject(SyncManager.preview)
+  PreviewShell { _ in
+    AddPropertySheet(
+      currentUserId: PreviewDataFactory.aliceID,
+      onSave: { }
+    )
+  }
 }
 
 #Preview("Add Property Sheet - Pre-selected Realtor") {
-  AddPropertySheet(
-    currentUserId: UUID(),
-    forRealtorId: UUID(),
-    onSave: { }
-  )
-  .environmentObject(SyncManager.preview)
+  PreviewShell { _ in
+    AddPropertySheet(
+      currentUserId: PreviewDataFactory.aliceID,
+      forRealtorId: PreviewDataFactory.bobID,
+      onSave: { }
+    )
+  }
 }

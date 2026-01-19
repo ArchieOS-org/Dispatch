@@ -1,4 +1,4 @@
-## Interface Lock
+# Interface Lock
 
 **Feature**: Context-Aware FAB Behavior
 **Created**: 2026-01-19
@@ -243,6 +243,7 @@ CONTEXT7_APPLIED:
 - iPhone and iPad have duplicated handleFABTap/fabMenuActions code. Acceptable given platform container differences.
 
 **Platform behavior summary:**
+
 | Context | iPhone/iPad | macOS |
 |---------|-------------|-------|
 | Workspace | Menu: Task, Activity, Listing | Menu: Task, Activity, (divider), Listing |

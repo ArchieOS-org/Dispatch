@@ -1,4 +1,4 @@
-## Interface Lock
+# Interface Lock
 
 **Feature**: FAB UX Fixes - Menu Anchoring and Listing Pre-selection
 **Created**: 2026-01-19
