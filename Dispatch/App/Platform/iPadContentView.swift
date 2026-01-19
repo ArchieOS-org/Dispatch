@@ -51,6 +51,7 @@ struct iPadContentView: View {
             // Tint is applied inside StandardScreen.innerContent for content controls.
             NavigationStack(path: pathBindingProvider(.stage(stage))) {
               StagedListingsView(stage: stage)
+                .fabContext(.listingList)
                 .appDestinations()
                 .toolbar {
                   ToolbarItem(placement: .primaryAction) {
@@ -120,10 +121,13 @@ struct iPadContentView: View {
 
   // MARK: Private
 
+  @Environment(\.fabContext) private var fabContext
   @EnvironmentObject private var appState: AppState
 
   /// Controls stage picker sheet visibility (for tab-bar mode fallback)
   @State private var showStagePicker = false
+
+  @State private var showFABMenu = false
 
   /// Overdue count for workspace badge
   private var sidebarOverdueCount: Int {
@@ -190,32 +194,127 @@ struct iPadContentView: View {
         // Spacer layer - pass through all touches
         Color.clear.allowsHitTesting(false)
 
-        // FAB - receives taps normally
+        // FAB - receives taps normally, context-aware
         FloatingActionButton {
-          appState.sheetState = .quickEntry(type: nil)
+          handleFABTap()
         }
         .padding(.trailing, DS.Spacing.floatingButtonMargin)
         .safeAreaPadding(.bottom, DS.Spacing.floatingButtonBottomInset)
       }
+      .confirmationDialog(
+        "Create New",
+        isPresented: $showFABMenu,
+        titleVisibility: .visible
+      ) {
+        fabMenuActions
+      }
+    }
+  }
+
+  /// Context-aware FAB menu actions for iPad
+  @ViewBuilder
+  private var fabMenuActions: some View {
+    switch fabContext {
+    case .workspace:
+      Button {
+        appState.sheetState = .quickEntry(type: .task)
+      } label: {
+        Label("New Task", systemImage: DS.Icons.Entity.task)
+      }
+      Button {
+        appState.sheetState = .quickEntry(type: .activity)
+      } label: {
+        Label("New Activity", systemImage: DS.Icons.Entity.activity)
+      }
+      Button {
+        appState.sheetState = .addListing()
+      } label: {
+        Label("New Listing", systemImage: DS.Icons.Entity.listing)
+      }
+
+    case .listingDetail(let listingId):
+      Button {
+        appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
+      } label: {
+        Label("New Task", systemImage: DS.Icons.Entity.task)
+      }
+      Button {
+        appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
+      } label: {
+        Label("New Activity", systemImage: DS.Icons.Entity.activity)
+      }
+
+    case .realtor(let realtorId):
+      Button {
+        appState.sheetState = .addProperty(forRealtorId: realtorId)
+      } label: {
+        Label("New Property", systemImage: DS.Icons.Entity.property)
+      }
+      Button {
+        appState.sheetState = .addListing(forRealtorId: realtorId)
+      } label: {
+        Label("New Listing", systemImage: DS.Icons.Entity.listing)
+      }
+
+    case .listingList, .properties:
+      // Single action contexts - no menu needed
+      EmptyView()
+    }
+  }
+
+  /// Handles FAB tap based on current context
+  private func handleFABTap() {
+    switch fabContext {
+    case .workspace:
+      // Multi-option: Task, Activity, Listing
+      showFABMenu = true
+
+    case .listingList:
+      // Single action: create Listing
+      appState.sheetState = .addListing()
+
+    case .listingDetail(let listingId):
+      // Multi-option: Task or Activity (pre-select listing)
+      showFABMenu = true
+
+    case .realtor(let realtorId):
+      // Multi-option: Property or Listing for realtor
+      showFABMenu = true
+
+    case .properties:
+      // Single action: create Property
+      appState.sheetState = .addProperty()
     }
   }
 
   /// Root view for each tab in iPad TabView.
+  /// Sets FABContext for context-aware FAB behavior.
   @ViewBuilder
   private func tabRootView(for tab: AppTab) -> some View {
     switch tab {
     case .workspace:
       MyWorkspaceView()
+        .fabContext(.workspace)
+
     case .properties:
       PropertiesListView()
+        .fabContext(.properties)
+
     case .listings:
       ListingListView()
+        .fabContext(.listingList)
+
     case .realtors:
       RealtorsListView()
+        .fabContext(.workspace) // Realtor list uses workspace context (no specific realtor)
+
     case .settings:
       SettingsView()
+        .fabContext(.workspace)
+
     case .search:
       MyWorkspaceView() // Search is overlay, shouldn't be a tab destination
+        .fabContext(.workspace)
     }
   }
 

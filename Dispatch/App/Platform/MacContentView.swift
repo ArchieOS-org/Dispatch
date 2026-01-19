@@ -134,6 +134,117 @@ struct MacContentView: View {
       + workspaceActivities.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
   }
 
+  /// Derive FABContext from current router destination (macOS uses router, not environment)
+  private var derivedFABContext: FABContext {
+    switch appState.router.selectedDestination {
+    case .tab(let tab):
+      switch tab {
+      case .workspace, .search:
+        .workspace
+
+      case .properties:
+        .properties
+
+      case .listings:
+        .listingList
+
+      case .realtors:
+        // No specific realtor selected at list level, fall back to workspace
+        .workspace
+
+      case .settings:
+        .workspace
+      }
+
+    case .stage:
+      .listingList
+    }
+  }
+
+  /// macOS bottom toolbar with context-aware new button
+  @ViewBuilder
+  private var macOSBottomToolbarContent: some View {
+    // For multi-option contexts, use a Menu; for single-action, use onNew callback
+    switch derivedFABContext {
+    case .workspace:
+      // Multi-option: show menu with Task, Activity, Listing
+      BottomToolbar(
+        context: toolbarContext,
+        audience: $appState.lensState.audience,
+        onSearch: { windowUIState.openSearch(initialText: nil) },
+        onDuplicateWindow: { openWindow(id: "main") },
+        duplicateWindowDisabled: !supportsMultipleWindows
+      )
+      .overlay(alignment: .leading) {
+        macOSNewMenu
+          .padding(.leading, DS.Spacing.bottomToolbarPadding + 56) // After filter menu space
+      }
+
+    case .listingList:
+      // Single action: create Listing
+      BottomToolbar(
+        context: toolbarContext,
+        audience: $appState.lensState.audience,
+        onNew: { appState.sheetState = .addListing() },
+        onSearch: { windowUIState.openSearch(initialText: nil) },
+        onDuplicateWindow: { openWindow(id: "main") },
+        duplicateWindowDisabled: !supportsMultipleWindows
+      )
+
+    case .properties:
+      // Single action: create Property
+      BottomToolbar(
+        context: toolbarContext,
+        audience: $appState.lensState.audience,
+        onNew: { appState.sheetState = .addProperty() },
+        onSearch: { windowUIState.openSearch(initialText: nil) },
+        onDuplicateWindow: { openWindow(id: "main") },
+        duplicateWindowDisabled: !supportsMultipleWindows
+      )
+
+    case .listingDetail, .realtor:
+      // These contexts are set at navigation level, not at root - use default
+      BottomToolbar(
+        context: toolbarContext,
+        audience: $appState.lensState.audience,
+        onNew: { appState.sheetState = .quickEntry(type: nil) },
+        onSearch: { windowUIState.openSearch(initialText: nil) },
+        onDuplicateWindow: { openWindow(id: "main") },
+        duplicateWindowDisabled: !supportsMultipleWindows
+      )
+    }
+  }
+
+  /// macOS menu for workspace context (multiple options)
+  private var macOSNewMenu: some View {
+    Menu {
+      Button {
+        appState.sheetState = .quickEntry(type: .task)
+      } label: {
+        Label("New Task", systemImage: DS.Icons.Entity.task)
+      }
+      Button {
+        appState.sheetState = .quickEntry(type: .activity)
+      } label: {
+        Label("New Activity", systemImage: DS.Icons.Entity.activity)
+      }
+      Divider()
+      Button {
+        appState.sheetState = .addListing()
+      } label: {
+        Label("New Listing", systemImage: DS.Icons.Entity.listing)
+      }
+    } label: {
+      Image(systemName: "plus")
+        .font(.system(size: 14, weight: .medium))
+        .foregroundStyle(.primary)
+        .frame(width: 28, height: 28)
+        .contentShape(Rectangle())
+    }
+    .menuStyle(.borderlessButton)
+    .menuIndicator(.hidden)
+  }
+
   /// macOS: Things 3-style resizable sidebar with native selection.
   /// Stage cards and tabs scroll together as a single unified List.
   /// Settings uses SettingsLink via inline row.
@@ -185,27 +296,7 @@ struct MacContentView: View {
         }
       }
       .safeAreaInset(edge: .bottom, spacing: 0) {
-        BottomToolbar(
-          context: toolbarContext,
-          audience: $appState.lensState.audience,
-          onNew: {
-            switch appState.router.selectedDestination {
-            case .tab(.listings), .stage:
-              appState.sheetState = .addListing
-            case .tab(.realtors):
-              appState.sheetState = .addRealtor
-            default:
-              appState.sheetState = .quickEntry(type: nil)
-            }
-          },
-          onSearch: {
-            windowUIState.openSearch(initialText: nil)
-          },
-          onDuplicateWindow: {
-            openWindow(id: "main")
-          },
-          duplicateWindowDisabled: !supportsMultipleWindows
-        )
+        macOSBottomToolbarContent
       }
       // Type Travel: alphanumeric keys open search with typed character
       // Uses SwiftUI's native .onKeyPress() which is inherently window-scoped
@@ -346,6 +437,7 @@ struct MacContentView: View {
   }
 
   /// Root view for any destination (tab or stage) - macOS
+  /// Note: FABContext is derived from router in derivedFABContext, not set here.
   @ViewBuilder
   private func destinationRootView(for destination: SidebarDestination) -> some View {
     switch destination {
@@ -357,6 +449,7 @@ struct MacContentView: View {
   }
 
   /// macOS root view for selected tab.
+  /// Note: FABContext is derived from router in derivedFABContext, not set here.
   @ViewBuilder
   private func macTabRootView(for tab: AppTab) -> some View {
     switch tab {
@@ -380,23 +473,32 @@ struct MacContentView: View {
   @ViewBuilder
   private func sheetContent(for state: AppState.SheetState) -> some View {
     switch state {
-    case .quickEntry(let type):
+    case .quickEntry(let type, let preSelectedListingId):
       QuickEntrySheet(
         defaultItemType: type ?? .task,
         currentUserId: currentUserId,
         listings: activeListings,
         availableUsers: users,
+        preSelectedListingId: preSelectedListingId,
         onSave: { onRequestSync() }
       )
 
-    case .addListing:
+    case .addListing(let forRealtorId):
       AddListingSheet(
         currentUserId: currentUserId,
         onSave: { onRequestSync() }
       )
+      // Note: AddListingSheet doesn't yet support forRealtorId - future enhancement
 
     case .addRealtor:
       EditRealtorSheet()
+
+    case .addProperty(let forRealtorId):
+      AddPropertySheet(
+        currentUserId: currentUserId,
+        forRealtorId: forRealtorId,
+        onSave: { onRequestSync() }
+      )
 
     case .none:
       EmptyView()

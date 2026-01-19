@@ -26,16 +26,22 @@ struct QuickEntrySheet: View {
     currentUserId: UUID,
     listings: [Listing] = [],
     availableUsers: [User] = [],
+    preSelectedListingId: UUID? = nil,
     onSave: @escaping () -> Void
   ) {
     self.defaultItemType = defaultItemType
     self.currentUserId = currentUserId
     self.listings = listings
     self.availableUsers = availableUsers
+    self.preSelectedListingId = preSelectedListingId
     self.onSave = onSave
     _itemType = State(initialValue: defaultItemType)
     // Start with no assignee - user can tap "Assign to me" for quick self-assignment
     _selectedAssigneeIds = State(initialValue: [])
+    // Pre-select listing if provided
+    if let listingId = preSelectedListingId {
+      _selectedListing = State(initialValue: listings.first { $0.id == listingId })
+    }
   }
 
   // MARK: Internal
@@ -51,6 +57,9 @@ struct QuickEntrySheet: View {
 
   /// Available users for assignee selection
   let availableUsers: [User]
+
+  /// Optional pre-selected listing ID (from FAB context)
+  let preSelectedListingId: UUID?
 
   /// Callback when save completes (for triggering sync)
   var onSave: () -> Void

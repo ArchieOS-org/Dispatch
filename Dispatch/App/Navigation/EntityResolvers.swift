@@ -13,6 +13,7 @@ import SwiftUI
 
 /// Resolves a realtor by UUID and displays their profile.
 /// Shows ContentUnavailableView if the realtor no longer exists.
+/// Sets FABContext to .realtor for context-aware FAB behavior.
 struct RealtorResolver: View {
 
   // MARK: Lifecycle
@@ -29,6 +30,7 @@ struct RealtorResolver: View {
   var body: some View {
     if let user = users.first {
       RealtorProfileView(user: user)
+        .fabContext(.realtor(realtorId: id))
     } else {
       ContentUnavailableView(
         "Realtor Not Found",
@@ -48,6 +50,7 @@ struct RealtorResolver: View {
 
 /// Resolves a listing by UUID and displays its detail view.
 /// Shows ContentUnavailableView if the listing no longer exists.
+/// Sets FABContext to .listingDetail for context-aware FAB behavior.
 struct ListingResolver: View {
 
   // MARK: Lifecycle
@@ -64,6 +67,7 @@ struct ListingResolver: View {
   var body: some View {
     if let listing = listings.first {
       ListingDetailView(listing: listing, userLookup: actions.userLookup)
+        .fabContext(.listingDetail(listingId: id))
     } else {
       ContentUnavailableView(
         "Listing Not Found",

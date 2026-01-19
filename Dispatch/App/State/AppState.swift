@@ -53,9 +53,10 @@ final class AppState: ObservableObject {
 
   enum SheetState: Equatable, Identifiable {
     case none
-    case quickEntry(type: QuickEntryItemType?)
-    case addListing
+    case quickEntry(type: QuickEntryItemType?, preSelectedListingId: UUID? = nil)
+    case addListing(forRealtorId: UUID? = nil)
     case addRealtor
+    case addProperty(forRealtorId: UUID? = nil)
 
     // MARK: Internal
 
@@ -65,6 +66,7 @@ final class AppState: ObservableObject {
       case .quickEntry: "quickEntry"
       case .addListing: "addListing"
       case .addRealtor: "addRealtor"
+      case .addProperty: "addProperty"
       }
     }
 
@@ -74,12 +76,14 @@ final class AppState: ObservableObject {
       switch (lhs, rhs) {
       case (.none, .none):
         true
-      case (.quickEntry(let l), .quickEntry(let r)):
-        l == r
-      case (.addListing, .addListing):
-        true
+      case (.quickEntry(let lType, let lListing), .quickEntry(let rType, let rListing)):
+        lType == rType && lListing == rListing
+      case (.addListing(let lRealtor), .addListing(let rRealtor)):
+        lRealtor == rRealtor
       case (.addRealtor, .addRealtor):
         true
+      case (.addProperty(let lRealtor), .addProperty(let rRealtor)):
+        lRealtor == rRealtor
       default:
         false
       }
@@ -176,7 +180,7 @@ final class AppState: ObservableObject {
         // TODO: Add property creation sheet when implemented
         break
       case .listings:
-        sheetState = .addListing
+        sheetState = .addListing()
       case .realtors:
         sheetState = .addRealtor
       case .settings:

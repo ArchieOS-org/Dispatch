@@ -75,25 +75,32 @@ struct AppDestinationsModifier: ViewModifier {
 
     case .stagedListings(let stage):
       StagedListingsView(stage: stage)
+        .fabContext(.listingList)
 
     // Tab destinations (iPhone push navigation from menu)
     case .workspace:
       MyWorkspaceView()
+        .fabContext(.workspace)
 
     case .propertiesList:
       PropertiesListView()
+        .fabContext(.properties)
 
     case .listingsList:
       ListingListView()
+        .fabContext(.listingList)
 
     case .realtorsList:
       RealtorsListView()
+        .fabContext(.workspace) // Realtor list uses workspace context (no specific realtor)
 
     case .settingsRoot:
       SettingsView()
+        .fabContext(.workspace)
 
     case .profile:
       ProfilePageView()
+        .fabContext(.workspace)
     }
   }
 
