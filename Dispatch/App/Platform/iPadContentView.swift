@@ -319,18 +319,24 @@ struct iPadContentView: View {
     case .realtor(let realtorId):
       // Multi-option: Invisible Menu overlay pattern to avoid UIKit rectangular highlight artifact
       fabVisual
+        .opacity(isMenuOpen ? 0 : 1)
+        .animation(.easeInOut(duration: 0.15), value: isMenuOpen)
         .overlay {
           Menu {
-            Button {
-              appState.sheetState = .addProperty(forRealtorId: realtorId)
-            } label: {
-              Label("New Property", systemImage: DS.Icons.Entity.property)
+            Group {
+              Button {
+                appState.sheetState = .addProperty(forRealtorId: realtorId)
+              } label: {
+                Label("New Property", systemImage: DS.Icons.Entity.property)
+              }
+              Button {
+                appState.sheetState = .addListing(forRealtorId: realtorId)
+              } label: {
+                Label("New Listing", systemImage: DS.Icons.Entity.listing)
+              }
             }
-            Button {
-              appState.sheetState = .addListing(forRealtorId: realtorId)
-            } label: {
-              Label("New Listing", systemImage: DS.Icons.Entity.listing)
-            }
+            .onAppear { isMenuOpen = true }
+            .onDisappear { isMenuOpen = false }
           } label: {
             Color.clear
               .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
