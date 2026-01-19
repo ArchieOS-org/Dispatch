@@ -267,14 +267,7 @@ struct ListingDetailView: View {
                 onComplete: { actions.onComplete(.task(task)) },
                 onEdit: { },
                 onDelete: { },
-                onClaim: {
-                  guard syncManager.currentUserID != nil else { return }
-                  var newAssignees = task.assigneeUserIds
-                  if !newAssignees.contains(currentUserId) {
-                    newAssignees.append(currentUserId)
-                  }
-                  actions.onAssigneesChanged(.task(task), newAssignees)
-                },
+                onClaim: { actions.onClaim(.task(task)) },
                 hideDueDate: true
               )
             }
@@ -346,14 +339,7 @@ struct ListingDetailView: View {
             onComplete: { actions.onComplete(.activity(activity)) },
             onEdit: { },
             onDelete: { },
-            onClaim: {
-              guard syncManager.currentUserID != nil else { return }
-              var newAssignees = activity.assigneeUserIds
-              if !newAssignees.contains(currentUserId) {
-                newAssignees.append(currentUserId)
-              }
-              actions.onAssigneesChanged(.activity(activity), newAssignees)
-            },
+            onClaim: { actions.onClaim(.activity(activity)) },
             hideDueDate: true
           )
         }

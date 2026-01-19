@@ -241,6 +241,7 @@ struct ContentView: View {
     workItemActions.onDeleteNote = { [syncManager, currentUserId] note, _ in note.softDelete(by: currentUserId)
       syncManager.requestSync()
     }
+    workItemActions.onClaim = makeOnClaim()
   }
 
   private func makeOnComplete() -> (WorkItem) -> Void {
@@ -304,6 +305,17 @@ struct ContentView: View {
         a.markPending()
       }
       syncManager.requestSync()
+    }
+  }
+
+  private func makeOnClaim() -> (WorkItem) -> Void {
+    { [syncManager, currentUserId, workItemActions] item in
+      guard syncManager.currentUserID != nil else { return }
+      var newAssignees = item.assigneeUserIds
+      if !newAssignees.contains(currentUserId) {
+        newAssignees.append(currentUserId)
+      }
+      workItemActions.onAssigneesChanged(item, newAssignees)
     }
   }
 
