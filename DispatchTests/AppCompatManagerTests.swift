@@ -256,42 +256,14 @@ final class AppCompatManagerTests: XCTestCase {
     migrationRequired: Bool? = nil,
     message: String? = nil
   ) -> AppCompatResult {
-    // Use JSON decoding to create the struct (since it has CodingKeys)
-    let json = """
-    {
-      "compatible": \(compatible),
-      "force_update": \(forceUpdate)
-      \(minVersion.map { ", \"min_version\": \"\($0)\"" } ?? "")
-      \(currentVersion.map { ", \"current_version\": \"\($0)\"" } ?? "")
-      \(migrationRequired.map { ", \"migration_required\": \($0)" } ?? "")
-      \(message.map { ", \"message\": \"\($0)\"" } ?? "")
-    }
-    """
-    guard let data = json.data(using: .utf8) else {
-      XCTFail("Failed to convert JSON to data")
-      // Return a default value to satisfy compiler (XCTFail doesn't return Never)
-      return AppCompatResult(
-        compatible: false,
-        minVersion: nil,
-        currentVersion: nil,
-        forceUpdate: false,
-        migrationRequired: nil,
-        message: nil
-      )
-    }
-    do {
-      return try JSONDecoder().decode(AppCompatResult.self, from: data)
-    } catch {
-      XCTFail("Failed to decode AppCompatResult: \(error)")
-      return AppCompatResult(
-        compatible: false,
-        minVersion: nil,
-        currentVersion: nil,
-        forceUpdate: false,
-        migrationRequired: nil,
-        message: nil
-      )
-    }
+    AppCompatResult(
+      compatible: compatible,
+      minVersion: minVersion,
+      currentVersion: currentVersion,
+      forceUpdate: forceUpdate,
+      migrationRequired: migrationRequired,
+      message: message
+    )
   }
 
   /// Replicates the status derivation logic from AppCompatManager.checkCompatibility
