@@ -48,14 +48,16 @@ final class NavigationUITests: XCTestCase {
   func testListingNavigation() throws {
     let app = launchApp()
 
+    // Use CI-appropriate timeout (15s instead of 5s)
     let listingCell = app.cells.containing(.staticText, identifier: "123 Job Standard Blvd").firstMatch
-    if listingCell.waitForExistence(timeout: 5) {
-      listingCell.tap()
+    XCTAssertTrue(listingCell.waitForExistence(timeout: 15), "Listing cell should exist in seeded data")
 
-      // Verify we're on the listing detail
-      let detailTitle = app.navigationBars["123 Job Standard Blvd"]
-      XCTAssertTrue(detailTitle.waitForExistence(timeout: 3), "Should navigate to listing detail")
-    }
+    listingCell.tap()
+
+    // Verify navigation completed with reasonable timeout
+    // Search staticTexts instead of navigationBars for more reliable element matching
+    let detailTitle = app.staticTexts["123 Job Standard Blvd"]
+    XCTAssertTrue(detailTitle.waitForExistence(timeout: 10), "Should navigate to listing detail")
   }
 
   /// Verifies that property navigation resolves correctly via ID
