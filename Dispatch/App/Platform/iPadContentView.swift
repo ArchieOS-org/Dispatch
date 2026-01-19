@@ -125,18 +125,16 @@ struct iPadContentView: View {
 
       // FAB overlay for iPad
       iPadFABOverlay
+
+      // Custom FAB menu overlay with iOS 26 effects (liquid glass + spring animation)
+      FABMenuOverlay(
+        isPresented: $showFABMenu,
+        items: fabMenuItems
+      )
     }
     // iPad Sheet Handling driven by AppState
     .sheet(item: appState.sheetBinding) { state in
       sheetContent(for: state)
-    }
-    // iPad FAB menu using confirmationDialog for proper dismiss tracking
-    .confirmationDialog(
-      "New",
-      isPresented: $showFABMenu,
-      titleVisibility: .hidden
-    ) {
-      iPadFABMenuActions
     }
     .onChange(of: showFABMenu) { _, isPresented in
       if isPresented {
@@ -236,9 +234,26 @@ struct iPadContentView: View {
     .presentationDetents([.medium])
   }
 
-  /// Single source of truth for button visibility (matches iPhone pattern)
-  private var shouldHideButtons: Bool {
-    overlayState.isOverlayHidden
+  /// FAB hides when FAB menu is open
+  private var shouldHideFAB: Bool {
+    overlayState.isReasonActive(.fabMenuOpen)
+  }
+
+  /// Other overlay reasons (keyboard, text input, etc.) hide all buttons
+  private var shouldHideAllButtons: Bool {
+    overlayState.activeReasons.contains { reason in
+      switch reason {
+      case .fabMenuOpen, .filterMenuOpen:
+        false // FAB and filter handled independently
+      case .textInput, .keyboard, .modal, .searchOverlay, .settingsScreen:
+        true
+      }
+    }
+  }
+
+  /// Combined: hide FAB if its menu is open OR global hide reasons active
+  private var shouldHideFABCombined: Bool {
+    shouldHideFAB || shouldHideAllButtons
   }
 
   /// iPad floating FAB overlay with proper safe area handling
@@ -250,64 +265,57 @@ struct iPadContentView: View {
       Color.clear.allowsHitTesting(false)
 
       // FAB - context-aware with Menu for multi-option contexts
+      // Independent visibility: hides only when FAB menu open OR global hide reasons
       fabButton
         .padding(.trailing, DS.Spacing.floatingButtonMargin)
         .safeAreaPadding(.bottom, DS.Spacing.floatingButtonBottomInset)
+        .opacity(shouldHideFABCombined ? 0 : 1)
+        .offset(y: shouldHideFABCombined ? 12 : 0)
+        .allowsHitTesting(!shouldHideFABCombined)
+        .animation(.easeInOut(duration: 0.2), value: shouldHideFAB)
+        .animation(.easeInOut(duration: 0.2), value: shouldHideAllButtons)
     }
-    .opacity(shouldHideButtons ? 0 : 1)
-    .offset(y: shouldHideButtons ? 12 : 0)
-    .allowsHitTesting(!shouldHideButtons)
-    .animation(.easeInOut(duration: 0.2), value: shouldHideButtons)
   }
 
-  /// iPad FAB menu actions based on current context (for confirmationDialog)
-  @ViewBuilder
-  private var iPadFABMenuActions: some View {
+  /// Context-aware FAB menu items based on current context
+  private var fabMenuItems: [FABMenuItem] {
     switch derivedFABContext {
     case .workspace:
-      Button {
-        appState.sheetState = .quickEntry(type: .task)
-      } label: {
-        Label("New Task", systemImage: DS.Icons.Entity.task)
-      }
-      Button {
-        appState.sheetState = .quickEntry(type: .activity)
-      } label: {
-        Label("New Activity", systemImage: DS.Icons.Entity.activity)
-      }
-      Button {
-        appState.sheetState = .addListing()
-      } label: {
-        Label("New Listing", systemImage: DS.Icons.Entity.listing)
-      }
+      [
+        FABMenuItem(title: "New Task", icon: DS.Icons.Entity.task) {
+          appState.sheetState = .quickEntry(type: .task)
+        },
+        FABMenuItem(title: "New Activity", icon: DS.Icons.Entity.activity) {
+          appState.sheetState = .quickEntry(type: .activity)
+        },
+        FABMenuItem(title: "New Listing", icon: DS.Icons.Entity.listing) {
+          appState.sheetState = .addListing()
+        }
+      ]
 
     case .listingDetail(let listingId):
-      Button {
-        appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
-      } label: {
-        Label("New Task", systemImage: DS.Icons.Entity.task)
-      }
-      Button {
-        appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
-      } label: {
-        Label("New Activity", systemImage: DS.Icons.Entity.activity)
-      }
+      [
+        FABMenuItem(title: "New Task", icon: DS.Icons.Entity.task) {
+          appState.sheetState = .quickEntry(type: .task, preSelectedListingId: listingId)
+        },
+        FABMenuItem(title: "New Activity", icon: DS.Icons.Entity.activity) {
+          appState.sheetState = .quickEntry(type: .activity, preSelectedListingId: listingId)
+        }
+      ]
 
     case .realtor(let realtorId):
-      Button {
-        appState.sheetState = .addProperty(forRealtorId: realtorId)
-      } label: {
-        Label("New Property", systemImage: DS.Icons.Entity.property)
-      }
-      Button {
-        appState.sheetState = .addListing(forRealtorId: realtorId)
-      } label: {
-        Label("New Listing", systemImage: DS.Icons.Entity.listing)
-      }
+      [
+        FABMenuItem(title: "New Property", icon: DS.Icons.Entity.property) {
+          appState.sheetState = .addProperty(forRealtorId: realtorId)
+        },
+        FABMenuItem(title: "New Listing", icon: DS.Icons.Entity.listing) {
+          appState.sheetState = .addListing(forRealtorId: realtorId)
+        }
+      ]
 
     case .listingList, .properties:
       // Single-action contexts don't use the menu
-      EmptyView()
+      []
     }
   }
 
@@ -328,7 +336,7 @@ struct iPadContentView: View {
       }
 
     case .workspace, .listingDetail, .realtor:
-      // Multi-option: tap to show confirmationDialog (proper dismiss tracking via isPresented binding)
+      // Multi-option: tap to show custom menu overlay with iOS 26 effects
       fabVisual
         .onTapGesture {
           showFABMenu = true
@@ -336,8 +344,8 @@ struct iPadContentView: View {
     }
   }
 
-  /// Visual representation of FAB (used as Menu label for multi-option contexts)
-  /// Uses Circle() as root view to ensure circular bounds propagate to Menu's internal button wrapper.
+  /// Visual representation of FAB (used for multi-option contexts)
+  /// Uses Circle() as root view to ensure circular bounds.
   private var fabVisual: some View {
     Circle()
       .fill(DS.Colors.accent)
