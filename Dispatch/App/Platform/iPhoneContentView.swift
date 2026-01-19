@@ -137,7 +137,7 @@ struct iPhoneContentView: View {
         onSave: { onRequestSync() }
       )
 
-    case .addListing(let forRealtorId):
+    case .addListing:
       AddListingSheet(
         currentUserId: currentUserId,
         onSave: { onRequestSync() }

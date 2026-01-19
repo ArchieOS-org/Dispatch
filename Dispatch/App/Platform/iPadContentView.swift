@@ -255,6 +255,7 @@ struct iPadContentView: View {
         fabVisual
       }
       .menuIndicator(.hidden)
+      .buttonStyle(.borderless)
 
     case .listingDetail(let listingId):
       // Multi-option: Menu anchored to FAB (Task/Activity only, pre-select listing)
@@ -273,6 +274,7 @@ struct iPadContentView: View {
         fabVisual
       }
       .menuIndicator(.hidden)
+      .buttonStyle(.borderless)
 
     case .realtor(let realtorId):
       // Multi-option: Menu anchored to FAB
@@ -291,6 +293,7 @@ struct iPadContentView: View {
         fabVisual
       }
       .menuIndicator(.hidden)
+      .buttonStyle(.borderless)
     }
   }
 
@@ -320,7 +323,7 @@ struct iPadContentView: View {
         onSave: { onRequestSync() }
       )
 
-    case .addListing(let forRealtorId):
+    case .addListing:
       AddListingSheet(
         currentUserId: currentUserId,
         onSave: { onRequestSync() }

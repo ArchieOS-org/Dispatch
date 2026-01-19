@@ -112,6 +112,7 @@ struct GlobalFloatingButtons: View {
         fabVisual
       }
       .menuIndicator(.hidden)
+      .buttonStyle(.borderless)
 
     case .listingDetail(let listingId):
       // Multi-option: Menu anchored to FAB (Task/Activity only, pre-select listing)
@@ -130,6 +131,7 @@ struct GlobalFloatingButtons: View {
         fabVisual
       }
       .menuIndicator(.hidden)
+      .buttonStyle(.borderless)
 
     case .realtor(let realtorId):
       // Multi-option: Menu anchored to FAB
@@ -148,6 +150,7 @@ struct GlobalFloatingButtons: View {
         fabVisual
       }
       .menuIndicator(.hidden)
+      .buttonStyle(.borderless)
     }
   }
 

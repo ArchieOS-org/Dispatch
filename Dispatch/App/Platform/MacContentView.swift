@@ -484,12 +484,11 @@ struct MacContentView: View {
         onSave: { onRequestSync() }
       )
 
-    case .addListing(let forRealtorId):
+    case .addListing:
       AddListingSheet(
         currentUserId: currentUserId,
         onSave: { onRequestSync() }
       )
-      // Note: AddListingSheet doesn't yet support forRealtorId - future enhancement
 
     case .addRealtor:
       EditRealtorSheet()
