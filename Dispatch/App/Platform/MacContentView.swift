@@ -251,15 +251,7 @@ struct MacContentView: View {
     }
     .navigationSplitViewStyle(.balanced)
     .modifier(ToolbarBackgroundModifier())
-    // Handle sidebar toggle via notification (Cmd+/)
-    // Only respond if THIS window is the key (focused) window
-    .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
-      if controlActiveState == .key {
-        withAnimation {
-          columnVisibility = columnVisibility == .all ? .detailOnly : .all
-        }
-      }
-    }
+    .focusedValue(\.columnVisibility, $columnVisibility)
   }
 
   /// macOS tab counts for SidebarTabList.
@@ -418,5 +410,27 @@ private struct ToolbarBackgroundModifier: ViewModifier {
       content
     }
   }
+}
+
+// MARK: - Preview
+
+#Preview {
+  MacContentView(
+    stageCounts: [:],
+    workspaceTasks: [],
+    workspaceActivities: [],
+    activeListings: [],
+    activeProperties: [],
+    activeRealtors: [],
+    users: [],
+    currentUserId: UUID(),
+    pathBindingProvider: { _ in .constant([]) },
+    onSelectSearchResult: { _ in },
+    onRequestSync: { }
+  )
+  .environmentObject(AppState())
+  .environmentObject(SyncManager())
+  .environment(WindowUIState())
+  .frame(width: 1100, height: 750)
 }
 #endif
