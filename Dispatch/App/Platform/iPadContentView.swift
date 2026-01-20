@@ -115,50 +115,12 @@ struct iPadContentView: View {
         stagePickerSheet
       }
 
-      // FAB overlay for iPad
-      iPadFABOverlay
-
-      // Custom FAB menu overlay with iOS 26 effects (liquid glass + spring animation)
-      FABMenuOverlay(
-        isPresented: $showFABMenu,
-        items: fabMenuItems
-      )
-      .opacity(shouldHideFABCombined ? 0 : 1)
-      .offset(y: shouldHideFABCombined ? 12 : 0)
-      .allowsHitTesting(!shouldHideFABCombined)
-      .animation(.easeInOut(duration: 0.2), value: shouldHideFAB)
-      .animation(.easeInOut(duration: 0.2), value: shouldHideAllButtons)
-
-      // Floating filter menu overlay (tap cycles, long-press opens menu)
-      if appState.lensState.showFilterButton {
-        FilterMenuOverlay(
-          isPresented: $showFilterMenu,
-          audience: $appState.lensState.audience
-        )
-        .opacity(shouldHideFilterCombined ? 0 : 1)
-        .offset(y: shouldHideFilterCombined ? 12 : 0)
-        .allowsHitTesting(!shouldHideFilterCombined)
-        .animation(.easeInOut(duration: 0.2), value: shouldHideFilter)
-        .animation(.easeInOut(duration: 0.2), value: shouldHideAllButtons)
-      }
+      // FAB and Filter floating buttons overlay for iPad
+      iPadFloatingButtonsOverlay
     }
     // iPad Sheet Handling driven by AppState
     .sheet(item: appState.sheetBinding) { state in
       sheetContent(for: state)
-    }
-    .onChange(of: showFABMenu) { _, isPresented in
-      if isPresented {
-        overlayState.hide(reason: .fabMenuOpen)
-      } else {
-        overlayState.show(reason: .fabMenuOpen)
-      }
-    }
-    .onChange(of: showFilterMenu) { _, isPresented in
-      if isPresented {
-        overlayState.hide(reason: .filterMenuOpen)
-      } else {
-        overlayState.show(reason: .filterMenuOpen)
-      }
     }
   }
 
@@ -170,11 +132,13 @@ struct iPadContentView: View {
   /// Controls stage picker sheet visibility (for tab-bar mode fallback)
   @State private var showStagePicker = false
 
-  /// Controls FAB menu presentation
-  @State private var showFABMenu = false
+  /// Scaled icon size for FAB (base: 24pt, relative to title3)
+  @ScaledMetric(relativeTo: .title3)
+  private var scaledFABIconSize: CGFloat = 24
 
-  /// Controls filter menu presentation
-  @State private var showFilterMenu = false
+  /// Scaled icon size for filter button (base: 20pt, relative to body)
+  @ScaledMetric(relativeTo: .body)
+  private var scaledFilterIconSize: CGFloat = 20
 
   /// Derived FAB context from router state (environment doesn't propagate to overlay sibling)
   private var derivedFABContext: FABContext {
@@ -250,78 +214,145 @@ struct iPadContentView: View {
     .presentationDetents([.medium])
   }
 
-  /// FAB hides when FAB menu is open
-  private var shouldHideFAB: Bool {
-    overlayState.isReasonActive(.fabMenuOpen)
-  }
-
-  /// Filter button hides when filter menu is open
-  private var shouldHideFilter: Bool {
-    overlayState.isReasonActive(.filterMenuOpen)
-  }
-
   /// Other overlay reasons (keyboard, text input, etc.) hide all buttons
   private var shouldHideAllButtons: Bool {
     overlayState.activeReasons.contains { reason in
       switch reason {
       case .fabMenuOpen, .filterMenuOpen:
-        false // FAB and filter handled independently
+        false // Menu presentation handled by SwiftUI Menu
       case .textInput, .keyboard, .modal, .searchOverlay, .settingsScreen:
         true
       }
     }
   }
 
-  /// Combined: hide FAB if its menu is open OR global hide reasons active
-  private var shouldHideFABCombined: Bool {
-    shouldHideFAB || shouldHideAllButtons
-  }
-
-  /// Combined: hide filter if its menu is open OR global hide reasons active
-  private var shouldHideFilterCombined: Bool {
-    shouldHideFilter || shouldHideAllButtons
-  }
-
-  /// iPad floating FAB overlay with proper safe area handling
+  /// iPad floating buttons overlay with both FAB and filter button
   @ViewBuilder
-  private var iPadFABOverlay: some View {
-    // ZStack so spacer doesn't block FAB taps
-    ZStack(alignment: .bottomTrailing) {
+  private var iPadFloatingButtonsOverlay: some View {
+    ZStack(alignment: .bottom) {
       // Spacer layer - pass through all touches
       Color.clear.allowsHitTesting(false)
 
-      // FAB area
-      // - Single-action contexts: show the plain FAB here
-      // - Multi-option contexts: the menu button is rendered by `FABMenuOverlay` (so we must NOT render a second FAB)
-      Group {
-        switch derivedFABContext {
-        case .listingList:
-          FloatingActionButton {
-            appState.sheetState = .addListing()
-          }
+      // Floating buttons HStack (matching GlobalFloatingButtons layout)
+      HStack(alignment: .bottom) {
+        // Filter Button (left) - tap cycles, long-press opens menu
+        if appState.lensState.showFilterButton {
+          filterButton
+            .opacity(shouldHideAllButtons ? 0 : 1)
+            .offset(y: shouldHideAllButtons ? 12 : 0)
+            .allowsHitTesting(!shouldHideAllButtons)
+            .animation(.easeInOut(duration: 0.2), value: shouldHideAllButtons)
+        }
 
-        case .properties:
-          FloatingActionButton {
-            appState.sheetState = .addProperty()
-          }
+        Spacer()
 
-        default:
-          // Keep layout stable while the menu-backed FAB is shown by the separate overlay.
-          Color.clear
-            .frame(
-              width: DS.Spacing.floatingButtonSizeLarge,
-              height: DS.Spacing.floatingButtonSizeLarge
-            )
+        // FAB (right) - context-aware
+        fabButton
+          .opacity(shouldHideAllButtons ? 0 : 1)
+          .offset(y: shouldHideAllButtons ? 12 : 0)
+          .allowsHitTesting(!shouldHideAllButtons)
+          .animation(.easeInOut(duration: 0.2), value: shouldHideAllButtons)
+      }
+      .padding(.horizontal, DS.Spacing.floatingButtonMargin)
+      .safeAreaPadding(.bottom, DS.Spacing.floatingButtonBottomInset)
+    }
+  }
+
+  /// Filter button with Menu: tap cycles filter, long-press shows all options
+  @ViewBuilder
+  private var filterButton: some View {
+    Menu {
+      ForEach(AudienceLens.allCases, id: \.self) { lens in
+        Button {
+          appState.lensState.audience = lens
+        } label: {
+          Label(lens.label, systemImage: lens.icon)
         }
       }
-      .padding(.trailing, DS.Spacing.floatingButtonMargin)
-      .safeAreaPadding(.bottom, DS.Spacing.floatingButtonBottomInset)
-      .opacity(shouldHideFABCombined ? 0 : 1)
-      .offset(y: shouldHideFABCombined ? 12 : 0)
-      .allowsHitTesting(!shouldHideFABCombined)
-      .animation(.easeInOut(duration: 0.2), value: shouldHideFAB)
-      .animation(.easeInOut(duration: 0.2), value: shouldHideAllButtons)
+    } label: {
+      filterButtonVisual
+    } primaryAction: {
+      // Tap action: cycle to next filter
+      appState.lensState.audience = appState.lensState.audience.next
     }
+    .sensoryFeedback(.selection, trigger: appState.lensState.audience)
+    .accessibilityIdentifier("AudienceFilterButton")
+    .accessibilityLabel("Filter: \(appState.lensState.audience.label)")
+    .accessibilityHint("Tap to cycle, hold for options")
+  }
+
+  /// Visual representation of filter button
+  private var filterButtonVisual: some View {
+    ZStack {
+      // 44pt glass circle, centered in 56pt hit area
+      Circle()
+        .fill(.ultraThinMaterial)
+        .frame(width: DS.Spacing.floatingButtonSize, height: DS.Spacing.floatingButtonSize)
+        .dsShadow(DS.Shadows.medium)
+
+      // Icon
+      Image(systemName: appState.lensState.audience.icon)
+        .symbolRenderingMode(.monochrome)
+        .foregroundStyle(
+          appState.lensState.audience == .all ? .primary : appState.lensState.audience.tintColor
+        )
+        .font(.system(size: scaledFilterIconSize, weight: .semibold))
+    }
+    .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
+    .contentShape(Circle())
+  }
+
+  /// Context-aware FAB: direct action for single-option contexts, Menu for multi-option
+  @ViewBuilder
+  private var fabButton: some View {
+    switch derivedFABContext {
+    case .listingList:
+      // Single action: create Listing - direct tap
+      FloatingActionButton {
+        appState.sheetState = .addListing()
+      }
+
+    case .properties:
+      // Single action: create Property - direct tap
+      FloatingActionButton {
+        appState.sheetState = .addProperty()
+      }
+
+    case .workspace, .listingDetail, .realtor:
+      // Multi-option: SwiftUI Menu with FAB as label
+      fabMenu
+    }
+  }
+
+  /// FAB with integrated Menu for multi-option contexts
+  private var fabMenu: some View {
+    Menu {
+      ForEach(fabMenuItems) { item in
+        Button {
+          item.action()
+        } label: {
+          Label(item.title, systemImage: item.icon)
+        }
+      }
+    } label: {
+      fabVisual
+    }
+    .accessibilityLabel("Create")
+    .accessibilityHint("Opens menu with creation options")
+  }
+
+  /// Visual representation of FAB (used for multi-option contexts)
+  private var fabVisual: some View {
+    Circle()
+      .fill(DS.Colors.accent)
+      .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
+      .overlay {
+        Image(systemName: "plus")
+          .font(.system(size: scaledFABIconSize, weight: .semibold))
+          .foregroundColor(.white)
+      }
+      .dsShadow(DS.Shadows.elevated)
+      .compositingGroup()
   }
 
   /// Context-aware FAB menu items based on current context
