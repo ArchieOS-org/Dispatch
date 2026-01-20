@@ -31,7 +31,7 @@ description: |
   Platform consistency - ui-polish handles multi-platform refinement
   </commentary>
   </example>
-model: opus
+model: sonnet
 tools:
   - Read
   - Edit
