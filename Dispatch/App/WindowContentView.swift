@@ -33,36 +33,31 @@ struct WindowContentView: View {
 
   var body: some View {
     Group {
-      ZStack {
-        if DispatchApp.isUITesting || appState.authManager.isAuthenticated {
-          if DispatchApp.isUITesting || syncManager.currentUser != nil {
-            AppShellView()
-              .transition(.opacity)
-          } else {
-            OnboardingLoadingView()
-              .transition(.opacity)
-          }
+      if DispatchApp.isUITesting || appState.authManager.isAuthenticated {
+        if DispatchApp.isUITesting || syncManager.currentUser != nil {
+          AppShellView()
         } else {
-          LoginView()
-            .transition(.opacity)
+          OnboardingLoadingView()
         }
+      } else {
+        LoginView()
       }
-      .animation(.easeInOut, value: appState.authManager.isAuthenticated)
-      .animation(.easeInOut, value: syncManager.currentUser != nil)
     }
+    .animation(.easeInOut, value: appState.authManager.isAuthenticated)
+    .animation(.easeInOut, value: syncManager.currentUser != nil)
     #if os(macOS)
     // Inject per-window state into environment (macOS only)
     .environment(windowUIState)
     #endif
     #if DEBUG
     .sheet(isPresented: $showTestHarness) {
-        SyncTestHarness()
-          .environmentObject(SyncManager.shared)
-      }
+      SyncTestHarness()
+        .environmentObject(SyncManager.shared)
+    }
     #if os(iOS)
-      .onShake {
-        showTestHarness = true
-      }
+    .onShake {
+      showTestHarness = true
+    }
     #endif
     #endif
   }
@@ -79,3 +74,31 @@ struct WindowContentView: View {
   #endif
 
 }
+
+// MARK: - Previews
+
+#Preview("Authenticated") {
+  WindowContentView(
+    appState: AppState(mode: .preview),
+    showTestHarness: .constant(false)
+  )
+  .environmentObject(SyncManager.shared)
+}
+
+#Preview("Login View") {
+  WindowContentView(
+    appState: AppState(mode: .preview),
+    showTestHarness: .constant(false)
+  )
+  .environmentObject(SyncManager.shared)
+}
+
+#if DEBUG
+#Preview("Test Harness") {
+  WindowContentView(
+    appState: AppState(mode: .preview),
+    showTestHarness: .constant(true)
+  )
+  .environmentObject(SyncManager.shared)
+}
+#endif

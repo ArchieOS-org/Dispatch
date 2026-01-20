@@ -3,13 +3,14 @@
 //  Dispatch
 //
 //  iPad-specific navigation view extracted from ContentView.
-//  Uses TabView with sidebarAdaptable style (iOS 18+).
+//  Uses NavigationSplitView with UnifiedSidebarContent for consistent
+//  sidebar UI shared with macOS (80%+ code sharing).
 //
 
 #if os(iOS)
 import SwiftUI
 
-/// iPad navigation container with TabView using sidebarAdaptable style.
+/// iPad navigation container with NavigationSplitView using unified sidebar.
 /// Extracted from ContentView to reduce complexity and enable platform-specific optimizations.
 struct iPadContentView: View {
 
@@ -50,72 +51,29 @@ struct iPadContentView: View {
 
   var body: some View {
     ZStack {
-      TabView(selection: selectedDestinationBinding) {
-        // MARK: - Hidden stage tabs (programmatic selection only)
-        // Not in a TabSection to avoid empty section header.
-        // Hidden from both tabBar and sidebar; accessed via StageCardsHeader.
-        ForEach(ListingStage.allCases, id: \.self) { stage in
-          Tab(stage.displayName, systemImage: stage.icon, value: SidebarDestination.stage(stage)) {
-            // NavigationStack structure matches main tabs for consistency.
-            // Tint is applied inside StandardScreen.innerContent for content controls.
-            NavigationStack(path: pathBindingProvider(.stage(stage))) {
-              StagedListingsView(stage: stage)
-                .fabContext(.listingList)
-                .appDestinations()
-                .toolbar {
-                  // Removed FilterMenu toolbar button
-                }
-            }
-          }
-          .defaultVisibility(.hidden, for: .tabBar)
-          .defaultVisibility(.hidden, for: .sidebar)
-        }
-
-        // MARK: - Main tabs section
-        TabSection {
-          ForEach(AppTab.mainTabs) { tab in
-            Tab(tab.title, systemImage: tab.icon, value: SidebarDestination.tab(tab)) {
-              NavigationStack(path: pathBindingProvider(.tab(tab))) {
-                tabRootView(for: tab)
-                  .appDestinations()
-                  .toolbar {
-                    // Removed FilterMenu toolbar button
-                    // Stage picker button for tab-bar mode fallback
-                    ToolbarItem(placement: .primaryAction) {
-                      stagePickerButton
-                    }
-                  }
-              }
-            }
-            .badge(badgeCount(for: tab))
-          }
-        }
-
-        // MARK: - Settings section (separate for visual grouping)
-        TabSection {
-          Tab("Settings", systemImage: "gearshape", value: SidebarDestination.tab(.settings)) {
-            NavigationStack {
-              SettingsView()
-                .appDestinations()
-            }
-          }
-        }
-      }
-      .tabViewStyle(.sidebarAdaptable)
-      .tabViewSidebarHeader {
-        // Stage cards header - tapping uses programmatic selection (never pops)
-        StageCardsHeader(
+      NavigationSplitView(columnVisibility: $columnVisibility) {
+        // Unified sidebar content (shared with macOS)
+        UnifiedSidebarContent(
           stageCounts: stageCounts,
+          tabCounts: iPadTabCounts,
+          overdueCount: sidebarOverdueCount,
+          selection: sidebarSelectionBinding,
           onSelectStage: { stage in
             appState.dispatch(.setSelectedDestination(.stage(stage)))
           }
         )
+        .navigationTitle("Dispatch")
+        .navigationBarTitleDisplayMode(.inline)
+      } detail: {
+        // Detail view based on selected destination
+        NavigationStack(path: pathBindingProvider(appState.router.selectedDestination)) {
+          destinationRootView(for: appState.router.selectedDestination)
+            .appDestinations()
+        }
       }
-      .sheet(isPresented: $showStagePicker) {
-        stagePickerSheet
-      }
+      .navigationSplitViewStyle(.balanced)
 
-      // FAB and Filter floating buttons overlay for iPad
+      // FAB and Filter floating buttons overlay for iPad (pure SwiftUI Menu)
       iPadFloatingButtonsOverlay
     }
     // iPad Sheet Handling driven by AppState
@@ -129,8 +87,8 @@ struct iPadContentView: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var overlayState: AppOverlayState
 
-  /// Controls stage picker sheet visibility (for tab-bar mode fallback)
-  @State private var showStagePicker = false
+  /// Controls sidebar column visibility
+  @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
   /// Scaled icon size for FAB (base: 24pt, relative to title3)
   @ScaledMetric(relativeTo: .title3)
@@ -165,53 +123,35 @@ struct iPadContentView: View {
       + workspaceActivities.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
   }
 
-  /// Toolbar button to open stage picker (fallback for tab-bar mode)
-  @ViewBuilder
-  private var stagePickerButton: some View {
-    Button {
-      showStagePicker = true
-    } label: {
-      Label("Stages", systemImage: "folder")
-    }
+  /// Tab counts for UnifiedSidebarContent.
+  /// Note: iPad uses NavigationSplitView with sidebar, so tab badges are replaced by
+  /// inline counts in SidebarMenuRow (e.g., "Properties 8"). The old TabView badgeCount(for:)
+  /// approach only applies to iPhone's tab bar, which isn't used on iPad.
+  private var iPadTabCounts: [AppTab: Int] {
+    [
+      .workspace: workspaceTasks.count + workspaceActivities.count,
+      .properties: activeProperties.count,
+      .listings: activeListings.count,
+      .realtors: activeRealtors.count
+    ]
   }
 
-  /// Stage picker sheet for tab-bar mode fallback
-  private var stagePickerSheet: some View {
-    NavigationStack {
-      List {
-        ForEach(ListingStage.allCases, id: \.self) { stage in
-          Button {
-            showStagePicker = false
-            appState.dispatch(.setSelectedDestination(.stage(stage)))
-          } label: {
-            Label {
-              HStack {
-                Text(stage.displayName)
-                Spacer()
-                if let stageCount = stageCounts[stage], stageCount > 0, stage != .done {
-                  Text("\(stageCount)")
-                    .foregroundStyle(.secondary)
-                }
-              }
-            } icon: {
-              Image(systemName: stage.icon)
-                .foregroundStyle(stage.color)
-            }
-          }
-          .foregroundStyle(.primary)
+  /// Computed binding for List(selection:) that bridges non-optional AppState to optional List API.
+  private var sidebarSelectionBinding: Binding<SidebarDestination?> {
+    Binding(
+      get: {
+        appState.router.selectedDestination.isStage
+          ? nil
+          : appState.router.selectedDestination
+      },
+      set: { newValue in
+        guard let dest = newValue, dest != appState.router.selectedDestination else { return }
+        // Defer state change to avoid "Publishing changes from within view updates" error.
+        Task { @MainActor in
+          appState.dispatch(.userSelectedDestination(dest))
         }
       }
-      .navigationTitle("Stages")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") {
-            showStagePicker = false
-          }
-        }
-      }
-    }
-    .presentationDetents([.medium])
+    )
   }
 
   /// Other overlay reasons (keyboard, text input, etc.) hide all buttons
@@ -226,7 +166,7 @@ struct iPadContentView: View {
     }
   }
 
-  /// iPad floating buttons overlay with both FAB and filter button
+  /// iPad floating buttons overlay with both FAB and filter button (pure SwiftUI Menu)
   @ViewBuilder
   private var iPadFloatingButtonsOverlay: some View {
     ZStack(alignment: .bottom) {
@@ -397,6 +337,49 @@ struct iPadContentView: View {
     }
   }
 
+  // MARK: - Navigation
+
+  /// Root view for any destination (tab or stage) - iPad
+  @ViewBuilder
+  private func destinationRootView(for destination: SidebarDestination) -> some View {
+    switch destination {
+    case .tab(let tab):
+      tabRootView(for: tab)
+    case .stage(let stage):
+      StagedListingsView(stage: stage)
+    }
+  }
+
+  /// Root view for each tab in iPad.
+  @ViewBuilder
+  private func tabRootView(for tab: AppTab) -> some View {
+    switch tab {
+    case .workspace:
+      MyWorkspaceView()
+        .fabContext(.workspace)
+
+    case .properties:
+      PropertiesListView()
+        .fabContext(.properties)
+
+    case .listings:
+      ListingListView()
+        .fabContext(.listingList)
+
+    case .realtors:
+      RealtorsListView()
+        .fabContext(.workspace) // Realtor list uses workspace context (no specific realtor)
+
+    case .settings:
+      SettingsView()
+        .fabContext(.workspace)
+
+    case .search:
+      MyWorkspaceView() // Search is overlay, shouldn't be a tab destination
+        .fabContext(.workspace)
+    }
+  }
+
   // MARK: - Sheet Content
 
   @ViewBuilder
@@ -431,53 +414,6 @@ struct iPadContentView: View {
 
     case .none:
       EmptyView()
-    }
-  }
-
-  /// Root view for each tab in iPad TabView.
-  /// Sets FABContext for context-aware FAB behavior.
-  @ViewBuilder
-  private func tabRootView(for tab: AppTab) -> some View {
-    switch tab {
-    case .workspace:
-      MyWorkspaceView()
-        .fabContext(.workspace)
-
-    case .properties:
-      PropertiesListView()
-        .fabContext(.properties)
-
-    case .listings:
-      ListingListView()
-        .fabContext(.listingList)
-
-    case .realtors:
-      RealtorsListView()
-        .fabContext(.workspace) // Realtor list uses workspace context (no specific realtor)
-
-    case .settings:
-      SettingsView()
-        .fabContext(.workspace)
-
-    case .search:
-      MyWorkspaceView() // Search is overlay, shouldn't be a tab destination
-        .fabContext(.workspace)
-    }
-  }
-
-  /// Badge count for iPad tab badges.
-  private func badgeCount(for tab: AppTab) -> Int {
-    switch tab {
-    case .workspace:
-      sidebarOverdueCount > 0 ? sidebarOverdueCount : 0
-    case .listings:
-      activeListings.count
-    case .properties:
-      activeProperties.count
-    case .realtors:
-      activeRealtors.count
-    case .settings, .search:
-      0
     }
   }
 

@@ -38,6 +38,16 @@ struct DispatchApp: App {
       ActivityTemplate.self,
       ListingGeneratorDraft.self
     ])
+
+    // Ensure Application Support directory exists (prevents CoreData startup errors)
+    // Only needed for persistent storage, not in-memory (UI testing) mode
+    if !isUITesting {
+      let fileManager = FileManager.default
+      if let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+        try? fileManager.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
+      }
+    }
+
     let modelConfiguration = ModelConfiguration(
       schema: schema,
       isStoredInMemoryOnly: isUITesting
@@ -92,6 +102,8 @@ struct DispatchApp: App {
     .modelContainer(sharedModelContainer)
     #if os(macOS)
       .defaultSize(width: DS.Spacing.windowDefaultWidth, height: DS.Spacing.windowDefaultHeight)
+      .windowStyle(.hiddenTitleBar)
+      .windowToolbarStyle(.unifiedCompact(showsTitle: false))
       .commands {
         // Pass the dispatch closure explicitly to avoid Environment lookup issues in menu bar
         DispatchCommands { cmd in

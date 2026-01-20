@@ -31,7 +31,7 @@ description: |
   Deep exploration to understand impact radius
   </commentary>
   </example>
-model: opus
+model: haiku
 tools:
   - Read
   - Grep

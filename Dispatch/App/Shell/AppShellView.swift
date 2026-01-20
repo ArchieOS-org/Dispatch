@@ -21,9 +21,7 @@ struct AppShellView: View {
     ContentView()
       .applyMacWindowPolicy() // Replaces .configureMacWindow()
     #if os(macOS)
-      // Hide toolbar background so column backgrounds extend to top
-      .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-      // Keep toolbar visible in full-screen (we make the background transparent via NSVisualEffectView)
+      // Keep toolbar visible in full-screen
       // Traffic lights appear on hover via FullScreenTrafficLightCoordinator
       .windowToolbarFullScreenVisibility(.visible)
     #endif

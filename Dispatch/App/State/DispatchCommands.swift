@@ -7,6 +7,27 @@
 
 import SwiftUI
 
+// MARK: - ColumnVisibilityKey
+
+/// FocusedValueKey for NavigationSplitView column visibility binding.
+/// Enables menu commands to toggle the sidebar of the focused window.
+private struct ColumnVisibilityKey: FocusedValueKey {
+  typealias Value = Binding<NavigationSplitViewVisibility>
+}
+
+// MARK: - FocusedValues
+
+extension FocusedValues {
+  /// Column visibility binding from the focused NavigationSplitView.
+  /// Used by DispatchCommands to toggle sidebar via Cmd+/ shortcut.
+  var columnVisibility: Binding<NavigationSplitViewVisibility>? {
+    get { self[ColumnVisibilityKey.self] }
+    set { self[ColumnVisibilityKey.self] = newValue }
+  }
+}
+
+// MARK: - DispatchCommands
+
 /// Native macOS Menu Bar Commands.
 /// Bridges system menu actions to AppState commands.
 struct DispatchCommands: Commands {
@@ -25,6 +46,10 @@ struct DispatchCommands: Commands {
   // OR we can make this struct take the actions directly.
 
   @Environment(\.openWindow) private var openWindow
+
+  /// Focused column visibility binding from the active NavigationSplitView window.
+  /// Enables per-window sidebar toggle via Cmd+/ shortcut.
+  @FocusedValue(\.columnVisibility) private var columnVisibility
 
   var dispatch: (AppCommand) -> Void
 
@@ -68,7 +93,15 @@ struct DispatchCommands: Commands {
 
     CommandGroup(after: .sidebar) {
       Button("Toggle Sidebar") {
-        dispatch(.toggleSidebar)
+        // Use FocusedValue for per-window sidebar toggle
+        // Falls back to AppState dispatch if no focused window
+        if let visibility = columnVisibility {
+          withAnimation {
+            visibility.wrappedValue = visibility.wrappedValue == .all ? .detailOnly : .all
+          }
+        } else {
+          dispatch(.toggleSidebar)
+        }
       }
       .keyboardShortcut("/", modifiers: .command)
     }

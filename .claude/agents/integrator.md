@@ -31,7 +31,7 @@ description: |
   Build verification - integrator reports blockers clearly
   </commentary>
   </example>
-model: opus
+model: haiku
 tools:
   - Read
   - Grep

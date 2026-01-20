@@ -5,6 +5,13 @@
 //  Design System - Glass Effect Primitives
 //  Platform-adaptive glass and material effects.
 //
+//  WWDC25 Liquid Glass APIs:
+//  - `.glassEffect(_ glass: Glass, in shape: Shape)` for Liquid Glass material
+//  - `.sharedBackgroundVisibility(.hidden)` for toolbar item grouping
+//  - Use with `GlassEffectContainer` for morphing between shapes
+//
+//  Currently using Material fallback until iOS 26/macOS 26 SDKs are stable in CI.
+//
 
 import SwiftUI
 
@@ -22,13 +29,34 @@ extension View {
   }
 
   /// Applies a glass effect background for sidebars and panels on macOS 26+.
-  /// Falls back to regularMaterial on earlier versions.
+  /// Falls back to platform-appropriate material on earlier versions.
   /// Use .regular (not .interactive) for static sidebars - less visual noise.
   @ViewBuilder
   public func glassSidebarBackground() -> some View {
     // glassEffect is not available on all CI SDKs.
-    // Use material fallback for now.
-    background(.regularMaterial)
+    // Use platform-adaptive material fallback for now.
+    #if os(macOS)
+    // macOS: thinMaterial matches toolbar material for seamless integration under unified toolbar.
+    // Using same material as glassFullWidthToolbarBackground() prevents visible color line at junction.
+    background(.thinMaterial)
+    #else
+    // iOS: thinMaterial for translucent sidebars
+    background(.thinMaterial)
+    #endif
+  }
+
+  /// Applies a rounded rectangle glass effect for toolbars on iOS 26+/macOS 26+.
+  /// Falls back to thinMaterial on earlier versions.
+  /// Use for floating toolbars that need Liquid Glass appearance.
+  @ViewBuilder
+  public func glassToolbarBackground() -> some View {
+    // When iOS 26/macOS 26 SDKs are stable:
+    // if #available(iOS 26.0, macOS 26.0, *) {
+    //   self.glassEffect(.regular, in: .rect(cornerRadius: DS.Radius.large))
+    // } else {
+    //   glassToolbarFallback()
+    // }
+    glassToolbarFallback()
   }
 
   // MARK: Private
@@ -42,6 +70,83 @@ extension View {
           .strokeBorder(.white.opacity(0.2), lineWidth: 1)
       }
       .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+  }
+
+  @ViewBuilder
+  private func glassToolbarFallback() -> some View {
+    background {
+      RoundedRectangle(cornerRadius: DS.Radius.large)
+        .fill(.thinMaterial)
+        .overlay {
+          RoundedRectangle(cornerRadius: DS.Radius.large)
+            .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
+        }
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+    }
+  }
+
+}
+
+// MARK: - Shape Glass Effects
+
+extension Shape {
+
+  /// Applies a floating glass panel effect for sidebars on macOS.
+  /// Uses ultraThinMaterial for maximum translucency with shadow and stroke border.
+  /// On iOS, falls back to thinMaterial without floating panel styling.
+  /// - Note: Call on a Shape (e.g., `RoundedRectangle(cornerRadius: 16).glassFloatingSidebarBackground()`)
+  @ViewBuilder
+  public func glassFloatingSidebarBackground() -> some View {
+    #if os(macOS)
+    fill(.ultraThinMaterial)
+      .overlay {
+        RoundedRectangle(cornerRadius: DS.Radius.floatingPanel)
+          .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
+      }
+      .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
+    #else
+    fill(.thinMaterial)
+    #endif
+  }
+
+  /// Applies a floating glass panel effect for bottom toolbars on macOS.
+  /// Uses thinMaterial with rounded corners, shadow, and stroke border.
+  /// - Note: Call on a Shape (e.g., `RoundedRectangle(cornerRadius: 16).glassFloatingToolbarBackground()`)
+  @ViewBuilder
+  public func glassFloatingToolbarBackground() -> some View {
+    #if os(macOS)
+    fill(.thinMaterial)
+      .overlay {
+        RoundedRectangle(cornerRadius: DS.Radius.floatingPanel)
+          .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
+      }
+      .shadow(color: .black.opacity(0.12), radius: 10, x: 0, y: -2)
+    #else
+    fill(.regularMaterial)
+    #endif
+  }
+
+}
+
+// MARK: - View Glass Effects (Full-Width)
+
+extension View {
+
+  /// Applies a full-width glass toolbar background for macOS.
+  /// No rounded corners - spans the full window width.
+  /// Uses thin material with a top stroke for visual separation.
+  @ViewBuilder
+  public func glassFullWidthToolbarBackground() -> some View {
+    #if os(macOS)
+    background(.thinMaterial)
+      .overlay(alignment: .top) {
+        Rectangle()
+          .fill(.white.opacity(0.15))
+          .frame(height: 0.5)
+      }
+    #else
+    background(.regularMaterial)
+    #endif
   }
 
 }

@@ -31,7 +31,7 @@ description: |
   Post-polish validation - xcode-pilot confirms changes work in simulator
   </commentary>
   </example>
-model: opus
+model: sonnet
 tools:
   - Read
   - Grep

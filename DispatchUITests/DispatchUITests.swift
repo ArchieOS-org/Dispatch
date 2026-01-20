@@ -33,9 +33,17 @@ final class DispatchUITests: XCTestCase {
 
     @MainActor
     func testLaunchPerformance() throws {
+        // Performance tests are unreliable in CI due to virtualized environment variability.
+        // Run locally to establish baseline metrics.
+        if ProcessInfo.processInfo.environment["CI"] != nil {
+            throw XCTSkip("Performance tests skipped in CI - run locally for metrics")
+        }
+
         // This measures how long it takes to launch your application.
         measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
+            let app = XCUIApplication()
+            app.launchArguments.append("--uitesting")
+            app.launch()
         }
     }
 }
