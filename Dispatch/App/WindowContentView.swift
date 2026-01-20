@@ -32,18 +32,15 @@ struct WindowContentView: View {
   // MARK: - Body
 
   var body: some View {
-    ZStack {
+    Group {
       if DispatchApp.isUITesting || appState.authManager.isAuthenticated {
         if DispatchApp.isUITesting || syncManager.currentUser != nil {
           AppShellView()
-            .transition(.opacity)
         } else {
           OnboardingLoadingView()
-            .transition(.opacity)
         }
       } else {
         LoginView()
-          .transition(.opacity)
       }
     }
     .animation(.easeInOut, value: appState.authManager.isAuthenticated)
