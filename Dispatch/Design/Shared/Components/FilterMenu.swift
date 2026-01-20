@@ -43,6 +43,7 @@ struct FilterMenu: View {
         .accessibilityIdentifier("AudienceFilterButton")
         .accessibilityLabel("Cycle filter")
         .accessibilityValue("\(audience.rawValue)|\(audience.icon)")
+        .accessibilityHint("Cycles through audience filters: All, Admin, Marketing")
 
       // Right: Chevron menu trigger with Picker
       Menu {
@@ -58,7 +59,7 @@ struct FilterMenu: View {
         Image(systemName: "chevron.down")
           .font(.system(size: chevronSize, weight: .bold))
           .foregroundStyle(.secondary)
-          .frame(width: 44, height: DS.Spacing.bottomToolbarButtonSize)
+          .frame(width: DS.Spacing.minTouchTarget, height: DS.Spacing.bottomToolbarButtonSize)
           .contentShape(Rectangle())
       }
       .menuStyle(.borderlessButton)
@@ -69,6 +70,7 @@ struct FilterMenu: View {
       #endif
         .accessibilityLabel("Choose filter")
         .accessibilityValue(audience.label)
+        .accessibilityHint("Opens menu to select audience filter")
     }
     .sensoryFeedback(.selection, trigger: audience)
   }
