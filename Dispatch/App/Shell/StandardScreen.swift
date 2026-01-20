@@ -117,10 +117,6 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     .applyLayoutWitness()
     #if os(iOS)
       .navigationBarTitleDisplayMode(.large)
-      // Reset color scheme for navigation bar to prevent accent tint from
-      // affecting title during interactive back gesture cancellation.
-      // nil = use system default (adapts to light/dark mode automatically).
-      .toolbarColorScheme(nil, for: .navigationBar)
     #endif
       // Reset tint at navigation level to prevent accent color bleeding into nav title
       // during interactive back gesture cancellation. The accent tint is applied to
@@ -153,7 +149,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
       // On iOS, extend under all edges for full-bleed appearance
       #if os(macOS)
       DS.Colors.Background.primary
-        .ignoresSafeArea(edges: [.horizontal, .bottom])
+        .ignoresSafeArea()
       #else
       DS.Colors.Background.primary
         .ignoresSafeArea()

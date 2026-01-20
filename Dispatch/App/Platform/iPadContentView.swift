@@ -34,7 +34,6 @@ struct iPadContentView: View {
             appState.dispatch(.setSelectedDestination(.stage(stage)))
           }
         )
-        .navigationTitle("Dispatch")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItemGroup(placement: .bottomBar) {
