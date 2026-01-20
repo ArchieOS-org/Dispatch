@@ -194,7 +194,9 @@ final class AppState: ObservableObject {
 
     case .toggleSidebar:
       #if os(macOS)
-      NSApp.keyWindow?.firstResponder?.tryToPerform(#selector(NSSplitViewController.toggleSidebar(_:)), with: nil)
+      // Post notification for NavigationSplitView-based sidebar toggle
+      // MacContentView listens and toggles columnVisibility (filtered by key window)
+      NotificationCenter.default.post(name: .toggleSidebar, object: nil)
       #endif
 
     case .syncNow:

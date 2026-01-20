@@ -252,9 +252,12 @@ struct MacContentView: View {
     .navigationSplitViewStyle(.balanced)
     .modifier(ToolbarBackgroundModifier())
     // Handle sidebar toggle via notification (Cmd+/)
+    // Only respond if THIS window is the key (focused) window
     .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
-      withAnimation {
-        columnVisibility = columnVisibility == .all ? .detailOnly : .all
+      if controlActiveState == .key {
+        withAnimation {
+          columnVisibility = columnVisibility == .all ? .detailOnly : .all
+        }
       }
     }
   }
