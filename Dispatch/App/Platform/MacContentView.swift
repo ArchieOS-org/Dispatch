@@ -50,48 +50,43 @@ struct MacContentView: View {
   let onRequestSync: () -> Void
 
   var body: some View {
-    ZStack(alignment: .bottom) {
-      ZStack {
-        sidebarNavigation
-      }
+    sidebarNavigation
       .overlay(alignment: .top) {
         quickFindOverlay
       }
-
-      // Bottom toolbar floats at bottom - doesn't steal layout space from NavigationSplitView
-      // ZStack allows sidebarNavigation to take full vertical height
-      BottomToolbar(
-        context: bottomToolbarContext,
-        audience: $appState.lensState.audience,
-        onNew: {
-          switch appState.router.selectedDestination {
-          case .tab(.listings), .stage:
-            appState.sheetState = .addListing
-          case .tab(.realtors):
-            appState.sheetState = .addRealtor
-          default:
-            appState.sheetState = .quickEntry(type: nil)
-          }
-        },
-        onSearch: {
-          windowUIState.openSearch(initialText: nil)
-        },
-        onDuplicateWindow: {
-          openWindow(id: "main")
-        },
-        duplicateWindowDisabled: !supportsMultipleWindows
-      )
-    }
-    .sheet(item: sheetStateBinding) { state in
-      sheetContent(for: state)
-    }
-    // Listen for menu bar Cmd+F notification (per-window handling)
-    // Only respond if THIS window is the key (focused) window
-    .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
-      if controlActiveState == .key {
-        windowUIState.openSearch(initialText: nil)
+      .overlay(alignment: .bottom) {
+        BottomToolbar(
+          context: bottomToolbarContext,
+          audience: $appState.lensState.audience,
+          onNew: {
+            switch appState.router.selectedDestination {
+            case .tab(.listings), .stage:
+              appState.sheetState = .addListing
+            case .tab(.realtors):
+              appState.sheetState = .addRealtor
+            default:
+              appState.sheetState = .quickEntry(type: nil)
+            }
+          },
+          onSearch: {
+            windowUIState.openSearch(initialText: nil)
+          },
+          onDuplicateWindow: {
+            openWindow(id: "main")
+          },
+          duplicateWindowDisabled: !supportsMultipleWindows
+        )
       }
-    }
+      .sheet(item: sheetStateBinding) { state in
+        sheetContent(for: state)
+      }
+      // Listen for menu bar Cmd+F notification (per-window handling)
+      // Only respond if THIS window is the key (focused) window
+      .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
+        if controlActiveState == .key {
+          windowUIState.openSearch(initialText: nil)
+        }
+      }
   }
 
   // MARK: Private
@@ -188,7 +183,6 @@ struct MacContentView: View {
         destinationRootView(for: appState.router.selectedDestination)
           .appDestinations()
       }
-      .modifier(BackgroundExtensionModifier())
       .toolbar(removing: .title)
       // Type Travel: alphanumeric keys open search with typed character
       // Uses SwiftUI's native .onKeyPress() which is inherently window-scoped
@@ -390,22 +384,6 @@ struct MacContentView: View {
     }
   }
 
-}
-
-// MARK: - Background Extension Modifier
-
-/// Extends detail content background under sidebar on macOS 26+ for seamless Liquid Glass visuals.
-/// Per Context7 docs: "Apply backgroundExtensionEffect() to a view in the detail column of a
-/// NavigationSplitView so it can extend under the sidebar region for seamless immersive visuals."
-private struct BackgroundExtensionModifier: ViewModifier {
-  func body(content: Content) -> some View {
-    if #available(macOS 26, *) {
-      content
-        .backgroundExtensionEffect()
-    } else {
-      content
-    }
-  }
 }
 
 // MARK: - Toolbar Background Modifier

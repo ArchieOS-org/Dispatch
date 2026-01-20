@@ -36,8 +36,9 @@ extension View {
     // glassEffect is not available on all CI SDKs.
     // Use platform-adaptive material fallback for now.
     #if os(macOS)
-    // macOS: ultraThinMaterial is the most translucent, matching Xcode/Finder sidebar style
-    background(.ultraThinMaterial)
+    // macOS: thinMaterial matches toolbar material for seamless integration under unified toolbar.
+    // Using same material as glassFullWidthToolbarBackground() prevents visible color line at junction.
+    background(.thinMaterial)
     #else
     // iOS: thinMaterial for translucent sidebars
     background(.thinMaterial)

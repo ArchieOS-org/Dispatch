@@ -68,20 +68,12 @@ struct BottomToolbar: View {
     .padding(.bottom, DS.Spacing.sm)
     // INTENTIONAL: Things 3-style floating pill toolbar design.
     // macOS does not have native `.bottomBar` toolbar placement, so we use a custom
-    // floating toolbar with glass/material effect. The manual `.glassEffect()` on
-    // macOS 26+ (or `.regularMaterial` on older versions) is correct for this design
-    // pattern - it creates a distinct floating element rather than letting content
-    // inform appearance (which is appropriate for standard window toolbars, not floating pills).
+    // floating toolbar with glass/material effect. Uses Design System helper that
+    // provides consistent floating toolbar appearance across macOS versions.
     .background {
-      if #available(macOS 26, *) {
-        Color.clear
-          .glassEffect(.regular, in: .rect(cornerRadius: 18))
-      } else {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-          .fill(.regularMaterial)
-      }
+      RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .glassFloatingToolbarBackground()
     }
-    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
   }
 
   // MARK: Private
