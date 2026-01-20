@@ -57,6 +57,14 @@ struct MacWindowPolicy: NSViewRepresentable {
       window.styleMask.insert(.fullSizeContentView)
     }
 
+    // 4. Add toolbar for titlebar transparency
+    let toolbar = NSToolbar(identifier: "MainToolbar")
+    toolbar.delegate = ToolbarDelegate.shared
+    toolbar.displayMode = .iconOnly
+    // Note: showsBaselineSeparator was deprecated in macOS 15.
+    // Use window.titlebarSeparatorStyle instead (set below).
+    window.toolbar = toolbar
+
     // 5. Remove titlebar separator line
     window.titlebarSeparatorStyle = .none
   }
@@ -70,6 +78,32 @@ extension View {
     background(MacWindowPolicy())
   }
 }
+
+// MARK: - Toolbar Delegate
+
+private class ToolbarDelegate: NSObject, NSToolbarDelegate {
+  static let shared = ToolbarDelegate()
+
+  func toolbar(
+    _ toolbar: NSToolbar,
+    itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
+    willBeInsertedIntoToolbar flag: Bool
+  ) -> NSToolbarItem? {
+    if itemIdentifier == .flexibleSpace {
+      return NSToolbarItem(itemIdentifier: .flexibleSpace)
+    }
+    return nil
+  }
+
+  func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+    [.flexibleSpace]
+  }
+
+  func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+    [.flexibleSpace]
+  }
+}
+
 #else
 extension View {
   func applyMacWindowPolicy() -> some View {
