@@ -30,63 +30,24 @@ struct GlobalFloatingButtons: View {
           .frame(maxWidth: .infinity, maxHeight: .infinity)
           .allowsHitTesting(false) // Spacer doesn't block touches
           .safeAreaInset(edge: .bottom, spacing: 0) {
-            HStack(alignment: .bottom) {
-              Spacer()
-
-              // Single-action contexts still use the plain FAB.
-              switch fabContext {
-              case .listingList:
-                FloatingActionButton {
-                  appState.sheetState = .addListing()
-                }
-
-              case .properties:
-                FloatingActionButton {
-                  appState.sheetState = .addProperty()
-                }
-
-              default:
-                // Multi-option contexts render their own system-native menu button overlays.
-                Color.clear
-                  .frame(
-                    width: DS.Spacing.floatingButtonSizeLarge,
-                    height: DS.Spacing.floatingButtonSizeLarge
-                  )
-              }
-            }
-            .padding(.horizontal, DS.Spacing.floatingButtonMargin) // 20pt
-            .padding(.bottom, DS.Spacing.floatingButtonBottomInset) // 24pt
+            floatingButtonsContent
+              .padding(.horizontal, DS.Spacing.floatingButtonMargin) // 20pt
+              .padding(.bottom, DS.Spacing.floatingButtonBottomInset) // 24pt
           }
 
-        // FAB menu overlay (multi-option contexts only)
-        if !fabMenuItems.isEmpty {
-          FABMenuOverlay(
-            isPresented: $showFABMenu,
-            items: fabMenuItems
-          )
-          .opacity(shouldHideFAB || shouldHideAllButtons ? 0 : 1)
-          .offset(y: shouldHideFAB || shouldHideAllButtons ? 12 : 0)
-          .allowsHitTesting(!shouldHideFAB && !shouldHideAllButtons)
-          .animation(.easeInOut(duration: 0.2), value: shouldHideFAB)
-          .animation(.easeInOut(duration: 0.2), value: shouldHideAllButtons)
-        }
+        // Custom FAB menu overlay with iOS 26 effects (liquid glass + spring animation)
+        FABMenuOverlay(
+          isPresented: $showFABMenu,
+          items: fabMenuItems
+        )
 
-        // Filter menu overlay (tap cycles, long-press opens menu)
-        if lensState.showFilterButton {
-          FilterMenuOverlay(
-            isPresented: $showFilterMenu,
-            audience: $lensState.audience
-          )
-          .opacity(shouldHideFilter || shouldHideAllButtons ? 0 : 1)
-          .offset(y: shouldHideFilter || shouldHideAllButtons ? 12 : 0)
-          .allowsHitTesting(!shouldHideFilter && !shouldHideAllButtons)
-          .animation(.easeInOut(duration: 0.2), value: shouldHideFilter)
-          .animation(.easeInOut(duration: 0.2), value: shouldHideAllButtons)
-        }
+        // Custom filter menu overlay with iOS 26 effects
+        FilterMenuOverlay(
+          isPresented: $showFilterMenu,
+          audience: $lensState.audience
+        )
       }
       .onChange(of: showFABMenu) { _, isPresented in
-        // Only relevant in multi-option contexts.
-        guard !fabMenuItems.isEmpty else { return }
         if isPresented {
           overlayState.hide(reason: .fabMenuOpen)
         } else {
@@ -94,7 +55,6 @@ struct GlobalFloatingButtons: View {
         }
       }
       .onChange(of: showFilterMenu) { _, isPresented in
-        guard lensState.showFilterButton else { return }
         if isPresented {
           overlayState.hide(reason: .filterMenuOpen)
         } else {
@@ -146,6 +106,36 @@ struct GlobalFloatingButtons: View {
     UIDevice.current.userInterfaceIdiom == .phone
   }
 
+  @ViewBuilder
+  private var floatingButtonsContent: some View {
+    HStack(alignment: .bottom) {
+      // Filter Button (left) - only show when appropriate
+      // Independent visibility: hides only when filter menu open OR global hide reasons
+      if lensState.showFilterButton {
+        FloatingFilterButton(
+          audience: $lensState.audience,
+          onLongPress: { showFilterMenu = true }
+        )
+        .opacity(shouldHideFilter || shouldHideAllButtons ? 0 : 1)
+        .offset(y: shouldHideFilter || shouldHideAllButtons ? 12 : 0)
+        .allowsHitTesting(!shouldHideFilter && !shouldHideAllButtons)
+        .animation(.easeInOut(duration: 0.2), value: shouldHideFilter)
+        .animation(.easeInOut(duration: 0.2), value: shouldHideAllButtons)
+      }
+
+      Spacer()
+
+      // FAB (right) - context-aware
+      // Independent visibility: hides only when FAB menu open OR global hide reasons
+      fabButton
+        .opacity(shouldHideFAB || shouldHideAllButtons ? 0 : 1)
+        .offset(y: shouldHideFAB || shouldHideAllButtons ? 12 : 0)
+        .allowsHitTesting(!shouldHideFAB && !shouldHideAllButtons)
+        .animation(.easeInOut(duration: 0.2), value: shouldHideFAB)
+        .animation(.easeInOut(duration: 0.2), value: shouldHideAllButtons)
+    }
+  }
+
   /// Context-aware FAB menu items based on current context
   private var fabMenuItems: [FABMenuItem] {
     switch fabContext {
@@ -187,6 +177,50 @@ struct GlobalFloatingButtons: View {
       []
     }
   }
+
+  /// Context-aware FAB: direct action for single-option contexts, tap to show custom menu overlay for multi-option
+  @ViewBuilder
+  private var fabButton: some View {
+    switch fabContext {
+    case .listingList:
+      // Single action: create Listing - direct tap
+      FloatingActionButton {
+        appState.sheetState = .addListing()
+      }
+
+    case .properties:
+      // Single action: create Property - direct tap
+      FloatingActionButton {
+        appState.sheetState = .addProperty()
+      }
+
+    case .workspace, .listingDetail, .realtor:
+      // Multi-option: tap to show custom menu overlay with iOS 26 effects
+      fabVisual
+        .onTapGesture {
+          showFABMenu = true
+        }
+    }
+  }
+
+  /// Visual representation of FAB (used for multi-option contexts)
+  /// Uses Circle() as root view to ensure circular bounds.
+  private var fabVisual: some View {
+    Circle()
+      .fill(DS.Colors.accent)
+      .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
+      .overlay {
+        Image(systemName: "plus")
+          .font(.system(size: scaledIconSize, weight: .semibold))
+          .foregroundColor(.white)
+      }
+      .dsShadow(DS.Shadows.elevated)
+      .compositingGroup()
+  }
+
+  /// Scaled icon size for Dynamic Type support (base: 24pt, relative to title3)
+  @ScaledMetric(relativeTo: .title3)
+  private var scaledIconSize: CGFloat = 24
   #endif
 }
 
