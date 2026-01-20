@@ -250,6 +250,7 @@ struct MacContentView: View {
       }
     }
     .navigationSplitViewStyle(.balanced)
+    .containerBackground(.thinMaterial, for: .window)
     .modifier(ToolbarBackgroundModifier())
     .focusedValue(\.columnVisibility, $columnVisibility)
   }
