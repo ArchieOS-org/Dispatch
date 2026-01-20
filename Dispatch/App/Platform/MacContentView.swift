@@ -7,6 +7,7 @@
 //
 
 #if os(macOS)
+import SwiftData
 import SwiftUI
 
 /// macOS navigation container with native NavigationSplitView sidebar.
@@ -49,29 +50,7 @@ struct MacContentView: View {
   let onRequestSync: () -> Void
 
   var body: some View {
-    // SURGICAL TEST: Removing VStack/ZStack wrapper to test sidebar geometry
-    // This tests if the wrapper is causing sidebar cutoff issues.
-    // NOTE: BottomToolbar is temporarily removed - it will need to be re-integrated
-    // Original code commented below - revert after testing.
-
-    sidebarNavigation
-      .overlay(alignment: .top) {
-        quickFindOverlay
-      }
-      .sheet(item: sheetStateBinding) { state in
-        sheetContent(for: state)
-      }
-      // Listen for menu bar Cmd+F notification (per-window handling)
-      // Only respond if THIS window is the key (focused) window
-      .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
-        if controlActiveState == .key {
-          windowUIState.openSearch(initialText: nil)
-        }
-      }
-
-    /*
-    // ORIGINAL CODE - UNCOMMENT TO REVERT:
-    VStack(spacing: 0) {
+    ZStack(alignment: .bottom) {
       ZStack {
         sidebarNavigation
       }
@@ -79,8 +58,8 @@ struct MacContentView: View {
         quickFindOverlay
       }
 
-      // Bottom toolbar at root level - spans full width including under sidebar
-      // Using VStack instead of .safeAreaInset to avoid cascading inset that cuts off sidebar
+      // Bottom toolbar floats at bottom - doesn't steal layout space from NavigationSplitView
+      // ZStack allows sidebarNavigation to take full vertical height
       BottomToolbar(
         context: bottomToolbarContext,
         audience: $appState.lensState.audience,
@@ -113,7 +92,6 @@ struct MacContentView: View {
         windowUIState.openSearch(initialText: nil)
       }
     }
-    */
   }
 
   // MARK: Private
@@ -210,14 +188,8 @@ struct MacContentView: View {
         destinationRootView(for: appState.router.selectedDestination)
           .appDestinations()
       }
-      .toolbar {
-        // Ensure the NSToolbar exists at all times.
-        // This prevents the window corner radius from flickering (Large vs Small)
-        // when navigating between views.
-        ToolbarItem(placement: .primaryAction) {
-          Color.clear.frame(width: 0, height: 0)
-        }
-      }
+      .modifier(BackgroundExtensionModifier())
+      .toolbar(removing: .title)
       // Type Travel: alphanumeric keys open search with typed character
       // Uses SwiftUI's native .onKeyPress() which is inherently window-scoped
       .focusable()
@@ -273,9 +245,8 @@ struct MacContentView: View {
       }
     }
     .navigationSplitViewStyle(.balanced)
-    // SURGICAL TEST: Commenting out containerBackground to test sidebar geometry
-    // .containerBackground(.thinMaterial, for: .window)  // ORIGINAL - uncomment to revert
     .modifier(ToolbarBackgroundModifier())
+    .background(WindowChromeConfigurator())
     .focusedValue(\.columnVisibility, $columnVisibility)
   }
 
@@ -421,6 +392,22 @@ struct MacContentView: View {
 
 }
 
+// MARK: - Background Extension Modifier
+
+/// Extends detail content background under sidebar on macOS 26+ for seamless Liquid Glass visuals.
+/// Per Context7 docs: "Apply backgroundExtensionEffect() to a view in the detail column of a
+/// NavigationSplitView so it can extend under the sidebar region for seamless immersive visuals."
+private struct BackgroundExtensionModifier: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(macOS 26, *) {
+      content
+        .backgroundExtensionEffect()
+    } else {
+      content
+    }
+  }
+}
+
 // MARK: - Toolbar Background Modifier
 
 /// Hides the window toolbar background on macOS 26+ to let content inform toolbar appearance.
@@ -428,11 +415,63 @@ struct MacContentView: View {
 /// content layer to inform the color and appearance of the toolbar."
 private struct ToolbarBackgroundModifier: ViewModifier {
   func body(content: Content) -> some View {
-    if #available(macOS 26, *) {
-      content
-        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-    } else {
-      content
+    content
+      .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+  }
+}
+
+// MARK: - Window Chrome Configurator
+
+/// Configures the underlying NSWindow so toolbar/titlebar chrome matches the content,
+/// and prevents fullscreen NSToolbar from adding an extra blur background.
+private struct WindowChromeConfigurator: NSViewRepresentable {
+
+  func makeCoordinator() -> Coordinator {
+    Coordinator()
+  }
+
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView()
+    // Configure once when the view is attached to a window.
+    DispatchQueue.main.async {
+      context.coordinator.configureWindow(for: view)
+    }
+    return view
+  }
+
+  func updateNSView(_ nsView: NSView, context: Context) {
+    // Re-apply if the window changes (e.g. new window / restored state).
+    DispatchQueue.main.async {
+      context.coordinator.configureWindow(for: nsView)
+    }
+  }
+
+  final class Coordinator: NSObject, NSWindowDelegate {
+    private weak var configuredWindow: NSWindow?
+
+    func configureWindow(for view: NSView) {
+      guard let window = view.window else { return }
+      guard configuredWindow !== window else { return }
+      configuredWindow = window
+
+      // Make titlebar/toolbar visually blend with SwiftUI content.
+      window.titleVisibility = .hidden
+      window.titlebarAppearsTransparent = true
+
+      // Remove the baseline separator line under the toolbar, if present.
+      window.toolbar?.showsBaselineSeparator = false
+
+      // Ensure the window is draggable even with a transparent titlebar.
+      window.isMovableByWindowBackground = true
+
+      // Install delegate to control fullscreen presentation options.
+      window.delegate = self
+    }
+
+    func window(_ window: NSWindow,
+                willUseFullScreenPresentationOptions proposedOptions: NSApplication.PresentationOptions) -> NSApplication.PresentationOptions {
+      // Fullscreen: auto-hide the toolbar to prevent NSToolbar from adding its own blur background.
+      proposedOptions.union(.autoHideToolbar)
     }
   }
 }
@@ -453,6 +492,7 @@ private struct ToolbarBackgroundModifier: ViewModifier {
     onSelectSearchResult: { _ in },
     onRequestSync: { }
   )
+  .modelContainer(for: [TaskItem.self, Activity.self, Listing.self, User.self, Property.self], inMemory: true)
   .environmentObject(AppState())
   .environmentObject(SyncManager())
   .environment(WindowUIState())

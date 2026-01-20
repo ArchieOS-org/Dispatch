@@ -122,7 +122,6 @@ struct ContentView: View {
       }
       #endif
     }
-    .ignoresSafeArea()
     .animation(.easeInOut(duration: 0.3), value: appState.syncCoordinator.isOffline)
     .animation(.easeInOut(duration: 0.3), value: appState.syncCoordinator.showRealtimeDegraded)
     .onAppear { updateWorkItemActions()
@@ -347,7 +346,7 @@ struct ContentView: View {
     .modelContainer(for: [TaskItem.self, Activity.self, Listing.self, User.self], inMemory: true)
     .environmentObject(SyncManager.shared)
     .environmentObject(AppState(mode: .preview))
-    #if os(macOS)
+  #if os(macOS)
     .environment(WindowUIState())
-    #endif
+  #endif
 }
