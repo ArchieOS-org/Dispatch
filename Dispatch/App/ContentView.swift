@@ -346,4 +346,7 @@ struct ContentView: View {
     .modelContainer(for: [TaskItem.self, Activity.self, Listing.self, User.self], inMemory: true)
     .environmentObject(SyncManager.shared)
     .environmentObject(AppState(mode: .preview))
+  #if os(macOS)
+    .environment(WindowUIState())
+  #endif
 }

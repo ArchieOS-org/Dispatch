@@ -102,6 +102,8 @@ struct DispatchApp: App {
     .modelContainer(sharedModelContainer)
     #if os(macOS)
       .defaultSize(width: DS.Spacing.windowDefaultWidth, height: DS.Spacing.windowDefaultHeight)
+      .windowStyle(.hiddenTitleBar)
+      .windowToolbarStyle(.unifiedCompact(showsTitle: false))
       .commands {
         // Pass the dispatch closure explicitly to avoid Environment lookup issues in menu bar
         DispatchCommands { cmd in

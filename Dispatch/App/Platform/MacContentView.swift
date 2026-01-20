@@ -3,13 +3,14 @@
 //  Dispatch
 //
 //  macOS-specific navigation view extracted from ContentView.
-//  Uses Things 3-style ResizableSidebar with native selection.
+//  Uses native NavigationSplitView for true Xcode/Finder sidebar appearance.
 //
 
 #if os(macOS)
+import SwiftData
 import SwiftUI
 
-/// macOS navigation container with Things 3-style resizable sidebar.
+/// macOS navigation container with native NavigationSplitView sidebar.
 /// Extracted from ContentView to reduce complexity and enable platform-specific optimizations.
 struct MacContentView: View {
 
@@ -53,6 +54,29 @@ struct MacContentView: View {
       .overlay(alignment: .top) {
         quickFindOverlay
       }
+      .overlay(alignment: .bottom) {
+        BottomToolbar(
+          context: bottomToolbarContext,
+          audience: $appState.lensState.audience,
+          onNew: {
+            switch appState.router.selectedDestination {
+            case .tab(.listings), .stage:
+              appState.sheetState = .addListing
+            case .tab(.realtors):
+              appState.sheetState = .addRealtor
+            default:
+              appState.sheetState = .quickEntry(type: nil)
+            }
+          },
+          onSearch: {
+            windowUIState.openSearch(initialText: nil)
+          },
+          onDuplicateWindow: {
+            openWindow(id: "main")
+          },
+          duplicateWindowDisabled: !supportsMultipleWindows
+        )
+      }
       .sheet(item: sheetStateBinding) { state in
         sheetContent(for: state)
       }
@@ -86,6 +110,9 @@ struct MacContentView: View {
   /// Global Quick Find (Popover) State
   @State private var quickFindText = ""
 
+  /// Controls sidebar column visibility for native NavigationSplitView
+  @State private var columnVisibility: NavigationSplitViewVisibility = .all
+
   /// Computed binding for List(selection:) that bridges non-optional AppState to optional List API.
   /// - Get: Returns nil for stage destinations (shown deselected), otherwise the destination
   /// - Set: Dispatches to AppState, ignoring nil (which shouldn't occur from List selection)
@@ -107,24 +134,25 @@ struct MacContentView: View {
     )
   }
 
-  private var toolbarContext: ToolbarContext {
+  /// Bottom toolbar context derived from selected destination (for Things 3-style toolbar)
+  private var bottomToolbarContext: ToolbarContext {
     switch appState.router.selectedDestination {
     case .tab(let tab):
       switch tab {
+      case .workspace:
+        .taskList
       case .properties:
-        .listingList // Properties uses listing-style toolbar
+        .listingList
       case .listings:
         .listingList
       case .realtors:
         .realtorList
-      case .settings:
-        .taskList // Settings uses default toolbar
-      case .workspace, .search:
-        .taskList // Re-use task actions for now
+      case .settings, .search:
+        .taskList
       }
 
     case .stage:
-      .listingList // All stage views use listing toolbar
+      .listingList
     }
   }
 
@@ -134,79 +162,28 @@ struct MacContentView: View {
       + workspaceActivities.count(where: { ($0.dueDate ?? .distantFuture) < startOfToday })
   }
 
-  /// macOS: Things 3-style resizable sidebar with native selection.
-  /// Stage cards and tabs scroll together as a single unified List.
+  /// macOS: Native NavigationSplitView for true Xcode/Finder sidebar appearance.
+  /// Uses UnifiedSidebarContent for consistent sidebar UI across platforms.
   /// Settings uses SettingsLink via inline row.
   private var sidebarNavigation: some View {
-    ResizableSidebar {
-      // Unified scrolling: stage cards + tabs in single List
-      List(selection: sidebarSelectionBinding) {
-        // Stage cards section (scrolls with tabs)
-        Section {
-          StageCardsSection(
-            stageCounts: stageCounts,
-            onSelectStage: { stage in
-              appState.dispatch(.setSelectedDestination(.stage(stage)))
-            }
-          )
+    NavigationSplitView(columnVisibility: $columnVisibility) {
+      // Unified sidebar content component (shared with iPad)
+      UnifiedSidebarContent(
+        stageCounts: stageCounts,
+        tabCounts: macTabCounts,
+        overdueCount: sidebarOverdueCount,
+        selection: sidebarSelectionBinding,
+        onSelectStage: { stage in
+          appState.dispatch(.setSelectedDestination(.stage(stage)))
         }
-        .listRowInsets(EdgeInsets(top: DS.Spacing.sm, leading: DS.Spacing.md, bottom: DS.Spacing.md, trailing: DS.Spacing.md))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Listing stages")
-
-        // Navigation tabs section
-        Section {
-          ForEach(AppTab.sidebarTabs) { tab in
-            SidebarMenuRow(
-              tab: tab,
-              itemCount: macTabCounts[tab] ?? 0,
-              overdueCount: tab == .workspace ? sidebarOverdueCount : 0
-            )
-            .tag(SidebarDestination.tab(tab))
-          }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Navigation")
-      }
-      .listStyle(.sidebar)
-      .scrollContentBackground(.hidden)
-    } content: {
+      )
+      .navigationTitle("Dispatch")
+    } detail: {
       NavigationStack(path: pathBindingProvider(appState.router.selectedDestination)) {
         destinationRootView(for: appState.router.selectedDestination)
           .appDestinations()
       }
-      .toolbar {
-        // FORCE the NSToolbar to exist at all times.
-        // This prevents the window corner radius from flickering (Large vs Small) when navigating between views.
-        ToolbarItem(placement: .primaryAction) {
-          Color.clear.frame(width: 0, height: 0)
-        }
-      }
-      .safeAreaInset(edge: .bottom, spacing: 0) {
-        BottomToolbar(
-          context: toolbarContext,
-          audience: $appState.lensState.audience,
-          onNew: {
-            switch appState.router.selectedDestination {
-            case .tab(.listings), .stage:
-              appState.sheetState = .addListing
-            case .tab(.realtors):
-              appState.sheetState = .addRealtor
-            default:
-              appState.sheetState = .quickEntry(type: nil)
-            }
-          },
-          onSearch: {
-            windowUIState.openSearch(initialText: nil)
-          },
-          onDuplicateWindow: {
-            openWindow(id: "main")
-          },
-          duplicateWindowDisabled: !supportsMultipleWindows
-        )
-      }
+      .toolbar(removing: .title)
       // Type Travel: alphanumeric keys open search with typed character
       // Uses SwiftUI's native .onKeyPress() which is inherently window-scoped
       .focusable()
@@ -261,6 +238,10 @@ struct MacContentView: View {
         }
       }
     }
+    .navigationSplitViewStyle(.balanced)
+    .modifier(ToolbarBackgroundModifier())
+    .background(WindowChromeConfigurator())
+    .focusedValue(\.columnVisibility, $columnVisibility)
   }
 
   /// macOS tab counts for SidebarTabList.
@@ -403,5 +384,96 @@ struct MacContentView: View {
     }
   }
 
+}
+
+// MARK: - Toolbar Background Modifier
+
+/// Hides the window toolbar background on macOS 26+ to let content inform toolbar appearance.
+/// Per HIG: "Reduce the use of toolbar backgrounds and tinted controls. Instead, use the
+/// content layer to inform the color and appearance of the toolbar."
+private struct ToolbarBackgroundModifier: ViewModifier {
+  func body(content: Content) -> some View {
+    content
+      .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+  }
+}
+
+// MARK: - Window Chrome Configurator
+
+/// Configures the underlying NSWindow so toolbar/titlebar chrome matches the content,
+/// and prevents fullscreen NSToolbar from adding an extra blur background.
+private struct WindowChromeConfigurator: NSViewRepresentable {
+
+  func makeCoordinator() -> Coordinator {
+    Coordinator()
+  }
+
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView()
+    // Configure once when the view is attached to a window.
+    DispatchQueue.main.async {
+      context.coordinator.configureWindow(for: view)
+    }
+    return view
+  }
+
+  func updateNSView(_ nsView: NSView, context: Context) {
+    // Re-apply if the window changes (e.g. new window / restored state).
+    DispatchQueue.main.async {
+      context.coordinator.configureWindow(for: nsView)
+    }
+  }
+
+  final class Coordinator: NSObject, NSWindowDelegate {
+    private weak var configuredWindow: NSWindow?
+
+    func configureWindow(for view: NSView) {
+      guard let window = view.window else { return }
+      guard configuredWindow !== window else { return }
+      configuredWindow = window
+
+      // Make titlebar/toolbar visually blend with SwiftUI content.
+      window.titleVisibility = .hidden
+      window.titlebarAppearsTransparent = true
+
+      // Remove the baseline separator line under the toolbar, if present.
+      window.toolbar?.showsBaselineSeparator = false
+
+      // Ensure the window is draggable even with a transparent titlebar.
+      window.isMovableByWindowBackground = true
+
+      // Install delegate to control fullscreen presentation options.
+      window.delegate = self
+    }
+
+    func window(_ window: NSWindow,
+                willUseFullScreenPresentationOptions proposedOptions: NSApplication.PresentationOptions) -> NSApplication.PresentationOptions {
+      // Fullscreen: auto-hide the toolbar to prevent NSToolbar from adding its own blur background.
+      proposedOptions.union(.autoHideToolbar)
+    }
+  }
+}
+
+// MARK: - Preview
+
+#Preview {
+  MacContentView(
+    stageCounts: [:],
+    workspaceTasks: [],
+    workspaceActivities: [],
+    activeListings: [],
+    activeProperties: [],
+    activeRealtors: [],
+    users: [],
+    currentUserId: UUID(),
+    pathBindingProvider: { _ in .constant([]) },
+    onSelectSearchResult: { _ in },
+    onRequestSync: { }
+  )
+  .modelContainer(for: [TaskItem.self, Activity.self, Listing.self, User.self, Property.self], inMemory: true)
+  .environmentObject(AppState())
+  .environmentObject(SyncManager())
+  .environment(WindowUIState())
+  .frame(width: 1100, height: 750)
 }
 #endif

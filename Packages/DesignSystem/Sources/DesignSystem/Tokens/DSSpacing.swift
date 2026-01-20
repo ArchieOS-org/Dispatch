@@ -192,6 +192,9 @@ extension DS {
     /// Height of the visible drag handle indicator
     public static let sidebarDragHandleHeight: CGFloat = 28
 
+    /// Inset for floating panel from window edges (macOS)
+    public static let floatingPanelInset: CGFloat = 8
+
     // MARK: - Bottom Toolbar
 
     /// Bottom toolbar height
@@ -205,6 +208,20 @@ extension DS {
 
     /// Bottom toolbar horizontal padding
     public static let bottomToolbarPadding: CGFloat = 12
+
+    // MARK: - Liquid Glass Toolbar (WWDC25)
+
+    /// Liquid Glass floating toolbar height
+    public static let liquidGlassToolbarHeight: CGFloat = 48
+
+    /// Liquid Glass toolbar icon button size (touch target)
+    public static let liquidGlassToolbarButtonSize: CGFloat = 44
+
+    /// Liquid Glass toolbar icon size
+    public static let liquidGlassToolbarIconSize: CGFloat = 18
+
+    /// Liquid Glass toolbar horizontal padding
+    public static let liquidGlassToolbarPadding: CGFloat = 16
 
     // MARK: - Floating Buttons
 

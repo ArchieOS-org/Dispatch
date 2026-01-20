@@ -590,3 +590,72 @@ if text.isEmpty {
     Text(placeholder)
 }
 ```
+
+---
+
+## Sidebar Patterns
+
+### UnifiedSidebarContent
+
+A shared sidebar content component used by both iPad and macOS. Provides 80%+ code sharing between platforms.
+
+**Location**: `Dispatch/Design/Shared/Components/UnifiedSidebar.swift`
+
+**Usage**:
+```swift
+// macOS: Inside ResizableSidebar
+ResizableSidebar {
+    UnifiedSidebarContent(
+        stageCounts: stageCounts,
+        tabCounts: tabCounts,
+        overdueCount: overdueCount,
+        selection: sidebarSelectionBinding,
+        onSelectStage: { stage in ... }
+    )
+} content: {
+    // Detail content
+}
+
+// iPad: Inside NavigationSplitView
+NavigationSplitView(columnVisibility: $columnVisibility) {
+    UnifiedSidebarContent(
+        stageCounts: stageCounts,
+        tabCounts: tabCounts,
+        overdueCount: overdueCount,
+        selection: sidebarSelectionBinding,
+        onSelectStage: { stage in ... }
+    )
+} detail: {
+    // Detail content
+}
+```
+
+**Features**:
+- Material background (`.thinMaterial`) for native blur effect
+- Selection states via `List(selection:)`
+- Stage cards header with navigation items
+- Platform-adaptive spacing (larger touch targets on iOS)
+- Light/dark mode automatic via semantic colors
+
+### Material Usage
+
+| Component | Material | Notes |
+|-----------|----------|-------|
+| Sidebar background | `.thinMaterial` | Translucent, shows content beneath |
+| macOS bottom toolbar | `.regularMaterial` | More opaque for readability |
+| iPad sidebar | `.thinMaterial` | Via UnifiedSidebarContent |
+
+**Best Practice**: Always use `.scrollContentBackground(.hidden)` when applying custom material backgrounds to Lists:
+
+```swift
+List(selection: $selection) {
+    // content
+}
+.listStyle(.sidebar)
+.scrollContentBackground(.hidden)
+.background {
+    Rectangle()
+        .fill(.thinMaterial)
+        .ignoresSafeArea()
+}
+```

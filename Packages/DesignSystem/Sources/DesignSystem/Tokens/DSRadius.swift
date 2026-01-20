@@ -25,5 +25,8 @@ extension DS {
 
     /// Search overlay modal corner radius
     public static let searchModal: CGFloat = 20
+
+    /// Floating panel corner radius (16pt) - sidebars, toolbars on macOS
+    public static let floatingPanel: CGFloat = 16
   }
 }

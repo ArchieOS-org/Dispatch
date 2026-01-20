@@ -1,6 +1,7 @@
-
 import SwiftData
 import SwiftUI
+
+// MARK: - NavigationPopover
 
 /// The entire dropdown panel containing search + navigation list.
 /// Unifies "Quick Find" navigation and "Search" results.
@@ -146,4 +147,40 @@ struct NavigationPopover: View {
     // Use callback instead of notification
     onSelectResult(result)
   }
+}
+
+// MARK: - Preview
+
+@MainActor private var previewContainer: ModelContainer = {
+  let schema = Schema([
+    TaskItem.self,
+    Activity.self,
+    Listing.self
+  ])
+
+  let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+  return try! ModelContainer(for: schema, configurations: [configuration])
+}()
+
+// MARK: - NavigationPopoverPreviewWrapper
+
+private struct NavigationPopoverPreviewWrapper: View {
+  @State private var searchText: String = ""
+  @State private var isPresented: Bool = true
+
+  var body: some View {
+    NavigationPopover(
+      searchText: $searchText,
+      isPresented: $isPresented,
+      currentTab: .workspace,
+      onNavigate: { _ in },
+      onSelectResult: { _ in }
+    )
+    .padding()
+  }
+}
+
+#Preview {
+  NavigationPopoverPreviewWrapper()
+    .modelContainer(previewContainer)
 }

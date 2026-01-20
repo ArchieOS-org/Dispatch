@@ -7,6 +7,7 @@
 //
 
 #if os(macOS)
+import DesignSystem
 import SwiftUI
 
 /// Screen context for bottom toolbar action configuration.
@@ -62,14 +63,16 @@ struct BottomToolbar: View {
       }
     }
     .frame(height: DS.Spacing.bottomToolbarHeight)
+    .frame(maxWidth: .infinity)
+    .padding(.horizontal, DS.Spacing.md)
+    .padding(.bottom, DS.Spacing.sm)
+    // INTENTIONAL: Things 3-style floating pill toolbar design.
+    // macOS does not have native `.bottomBar` toolbar placement, so we use a custom
+    // floating toolbar with glass/material effect. Uses Design System helper that
+    // provides consistent floating toolbar appearance across macOS versions.
     .background {
-      Rectangle()
-        .fill(.regularMaterial)
-        .overlay(alignment: .top) {
-          Rectangle()
-            .fill(Color.primary.opacity(0.1))
-            .frame(height: 1)
-        }
+      RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .glassFloatingToolbarBackground()
     }
   }
 
