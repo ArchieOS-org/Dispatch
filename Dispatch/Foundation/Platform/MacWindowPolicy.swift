@@ -52,10 +52,7 @@ struct MacWindowPolicy: NSViewRepresentable {
     // 2. Unified/Transparent Titlebar
     window.titlebarAppearsTransparent = true
 
-    // 3. Hide Native Title Text (we use custom header)
-    window.titleVisibility = .hidden
-
-    // 4. Enable Full-Size Content View
+    // 3. Enable Full-Size Content View
     if !window.styleMask.contains(.fullSizeContentView) {
       window.styleMask.insert(.fullSizeContentView)
     }
