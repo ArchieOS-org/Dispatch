@@ -31,7 +31,7 @@ description: |
   Bug investigation - swift-debugger finds root cause without implementing fix
   </commentary>
   </example>
-model: opus
+model: sonnet
 tools:
   - Read
   - Grep
