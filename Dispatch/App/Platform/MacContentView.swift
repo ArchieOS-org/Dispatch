@@ -49,13 +49,16 @@ struct MacContentView: View {
   let onRequestSync: () -> Void
 
   var body: some View {
-    ZStack {
-      sidebarNavigation
-    }
-    .safeAreaInset(edge: .bottom, spacing: 0) {
+    VStack(spacing: 0) {
+      ZStack {
+        sidebarNavigation
+      }
+      .overlay(alignment: .top) {
+        quickFindOverlay
+      }
+
       // Bottom toolbar at root level - spans full width including under sidebar
-      // Note: macOS does not have native `.bottomBar` toolbar placement,
-      // so we use `.safeAreaInset` which is the correct pattern for bottom bars on macOS.
+      // Using VStack instead of .safeAreaInset to avoid cascading inset that cuts off sidebar
       BottomToolbar(
         context: bottomToolbarContext,
         audience: $appState.lensState.audience,
@@ -77,9 +80,6 @@ struct MacContentView: View {
         },
         duplicateWindowDisabled: !supportsMultipleWindows
       )
-    }
-    .overlay(alignment: .top) {
-      quickFindOverlay
     }
     .sheet(item: sheetStateBinding) { state in
       sheetContent(for: state)

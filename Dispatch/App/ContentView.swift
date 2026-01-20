@@ -122,6 +122,7 @@ struct ContentView: View {
       }
       #endif
     }
+    .ignoresSafeArea()
     .animation(.easeInOut(duration: 0.3), value: appState.syncCoordinator.isOffline)
     .animation(.easeInOut(duration: 0.3), value: appState.syncCoordinator.showRealtimeDegraded)
     .onAppear { updateWorkItemActions()
