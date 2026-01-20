@@ -412,28 +412,9 @@ private struct ToolbarBackgroundModifier: ViewModifier {
 /// and prevents fullscreen NSToolbar from adding an extra blur background.
 private struct WindowChromeConfigurator: NSViewRepresentable {
 
-  func makeCoordinator() -> Coordinator {
-    Coordinator()
-  }
-
-  func makeNSView(context: Context) -> NSView {
-    let view = NSView()
-    // Configure once when the view is attached to a window.
-    DispatchQueue.main.async {
-      context.coordinator.configureWindow(for: view)
-    }
-    return view
-  }
-
-  func updateNSView(_ nsView: NSView, context: Context) {
-    // Re-apply if the window changes (e.g. new window / restored state).
-    DispatchQueue.main.async {
-      context.coordinator.configureWindow(for: nsView)
-    }
-  }
-
   final class Coordinator: NSObject, NSWindowDelegate {
-    private weak var configuredWindow: NSWindow?
+
+    // MARK: Internal
 
     func configureWindow(for view: NSView) {
       guard let window = view.window else { return }
@@ -454,12 +435,42 @@ private struct WindowChromeConfigurator: NSViewRepresentable {
       window.delegate = self
     }
 
-    func window(_ window: NSWindow,
-                willUseFullScreenPresentationOptions proposedOptions: NSApplication.PresentationOptions) -> NSApplication.PresentationOptions {
+    func window(
+      _: NSWindow,
+      willUseFullScreenPresentationOptions proposedOptions: NSApplication.PresentationOptions
+    ) -> NSApplication
+      .PresentationOptions
+    {
       // Fullscreen: auto-hide the toolbar to prevent NSToolbar from adding its own blur background.
       proposedOptions.union(.autoHideToolbar)
     }
+
+    // MARK: Private
+
+    private weak var configuredWindow: NSWindow?
+
   }
+
+  func makeCoordinator() -> Coordinator {
+    Coordinator()
+  }
+
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView()
+    // Configure once when the view is attached to a window.
+    DispatchQueue.main.async {
+      context.coordinator.configureWindow(for: view)
+    }
+    return view
+  }
+
+  func updateNSView(_ nsView: NSView, context: Context) {
+    // Re-apply if the window changes (e.g. new window / restored state).
+    DispatchQueue.main.async {
+      context.coordinator.configureWindow(for: nsView)
+    }
+  }
+
 }
 
 // MARK: - Preview

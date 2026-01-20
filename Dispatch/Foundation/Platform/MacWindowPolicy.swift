@@ -85,9 +85,9 @@ private class ToolbarDelegate: NSObject, NSToolbarDelegate {
   static let shared = ToolbarDelegate()
 
   func toolbar(
-    _ toolbar: NSToolbar,
+    _: NSToolbar,
     itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
-    willBeInsertedIntoToolbar flag: Bool
+    willBeInsertedIntoToolbar _: Bool
   ) -> NSToolbarItem? {
     if itemIdentifier == .flexibleSpace {
       return NSToolbarItem(itemIdentifier: .flexibleSpace)
@@ -95,11 +95,11 @@ private class ToolbarDelegate: NSObject, NSToolbarDelegate {
     return nil
   }
 
-  func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+  func toolbarDefaultItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
     [.flexibleSpace]
   }
 
-  func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+  func toolbarAllowedItemIdentifiers(_: NSToolbar) -> [NSToolbarItem.Identifier] {
     [.flexibleSpace]
   }
 }

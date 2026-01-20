@@ -8,6 +8,8 @@
 
 import SwiftUI
 
+// MARK: - WindowContentView
+
 /// Wrapper view that owns per-window state.
 ///
 /// This view exists specifically to hold `@State` properties that should be
@@ -46,18 +48,18 @@ struct WindowContentView: View {
     .animation(.easeInOut, value: appState.authManager.isAuthenticated)
     .animation(.easeInOut, value: syncManager.currentUser != nil)
     #if os(macOS)
-    // Inject per-window state into environment (macOS only)
-    .environment(windowUIState)
+      // Inject per-window state into environment (macOS only)
+      .environment(windowUIState)
     #endif
     #if DEBUG
-    .sheet(isPresented: $showTestHarness) {
-      SyncTestHarness()
-        .environmentObject(SyncManager.shared)
-    }
+      .sheet(isPresented: $showTestHarness) {
+        SyncTestHarness()
+          .environmentObject(SyncManager.shared)
+      }
     #if os(iOS)
-    .onShake {
-      showTestHarness = true
-    }
+      .onShake {
+        showTestHarness = true
+      }
     #endif
     #endif
   }
