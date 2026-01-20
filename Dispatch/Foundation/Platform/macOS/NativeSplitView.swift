@@ -110,4 +110,35 @@ final class DispatchSplitViewController: NSSplitViewController {
   private var toggleObserver: Any?
 
 }
+
+
+// MARK: - Preview
+
+#Preview {
+  NativeSplitView(
+    sidebar: {
+      VStack(alignment: .leading, spacing: 12) {
+        Text("Sidebar")
+          .font(.headline)
+        Divider()
+        Text("Item 1")
+        Text("Item 2")
+        Text("Item 3")
+        Spacer()
+      }
+      .padding()
+    },
+    content: {
+      VStack(alignment: .leading, spacing: 12) {
+        Text("Content")
+          .font(.headline)
+        Divider()
+        Text("Main view area")
+        Spacer()
+      }
+      .padding()
+    }
+  )
+  .frame(width: 900, height: 600)
+}
 #endif

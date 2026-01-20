@@ -149,8 +149,15 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
   private var mainContent: some View {
     ZStack {
       // 1. Unified Background
+      // On macOS, exclude top edge to allow toolbar glass/vibrancy effect
+      // On iOS, extend under all edges for full-bleed appearance
+      #if os(macOS)
+      DS.Colors.Background.primary
+        .ignoresSafeArea(edges: [.horizontal, .bottom])
+      #else
       DS.Colors.Background.primary
         .ignoresSafeArea()
+      #endif
 
       // 2. Content Container
       switch scroll {
@@ -174,18 +181,6 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
   @ViewBuilder
   private var innerContent: some View {
     VStack(alignment: .leading, spacing: 0) {
-      #if os(macOS)
-      // macOS: Custom static header (Things 3 style)
-      // Toolbar is always visible in full-screen, so consistent padding
-      Text(title)
-        .font(DS.Typography.largeTitle)
-        .fontWeight(.bold)
-        .foregroundColor(DS.Colors.Text.primary)
-        .padding(.horizontal, horizontalPadding)
-        .padding(.top, DS.Spacing.sm)
-        .padding(.bottom, DS.Spacing.Layout.titleContentSpacing)
-      #endif
-
       content()
         .frame(
           maxWidth: layout == .fullBleed ? .infinity : DS.Spacing.Layout.maxContentWidth,
@@ -202,9 +197,6 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
       \.standardScreenScrollMode,
       scroll == .automatic ? .automatic : .disabled
     )
-    #if os(macOS)
-    .navigationTitle("") // Hide system title on Mac in favor of our custom header
-    #endif
   }
 }
 
