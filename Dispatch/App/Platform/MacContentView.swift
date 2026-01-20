@@ -49,6 +49,28 @@ struct MacContentView: View {
   let onRequestSync: () -> Void
 
   var body: some View {
+    // SURGICAL TEST: Removing VStack/ZStack wrapper to test sidebar geometry
+    // This tests if the wrapper is causing sidebar cutoff issues.
+    // NOTE: BottomToolbar is temporarily removed - it will need to be re-integrated
+    // Original code commented below - revert after testing.
+
+    sidebarNavigation
+      .overlay(alignment: .top) {
+        quickFindOverlay
+      }
+      .sheet(item: sheetStateBinding) { state in
+        sheetContent(for: state)
+      }
+      // Listen for menu bar Cmd+F notification (per-window handling)
+      // Only respond if THIS window is the key (focused) window
+      .onReceive(NotificationCenter.default.publisher(for: .openSearch)) { _ in
+        if controlActiveState == .key {
+          windowUIState.openSearch(initialText: nil)
+        }
+      }
+
+    /*
+    // ORIGINAL CODE - UNCOMMENT TO REVERT:
     VStack(spacing: 0) {
       ZStack {
         sidebarNavigation
@@ -91,6 +113,7 @@ struct MacContentView: View {
         windowUIState.openSearch(initialText: nil)
       }
     }
+    */
   }
 
   // MARK: Private
@@ -250,7 +273,8 @@ struct MacContentView: View {
       }
     }
     .navigationSplitViewStyle(.balanced)
-    .containerBackground(.thinMaterial, for: .window)
+    // SURGICAL TEST: Commenting out containerBackground to test sidebar geometry
+    // .containerBackground(.thinMaterial, for: .window)  // ORIGINAL - uncomment to revert
     .modifier(ToolbarBackgroundModifier())
     .focusedValue(\.columnVisibility, $columnVisibility)
   }
