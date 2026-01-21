@@ -20,6 +20,8 @@ struct iPadContentView: View {
   let activeListings: [Listing]
   let activeProperties: [Property]
   let activeRealtors: [User]
+  let users: [User]
+  let currentUserId: UUID
   let pathBindingProvider: (SidebarDestination) -> Binding<[AppRoute]>
 
   /// Callback to request sync after save
