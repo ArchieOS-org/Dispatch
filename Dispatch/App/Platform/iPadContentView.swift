@@ -46,6 +46,7 @@ struct iPadContentView: View {
           destinationRootView(for: appState.router.selectedDestination)
             .appDestinations()
         }
+        .id(appState.router.selectedDestination)
       }
       .navigationSplitViewStyle(.balanced)
 

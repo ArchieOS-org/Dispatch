@@ -44,6 +44,7 @@ struct MacContentView: View {
         destinationRootView(for: appState.router.selectedDestination)
           .appDestinations()
       }
+      .id(appState.router.selectedDestination)
       .toolbar(removing: .title)
     }
     .navigationSplitViewStyle(.automatic)
