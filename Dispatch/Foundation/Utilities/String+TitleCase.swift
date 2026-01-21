@@ -33,7 +33,7 @@ extension String {
       let wordString = String(word)
 
       // Keep small words lowercase (except at start)
-      if index != 0 && smallWords.contains(wordString) {
+      if index != 0, smallWords.contains(wordString) {
         return wordString
       }
 
