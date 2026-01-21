@@ -21,7 +21,7 @@ struct PropertyRow: View {
     HStack(spacing: DS.Spacing.sm) {
       // Address info
       VStack(alignment: .leading, spacing: 2) {
-        Text(property.displayAddress)
+        Text(property.displayAddress.titleCased())
           .font(DS.Typography.body)
           .foregroundColor(DS.Colors.Text.primary)
           .lineLimit(1)

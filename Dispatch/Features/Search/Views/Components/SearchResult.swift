@@ -49,7 +49,7 @@ enum SearchResult: Identifiable, Hashable {
     switch self {
     case .task(let task): task.title
     case .activity(let activity): activity.title
-    case .listing(let listing): listing.address
+    case .listing(let listing): listing.address.titleCased()
     case .navigation(let title, _, _, _): title
     }
   }
