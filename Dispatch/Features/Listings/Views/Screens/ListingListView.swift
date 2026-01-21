@@ -70,12 +70,15 @@ struct ListingListView: View {
   @Environment(\.modelContext) private var modelContext
 
   #if os(iOS)
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
   /// Collapsed by default to avoid duplication with tabViewSidebarHeader.
   @State private var stagesExpanded = false
 
-  /// Check device type for iPad-specific UI.
-  private var isIPad: Bool {
-    UIDevice.current.userInterfaceIdiom == .pad
+  /// Use size class for layout decisions - regular means iPad-like layout (wide space).
+  /// This includes iPad full screen AND iPad in wide Split View column.
+  private var isRegularLayout: Bool {
+    horizontalSizeClass == .regular
   }
   #endif
 
@@ -149,7 +152,7 @@ struct ListingListView: View {
         // tabViewSidebarHeader is hidden in tab bar mode, so we provide access here.
         // Collapsed by default to avoid duplication when sidebar is visible.
         #if os(iOS)
-        if isIPad {
+        if isRegularLayout {
           DisclosureGroup("Stages", isExpanded: $stagesExpanded) {
             StageCardsHeader(
               stageCounts: stageCounts,
