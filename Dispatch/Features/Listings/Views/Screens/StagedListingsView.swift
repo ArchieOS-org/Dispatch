@@ -43,10 +43,14 @@ private struct StagedListingRow: View {
   }
 
   private var typeTagColors: (fg: Color, bg: Color) {
-    let palette: [Color] = [.blue, .green, .orange, .purple, .teal, .pink]
-    let key = listing.listingType.rawValue.lowercased()
-    let idx = Int(key.hashValue.magnitude) % palette.count
-    let base = palette[idx]
+    let base: Color =
+      switch listing.listingType {
+      case .sale: DS.Colors.success // Green
+      case .lease: Color.purple // Purple
+      case .preListing: DS.Colors.info // Blue
+      case .rental: DS.Colors.warning // Orange
+      case .other: DS.Colors.Text.tertiary // Gray
+      }
     return (fg: base, bg: base.opacity(0.14))
   }
 
