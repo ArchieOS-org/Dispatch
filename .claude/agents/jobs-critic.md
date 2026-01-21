@@ -45,6 +45,26 @@ Output: SHIP YES or SHIP NO. Nothing in between.
 - Before final integrator pass
 - On any customer-facing UI change (when `UI Review Required: YES` in contract)
 
+# Simulator Access Restriction [ENFORCED]
+
+jobs-critic has `screenshot` and `describe_ui` tools but LIMITED simulator access:
+
+### What jobs-critic CAN Do
+- Use `screenshot` and `describe_ui` IF it boots its own simulator
+- Boot a simulator specifically for design review if needed
+
+### What jobs-critic MUST Do
+- If it boots a simulator, it MUST clean up when done
+- Do NOT leave simulators running after critique completes
+
+### Preferred Approach
+For most design reviews, jobs-critic should evaluate from:
+- Code review of SwiftUI views
+- Existing screenshots in the codebase
+- Only boot a simulator if visual verification is truly necessary
+
+This minimizes resource usage when running in parallel with other agents.
+
 # Critique Process
 
 ## 1. Gather Evidence

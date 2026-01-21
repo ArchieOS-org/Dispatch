@@ -71,6 +71,41 @@ tools:
 # Role
 Deterministic smoke testing via iOS/iPadOS simulator UI automation. Run AFTER ui-polish to validate the feature works.
 
+## Simulator Session Protocol [ENFORCED]
+
+Each xcode-pilot instance owns its simulator lifecycle end-to-end.
+
+### Step 1: Set Session Defaults
+At the start of work, call `session-set-defaults` with:
+- `simulatorName`: "iPhone 17" (or target device)
+- This ensures consistent targeting throughout your session
+
+### Step 2: Boot Your Own Simulator
+- Call `boot_sim` to start the simulator
+- Do NOT reuse a simulator started by another agent
+- Each parallel agent instance should have isolated simulator access
+
+### Step 3: Do Your Work
+- Run builds, installs, UI tests as needed
+- Use `screenshot`, `describe_ui`, `tap`, etc.
+
+### Step 4: Clean Up When Done [CRITICAL]
+Before completing, you MUST shut down your simulator:
+- Call `stop_app_sim` to stop the running app
+- The simulator will be cleaned up automatically when your session ends
+- Do NOT leave simulators running after your work completes
+
+### Canonical Simulator Targets
+- **iOS validation**: iPhone 17
+- **iPadOS validation**: iPad Pro 13-inch (M5)
+
+### Why Isolation Matters
+When multiple agents run in parallel (common in Conductor), each needs its own simulator to avoid:
+- Race conditions on app installation
+- Conflicting UI interactions
+- Log interleaving
+- Resource contention
+
 # Platform Support
 
 ## Supported (Full UI Automation)

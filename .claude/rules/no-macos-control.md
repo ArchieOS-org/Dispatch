@@ -43,6 +43,36 @@ These tools **launch or interact with simulator windows** and should be avoided 
 | `mcp__xcodebuildmcp__screenshot` | Requires running simulator | xcode-pilot only |
 | `mcp__xcodebuildmcp__describe_ui` | Requires running simulator | xcode-pilot only |
 
+## Simulator Coordination Protocol [ENFORCED]
+
+### Isolation Principle
+Each agent that needs a simulator boots its own and cleans it up when done. Agents do NOT share simulators.
+
+### Lifecycle Ownership
+The agent that boots a simulator OWNS it:
+1. **Boot**: Agent calls `boot_sim` at start of simulator work
+2. **Use**: Agent performs all simulator operations
+3. **Cleanup**: Agent stops apps and allows simulator cleanup when done
+
+### Cleanup Requirement [CRITICAL]
+Agents MUST clean up simulators when their work completes:
+- Call `stop_app_sim` to terminate running apps
+- Do NOT leave simulators running after work completes
+- Orphaned simulators consume resources and cause visual clutter
+
+### Why NOT Share Simulators
+When agents share a simulator:
+- One agent's `tap` could interfere with another's UI state
+- App installations can conflict
+- Logs become interleaved and hard to trace
+- Test results become non-deterministic
+
+### Parallel Agent Execution
+When multiple agents run simultaneously (Conductor's normal mode):
+- Each agent with simulator needs boots its own
+- Each agent cleans up independently
+- No coordination needed between agents (isolation handles it)
+
 ## Agent Tool Assignments
 
 | Agent | Simulator Launch Tools? | Reason |
