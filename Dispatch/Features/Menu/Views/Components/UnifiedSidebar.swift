@@ -84,6 +84,8 @@ struct UnifiedSidebarContent: View {
     .listStyle(.sidebar)
     #if os(iOS)
       .scrollContentBackground(.hidden)
+      // Remove blue selection highlight on iPad sidebar (DIS-67)
+      .tint(.clear)
     #endif
   }
 
