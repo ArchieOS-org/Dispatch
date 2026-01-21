@@ -146,7 +146,10 @@ struct ContentView: View {
         stageCounts: stageCounts,
         workspaceTasks: workspaceTasks, workspaceActivities: workspaceActivities,
         activeListings: activeListings, activeProperties: activeProperties, activeRealtors: activeRealtors,
-        pathBindingProvider: pathBinding(for:)
+        pathBindingProvider: pathBinding(for:),
+        quickFindText: $quickFindText,
+        activeTasks: activeTasks, activeActivities: activeActivities,
+        onSelectSearchResult: selectSearchResult(_:)
       )
     }
     #endif
