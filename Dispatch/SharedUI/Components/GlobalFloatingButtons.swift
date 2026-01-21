@@ -53,7 +53,11 @@ struct GlobalFloatingButtons: View {
   }
 
   #if os(iOS)
-  /// Use idiom, not size class - iPad in Split View can be .compact
+  /// INTENTIONALLY uses device idiom, NOT size class.
+  /// Rationale: iPad has different UI patterns (toolbar FilterMenu + separate FAB overlay)
+  /// regardless of its current size class. Even when iPad is in compact Split View mode,
+  /// it should NOT show iPhone-style floating buttons - it uses its own UI paradigm.
+  /// This is a device capability check, not a layout adaptation.
   private var isPhone: Bool {
     UIDevice.current.userInterfaceIdiom == .phone
   }

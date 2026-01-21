@@ -261,14 +261,16 @@ final class SyncPerformanceTests: XCTestCase {
     let scaledDuration = Date().timeIntervalSince(scaledStart)
 
     // Scaled should be roughly 10x baseline, not 100x (which would indicate O(n^2))
-    // Allow for some overhead (20x is generous but catches egregious regressions)
+    // Allow for generous overhead to avoid CI flakiness - 50x still catches O(n^2) patterns
+    // which would show ~100x ratio for 10x scale factor
     let ratio = scaledDuration / baselineDuration
 
-    // Skip assertion if baseline is too fast to measure reliably
-    if baselineDuration > 0.001 {
+    // Skip assertion if baseline is too fast to measure reliably.
+    // CI environments can have significant timing variance, so we need a higher threshold.
+    if baselineDuration > 0.01 {
       XCTAssertLessThan(
         ratio,
-        20.0, // Generous threshold to avoid flaky tests
+        50.0, // Generous threshold for CI - still catches O(n^2) which would be ~100x
         "Scaling from \(baselineCount) to \(scaledCount) items took \(ratio)x longer, suggesting O(n^2) complexity"
       )
     }

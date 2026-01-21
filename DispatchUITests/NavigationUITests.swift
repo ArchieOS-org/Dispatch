@@ -27,7 +27,8 @@ final class NavigationUITests: XCTestCase {
 
     // Navigate to a listing detail that has a realtor pill
     // This assumes the test data includes a listing with an owner
-    let listingCell = app.cells.containing(.staticText, identifier: "123 Job Standard Blvd").firstMatch
+    // ListingRow uses accessibilityIdentifier set to the address
+    let listingCell = app.cells["123 Job Standard Blvd"].firstMatch
     if listingCell.waitForExistence(timeout: 5) {
       listingCell.tap()
 
@@ -49,7 +50,8 @@ final class NavigationUITests: XCTestCase {
     let app = launchApp()
 
     // Use CI-appropriate timeout (15s instead of 5s)
-    let listingCell = app.cells.containing(.staticText, identifier: "123 Job Standard Blvd").firstMatch
+    // ListingRow uses accessibilityIdentifier set to the address
+    let listingCell = app.cells["123 Job Standard Blvd"].firstMatch
     XCTAssertTrue(listingCell.waitForExistence(timeout: 15), "Listing cell should exist in seeded data")
 
     listingCell.tap()
@@ -70,7 +72,8 @@ final class NavigationUITests: XCTestCase {
     if propertiesTab.waitForExistence(timeout: 5) {
       propertiesTab.tap()
 
-      let propertyCell = app.cells.containing(.staticText, identifier: "456 Test Property Lane").firstMatch
+      // PropertyRow uses accessibilityIdentifier set to displayAddress
+      let propertyCell = app.cells["456 Test Property Lane"].firstMatch
       if propertyCell.waitForExistence(timeout: 5) {
         propertyCell.tap()
 
@@ -86,7 +89,8 @@ final class NavigationUITests: XCTestCase {
   func testWorkItemNavigation() throws {
     let app = launchApp()
 
-    let listingCell = app.cells.containing(.staticText, identifier: "123 Job Standard Blvd").firstMatch
+    // ListingRow uses accessibilityIdentifier set to the address
+    let listingCell = app.cells["123 Job Standard Blvd"].firstMatch
     if listingCell.waitForExistence(timeout: 5) {
       listingCell.tap()
 

@@ -51,6 +51,7 @@ struct ListingRow: View {
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabel)
+    .accessibilityIdentifier(listing.address)
   }
 
   // MARK: Private

@@ -27,7 +27,10 @@ struct ContentView: View {
 
   #if os(iOS)
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-  private var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
+
+  /// Use size class for layout decisions - compact means phone-like layout (narrow space).
+  /// This includes iPhone portrait AND iPad in narrow Split View column.
+  private var isCompactLayout: Bool { horizontalSizeClass == .compact }
   #endif
 
   @Query private var users: [User]
@@ -79,7 +82,7 @@ struct ContentView: View {
 
   private var currentPathDepth: Int {
     #if os(iOS)
-    isPhone ? appState.router.phonePath.count : (appState.router.paths[appState.router.selectedDestination]?.count ?? 0)
+    isCompactLayout ? appState.router.phonePath.count : (appState.router.paths[appState.router.selectedDestination]?.count ?? 0)
     #else
     appState.router.paths[appState.router.selectedDestination]?.count ?? 0
     #endif
@@ -130,7 +133,7 @@ struct ContentView: View {
       onSelectSearchResult: selectSearchResult(_:), onRequestSync: { syncManager.requestSync() }
     )
     #else
-    if isPhone {
+    if isCompactLayout {
       iPhoneContentView(
         phonePathBinding: phonePathBinding, quickFindText: $quickFindText,
         stageCounts: stageCounts, phoneTabCounts: phoneTabCounts, overdueCount: sidebarOverdueCount,
@@ -194,7 +197,7 @@ struct ContentView: View {
       appState.dispatch(.navigate(.listing(listing.id)))
     case .navigation(_, _, let tab, _):
       #if os(iOS)
-      if isPhone {
+      if isCompactLayout {
         appState.dispatch(.phonePopToRoot)
         appState.dispatch(.phoneNavigateTo(routeFor(tab: tab)))
       } else { appState.dispatch(.selectTab(tab)) }
@@ -309,7 +312,7 @@ struct ContentView: View {
   private func updateLensState() {
     let dest = appState.router.selectedDestination, depth = currentPathDepth
     #if os(iOS)
-    if isPhone, depth == 0 { if appState.lensState.currentScreen != .menu { appState.lensState.currentScreen = .menu }
+    if isCompactLayout, depth == 0 { if appState.lensState.currentScreen != .menu { appState.lensState.currentScreen = .menu }
       return
     }
     #endif

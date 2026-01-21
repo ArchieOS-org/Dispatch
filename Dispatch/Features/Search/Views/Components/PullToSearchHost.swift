@@ -8,6 +8,13 @@
 
 import SwiftUI
 
+// MARK: - Constants
+
+#if os(iOS)
+/// Fallback safe area top for Dynamic Island devices when window is unavailable.
+private let dynamicIslandFallbackHeight: CGFloat = 59
+#endif
+
 // MARK: - PullToSearchHost
 
 /// Renders the pull-to-search indicator at screen level by reading preference values.
@@ -63,14 +70,21 @@ struct PullToSearchHost<Content: View>: View {
   #if os(iOS)
   /// Device safe area top (Dynamic Island/notch), not view-adjusted safe area.
   /// View safe area may include navigation bar height, which we don't want.
+  ///
+  /// NOTE: There is no pure SwiftUI equivalent for window-level safe area insets.
+  /// GeometryReader.safeAreaInsets provides view-adjusted safe area which includes
+  /// the navigation bar. We need the raw device safe area (Dynamic Island/notch only).
+  /// UIKit bridge is intentional and necessary for this specific use case.
   private static var deviceSafeAreaTop: CGFloat {
-    if
-      let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-      let window = windowScene.windows.first
-    {
-      return window.safeAreaInsets.top
+    guard
+      let windowScene = UIApplication.shared.connectedScenes
+        .compactMap({ $0 as? UIWindowScene })
+        .first,
+      let window = windowScene.windows.first(where: { $0.isKeyWindow }) ?? windowScene.windows.first
+    else {
+      return dynamicIslandFallbackHeight
     }
-    return 59 // Fallback for Dynamic Island devices
+    return window.safeAreaInsets.top
   }
   #endif
 
