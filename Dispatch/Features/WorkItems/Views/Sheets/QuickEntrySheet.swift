@@ -156,14 +156,15 @@ struct QuickEntrySheet: View {
         }
       }
 
-      LabeledContent("Due Date") {
-        HStack {
+      VStack(alignment: .leading, spacing: 8) {
+        LabeledContent("Due Date") {
           Toggle("", isOn: $hasDueDate)
             .labelsHidden()
-          if hasDueDate {
-            DatePicker("", selection: $dueDate, displayedComponents: [.date])
-              .labelsHidden()
-          }
+        }
+        if hasDueDate {
+          DatePicker("", selection: $dueDate, displayedComponents: [.date])
+            .datePickerStyle(.graphical)
+            .labelsHidden()
         }
       }
 
@@ -238,13 +239,16 @@ struct QuickEntrySheet: View {
   }
 
   private var dueDateRow: some View {
-    HStack {
-      Text("Due Date")
-      Spacer()
-      Toggle("", isOn: $hasDueDate)
-        .labelsHidden()
+    VStack(alignment: .leading, spacing: 0) {
+      HStack {
+        Text("Due Date")
+        Spacer()
+        Toggle("", isOn: $hasDueDate)
+          .labelsHidden()
+      }
       if hasDueDate {
         DatePicker("", selection: $dueDate, displayedComponents: [.date])
+          .datePickerStyle(.graphical)
           .labelsHidden()
       }
     }
