@@ -149,7 +149,7 @@ struct QuickEntrySheet: View {
           Picker("Listing", selection: $selectedListing) {
             Text("None").tag(nil as Listing?)
             ForEach(listings) { listing in
-              Text(listing.address).tag(listing as Listing?)
+              Text(listing.address.titleCased()).tag(listing as Listing?)
             }
           }
           .labelsHidden()
@@ -231,7 +231,7 @@ struct QuickEntrySheet: View {
     Picker("Listing", selection: $selectedListing) {
       Text("None").tag(nil as Listing?)
       ForEach(listings) { listing in
-        Text(listing.address).tag(listing as Listing?)
+        Text(listing.address.titleCased()).tag(listing as Listing?)
       }
     }
     .pickerStyle(.menu)

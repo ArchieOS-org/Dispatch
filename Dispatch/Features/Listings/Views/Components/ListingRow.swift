@@ -24,7 +24,7 @@ struct ListingRow: View {
       ProgressCircle(progress: listing.progress, size: 17)
 
       // Address
-      Text(listing.address)
+      Text(listing.address.titleCased())
         .font(DS.Typography.body)
         .foregroundColor(DS.Colors.Text.primary)
         .lineLimit(1)

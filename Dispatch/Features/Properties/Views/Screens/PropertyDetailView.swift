@@ -81,7 +81,7 @@ struct PropertyDetailView: View {
     VStack(alignment: .leading, spacing: DS.Spacing.sm) {
       // Location
       if !property.city.isEmpty {
-        Text("\(property.city), \(property.province) \(property.postalCode)")
+        Text("\(property.city.titleCased()), \(property.province.titleCased()) \(property.postalCode)")
           .font(DS.Typography.body)
           .foregroundColor(DS.Colors.Text.secondary)
       }

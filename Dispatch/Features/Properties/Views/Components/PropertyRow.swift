@@ -73,7 +73,7 @@ struct PropertyRow: View {
   private var listingIconSize: CGFloat = 10
 
   private var locationText: String {
-    [property.city, property.province]
+    [property.city.titleCased(), property.province.titleCased()]
       .filter { !$0.isEmpty }
       .joined(separator: ", ")
   }

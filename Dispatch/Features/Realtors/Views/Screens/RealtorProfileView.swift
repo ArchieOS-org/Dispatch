@@ -228,7 +228,7 @@ private struct PropertyRowView: View {
           .foregroundColor(DS.Colors.Text.primary)
 
         if !property.city.isEmpty {
-          Text("\(property.city), \(property.province)")
+          Text("\(property.city.titleCased()), \(property.province.titleCased())")
             .font(DS.Typography.caption)
             .foregroundColor(DS.Colors.Text.secondary)
         }
@@ -284,11 +284,11 @@ private struct ListingRowView: View {
   var body: some View {
     HStack(spacing: DS.Spacing.md) {
       VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-        Text(listing.address)
+        Text(listing.address.titleCased())
           .font(DS.Typography.body)
           .foregroundColor(DS.Colors.Text.primary)
 
-        Text("\(listing.city), \(listing.province)")
+        Text("\(listing.city.titleCased()), \(listing.province.titleCased())")
           .font(DS.Typography.caption)
           .foregroundColor(DS.Colors.Text.secondary)
       }

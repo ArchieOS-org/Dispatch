@@ -52,7 +52,7 @@ struct ListingOutputView: View {
         if state.inputMode == .existingListing, let listing = state.selectedListing {
           HStack(spacing: DS.Spacing.sm) {
             if !listing.city.isEmpty {
-              Text(listing.city)
+              Text(listing.city.titleCased())
                 .font(DS.Typography.caption)
                 .foregroundStyle(DS.Colors.Text.secondary)
             }
