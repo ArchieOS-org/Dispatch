@@ -22,6 +22,18 @@ struct iPadContentView: View {
   let activeRealtors: [User]
   let pathBindingProvider: (SidebarDestination) -> Binding<[AppRoute]>
 
+  /// Global Quick Find text state
+  @Binding var quickFindText: String
+
+  /// Active tasks for search overlay
+  let activeTasks: [TaskItem]
+
+  /// Active activities for search overlay
+  let activeActivities: [Activity]
+
+  /// Callback when search result is selected
+  let onSelectSearchResult: (SearchResult) -> Void
+
   var body: some View {
     ZStack {
       NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -58,6 +70,43 @@ struct iPadContentView: View {
             .padding(.trailing, DS.Spacing.floatingButtonMargin)
             .safeAreaPadding(.bottom, DS.Spacing.floatingButtonBottomInset)
         }
+      }
+    }
+    .overlay {
+      // Search overlay - Conditional rendering per SwiftUI best practices
+      // View is added/removed from hierarchy cleanly, enabling proper focus management
+      // via defaultFocus modifier (no delays needed)
+      //
+      // Data is passed from ContentView's @Query properties to avoid duplicate queries.
+      if appState.overlayState.isSearch {
+        SearchOverlay(
+          isPresented: Binding(
+            get: { appState.overlayState.isSearch },
+            set: { newValue in
+              // Defer state change to avoid "Publishing changes from within view updates" warning.
+              // Task schedules the dispatch for the next run loop iteration.
+              Task { @MainActor in
+                if !newValue {
+                  appState.overlayState = .none
+                }
+              }
+            }
+          ),
+          searchText: $quickFindText,
+          tasks: activeTasks,
+          activities: activeActivities,
+          listings: activeListings,
+          onSelectResult: { result in
+            onSelectSearchResult(result)
+          }
+        )
+        .transition(.opacity.animation(.easeOut(duration: 0.2)))
+      }
+    }
+    .onChange(of: appState.overlayState) { _, newState in
+      // Update quickFindText when search opens with initial text
+      if case .search(let initialText) = newState {
+        quickFindText = initialText ?? ""
       }
     }
   }
