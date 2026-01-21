@@ -21,22 +21,44 @@ import AppKit
 /// Usage: Apply via `.background(MacWindowPolicy())` on the root view.
 struct MacWindowPolicy: NSViewRepresentable {
 
+  final class Coordinator {
+    fileprivate var configuredWindowIDs = Set<ObjectIdentifier>()
+  }
+
+  func makeCoordinator() -> Coordinator {
+    Coordinator()
+  }
+
   // MARK: Internal
 
-  func makeNSView(context _: Context) -> NSView {
+  func makeNSView(context: Context) -> NSView {
     let view = NSView()
+
+    // `view.window` is nil during construction; defer once to allow attachment.
     DispatchQueue.main.async {
-      if let window = view.window {
-        configure(window)
-      }
+      tryConfigure(view.window, context: context)
     }
+
     return view
   }
 
-  func updateNSView(_ nsView: NSView, context _: Context) {
-    if let window = nsView.window {
-      configure(window)
-    }
+  func updateNSView(_ nsView: NSView, context: Context) {
+    tryConfigure(nsView.window, context: context)
+  }
+
+  private func tryConfigure(_ window: NSWindow?, context: Context) {
+    guard let window else { return }
+
+    // Only configure once per window to avoid repeated mutations during SwiftUI updates.
+    let id = ObjectIdentifier(window)
+    guard !context.coordinator.configuredWindowIDs.contains(id) else { return }
+    context.coordinator.configuredWindowIDs.insert(id)
+
+    #if DEBUG
+    print("[MacWindowPolicy] configuring window: \(window) styleMask=\(window.styleMask)")
+    #endif
+
+    configure(window)
   }
 
   // MARK: Private
@@ -50,23 +72,20 @@ struct MacWindowPolicy: NSViewRepresentable {
     window.backgroundColor = .clear
 
     // 2. Unified/Transparent Titlebar
-    window.titlebarAppearsTransparent = true
+    window.titleVisibility = .visible
+    window.titlebarAppearsTransparent = false
 
-    // 3. Enable Full-Size Content View
-    if !window.styleMask.contains(.fullSizeContentView) {
-      window.styleMask.insert(.fullSizeContentView)
+    if #available(macOS 13.0, *) {
+      window.toolbarStyle = .expanded
     }
 
-    // 4. Add toolbar for titlebar transparency
-    let toolbar = NSToolbar(identifier: "MainToolbar")
-    toolbar.delegate = ToolbarDelegate.shared
-    toolbar.displayMode = .iconOnly
-    // Note: showsBaselineSeparator was deprecated in macOS 15.
-    // Use window.titlebarSeparatorStyle instead (set below).
-    window.toolbar = toolbar
+
+    // 4. (Removed) Do NOT manually set window.toolbar.
+    // SwiftUI manages the toolbar via .windowToolbarStyle().
+    // Replacing it manually causes NSRangeException in BarAppearanceBridge.
 
     // 5. Remove titlebar separator line
-    window.titlebarSeparatorStyle = .none
+    window.titlebarSeparatorStyle = .automatic
   }
 
 }
@@ -79,30 +98,6 @@ extension View {
   }
 }
 
-// MARK: - Toolbar Delegate
-
-private class ToolbarDelegate: NSObject, NSToolbarDelegate {
-  static let shared = ToolbarDelegate()
-
-  func toolbar(
-    _ toolbar: NSToolbar,
-    itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
-    willBeInsertedIntoToolbar flag: Bool
-  ) -> NSToolbarItem? {
-    if itemIdentifier == .flexibleSpace {
-      return NSToolbarItem(itemIdentifier: .flexibleSpace)
-    }
-    return nil
-  }
-
-  func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-    [.flexibleSpace]
-  }
-
-  func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-    [.flexibleSpace]
-  }
-}
 
 #else
 extension View {

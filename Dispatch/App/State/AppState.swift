@@ -162,8 +162,8 @@ final class AppState: ObservableObject {
 
     case .navigate(let route):
       // Legacy: navigate on current tab (iPad/macOS) or phone path (iPhone)
-      // For now, use phone path as default since most existing code is iPhone-oriented
-      router.phoneNavigate(to: route)
+      // UNIFIED: Now creates a path entry on the current selected destination for ALL platforms
+      router.navigate(to: route)
 
     case .selectTab(let tab):
       // Legacy: map to userSelectedTab (maintains old behavior)
