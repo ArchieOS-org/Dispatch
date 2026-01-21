@@ -35,41 +35,37 @@ struct iPadContentView: View {
   let onSelectSearchResult: (SearchResult) -> Void
 
   var body: some View {
-    ZStack {
-      NavigationSplitView(columnVisibility: $columnVisibility) {
-        UnifiedSidebarContent(
-          stageCounts: stageCounts,
-          tabCounts: tabCounts,
-          overdueCount: overdueCount,
-          selection: appState.sidebarSelectionBinding,
-          onSelectStage: { stage in
-            appState.dispatch(.setSelectedDestination(.stage(stage)))
-          }
-        )
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-          ToolbarItemGroup(placement: .bottomBar) {
-            FilterMenu(audience: $appState.lensState.audience)
-            Spacer()
-          }
+    NavigationSplitView(columnVisibility: $columnVisibility) {
+      UnifiedSidebarContent(
+        stageCounts: stageCounts,
+        tabCounts: tabCounts,
+        overdueCount: overdueCount,
+        selection: appState.sidebarSelectionBinding,
+        onSelectStage: { stage in
+          appState.dispatch(.setSelectedDestination(.stage(stage)))
         }
-      } detail: {
-        NavigationStack(path: pathBindingProvider(appState.router.selectedDestination)) {
-          destinationRootView(for: appState.router.selectedDestination)
-            .appDestinations()
+      )
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItemGroup(placement: .bottomBar) {
+          FilterMenu(audience: $appState.lensState.audience)
+          Spacer()
         }
-        .id(appState.router.selectedDestination)
       }
-      .navigationSplitViewStyle(.balanced)
-
-      // FAB overlay for quick entry
-      if appState.overlayState == .none {
-        ZStack(alignment: .bottomTrailing) {
-          Color.clear.allowsHitTesting(false)
-          FloatingActionButton { appState.sheetState = .quickEntry(type: nil) }
-            .padding(.trailing, DS.Spacing.floatingButtonMargin)
-            .safeAreaPadding(.bottom, DS.Spacing.floatingButtonBottomInset)
-        }
+    } detail: {
+      NavigationStack(path: pathBindingProvider(appState.router.selectedDestination)) {
+        destinationRootView(for: appState.router.selectedDestination)
+          .appDestinations()
+      }
+      .id(appState.router.selectedDestination)
+    }
+    .navigationSplitViewStyle(.balanced)
+    // FAB overlay for quick entry - uses .overlay to ensure proper sizing
+    .overlay(alignment: .bottomTrailing) {
+      if appState.overlayState == .none, !environmentHidden, !overlayState.isOverlayHidden {
+        FloatingActionButton { appState.sheetState = .quickEntry(type: nil) }
+          .padding(.trailing, DS.Spacing.floatingButtonMargin)
+          .padding(.bottom, DS.Spacing.floatingButtonBottomInset)
       }
     }
     .overlay {
@@ -114,6 +110,8 @@ struct iPadContentView: View {
   // MARK: Private
 
   @EnvironmentObject private var appState: AppState
+  @EnvironmentObject private var overlayState: AppOverlayState
+  @Environment(\.globalButtonsHidden) private var environmentHidden
   @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
   private var tabCounts: [AppTab: Int] {
