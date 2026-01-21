@@ -52,59 +52,58 @@ struct iPhoneContentView: View {
   let onRequestSync: () -> Void
 
   var body: some View {
-    ZStack {
-      NavigationStack(path: phonePathBinding) {
-        PullToSearchHost {
-          MenuPageView(
-            stageCounts: stageCounts,
-            tabCounts: phoneTabCounts,
-            overdueCount: overdueCount
-          )
-        }
-        .appDestinations()
+    NavigationStack(path: phonePathBinding) {
+      PullToSearchHost {
+        MenuPageView(
+          stageCounts: stageCounts,
+          tabCounts: phoneTabCounts,
+          overdueCount: overdueCount
+        )
       }
-      .overlay {
-        // Search overlay - Conditional rendering per SwiftUI best practices
-        // View is added/removed from hierarchy cleanly, enabling proper focus management
-        // via defaultFocus modifier (no delays needed)
-        //
-        // Data is passed from ContentView's @Query properties to avoid duplicate queries.
-        if appState.overlayState.isSearch {
-          SearchOverlay(
-            isPresented: Binding(
-              get: { appState.overlayState.isSearch },
-              set: { newValue in
-                // Defer state change to avoid "Publishing changes from within view updates" warning.
-                // Task schedules the dispatch for the next run loop iteration.
-                Task { @MainActor in
-                  if !newValue {
-                    appState.overlayState = .none
-                  }
+      .appDestinations()
+      // GlobalFloatingButtons MUST be inside NavigationStack to receive environment values
+      // set by destination views (e.g., SettingsScreen sets .globalButtonsHidden)
+      .overlay(alignment: .bottom) {
+        if appState.overlayState == .none {
+          GlobalFloatingButtons()
+        }
+      }
+    }
+    .overlay {
+      // Search overlay - Conditional rendering per SwiftUI best practices
+      // View is added/removed from hierarchy cleanly, enabling proper focus management
+      // via defaultFocus modifier (no delays needed)
+      //
+      // Data is passed from ContentView's @Query properties to avoid duplicate queries.
+      if appState.overlayState.isSearch {
+        SearchOverlay(
+          isPresented: Binding(
+            get: { appState.overlayState.isSearch },
+            set: { newValue in
+              // Defer state change to avoid "Publishing changes from within view updates" warning.
+              // Task schedules the dispatch for the next run loop iteration.
+              Task { @MainActor in
+                if !newValue {
+                  appState.overlayState = .none
                 }
               }
-            ),
-            searchText: $quickFindText,
-            tasks: activeTasks,
-            activities: activeActivities,
-            listings: activeListings,
-            onSelectResult: { result in
-              onSelectSearchResult(result)
             }
-          )
-          .transition(.opacity.animation(.easeOut(duration: 0.2)))
-        }
+          ),
+          searchText: $quickFindText,
+          tasks: activeTasks,
+          activities: activeActivities,
+          listings: activeListings,
+          onSelectResult: { result in
+            onSelectSearchResult(result)
+          }
+        )
+        .transition(.opacity.animation(.easeOut(duration: 0.2)))
       }
-      .onChange(of: appState.overlayState) { _, newState in
-        // Update quickFindText when search opens with initial text
-        if case .search(let initialText) = newState {
-          quickFindText = initialText ?? ""
-        }
-      }
-
-      // Persistent floating buttons
-      // Helper to hide buttons when overlay is active (One Boss)
-      if appState.overlayState == .none {
-        GlobalFloatingButtons()
+    }
+    .onChange(of: appState.overlayState) { _, newState in
+      // Update quickFindText when search opens with initial text
+      if case .search(let initialText) = newState {
+        quickFindText = initialText ?? ""
       }
     }
     .onAppear {

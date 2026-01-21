@@ -8,6 +8,28 @@
 import Combine
 import SwiftUI
 
+// MARK: - GlobalButtonsHiddenKey
+
+/// Environment key to hide global floating buttons in a view hierarchy.
+/// Used by SettingsScreen wrapper to automatically hide buttons for all settings sub-screens.
+/// This approach avoids race conditions from onAppear/onDisappear timing issues.
+private struct GlobalButtonsHiddenKey: EnvironmentKey {
+  static let defaultValue = false
+}
+
+// MARK: - EnvironmentValues + GlobalButtonsHidden
+
+extension EnvironmentValues {
+  /// When true, global floating buttons are hidden for this view hierarchy.
+  /// Set this at a root container (like SettingsScreen) to hide for all descendants.
+  var globalButtonsHidden: Bool {
+    get { self[GlobalButtonsHiddenKey.self] }
+    set { self[GlobalButtonsHiddenKey.self] = newValue }
+  }
+}
+
+// MARK: - AppOverlayState
+
 /// Controls visibility of floating buttons (filter + FAB) using reference-counted reasons.
 /// Prevents stuck states when multiple fields focus/unfocus.
 ///

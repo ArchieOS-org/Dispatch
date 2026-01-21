@@ -47,9 +47,13 @@ struct GlobalFloatingButtons: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var overlayState: AppOverlayState
 
-  /// Single source of truth for button visibility
+  /// Environment key set by SettingsScreen wrapper to hide buttons
+  @Environment(\.globalButtonsHidden) private var environmentHidden
+
+  /// Single source of truth for button visibility.
+  /// Combines environment-based hiding (SettingsScreen) with state-based hiding (keyboard, modals).
   private var shouldHideButtons: Bool {
-    overlayState.isOverlayHidden
+    environmentHidden || overlayState.isOverlayHidden
   }
 
   #if os(iOS)

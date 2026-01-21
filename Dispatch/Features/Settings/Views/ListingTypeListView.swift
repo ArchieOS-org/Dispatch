@@ -17,41 +17,43 @@ struct ListingTypeListView: View {
   // MARK: Internal
 
   var body: some View {
-    StandardScreen(title: "Listing Types", layout: .column, scroll: .disabled) {
-      StandardList(visibleTypes) { listingType in
-        ListRowLink(value: AppRoute.listingType(listingType.id)) {
-          ListingTypeRow(listingType: listingType)
+    SettingsScreen {
+      StandardScreen(title: "Listing Types", layout: .column, scroll: .disabled) {
+        StandardList(visibleTypes) { listingType in
+          ListRowLink(value: AppRoute.listingType(listingType.id)) {
+            ListingTypeRow(listingType: listingType)
+          }
+        } emptyContent: {
+          ContentUnavailableView {
+            Label("No Listing Types", systemImage: DS.Icons.Entity.listing)
+          } description: {
+            Text("Create listing types to enable auto-generated activities.")
+          }
         }
-      } emptyContent: {
-        ContentUnavailableView {
-          Label("No Listing Types", systemImage: DS.Icons.Entity.listing)
-        } description: {
-          Text("Create listing types to enable auto-generated activities.")
+      } toolbarContent: {
+        ToolbarItem(placement: .primaryAction) {
+          Button {
+            showAddSheet = true
+          } label: {
+            Image(systemName: "plus")
+          }
         }
-      }
-    } toolbarContent: {
-      ToolbarItem(placement: .primaryAction) {
-        Button {
-          showAddSheet = true
-        } label: {
-          Image(systemName: "plus")
-        }
-      }
 
-      #if os(macOS)
-      ToolbarItem(placement: .automatic) {
-        Toggle("Show Archived", isOn: $showArchivedTypes)
-          .toggleStyle(.checkbox)
-      }
-      #else
-      ToolbarItem(placement: .topBarLeading) {
-        Menu {
+        #if os(macOS)
+        ToolbarItem(placement: .automatic) {
           Toggle("Show Archived", isOn: $showArchivedTypes)
-        } label: {
-          Image(systemName: "line.3.horizontal.decrease.circle")
+            .toggleStyle(.checkbox)
         }
+        #else
+        ToolbarItem(placement: .topBarLeading) {
+          Menu {
+            Toggle("Show Archived", isOn: $showArchivedTypes)
+          } label: {
+            Image(systemName: "line.3.horizontal.decrease.circle")
+          }
+        }
+        #endif
       }
-      #endif
     }
     .sheet(isPresented: $showAddSheet) {
       ListingTypeEditorSheet()

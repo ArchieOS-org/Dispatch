@@ -18,45 +18,43 @@ struct SettingsView: View {
   // MARK: Internal
 
   var body: some View {
-    StandardScreen(title: "Settings", layout: .column, scroll: .automatic) {
-      VStack(spacing: DS.Spacing.lg) {
-        // Profile Row (navigates to ProfilePageView)
-        ProfileRow()
+    SettingsScreen {
+      StandardScreen(title: "Settings", layout: .column, scroll: .automatic) {
+        VStack(spacing: DS.Spacing.lg) {
+          // Profile Row (navigates to ProfilePageView)
+          ProfileRow()
 
-        // Admin Settings (only for admin users)
-        if syncManager.currentUser?.userType == .admin {
-          VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            Text("Admin")
-              .font(DS.Typography.caption)
-              .foregroundStyle(DS.Colors.Text.secondary)
-              .textCase(.uppercase)
-              .padding(.horizontal, DS.Spacing.xs)
+          // Admin Settings (only for admin users)
+          if syncManager.currentUser?.userType == .admin {
+            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+              Text("Admin")
+                .font(DS.Typography.caption)
+                .foregroundStyle(DS.Colors.Text.secondary)
+                .textCase(.uppercase)
+                .padding(.horizontal, DS.Spacing.xs)
 
-            VStack(spacing: 0) {
-              ForEach(SettingsSection.allCases) { section in
-                ListRowLink(value: AppRoute.settings(section)) {
-                  SettingsRow(section: section)
-                }
-                if section != SettingsSection.allCases.last {
-                  Divider()
-                    .padding(.leading, 52)
+              VStack(spacing: 0) {
+                ForEach(SettingsSection.allCases) { section in
+                  ListRowLink(value: AppRoute.settings(section)) {
+                    SettingsRow(section: section)
+                  }
+                  if section != SettingsSection.allCases.last {
+                    Divider()
+                      .padding(.leading, 52)
+                  }
                 }
               }
             }
           }
         }
+        .padding(.vertical, DS.Spacing.sm)
       }
-      .padding(.vertical, DS.Spacing.sm)
     }
-    .environment(\.pullToSearchDisabled, true)
-    .onAppear { overlayState.hide(reason: .settingsScreen) }
-    .onDisappear { overlayState.show(reason: .settingsScreen) }
   }
 
   // MARK: Private
 
   @EnvironmentObject private var appState: AppState
-  @EnvironmentObject private var overlayState: AppOverlayState
   @EnvironmentObject private var syncManager: SyncManager
 
 }
