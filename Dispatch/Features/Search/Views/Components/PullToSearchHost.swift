@@ -8,6 +8,13 @@
 
 import SwiftUI
 
+// MARK: - Constants
+
+#if os(iOS)
+/// Fallback safe area top for Dynamic Island devices when window is unavailable.
+private let dynamicIslandFallbackHeight: CGFloat = 59
+#endif
+
 // MARK: - PullToSearchHost
 
 /// Renders the pull-to-search indicator at screen level by reading preference values.
@@ -75,7 +82,7 @@ struct PullToSearchHost<Content: View>: View {
         .first,
       let window = windowScene.windows.first(where: { $0.isKeyWindow }) ?? windowScene.windows.first
     else {
-      return 59 // Fallback for Dynamic Island devices
+      return dynamicIslandFallbackHeight
     }
     return window.safeAreaInsets.top
   }
