@@ -243,6 +243,7 @@ struct StringTitleCaseTests {
   func testNumbersInAddresses() {
     #expect("123 main street".titleCased() == "123 Main Street")
     #expect("456 oak avenue".titleCased() == "456 Oak Avenue")
+    #expect("apt 2b oak avenue".titleCased() == "Apt 2b Oak Avenue")
   }
 
   @Test("titleCased handles province abbreviations")

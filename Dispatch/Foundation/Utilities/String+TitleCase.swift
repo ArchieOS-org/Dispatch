@@ -32,17 +32,14 @@ extension String {
     let titleCasedWords = words.enumerated().map { index, word -> String in
       let wordString = String(word)
 
-      // Always capitalize the first word
-      if index == 0 {
-        return wordString.capitalized
-      }
-
-      // Keep small words lowercase
-      if smallWords.contains(wordString) {
+      // Keep small words lowercase (except at start)
+      if index != 0 && smallWords.contains(wordString) {
         return wordString
       }
 
-      return wordString.capitalized
+      // Capitalize only the first character, keep rest lowercase
+      // This avoids Swift's .capitalized which uppercases letters after digits (e.g., "2b" -> "2B")
+      return wordString.prefix(1).uppercased() + wordString.dropFirst()
     }
 
     return titleCasedWords.joined(separator: " ")
