@@ -22,15 +22,15 @@ jobs:
       matrix:
         include:
           - platform: macos
-            runs_on: macos-15
+            runs_on: macos-26
             destination: platform=macOS
           - platform: iphone
-            runs_on: macos-15
-            device_preferred: iPhone 15
+            runs_on: macos-26
+            device_preferred: iPhone 17
             device_fallback: iPhone
           - platform: ipad
-            runs_on: macos-15
-            device_preferred: iPad (10th generation)
+            runs_on: macos-26
+            device_preferred: iPad Pro 13-inch (M5)
             device_fallback: iPad
 
     env:

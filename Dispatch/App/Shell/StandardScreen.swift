@@ -230,12 +230,18 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
 /// Per HIG: Creates a soft transition between scrollable content and the toolbar area.
 private struct ScrollEdgeEffectModifier: ViewModifier {
   func body(content: Content) -> some View {
+    // scrollEdgeEffectStyle requires iOS 26/macOS 26 SDK (Xcode 18+).
+    // Use compiler check since #available is runtime-only and won't compile without the SDK.
+    #if compiler(>=6.2)
     if #available(iOS 26, macOS 26, *) {
       content
         .scrollEdgeEffectStyle(.soft, for: .top)
     } else {
       content
     }
+    #else
+    content
+    #endif
   }
 }
 
