@@ -57,9 +57,9 @@ struct UnifiedSidebarContent: View {
       }
       .listRowInsets(EdgeInsets(
         top: DS.Spacing.sm,
-        leading: DS.Spacing.md,
+        leading: 0,
         bottom: DS.Spacing.md,
-        trailing: DS.Spacing.md
+        trailing: 0
       ))
       .listRowBackground(Color.clear)
       .listRowSeparator(.hidden)

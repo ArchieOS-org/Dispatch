@@ -64,19 +64,6 @@ struct ContentView: View {
   private var activeRealtors: [User] { allRealtorsRaw.filter { $0.userType == .realtor } }
   private var stageCounts: [ListingStage: Int] { activeListings.stageCounts() }
 
-  private var selectedDestinationBinding: Binding<SidebarDestination> {
-    Binding(
-      get: { appState.router.selectedDestination },
-      set: { newValue in
-        // Defer state change to avoid "Publishing changes from within view updates" warning.
-        // Task schedules the dispatch for the next run loop iteration.
-        Task { @MainActor in
-          appState.dispatch(.userSelectedDestination(newValue))
-        }
-      }
-    )
-  }
-
   private var phonePathBinding: Binding<[AppRoute]> {
     Binding(
       get: { appState.router.phonePath },
@@ -153,7 +140,7 @@ struct ContentView: View {
       )
     } else {
       iPadContentView(
-        selectedDestinationBinding: selectedDestinationBinding, stageCounts: stageCounts,
+        stageCounts: stageCounts,
         workspaceTasks: workspaceTasks, workspaceActivities: workspaceActivities,
         activeListings: activeListings, activeProperties: activeProperties, activeRealtors: activeRealtors,
         pathBindingProvider: pathBinding(for:)
