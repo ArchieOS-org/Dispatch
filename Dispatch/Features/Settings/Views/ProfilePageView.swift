@@ -17,24 +17,25 @@ struct ProfilePageView: View {
 
   var body: some View {
     ZStack {
-      StandardScreen(title: "Profile", layout: .column, scroll: .automatic) {
-        VStack(spacing: 0) {
-          // User Info Header
-          profileHeader
+      SettingsScreen {
+        StandardScreen(title: "Profile", layout: .column, scroll: .automatic) {
+          VStack(spacing: 0) {
+            // User Info Header
+            profileHeader
 
-          Divider()
+            Divider()
 
-          // User Type Picker
-          userTypePicker
+            // User Type Picker
+            userTypePicker
 
-          Divider()
+            Divider()
 
-          // Sign Out Button
-          signOutButton
+            // Sign Out Button
+            signOutButton
+          }
+          .padding(.vertical, DS.Spacing.sm)
         }
-        .padding(.vertical, DS.Spacing.sm)
       }
-      .environment(\.pullToSearchDisabled, true)
 
       // iOS/iPadOS: Custom fullscreen role change modal
       #if os(iOS)

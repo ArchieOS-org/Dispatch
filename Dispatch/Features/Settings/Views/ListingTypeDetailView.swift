@@ -19,20 +19,22 @@ struct ListingTypeDetailView: View {
   let listingType: ListingTypeDefinition
 
   var body: some View {
-    StandardScreen(title: listingType.name, layout: .column, scroll: .disabled) {
-      VStack(spacing: 0) {
-        // Header: Type Name Editor
-        typeNameSection
+    SettingsScreen {
+      StandardScreen(title: listingType.name, layout: .column, scroll: .disabled) {
+        VStack(spacing: 0) {
+          // Header: Type Name Editor
+          typeNameSection
 
-        // Templates List
-        templatesSection
-      }
-    } toolbarContent: {
-      ToolbarItem(placement: .primaryAction) {
-        Button {
-          showAddTemplateSheet = true
-        } label: {
-          Image(systemName: "plus")
+          // Templates List
+          templatesSection
+        }
+      } toolbarContent: {
+        ToolbarItem(placement: .primaryAction) {
+          Button {
+            showAddTemplateSheet = true
+          } label: {
+            Image(systemName: "plus")
+          }
         }
       }
     }
