@@ -88,7 +88,6 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
 
   /// Debug environment
   @Environment(\.layoutMetrics) var layoutMetrics
-
   let title: String
   let layout: LayoutMode
   let scroll: ScrollMode
@@ -100,13 +99,9 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     PullToSearchHost {
       mainContent
     }
-    // On macOS, render title inline with content (scrollable) rather than in navigation bar.
+    // On macOS and iPad, render title inline with content (scrollable) rather than in navigation bar.
     // Use empty string to preserve navigation infrastructure while hiding the nav bar title.
-    #if os(macOS)
-    .navigationTitle("")
-    #else
-    .navigationTitle(title)
-    #endif
+    .navigationTitle(shouldUseInlineTitle ? "" : title)
     .toolbar {
       toolbarContent()
       // NOTE: iOS 26 introduces ToolbarItemPlacement.largeTitle for custom large title styling.
@@ -122,7 +117,9 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     }
     .applyLayoutWitness()
     #if os(iOS)
-      .navigationBarTitleDisplayMode(.large)
+      // Only use large title mode for iPhone (compact size class)
+      // iPad uses inline title like macOS, so we use .inline to hide the nav bar title area
+      .navigationBarTitleDisplayMode(shouldUseInlineTitle ? .inline : .large)
     #endif
       // Reset tint at navigation level to prevent accent color bleeding into nav title
       // during interactive back gesture cancellation. The accent tint is applied to
@@ -132,7 +129,21 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
 
   // MARK: Private
 
+  #if os(iOS)
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+  #endif
+
   @Environment(\.pullToSearchDisabled) private var pullToSearchDisabled
+
+  /// Whether to render title inline with content (like macOS) instead of in navigation bar.
+  /// True for macOS and iPad (regular horizontal size class), false for iPhone (compact).
+  private var shouldUseInlineTitle: Bool {
+    #if os(macOS)
+    return true
+    #else
+    return horizontalSizeClass != .compact
+    #endif
+  }
 
   private var horizontalPadding: CGFloat? {
     switch layout {
@@ -148,8 +159,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     }
   }
 
-  #if os(macOS)
-  /// Inline title view for macOS - rendered at top of scrollable content area.
+  /// Inline title view for macOS and iPad - rendered at top of scrollable content area.
   /// Respects the same max width and horizontal padding as content.
   private var inlineTitleView: some View {
     Text(title)
@@ -163,7 +173,6 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
       .padding(.top, DS.Spacing.lg)
       .padding(.bottom, DS.Spacing.md)
   }
-  #endif
 
   private var mainContent: some View {
     ZStack {
@@ -200,10 +209,10 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
   @ViewBuilder
   private var innerContent: some View {
     VStack(alignment: .leading, spacing: 0) {
-      #if os(macOS)
-      // Inline title for macOS - scrolls with content, aligned with content column
-      inlineTitleView
-      #endif
+      // Inline title for macOS and iPad - scrolls with content, aligned with content column
+      if shouldUseInlineTitle {
+        inlineTitleView
+      }
 
       content()
         .frame(
