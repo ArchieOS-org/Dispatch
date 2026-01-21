@@ -74,7 +74,7 @@ struct DispatchApp: App {
     WindowGroup(id: "main") {
       // WindowContentView holds per-window @State (WindowUIState on macOS)
       // SwiftUI creates new storage for each window instance
-      WindowContentView(appState: appState, showTestHarness: $showTestHarness)
+      WindowContentView(appState: appState)
         // Inject Brain & Core Services globally (shared across windows)
         .environmentObject(appState)
         .environmentObject(appState.authManager)
@@ -134,13 +134,6 @@ struct DispatchApp: App {
 
   /// The Brain
   @StateObject private var appState = AppState()
-
-  // Legacy: Keep test harness state locally or move to AppState later?
-  // Moving to local for now to keep AppState clean of debug UI logic if possible,
-  // or we can put it in AppState.overlayState. Let's keep it here for minimal regression.
-  #if DEBUG
-  @State private var showTestHarness = false
-  #endif
 
   /// Configures navigation bar appearance to ensure consistent title colors.
   ///

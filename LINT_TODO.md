@@ -58,7 +58,6 @@ Non-trivial fixes are listed for follow-up; no refactors applied.
 | Dispatch/Foundation/Testing/PreviewDataFactory.swift | 15 | `force_unwrapping` | Use guard/if let or provide a default instead of `!`. |
 | Dispatch/Foundation/Testing/PreviewDataFactory.swift | 16 | `force_unwrapping` | Use guard/if let or provide a default instead of `!`. |
 | Dispatch/Foundation/Testing/PreviewDataFactory.swift | 17 | `force_unwrapping` | Use guard/if let or provide a default instead of `!`. |
-| Dispatch/Foundation/Testing/ShakeGesture.swift | 17 | `modifier_order` | Reorder modifiers to match the style guide. |
 | Dispatch/Foundation/Testing/SupabaseTestHelpers.swift | 40 | `no_direct_standard_out_logs` | Replace print/debugPrint with Logger/os_log or remove (DEBUG-only if needed). |
 | Dispatch/Foundation/Testing/SupabaseTestHelpers.swift | 56 | `no_direct_standard_out_logs` | Replace print/debugPrint with Logger/os_log or remove (DEBUG-only if needed). |
 | Dispatch/Foundation/Testing/SupabaseTestHelpers.swift | 72 | `no_direct_standard_out_logs` | Replace print/debugPrint with Logger/os_log or remove (DEBUG-only if needed). |
