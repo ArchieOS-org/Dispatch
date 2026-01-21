@@ -63,6 +63,7 @@ struct PropertyRow: View {
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabel)
+    .accessibilityIdentifier(property.displayAddress)
   }
 
   // MARK: Private
