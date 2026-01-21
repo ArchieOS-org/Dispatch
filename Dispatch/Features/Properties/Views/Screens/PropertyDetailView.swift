@@ -18,7 +18,7 @@ struct PropertyDetailView: View {
   let userLookup: (UUID) -> User?
 
   var body: some View {
-    StandardScreen(title: property.displayAddress, layout: .column, scroll: .automatic) {
+    StandardScreen(title: property.displayAddress.titleCased(), layout: .column, scroll: .automatic) {
       content
     } toolbarContent: {
       ToolbarItem(placement: .primaryAction) {

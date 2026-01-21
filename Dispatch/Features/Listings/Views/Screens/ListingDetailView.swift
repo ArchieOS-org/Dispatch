@@ -17,7 +17,7 @@ struct ListingDetailView: View {
   let userLookup: (UUID) -> User?
 
   var body: some View {
-    StandardScreen(title: listing.address, layout: .column, scroll: .automatic) {
+    StandardScreen(title: listing.address.titleCased(), layout: .column, scroll: .automatic) {
       content
     } toolbarContent: {
       ToolbarItem(placement: .primaryAction) {
