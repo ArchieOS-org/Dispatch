@@ -43,10 +43,7 @@ tools:
   - mcp__xcodebuildmcp__session-set-defaults
   - mcp__xcodebuildmcp__session-show-defaults
   - mcp__xcodebuildmcp__build_sim
-  - mcp__xcodebuildmcp__screenshot
-  - mcp__xcodebuildmcp__describe_ui
   - mcp__xcodebuildmcp__list_sims
-  - mcp__xcodebuildmcp__boot_sim
   - mcp__xcodebuildmcp__build_macos
 ---
 

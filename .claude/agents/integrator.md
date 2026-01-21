@@ -43,11 +43,8 @@ tools:
   - mcp__xcodebuildmcp__session-show-defaults
   - mcp__xcodebuildmcp__list_schemes
   - mcp__xcodebuildmcp__build_sim
-  - mcp__xcodebuildmcp__build_run_sim
-  - mcp__xcodebuildmcp__test_sim
   - mcp__xcodebuildmcp__clean
   - mcp__xcodebuildmcp__list_sims
-  - mcp__xcodebuildmcp__boot_sim
   - mcp__xcodebuildmcp__build_macos
   - mcp__xcodebuildmcp__test_macos
 ---
@@ -80,13 +77,53 @@ PATCHSET 2:
 - build iOS + macOS
 
 PATCHSET 3:
-- full build + targeted tests
+- full build + targeted tests (see Targeted Test Strategy)
 
 PATCHSET 4:
-- full test suite + SwiftLint + done checklist
+- targeted tests + SwiftLint + done checklist (see Targeted Test Strategy)
 - **Verify Steve Jobs Design Bar checklist is satisfied (explicit yes/no)**
 - **Read contract and verify Jobs Critique verdict (see below)**
 - **Run style enforcement commands (see below)**
+
+# Targeted Test Strategy [ENFORCED]
+**Run ONLY tests relevant to changed files. Never run the full test suite.**
+
+## Test Prioritization (Run in This Order)
+1. **macOS tests first** (headless, fast, doesn't take over screen)
+2. **Simulator tests only if macOS tests unavailable for that target**
+
+## Determining Relevant Tests
+Based on files changed (check `git diff --name-only`):
+
+| Changed Area | Run These Tests |
+|--------------|-----------------|
+| `Dispatch/State/` | `AppStateTests`, `StateReducerTests` |
+| `Dispatch/Sync/` | `SyncTests`, `SyncManagerTests` |
+| `Dispatch/Features/Listing/` | `ListingTests` |
+| `Dispatch/Features/Auth/` | `AuthTests` |
+| `Dispatch/Design/` | `DesignSystemTests` (if exists) |
+| `Dispatch/Utilities/` | `UtilityTests`, `AsyncTestHelpers` |
+| Multiple areas | Union of relevant test files |
+
+## Test Commands
+```bash
+# Preferred: macOS (headless, doesn't take over screen)
+xcodebuild test -project Dispatch.xcodeproj -scheme Dispatch \
+  -destination 'platform=macOS' \
+  -only-testing:DispatchTests/SyncTests
+
+# Fallback: iOS Simulator (only if macOS test unavailable)
+xcodebuild test -project Dispatch.xcodeproj -scheme Dispatch \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -only-testing:DispatchTests/SyncTests
+```
+
+**Use `-only-testing:DispatchTests/<TestClass>` to run specific tests.**
+
+## Avoid Screen Takeover
+- **DO**: Use `test_macos` (headless)
+- **AVOID**: `test_sim` launches simulator window (disruptive to user)
+- **NEVER**: Run full test suite - always use targeted tests
 
 # Jobs Critique Gate (PATCHSET 4 - CONDITIONAL)
 At PATCHSET 4, read the contract at `.claude/contracts/<feature>.md`:

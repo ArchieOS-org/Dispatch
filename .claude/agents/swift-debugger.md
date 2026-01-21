@@ -41,14 +41,8 @@ tools:
   - mcp__xcodebuildmcp__session-set-defaults
   - mcp__xcodebuildmcp__session-show-defaults
   - mcp__xcodebuildmcp__build_sim
-  - mcp__xcodebuildmcp__build_run_sim
+  - mcp__xcodebuildmcp__build_macos
   - mcp__xcodebuildmcp__list_sims
-  - mcp__xcodebuildmcp__boot_sim
-  - mcp__xcodebuildmcp__launch_app_sim
-  - mcp__xcodebuildmcp__start_sim_log_cap
-  - mcp__xcodebuildmcp__stop_sim_log_cap
-  - mcp__xcodebuildmcp__describe_ui
-  - mcp__xcodebuildmcp__screenshot
   - mcp__supabase__list_tables
   - mcp__supabase__execute_sql
   - mcp__supabase__get_logs
