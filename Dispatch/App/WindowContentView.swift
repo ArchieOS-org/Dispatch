@@ -28,9 +28,6 @@ struct WindowContentView: View {
   /// Reference to the shared app state (injected, not per-window)
   let appState: AppState
 
-  /// Debug test harness binding (shared for simplicity)
-  @Binding var showTestHarness: Bool
-
   // MARK: - Body
 
   var body: some View {
@@ -51,17 +48,6 @@ struct WindowContentView: View {
       // Inject per-window state into environment (macOS only)
       .environment(windowUIState)
     #endif
-    #if DEBUG
-      .sheet(isPresented: $showTestHarness) {
-        SyncTestHarness()
-          .environmentObject(SyncManager.shared)
-      }
-    #if os(iOS)
-      .onShake {
-        showTestHarness = true
-      }
-    #endif
-    #endif
   }
 
   // MARK: Private
@@ -80,27 +66,11 @@ struct WindowContentView: View {
 // MARK: - Previews
 
 #Preview("Authenticated") {
-  WindowContentView(
-    appState: AppState(mode: .preview),
-    showTestHarness: .constant(false)
-  )
-  .environmentObject(SyncManager.shared)
+  WindowContentView(appState: AppState(mode: .preview))
+    .environmentObject(SyncManager.shared)
 }
 
 #Preview("Login View") {
-  WindowContentView(
-    appState: AppState(mode: .preview),
-    showTestHarness: .constant(false)
-  )
-  .environmentObject(SyncManager.shared)
+  WindowContentView(appState: AppState(mode: .preview))
+    .environmentObject(SyncManager.shared)
 }
-
-#if DEBUG
-#Preview("Test Harness") {
-  WindowContentView(
-    appState: AppState(mode: .preview),
-    showTestHarness: .constant(true)
-  )
-  .environmentObject(SyncManager.shared)
-}
-#endif
