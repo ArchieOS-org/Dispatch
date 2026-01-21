@@ -197,3 +197,59 @@ struct DateSectionTests {
     #expect(DateSection.section(for: midnightDayAfter) == .upcoming)
   }
 }
+
+// MARK: - StringTitleCaseTests
+
+struct StringTitleCaseTests {
+
+  @Test("titleCased returns empty string for empty input")
+  func testEmptyString() {
+    #expect("".titleCased().isEmpty)
+  }
+
+  @Test("titleCased capitalizes first letter of each word")
+  func testBasicCapitalization() {
+    #expect("san francisco".titleCased() == "San Francisco")
+    #expect("new york city".titleCased() == "New York City")
+    #expect("los angeles".titleCased() == "Los Angeles")
+  }
+
+  @Test("titleCased converts all-caps to title case")
+  func testAllCaps() {
+    #expect("SAN FRANCISCO".titleCased() == "San Francisco")
+    #expect("NEW YORK".titleCased() == "New York")
+  }
+
+  @Test("titleCased handles mixed case input")
+  func testMixedCase() {
+    #expect("sAn FrAnCiScO".titleCased() == "San Francisco")
+  }
+
+  @Test("titleCased keeps small words lowercase except at start")
+  func testSmallWords() {
+    #expect("city of toronto".titleCased() == "City of Toronto")
+    #expect("of toronto".titleCased() == "Of Toronto")
+    #expect("the big apple".titleCased() == "The Big Apple")
+    #expect("land of the free".titleCased() == "Land of the Free")
+  }
+
+  @Test("titleCased handles single word")
+  func testSingleWord() {
+    #expect("toronto".titleCased() == "Toronto")
+    #expect("VANCOUVER".titleCased() == "Vancouver")
+  }
+
+  @Test("titleCased handles numbers in addresses")
+  func testNumbersInAddresses() {
+    #expect("123 main street".titleCased() == "123 Main Street")
+    #expect("456 oak avenue".titleCased() == "456 Oak Avenue")
+    #expect("apt 2b oak avenue".titleCased() == "Apt 2b Oak Avenue")
+  }
+
+  @Test("titleCased handles province abbreviations")
+  func testProvinceAbbreviations() {
+    #expect("on".titleCased() == "On")
+    #expect("bc".titleCased() == "Bc")
+    #expect("ab".titleCased() == "Ab")
+  }
+}

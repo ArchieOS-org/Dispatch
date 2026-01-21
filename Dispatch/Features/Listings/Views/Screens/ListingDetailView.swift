@@ -187,7 +187,7 @@ struct ListingDetailView: View {
     VStack(alignment: .leading, spacing: DS.Spacing.sm) {
       // Location
       if !listing.city.isEmpty {
-        Text("\(listing.city), \(listing.province) \(listing.postalCode)")
+        Text("\(listing.city.titleCased()), \(listing.province.titleCased()) \(listing.postalCode)")
           .font(DS.Typography.body)
           .foregroundColor(DS.Colors.Text.secondary)
       }

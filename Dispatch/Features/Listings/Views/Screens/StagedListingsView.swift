@@ -13,7 +13,7 @@ private struct StagedListingRow: View {
         ProgressCircle(progress: listing.progress, size: 18)
       }
       VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-        Text(listing.address)
+        Text(listing.address.titleCased())
           .font(DS.Typography.body)
           .foregroundStyle(.primary)
 

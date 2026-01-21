@@ -37,14 +37,14 @@ struct ListingPickerRow: View {
 
         // Listing info
         VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-          Text(listing.address)
+          Text(listing.address.titleCased())
             .font(DS.Typography.headline)
             .foregroundStyle(DS.Colors.Text.primary)
             .lineLimit(1)
 
           HStack(spacing: DS.Spacing.xs) {
             if !listing.city.isEmpty {
-              Text(listing.city)
+              Text(listing.city.titleCased())
                 .font(DS.Typography.caption)
                 .foregroundStyle(DS.Colors.Text.secondary)
             }

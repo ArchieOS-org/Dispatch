@@ -217,7 +217,7 @@ struct ListingWorkspaceSection: View {
         if let listing = group.listing {
           NavigationLink(value: AppRoute.listing(listing.id)) {
             HStack(spacing: 12) {
-              Text(listing.address)
+              Text(listing.address.titleCased())
                 .font(DS.Typography.headline)
                 .foregroundStyle(DS.Colors.Text.primary)
                 .lineLimit(1)

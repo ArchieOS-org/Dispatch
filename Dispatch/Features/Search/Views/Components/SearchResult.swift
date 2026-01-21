@@ -73,7 +73,7 @@ enum SearchResult: Identifiable, Hashable {
 
     case .listing(let listing):
       let status = listing.status.rawValue.capitalized
-      return listing.city.isEmpty ? status : "\(listing.city) · \(status)"
+      return listing.city.isEmpty ? status : "\(listing.city.titleCased()) · \(status)"
 
     case .navigation: return "Quick Jump"
     }
