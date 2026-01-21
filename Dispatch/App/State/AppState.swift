@@ -120,6 +120,27 @@ final class AppState: ObservableObject {
     )
   }
 
+  /// Sidebar selection binding for List(selection:) in iPad/macOS sidebar.
+  /// Bridges AppState destination to the optional binding required by List.
+  ///
+  /// - Get: Returns nil for stage destinations (shown deselected), otherwise the destination
+  /// - Set: Dispatches to AppState via Task to avoid view update conflicts
+  var sidebarSelectionBinding: Binding<SidebarDestination?> {
+    Binding(
+      get: { [weak self] in
+        guard let self else { return nil }
+        return router.selectedDestination.isStage ? nil : router.selectedDestination
+      },
+      set: { [weak self] newValue in
+        guard let self else { return }
+        guard let dest = newValue, dest != router.selectedDestination else { return }
+        Task { @MainActor in
+          self.dispatch(.userSelectedDestination(dest))
+        }
+      }
+    )
+  }
+
   func dispatch(_ command: AppCommand) {
     Self.logger.debug("Dispatching command: \(String(describing: command))")
 

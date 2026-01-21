@@ -115,6 +115,9 @@ struct StagedListingsView: View {
     .onChange(of: users) { _, _ in
       updateGroupedByOwner()
     }
+    .onChange(of: stage) { _, _ in
+      updateGroupedByOwner()
+    }
   }
 
   // MARK: Private

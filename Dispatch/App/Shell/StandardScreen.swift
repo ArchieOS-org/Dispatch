@@ -100,7 +100,13 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     PullToSearchHost {
       mainContent
     }
+    // On macOS, render title inline with content (scrollable) rather than in navigation bar.
+    // Use empty string to preserve navigation infrastructure while hiding the nav bar title.
+    #if os(macOS)
+    .navigationTitle("")
+    #else
     .navigationTitle(title)
+    #endif
     .toolbar {
       toolbarContent()
       // NOTE: iOS 26 introduces ToolbarItemPlacement.largeTitle for custom large title styling.
@@ -117,10 +123,6 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     .applyLayoutWitness()
     #if os(iOS)
       .navigationBarTitleDisplayMode(.large)
-      // Reset color scheme for navigation bar to prevent accent tint from
-      // affecting title during interactive back gesture cancellation.
-      // nil = use system default (adapts to light/dark mode automatically).
-      .toolbarColorScheme(nil, for: .navigationBar)
     #endif
       // Reset tint at navigation level to prevent accent color bleeding into nav title
       // during interactive back gesture cancellation. The accent tint is applied to
@@ -146,6 +148,23 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     }
   }
 
+  #if os(macOS)
+  /// Inline title view for macOS - rendered at top of scrollable content area.
+  /// Respects the same max width and horizontal padding as content.
+  private var inlineTitleView: some View {
+    Text(title)
+      .font(DS.Typography.largeTitle)
+      .foregroundStyle(DS.Colors.Text.primary)
+      .frame(
+        maxWidth: layout == .fullBleed ? .infinity : DS.Spacing.Layout.maxContentWidth,
+        alignment: .leading
+      )
+      .padding(.horizontal, horizontalPadding)
+      .padding(.top, DS.Spacing.lg)
+      .padding(.bottom, DS.Spacing.md)
+  }
+  #endif
+
   private var mainContent: some View {
     ZStack {
       // 1. Unified Background
@@ -153,7 +172,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
       // On iOS, extend under all edges for full-bleed appearance
       #if os(macOS)
       DS.Colors.Background.primary
-        .ignoresSafeArea(edges: [.horizontal, .bottom])
+        .ignoresSafeArea()
       #else
       DS.Colors.Background.primary
         .ignoresSafeArea()
@@ -181,6 +200,11 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
   @ViewBuilder
   private var innerContent: some View {
     VStack(alignment: .leading, spacing: 0) {
+      #if os(macOS)
+      // Inline title for macOS - scrolls with content, aligned with content column
+      inlineTitleView
+      #endif
+
       content()
         .frame(
           maxWidth: layout == .fullBleed ? .infinity : DS.Spacing.Layout.maxContentWidth,
@@ -209,14 +233,18 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
 /// Re-enable this when CI runners have Xcode with iOS 26 SDK support.
 private struct ScrollEdgeEffectModifier: ViewModifier {
   func body(content: Content) -> some View {
-    // TODO: Re-enable when iOS 26 SDK is available in CI
-    // if #available(iOS 26, macOS 26, *) {
-    //   content
-    //     .scrollEdgeEffectStyle(.soft, for: .top)
-    // } else {
-    //   content
-    // }
+    // scrollEdgeEffectStyle requires iOS 26/macOS 26 SDK (Xcode 18+).
+    // Use compiler check since #available is runtime-only and won't compile without the SDK.
+    #if compiler(>=6.2)
+    if #available(iOS 26, macOS 26, *) {
+      content
+        .scrollEdgeEffectStyle(.soft, for: .top)
+    } else {
+      content
+    }
+    #else
     content
+    #endif
   }
 }
 

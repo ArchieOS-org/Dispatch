@@ -48,6 +48,7 @@ struct FloatingActionButton: View {
       .sensoryFeedback(.impact(flexibility: .soft), trigger: tapCount)
     #endif
       .accessibilityLabel(accessibilityLabelText)
+      .accessibilityHint("Opens quick entry sheet to create tasks, activities, or other items")
   }
 
   // MARK: Private
