@@ -143,8 +143,9 @@ struct MacContentView: View {
 
   private func handleNew() {
     switch appState.router.selectedDestination {
-    case .tab(.listings), .stage: appState.sheetState = .addListing
+    case .tab(.listings), .stage: appState.sheetState = .addListing()
     case .tab(.realtors): appState.sheetState = .addRealtor
+    case .tab(.properties): appState.sheetState = .addProperty()
     default: appState.sheetState = .quickEntry(type: nil)
     }
   }
@@ -169,7 +170,7 @@ struct MacContentView: View {
   @ViewBuilder
   private func sheetContent(for state: AppState.SheetState) -> some View {
     switch state {
-    case .quickEntry(let type):
+    case .quickEntry(let type, _):
       QuickEntrySheet(
         defaultItemType: type ?? .task,
         currentUserId: currentUserId,
@@ -178,13 +179,17 @@ struct MacContentView: View {
         onSave: onRequestSync
       )
 
-    case .addListing: AddListingSheet(currentUserId: currentUserId, onSave: onRequestSync)
+    case .addListing(_): AddListingSheet(currentUserId: currentUserId, onSave: onRequestSync)
 
     case .addRealtor: EditRealtorSheet()
+
+    case .addProperty(let forRealtorId):
+      AddPropertySheet(currentUserId: currentUserId, forRealtorId: forRealtorId, onSave: onRequestSync)
 
     case .none: EmptyView()
     }
   }
+
 }
 
 #Preview {

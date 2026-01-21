@@ -127,12 +127,13 @@ struct iPhoneContentView: View {
   @ViewBuilder
   private func sheetContent(for state: AppState.SheetState) -> some View {
     switch state {
-    case .quickEntry(let type):
+    case .quickEntry(let type, let preSelectedListingId):
       QuickEntrySheet(
         defaultItemType: type ?? .task,
         currentUserId: currentUserId,
         listings: activeListings,
         availableUsers: users,
+        preSelectedListingId: preSelectedListingId,
         onSave: { onRequestSync() }
       )
 
@@ -141,9 +142,17 @@ struct iPhoneContentView: View {
         currentUserId: currentUserId,
         onSave: { onRequestSync() }
       )
+      // Note: AddListingSheet doesn't yet support forRealtorId - future enhancement
 
     case .addRealtor:
       EditRealtorSheet()
+
+    case .addProperty(let forRealtorId):
+      AddPropertySheet(
+        currentUserId: currentUserId,
+        forRealtorId: forRealtorId,
+        onSave: { onRequestSync() }
+      )
 
     case .none:
       EmptyView()

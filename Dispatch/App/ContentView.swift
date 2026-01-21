@@ -143,7 +143,8 @@ struct ContentView: View {
         stageCounts: stageCounts,
         workspaceTasks: workspaceTasks, workspaceActivities: workspaceActivities,
         activeListings: activeListings, activeProperties: activeProperties, activeRealtors: activeRealtors,
-        pathBindingProvider: pathBinding(for:)
+        users: users, currentUserId: currentUserId, pathBindingProvider: pathBinding(for:),
+        onRequestSync: { syncManager.requestSync() }
       )
     }
     #endif

@@ -228,6 +228,9 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
 
 /// Applies soft scroll edge effect on iOS 26+ and macOS 26+ for content/toolbar separation.
 /// Per HIG: Creates a soft transition between scrollable content and the toolbar area.
+///
+/// NOTE: scrollEdgeEffectStyle requires iOS 26+ SDK which is not yet available in CI.
+/// Re-enable this when CI runners have Xcode with iOS 26 SDK support.
 private struct ScrollEdgeEffectModifier: ViewModifier {
   func body(content: Content) -> some View {
     // scrollEdgeEffectStyle requires iOS 26/macOS 26 SDK (Xcode 18+).

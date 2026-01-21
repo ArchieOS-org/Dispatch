@@ -13,38 +13,33 @@
 import SwiftUI
 
 /// A floating filter button for iPhone with glass background and haptic feedback.
-/// Tap cycles through audience filters (All → Admin → Marketing → All).
-/// Long-press opens a menu to select any filter directly.
+/// Tap cycles through audience filters (All -> Admin -> Marketing -> All).
+/// Long-press triggers onLongPress callback for parent to show custom menu overlay.
 struct FloatingFilterButton: View {
 
   // MARK: Internal
 
   @Binding var audience: AudienceLens
 
+  /// Callback triggered on long press (parent shows the menu overlay)
+  var onLongPress: () -> Void = { }
+
   var body: some View {
-    Menu {
-      // Long-press menu content
-      Picker(selection: $audience) {
-        ForEach(AudienceLens.allCases, id: \.self) { lens in
-          Label(lens.label, systemImage: lens.icon)
-            .tag(lens)
-        }
-      } label: {
-        EmptyView()
+    filterButtonVisual
+      .onTapGesture {
+        // Tap action: cycle to next filter
+        audience = audience.next
       }
-    } label: {
-      filterButtonVisual
-    } primaryAction: {
-      // Tap action: cycle to next filter
-      audience = audience.next
-    }
-    .menuIndicator(.hidden)
-    .sensoryFeedback(.selection, trigger: audience)
-    .accessibilityIdentifier("AudienceFilterButton")
-    .accessibilityAddTraits(.isButton)
-    .accessibilityLabel("Filter: \(audience.label)")
-    .accessibilityValue("\(audience.rawValue)|\(audience.icon)")
-    .accessibilityHint("Tap to cycle, hold for options")
+      .onLongPressGesture {
+        // Long-press action: notify parent to show filter menu
+        onLongPress()
+      }
+      .sensoryFeedback(.selection, trigger: audience)
+      .accessibilityIdentifier("AudienceFilterButton")
+      .accessibilityAddTraits(.isButton)
+      .accessibilityLabel("Filter: \(audience.label)")
+      .accessibilityValue("\(audience.rawValue)|\(audience.icon)")
+      .accessibilityHint("Tap to cycle, hold for options")
   }
 
   // MARK: Private
