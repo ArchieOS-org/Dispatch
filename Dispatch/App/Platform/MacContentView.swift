@@ -46,7 +46,7 @@ struct MacContentView: View {
       }
       .toolbar(removing: .title)
     }
-    .navigationSplitViewStyle(.balanced)
+    .navigationSplitViewStyle(.automatic)
     .toolbar {
       ToolbarItemGroup(placement: .primaryAction) {
         FilterMenu(audience: $appState.lensState.audience)
