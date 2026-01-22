@@ -9,6 +9,38 @@ import Foundation
 import Testing
 @testable import Dispatch
 
+// MARK: - Test Helpers
+
+/// Extension to convert TaskItem to SearchableTask for test data.
+/// Tests use TaskItem for convenience but InitialSearchData expects SearchableTask DTOs.
+extension TaskItem {
+  var asSearchable: SearchableTask {
+    SearchableTask(
+      id: id,
+      title: title,
+      taskDescription: taskDescription,
+      statusRawValue: status.rawValue,
+      statusDisplayName: status.displayName,
+      updatedAt: updatedAt
+    )
+  }
+}
+
+/// Extension to convert Listing to SearchableListing for test data.
+extension Listing {
+  var asSearchable: SearchableListing {
+    SearchableListing(
+      id: id,
+      address: address,
+      city: city,
+      postalCode: postalCode,
+      statusRawValue: status.rawValue,
+      statusDisplayName: status.displayName,
+      updatedAt: updatedAt
+    )
+  }
+}
+
 // MARK: - SearchIndexServiceTests
 
 @Suite("SearchIndexService Tests")
@@ -69,7 +101,7 @@ struct SearchIndexServiceTests {
       declaredBy: UUID()
     )
 
-    let doc = SearchDoc.from(task: task)
+    let doc = SearchDoc.from(task: task.asSearchable)
 
     #expect(doc.id == task.id)
     #expect(doc.type == .task)
@@ -116,7 +148,7 @@ struct SearchIndexServiceTests {
       realtors: [],
       listings: [],
       properties: [],
-      tasks: [task]
+      tasks: [task.asSearchable]
     )
 
     await service.warmStart(with: data)
@@ -139,7 +171,7 @@ struct SearchIndexServiceTests {
       realtors: [],
       listings: [],
       properties: [],
-      tasks: [task1, task2]
+      tasks: [task1.asSearchable, task2.asSearchable]
     )
 
     await service.warmStart(with: data)
@@ -165,9 +197,9 @@ struct SearchIndexServiceTests {
 
     let data = InitialSearchData(
       realtors: [],
-      listings: [listing],
+      listings: [listing.asSearchable],
       properties: [],
-      tasks: [task]
+      tasks: [task.asSearchable]
     )
 
     await service.warmStart(with: data)
@@ -185,13 +217,22 @@ struct SearchIndexServiceTests {
   func testApplyInsert() async {
     let service = SearchIndexService()
 
-    // Start with empty data
-    let data = InitialSearchData(realtors: [], listings: [], properties: [], tasks: [])
+    // Start with empty data - use typed empty arrays
+    let emptyRealtors: [SearchableRealtor] = []
+    let emptyListings: [SearchableListing] = []
+    let emptyProperties: [SearchableProperty] = []
+    let emptyTasks: [SearchableTask] = []
+    let data = InitialSearchData(
+      realtors: emptyRealtors,
+      listings: emptyListings,
+      properties: emptyProperties,
+      tasks: emptyTasks
+    )
     await service.warmStart(with: data)
 
     // Insert a new task
     let task = TaskItem(title: "New Task", declaredBy: UUID())
-    let doc = SearchDoc.from(task: task)
+    let doc = SearchDoc.from(task: task.asSearchable)
     await service.apply(change: .insert(doc))
 
     let results = await service.search("new task", limit: 10)
@@ -204,12 +245,12 @@ struct SearchIndexServiceTests {
     let service = SearchIndexService()
 
     let task = TaskItem(title: "Original Title", declaredBy: UUID())
-    let data = InitialSearchData(realtors: [], listings: [], properties: [], tasks: [task])
+    let data = InitialSearchData(realtors: [], listings: [], properties: [], tasks: [task.asSearchable])
     await service.warmStart(with: data)
 
     // Update the task title
     task.title = "Updated Title"
-    let updatedDoc = SearchDoc.from(task: task)
+    let updatedDoc = SearchDoc.from(task: task.asSearchable)
     await service.apply(change: .update(updatedDoc))
 
     // Old title should not match
@@ -227,7 +268,7 @@ struct SearchIndexServiceTests {
     let service = SearchIndexService()
 
     let task = TaskItem(title: "To Delete", declaredBy: UUID())
-    let data = InitialSearchData(realtors: [], listings: [], properties: [], tasks: [task])
+    let data = InitialSearchData(realtors: [], listings: [], properties: [], tasks: [task.asSearchable])
     await service.warmStart(with: data)
 
     // Verify it exists
@@ -260,9 +301,9 @@ struct SearchIndexServiceTests {
 
     let data = InitialSearchData(
       realtors: [],
-      listings: [listing],
+      listings: [listing.asSearchable],
       properties: [],
-      tasks: [task]
+      tasks: [task.asSearchable]
     )
 
     await service.warmStart(with: data)
@@ -284,7 +325,12 @@ struct SearchIndexServiceTests {
     // task2 has both tokens but not as phrase
     let task2 = TaskItem(title: "Window needs a fix", declaredBy: UUID())
 
-    let data = InitialSearchData(realtors: [], listings: [], properties: [], tasks: [task1, task2])
+    let data = InitialSearchData(
+      realtors: [],
+      listings: [],
+      properties: [],
+      tasks: [task1.asSearchable, task2.asSearchable]
+    )
     await service.warmStart(with: data)
 
     let results = await service.search("fix window", limit: 10)
@@ -301,7 +347,12 @@ struct SearchIndexServiceTests {
     let task1 = TaskItem(title: "Window Repair", declaredBy: UUID())
     let task2 = TaskItem(title: "Repair Window", declaredBy: UUID())
 
-    let data = InitialSearchData(realtors: [], listings: [], properties: [], tasks: [task1, task2])
+    let data = InitialSearchData(
+      realtors: [],
+      listings: [],
+      properties: [],
+      tasks: [task1.asSearchable, task2.asSearchable]
+    )
     await service.warmStart(with: data)
 
     let results = await service.search("window", limit: 10)

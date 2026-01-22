@@ -78,7 +78,18 @@ enum SearchDocType: Int, Sendable, Comparable {
 // MARK: - SearchDocType UI Properties
 
 /// UI properties isolated to MainActor since they use SwiftUI types (Color).
-/// This separation keeps the core enum nonisolated for actor usage.
+///
+/// **Split Isolation Pattern:**
+/// The core `SearchDocType` enum is nonisolated and Sendable, allowing it to be used
+/// safely within the `SearchIndexService` actor for indexing and ranking operations.
+/// These UI properties are separated into a @MainActor extension because:
+///
+/// 1. **SwiftUI Color is not Sendable** - Color values cannot cross actor boundaries
+/// 2. **UI access is MainActor-only** - These properties are only accessed during rendering
+/// 3. **Index operations stay fast** - The actor doesn't need to hop to MainActor for searches
+///
+/// This pattern allows the same enum to serve both the background search actor
+/// (using rawValue, Comparable) and SwiftUI views (using displayName, icon, accentColor).
 @MainActor
 extension SearchDocType {
   var displayName: String {

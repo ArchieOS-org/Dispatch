@@ -123,7 +123,8 @@ struct SearchOverlay: View {
   private var modalContent: some View {
     VStack(spacing: 0) {
       // Search bar with external focus binding
-      SearchBar(text: searchTextBinding, externalFocus: $isFocused) {
+      // Uses shared binding helper to bridge text to ViewModel
+      SearchBar(text: searchViewModel.searchTextBinding(for: $searchText), externalFocus: $isFocused) {
         dismiss()
       }
 
@@ -138,21 +139,6 @@ struct SearchOverlay: View {
       )
       .frame(maxHeight: 400)
     }
-  }
-
-  /// Search text binding that bridges to SearchViewModel
-  /// Uses Task to defer onQueryChange to next run loop, avoiding "Publishing changes
-  /// from within view updates" warnings that cause perceived lag.
-  private var searchTextBinding: Binding<String> {
-    Binding(
-      get: { searchText },
-      set: { newValue in
-        searchText = newValue
-        Task { @MainActor in
-          searchViewModel.onQueryChange(newValue)
-        }
-      }
-    )
   }
 
   private func dismiss() {

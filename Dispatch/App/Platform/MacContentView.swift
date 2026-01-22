@@ -24,7 +24,7 @@ struct MacContentView: View {
   let users: [User]
   let currentUserId: UUID
   let pathBindingProvider: (SidebarDestination) -> Binding<[AppRoute]>
-  let searchViewModel: SearchViewModel?
+  let searchViewModel: SearchViewModel
   let onSelectSearchResult: (SearchResult) -> Void
   let onRequestSync: () -> Void
 
@@ -122,7 +122,7 @@ struct MacContentView: View {
         NavigationPopover(
           searchText: $quickFindText,
           isPresented: Binding(get: { true }, set: { if !$0 { windowUIState.closeOverlay() } }),
-          searchViewModel: searchViewModel ?? SearchViewModel(),
+          searchViewModel: searchViewModel,
           currentTab: appState.router.selectedTab,
           onNavigate: { appState.dispatch(.selectTab($0))
             windowUIState.closeOverlay()
@@ -194,7 +194,7 @@ struct MacContentView: View {
     stageCounts: [:], workspaceTasks: [], workspaceActivities: [],
     activeListings: [], activeProperties: [], activeRealtors: [],
     users: [], currentUserId: UUID(), pathBindingProvider: { _ in .constant([]) },
-    searchViewModel: nil,
+    searchViewModel: SearchViewModel(),
     onSelectSearchResult: { _ in }, onRequestSync: { }
   )
   .modelContainer(for: [TaskItem.self, Activity.self, Listing.self, User.self, Property.self], inMemory: true)

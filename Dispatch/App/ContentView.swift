@@ -48,10 +48,24 @@ struct ContentView: View {
   @State private var quickFindText = ""
   #endif
 
-  /// ViewModel for instant search - lazy initialized from searchEnvironment
+  /// ViewModel for instant search - created immediately from searchEnvironment.
+  /// Non-optional to ensure all views share the same warmed SearchIndexService.
+  /// The VM is created eagerly but the index is warmed asynchronously via .task.
   @State private var searchViewModel: SearchViewModel?
   /// Flag to track if warm start has been triggered
   @State private var hasStartedWarmStart = false
+
+  /// Pre-built task dictionary for O(1) lookup by ID.
+  /// Rebuilt when activeTasks changes.
+  private var taskLookup: [UUID: TaskItem] {
+    Dictionary(uniqueKeysWithValues: activeTasks.map { ($0.id, $0) })
+  }
+
+  /// Safe accessor for searchViewModel that creates one from shared environment if needed.
+  /// This ensures the ViewModel always shares the same SearchIndexService.
+  private var safeSearchViewModel: SearchViewModel {
+    searchViewModel ?? searchEnvironment.makeViewModel()
+  }
 
   private var userCache: [UUID: User] { Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) }) }
   private var currentUserId: UUID { syncManager.currentUserID ?? Self.unauthenticatedUserId }
@@ -119,8 +133,14 @@ struct ContentView: View {
     }
     .animation(.easeInOut(duration: 0.3), value: appState.syncCoordinator.isOffline)
     .animation(.easeInOut(duration: 0.3), value: appState.syncCoordinator.showRealtimeDegraded)
-    .onAppear { updateWorkItemActions()
+    .onAppear {
+      updateWorkItemActions()
       updateLensState()
+      // Create searchViewModel eagerly using shared environment.
+      // This ensures all child views share the same warmed SearchIndexService.
+      if searchViewModel == nil {
+        searchViewModel = searchEnvironment.makeViewModel()
+      }
     }
     .onChange(of: currentUserId) { _, _ in updateWorkItemActions() }
     .onChange(of: userCache) { _, _ in updateWorkItemActions() }
@@ -141,7 +161,7 @@ struct ContentView: View {
       stageCounts: stageCounts, workspaceTasks: workspaceTasks, workspaceActivities: workspaceActivities,
       activeListings: activeListings, activeProperties: activeProperties, activeRealtors: activeRealtors,
       users: users, currentUserId: currentUserId, pathBindingProvider: pathBinding(for:),
-      searchViewModel: searchViewModel,
+      searchViewModel: safeSearchViewModel,
       onSelectSearchResult: selectSearchResult(_:), onRequestSync: { syncManager.requestSync() }
     )
     #else
@@ -151,7 +171,7 @@ struct ContentView: View {
         stageCounts: stageCounts, phoneTabCounts: phoneTabCounts, overdueCount: sidebarOverdueCount,
         activeListings: activeListings,
         users: users, currentUserId: currentUserId,
-        searchViewModel: searchViewModel ?? SearchViewModel(),
+        searchViewModel: safeSearchViewModel,
         onSelectSearchResult: selectSearchResult(_:), onRequestSync: { syncManager.requestSync() }
       )
     } else {
@@ -161,7 +181,7 @@ struct ContentView: View {
         activeListings: activeListings, activeProperties: activeProperties, activeRealtors: activeRealtors,
         pathBindingProvider: pathBinding(for:),
         quickFindText: $quickFindText,
-        searchViewModel: searchViewModel ?? SearchViewModel(),
+        searchViewModel: safeSearchViewModel,
         onSelectSearchResult: selectSearchResult(_:)
       )
     }
@@ -317,8 +337,9 @@ struct ContentView: View {
     case .task:
       // For tasks, we need to find the actual TaskItem to navigate
       // Navigate to workspace and use the task ID
+      // Uses O(1) dictionary lookup instead of O(n) linear search
       appState.dispatch(.selectTab(.workspace))
-      if let task = activeTasks.first(where: { $0.id == doc.id }) {
+      if let task = taskLookup[doc.id] {
         appState.dispatch(.navigate(.workItem(.task(task))))
       }
     }

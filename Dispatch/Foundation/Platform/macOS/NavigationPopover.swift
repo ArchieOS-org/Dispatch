@@ -42,8 +42,9 @@ struct NavigationPopover: View {
   var body: some View {
     VStack(spacing: 0) {
       // Unified Search Bar with external focus binding
+      // Uses shared binding helper to bridge text to ViewModel
       SearchBar(
-        text: searchTextBinding,
+        text: searchViewModel.searchTextBinding(for: $searchText),
         externalFocus: $searchFieldFocused,
         showCancelButton: false,
         onCancel: {
@@ -87,21 +88,6 @@ struct NavigationPopover: View {
 
   /// Focus state for the search field - enables immediate typing
   @FocusState private var searchFieldFocused: Bool
-
-  /// Search text binding that bridges to SearchViewModel
-  /// Uses Task to defer onQueryChange to next run loop, avoiding "Publishing changes
-  /// from within view updates" warnings that cause perceived lag.
-  private var searchTextBinding: Binding<String> {
-    Binding(
-      get: { searchText },
-      set: { newValue in
-        searchText = newValue
-        Task { @MainActor in
-          searchViewModel.onQueryChange(newValue)
-        }
-      }
-    )
-  }
 
   private var navigationList: some View {
     ScrollView {

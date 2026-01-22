@@ -8,10 +8,21 @@
 import Combine
 import Foundation
 import os
+import SwiftUI
 
 // MARK: - Logger
 
 private let logger = Logger(subsystem: "com.dispatch.app", category: "SearchViewModel")
+
+// MARK: - SearchError
+
+/// Errors that can occur during search operations.
+enum SearchError: Error, Equatable {
+  /// Index warm start failed
+  case warmStartFailed(String)
+  /// Search query failed
+  case searchFailed(String)
+}
 
 // MARK: - SearchViewModel
 
@@ -42,6 +53,10 @@ final class SearchViewModel: ObservableObject {
 
   // MARK: Internal
 
+  /// Debounce delay for search queries in milliseconds.
+  /// Prevents excessive search operations while user is typing.
+  static let searchDebounceDelayMs: UInt64 = 200
+
   /// Current search query text
   @Published var query: String = ""
 
@@ -53,6 +68,10 @@ final class SearchViewModel: ObservableObject {
 
   /// Whether a search is currently in progress
   @Published var isSearching: Bool = false
+
+  /// Error state for warm start or search failures.
+  /// UI can observe this to show retry options.
+  @Published var error: SearchError?
 
   /// Cached grouped results for view consumption.
   /// Updated only when searchDocResults changes, avoiding O(n log n) sort per render.
@@ -81,14 +100,14 @@ final class SearchViewModel: ObservableObject {
       return
     }
 
-    logger.debug("onQueryChange: query='\(newQuery)' starting 200ms debounce")
+    logger.debug("onQueryChange: query='\(newQuery)' starting \(Self.searchDebounceDelayMs)ms debounce")
     isSearching = true
 
     // Start new debounced search task
     searchTask = Task { [weak self] in
-      // Debounce: wait 200ms before searching
+      // Debounce: wait before searching to prevent excessive operations while typing
       do {
-        try await Task.sleep(for: .milliseconds(200))
+        try await Task.sleep(for: .milliseconds(Self.searchDebounceDelayMs))
       } catch {
         logger.debug("onQueryChange: debounce cancelled for query='\(newQuery)'")
         return
@@ -123,13 +142,36 @@ final class SearchViewModel: ObservableObject {
   }
 
   /// Warms up the search index with initial data. Call after first frame renders.
+  /// Sets error state if warm start fails, allowing UI to offer retry.
   /// - Parameter data: Initial data bundle containing entities to index
   func warmStart(with data: InitialSearchData) async {
     logger.info("warmStart: triggering index warm start")
-    await searchIndex.warmStart(with: data)
-    isIndexReady = await searchIndex.isReady
-    // swiftformat:disable:next redundantSelf
-    logger.info("warmStart: index ready=\(self.isIndexReady)")
+    error = nil // Clear any previous error
+
+    do {
+      await searchIndex.warmStart(with: data)
+      isIndexReady = await searchIndex.isReady
+
+      if !isIndexReady {
+        let errorMsg = "Index not ready after warm start"
+        logger.error("warmStart: \(errorMsg)")
+        error = .warmStartFailed(errorMsg)
+      } else {
+        // swiftformat:disable:next redundantSelf
+        logger.info("warmStart: index ready=\(self.isIndexReady)")
+      }
+    } catch {
+      let errorMsg = "Warm start failed: \(error.localizedDescription)"
+      logger.error("warmStart: \(errorMsg)")
+      self.error = .warmStartFailed(errorMsg)
+    }
+  }
+
+  /// Retries warm start after a failure.
+  /// - Parameter data: Initial data bundle containing entities to index
+  func retryWarmStart(with data: InitialSearchData) async {
+    logger.info("retryWarmStart: retrying index warm start")
+    await warmStart(with: data)
   }
 
   /// Applies an incremental change to the search index.
@@ -201,5 +243,32 @@ extension SearchResult {
     // Create a navigation-style result that carries the SearchDoc info
     // The actual navigation handling will be done via the SearchDoc's id and type
     .searchDoc(doc)
+  }
+}
+
+// MARK: - Search Text Binding Helper
+
+extension SearchViewModel {
+  /// Creates a binding that bridges external search text to the ViewModel's query handling.
+  /// Uses Task to defer onQueryChange to next run loop, avoiding "Publishing changes
+  /// from within view updates" warnings that can cause perceived lag.
+  ///
+  /// Usage:
+  /// ```swift
+  /// SearchBar(text: searchViewModel.searchTextBinding(for: $searchText))
+  /// ```
+  ///
+  /// - Parameter externalText: Binding to the parent's search text state
+  /// - Returns: A binding that updates both the external text and triggers search
+  func searchTextBinding(for externalText: Binding<String>) -> Binding<String> {
+    Binding(
+      get: { externalText.wrappedValue },
+      set: { [weak self] newValue in
+        externalText.wrappedValue = newValue
+        Task { @MainActor in
+          self?.onQueryChange(newValue)
+        }
+      }
+    )
   }
 }
