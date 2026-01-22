@@ -20,9 +20,10 @@ import SwiftUI
 ///   - Results list (sectioned by type)
 ///
 /// **Focus Management (Framework-Correct Pattern):**
-/// - Uses `defaultFocus` modifier for instant focus when view appears
+/// - Uses `@FocusState` with `.onAppear` to auto-focus when view appears
+/// - On iOS, sets focus in `.onAppear` for reliable keyboard presentation
+/// - On macOS, uses `defaultFocus` for focus ring behavior
 /// - View is conditionally rendered in parent (standard `if` statement)
-/// - No delays needed - SwiftUI handles focus timing automatically
 /// - Clean view lifecycle enables proper keyboard/focus coordination
 ///
 /// **Navigation:**
@@ -83,12 +84,21 @@ struct SearchOverlay: View {
         Spacer()
       }
     }
-    // Use defaultFocus for instant focus when view appears (framework-correct pattern)
-    // No delays needed - SwiftUI handles keyboard timing automatically
+    #if os(macOS)
+    // On macOS, use defaultFocus for focus ring behavior
     .defaultFocus($isFocused, true)
+    #endif
     .onAppear {
       // Register overlay reason (hides GlobalFloatingButtons)
       overlayState.hide(reason: .searchOverlay)
+
+      #if os(iOS)
+      // On iOS, set focus programmatically to ensure keyboard appears
+      // Task ensures view hierarchy is ready before focus is set
+      Task { @MainActor in
+        isFocused = true
+      }
+      #endif
     }
     .onDisappear {
       // Clean up overlay state when view is removed from hierarchy
