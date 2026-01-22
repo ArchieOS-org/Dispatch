@@ -86,44 +86,34 @@ PATCHSET 4:
 - **Run style enforcement commands (see below)**
 
 # Targeted Test Strategy [ENFORCED]
-**Run ONLY tests relevant to changed files. Never run the full test suite.**
 
-## Test Prioritization (Run in This Order)
-1. **macOS tests first** (headless, fast, doesn't take over screen)
-2. **Simulator tests only if macOS tests unavailable for that target**
+## Rules
+1. **NEVER run DispatchUITests** - UI tests launch simulators and take over screen. Only xcode-pilot may run UI tests.
+2. **Run all relevant tests in parallel** - identify all test classes, run them in one command with multiple `-only-testing:` flags
+3. **Use macOS tests** (headless) - never `test_sim`
 
-## Determining Relevant Tests
-Based on files changed (check `git diff --name-only`):
-
-| Changed Area | Run These Tests |
-|--------------|-----------------|
+## Test Mapping
+| Changed Area | Tests |
+|--------------|-------|
 | `Dispatch/State/` | `AppStateTests`, `StateReducerTests` |
 | `Dispatch/Sync/` | `SyncTests`, `SyncManagerTests` |
 | `Dispatch/Features/Listing/` | `ListingTests` |
 | `Dispatch/Features/Auth/` | `AuthTests` |
-| `Dispatch/Design/` | `DesignSystemTests` (if exists) |
+| `Dispatch/Design/` | `DesignSystemTests` |
 | `Dispatch/Utilities/` | `UtilityTests`, `AsyncTestHelpers` |
-| Multiple areas | Union of relevant test files |
 
-## Test Commands
+## Parallel Test Command
+Run ALL relevant tests in ONE command (parallel execution):
 ```bash
-# Preferred: macOS (headless, doesn't take over screen)
 xcodebuild test -project Dispatch.xcodeproj -scheme Dispatch \
   -destination 'platform=macOS' \
-  -only-testing:DispatchTests/SyncTests
-
-# Fallback: iOS Simulator (only if macOS test unavailable)
-xcodebuild test -project Dispatch.xcodeproj -scheme Dispatch \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
-  -only-testing:DispatchTests/SyncTests
+  -parallel-testing-enabled YES \
+  -only-testing:DispatchTests/SyncTests \
+  -only-testing:DispatchTests/AppStateTests \
+  -only-testing:DispatchTests/ListingTests
 ```
 
-**Use `-only-testing:DispatchTests/<TestClass>` to run specific tests.**
-
-## Avoid Screen Takeover
-- **DO**: Use `test_macos` (headless)
-- **AVOID**: `test_sim` launches simulator window (disruptive to user)
-- **NEVER**: Run full test suite - always use targeted tests
+**Identify ALL relevant test classes FIRST, then run them together.**
 
 # Jobs Critique Gate (PATCHSET 4 - CONDITIONAL)
 At PATCHSET 4, read the contract at `.claude/contracts/<feature>.md`:
