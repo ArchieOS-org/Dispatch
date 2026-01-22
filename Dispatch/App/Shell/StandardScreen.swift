@@ -39,17 +39,21 @@ extension EnvironmentValues {
 /// 2. Max Content Width
 /// 3. Background Color
 /// 4. Navigation Title Application
-struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
+struct StandardScreen<Content: View, ToolbarItems: ToolbarContent, TitleMenu: View>: View {
 
   // MARK: Lifecycle
 
+  /// Full initializer with toolbar content and optional title menu.
+  /// When titleMenu is provided and shouldUseInlineTitle is true (macOS/iPad),
+  /// the menu renders beside the title instead of in the toolbar.
   init(
     title: String,
     layout: LayoutMode = .column,
     scroll: ScrollMode = .automatic,
     pullToSearch: Bool = true,
     @ViewBuilder content: @escaping () -> Content,
-    @ToolbarContentBuilder toolbarContent: @escaping () -> ToolbarItems
+    @ToolbarContentBuilder toolbarContent: @escaping () -> ToolbarItems,
+    @ViewBuilder titleMenu: @escaping () -> TitleMenu
   ) {
     self.title = title
     self.layout = layout
@@ -57,14 +61,54 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     self.pullToSearch = pullToSearch
     self.content = content
     self.toolbarContent = toolbarContent
+    self.titleMenu = titleMenu
   }
 
+  /// Initializer with toolbar content but no title menu.
+  init(
+    title: String,
+    layout: LayoutMode = .column,
+    scroll: ScrollMode = .automatic,
+    pullToSearch: Bool = true,
+    @ViewBuilder content: @escaping () -> Content,
+    @ToolbarContentBuilder toolbarContent: @escaping () -> ToolbarItems
+  ) where TitleMenu == EmptyView {
+    self.title = title
+    self.layout = layout
+    self.scroll = scroll
+    self.pullToSearch = pullToSearch
+    self.content = content
+    self.toolbarContent = toolbarContent
+    titleMenu = { EmptyView() }
+  }
+
+  /// Initializer with no toolbar content and no title menu.
   init(
     title: String,
     layout: LayoutMode = .column,
     scroll: ScrollMode = .automatic,
     pullToSearch: Bool = true,
     @ViewBuilder content: @escaping () -> Content
+  ) where ToolbarItems == ToolbarItem<Void, EmptyView>, TitleMenu == EmptyView {
+    self.title = title
+    self.layout = layout
+    self.scroll = scroll
+    self.pullToSearch = pullToSearch
+    self.content = content
+    toolbarContent = { ToolbarItem(placement: .automatic) { EmptyView() } }
+    titleMenu = { EmptyView() }
+  }
+
+  /// Initializer with title menu but no toolbar content.
+  /// Use this when the menu should appear beside the title on macOS/iPad
+  /// with no additional toolbar items needed.
+  init(
+    title: String,
+    layout: LayoutMode = .column,
+    scroll: ScrollMode = .automatic,
+    pullToSearch: Bool = true,
+    @ViewBuilder content: @escaping () -> Content,
+    @ViewBuilder titleMenu: @escaping () -> TitleMenu
   ) where ToolbarItems == ToolbarItem<Void, EmptyView> {
     self.title = title
     self.layout = layout
@@ -72,6 +116,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     self.pullToSearch = pullToSearch
     self.content = content
     toolbarContent = { ToolbarItem(placement: .automatic) { EmptyView() } }
+    self.titleMenu = titleMenu
   }
 
   // MARK: Internal
@@ -94,6 +139,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
   let pullToSearch: Bool
   @ViewBuilder let content: () -> Content
   let toolbarContent: () -> ToolbarItems
+  @ViewBuilder let titleMenu: () -> TitleMenu
 
   var body: some View {
     PullToSearchHost {
@@ -159,19 +205,31 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent>: View {
     }
   }
 
+  /// Whether the title menu has content (not EmptyView)
+  private var hasTitleMenu: Bool {
+    TitleMenu.self != EmptyView.self
+  }
+
   /// Inline title view for macOS and iPad - rendered at top of scrollable content area.
   /// Respects the same max width and horizontal padding as content.
+  /// When titleMenu is provided, renders it directly beside the title text.
   private var inlineTitleView: some View {
-    Text(title)
-      .font(DS.Typography.largeTitle)
-      .foregroundStyle(DS.Colors.Text.primary)
-      .frame(
-        maxWidth: layout == .fullBleed ? .infinity : DS.Spacing.Layout.maxContentWidth,
-        alignment: .leading
-      )
-      .padding(.horizontal, horizontalPadding)
-      .padding(.top, DS.Spacing.lg)
-      .padding(.bottom, DS.Spacing.md)
+    HStack(alignment: .firstTextBaseline, spacing: DS.Spacing.xs) {
+      Text(title)
+        .font(DS.Typography.largeTitle)
+        .foregroundStyle(DS.Colors.Text.primary)
+
+      if hasTitleMenu {
+        titleMenu()
+      }
+    }
+    .frame(
+      maxWidth: layout == .fullBleed ? .infinity : DS.Spacing.Layout.maxContentWidth,
+      alignment: .leading
+    )
+    .padding(.horizontal, horizontalPadding)
+    .padding(.top, DS.Spacing.lg)
+    .padding(.bottom, DS.Spacing.md)
   }
 
   private var mainContent: some View {
@@ -342,6 +400,26 @@ private struct StandardScreenPreviewContent: View {
         } label: {
           Image(systemName: "ellipsis.circle")
         }
+      }
+    }
+  }
+  #if os(macOS)
+  .frame(width: 900, height: 700)
+  #endif
+}
+
+#Preview("StandardScreen · With Title Menu") {
+  NavigationStack {
+    StandardScreen(title: "StandardScreen", layout: .column, scroll: .automatic) {
+      StandardScreenPreviewContent()
+    } titleMenu: {
+      Menu {
+        Button("Edit") { }
+        Button("Share") { }
+        Button("Delete", role: .destructive) { }
+      } label: {
+        Image(systemName: "ellipsis.circle")
+          .font(.system(size: 20))
       }
     }
   }
