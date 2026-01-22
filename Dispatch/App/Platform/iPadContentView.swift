@@ -62,8 +62,8 @@ struct iPadContentView: View {
     .navigationSplitViewStyle(.balanced)
     // FAB overlay for quick entry - uses .overlay to ensure proper sizing
     .overlay(alignment: .bottomTrailing) {
-      if appState.overlayState == .none, !environmentHidden, !overlayState.isOverlayHidden {
-        FloatingActionButton { appState.sheetState = .quickEntry(type: nil) }
+      if appState.overlayState == .none, !shouldHideFAB {
+        FloatingActionButton { appState.dispatch(.newItem) }
           .padding(.trailing, DS.Spacing.floatingButtonMargin)
           .padding(.bottom, DS.Spacing.floatingButtonBottomInset)
       }
@@ -113,6 +113,12 @@ struct iPadContentView: View {
   @EnvironmentObject private var overlayState: AppOverlayState
   @Environment(\.globalButtonsHidden) private var environmentHidden
   @State private var columnVisibility: NavigationSplitViewVisibility = .all
+
+  /// Single source of truth for FAB visibility.
+  /// Combines environment-based hiding (SettingsScreen) with state-based hiding (keyboard, modals).
+  private var shouldHideFAB: Bool {
+    environmentHidden || overlayState.isOverlayHidden
+  }
 
   private var tabCounts: [AppTab: Int] {
     [
