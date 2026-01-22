@@ -89,12 +89,16 @@ struct NavigationPopover: View {
   @FocusState private var searchFieldFocused: Bool
 
   /// Search text binding that bridges to SearchViewModel
+  /// Uses Task to defer onQueryChange to next run loop, avoiding "Publishing changes
+  /// from within view updates" warnings that cause perceived lag.
   private var searchTextBinding: Binding<String> {
     Binding(
       get: { searchText },
       set: { newValue in
         searchText = newValue
-        searchViewModel.onQueryChange(newValue)
+        Task { @MainActor in
+          searchViewModel.onQueryChange(newValue)
+        }
       }
     )
   }

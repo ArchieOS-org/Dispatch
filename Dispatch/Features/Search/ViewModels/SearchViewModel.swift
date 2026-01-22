@@ -54,6 +54,10 @@ final class SearchViewModel: ObservableObject {
   /// Whether a search is currently in progress
   @Published var isSearching: Bool = false
 
+  /// Cached grouped results for view consumption.
+  /// Updated only when searchDocResults changes, avoiding O(n log n) sort per render.
+  @Published private(set) var cachedGroupedResults: [(section: String, results: [SearchResult])] = []
+
   /// The underlying search index service
   let searchIndex: SearchIndexService
 
@@ -72,6 +76,7 @@ final class SearchViewModel: ObservableObject {
     if newQuery.isEmpty {
       logger.debug("onQueryChange: empty query, clearing results")
       searchDocResults = []
+      cachedGroupedResults = []
       isSearching = false
       return
     }
@@ -105,10 +110,14 @@ final class SearchViewModel: ObservableObject {
       }
 
       let duration = (CFAbsoluteTimeGetCurrent() - searchStartTime) * 1000
-      logger.info("onQueryChange: search complete query='\(newQuery)' results=\(results.count) duration=\(duration, format: .fixed(precision: 2))ms")
+      logger
+        .info(
+          "onQueryChange: search complete query='\(newQuery)' results=\(results.count) duration=\(duration, format: .fixed(precision: 2))ms"
+        )
 
       // Update results on main actor
       searchDocResults = results
+      cachedGroupedResults = groupedResults(from: results)
       isSearching = false
     }
   }
@@ -119,6 +128,7 @@ final class SearchViewModel: ObservableObject {
     logger.info("warmStart: triggering index warm start")
     await searchIndex.warmStart(with: data)
     isIndexReady = await searchIndex.isReady
+    // swiftformat:disable:next redundantSelf
     logger.info("warmStart: index ready=\(self.isIndexReady)")
   }
 
@@ -139,23 +149,37 @@ final class SearchViewModel: ObservableObject {
 
 extension SearchViewModel {
 
+  // MARK: Internal
+
+  /// Returns cached grouped results for UI consumption.
+  /// Results are computed once when searchDocResults changes, not on every view render.
+  /// - Returns: Array of (section title, results) tuples
+  func groupedResults() -> [(section: String, results: [SearchResult])] {
+    cachedGroupedResults
+  }
+
+  // MARK: Private
+
   /// Converts SearchDoc results to grouped SearchResult format for UI compatibility.
   /// Groups results by type and applies per-section limits.
-  /// - Parameter limit: Maximum items per section (default 20)
+  /// Called internally when search results update to populate cachedGroupedResults.
+  /// - Parameters:
+  ///   - docs: The SearchDoc results to group
+  ///   - limit: Maximum items per section (default 20)
   /// - Returns: Array of (section title, results) tuples
-  func groupedResults(limit: Int = 20) -> [(section: String, results: [SearchResult])] {
+  private func groupedResults(from docs: [SearchDoc], limit: Int = 20) -> [(section: String, results: [SearchResult])] {
     // Group docs by type
-    let grouped = Dictionary(grouping: searchDocResults) { $0.type }
+    let grouped = Dictionary(grouping: docs) { $0.type }
 
     // Convert to SearchResult sections
     var sections: [(section: String, results: [SearchResult])] = []
 
     // Process in type priority order: realtor, listing, property, task
     for docType in [SearchDocType.realtor, .listing, .property, .task] {
-      guard let docs = grouped[docType], !docs.isEmpty else { continue }
+      guard let typeDocs = grouped[docType], !typeDocs.isEmpty else { continue }
 
       let sectionTitle = docType.sectionTitle
-      let results = docs.prefix(limit).compactMap { SearchResult.from(searchDoc: $0) }
+      let results = typeDocs.prefix(limit).compactMap { SearchResult.from(searchDoc: $0) }
 
       if !results.isEmpty {
         sections.append((section: sectionTitle, results: results))
