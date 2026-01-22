@@ -24,6 +24,7 @@ struct ContentView: View {
   @EnvironmentObject private var syncManager: SyncManager
   @EnvironmentObject private var appState: AppState
   @Environment(\.modelContext) private var modelContext
+  @Environment(\.undoManager) private var undoManager
 
   #if os(iOS)
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -228,60 +229,130 @@ struct ContentView: View {
     workItemActions.userLookup = { [userCache] id in userCache[id] }
     workItemActions.userLookupDict = userCache
     workItemActions.availableUsers = users
+    workItemActions.undoManager = undoManager
     workItemActions.onComplete = makeOnComplete()
     workItemActions.onAssigneesChanged = makeOnAssigneesChanged()
     workItemActions.onAddNote = makeOnAddNote()
-    workItemActions.onDeleteNote = { [syncManager, currentUserId] note, _ in note.softDelete(by: currentUserId)
-      syncManager.requestSync()
-    }
+    workItemActions.onDeleteNote = makeOnDeleteNote()
     workItemActions.onClaim = makeOnClaim()
   }
 
   private func makeOnComplete() -> (WorkItem) -> Void {
-    { [syncManager] item in
+    { [syncManager, undoManager] item in
+      // Capture previous state before mutation
+      let previousStatus: (isCompleted: Bool, completedAt: Date?)
+      let actionName: String
+
       switch item {
-      case .task(let t, _): t.status = t.status == .completed ? .open : .completed
+      case .task(let t, _):
+        previousStatus = (t.status == .completed, t.completedAt)
+        t.status = t.status == .completed ? .open : .completed
         t.completedAt = t.status == .completed ? Date() : nil
         t.markPending()
+        actionName = t.status == .completed ? "Complete Task" : "Uncomplete Task"
 
-      case .activity(let a, _): a.status = a.status == .completed ? .open : .completed
+        // Register undo action
+        undoManager?.registerUndo(withTarget: t) { task in
+          task.status = previousStatus.isCompleted ? .completed : .open
+          task.completedAt = previousStatus.completedAt
+          task.markPending()
+          syncManager.requestSync()
+        }
+
+      case .activity(let a, _):
+        previousStatus = (a.status == .completed, a.completedAt)
+        a.status = a.status == .completed ? .open : .completed
         a.completedAt = a.status == .completed ? Date() : nil
         a.markPending()
+        actionName = a.status == .completed ? "Complete Activity" : "Uncomplete Activity"
+
+        // Register undo action
+        undoManager?.registerUndo(withTarget: a) { activity in
+          activity.status = previousStatus.isCompleted ? .completed : .open
+          activity.completedAt = previousStatus.completedAt
+          activity.markPending()
+          syncManager.requestSync()
+        }
       }
+      undoManager?.setActionName(actionName)
       syncManager.requestSync()
     }
   }
 
   private func makeOnAssigneesChanged() -> (WorkItem, [UUID]) -> Void {
-    { [syncManager, currentUserId] item, userIds in
+    { [syncManager, currentUserId, undoManager] item, userIds in
+      // Capture previous assignee IDs before mutation
+      let previousAssigneeIds: [UUID]
       let set = Set(userIds)
+
       switch item {
       case .task(let t, _):
+        previousAssigneeIds = t.assigneeUserIds
         t.assignees.removeAll { !set.contains($0.userId) }
         let existing = Set(t.assignees.map { $0.userId })
-        for uid in userIds where !existing.contains(uid) { let a = TaskAssignee(
-          taskId: t.id,
-          userId: uid,
-          assignedBy: currentUserId
-        )
-        a.task = t
-        t.assignees.append(a)
+        for uid in userIds where !existing.contains(uid) {
+          let a = TaskAssignee(
+            taskId: t.id,
+            userId: uid,
+            assignedBy: currentUserId
+          )
+          a.task = t
+          t.assignees.append(a)
         }
         t.markPending()
 
+        // Register undo action to restore previous assignees
+        undoManager?.registerUndo(withTarget: t) { [previousAssigneeIds, currentUserId] task in
+          let restoreSet = Set(previousAssigneeIds)
+          task.assignees.removeAll { !restoreSet.contains($0.userId) }
+          let existingIds = Set(task.assignees.map { $0.userId })
+          for uid in previousAssigneeIds where !existingIds.contains(uid) {
+            let assignee = TaskAssignee(
+              taskId: task.id,
+              userId: uid,
+              assignedBy: currentUserId
+            )
+            assignee.task = task
+            task.assignees.append(assignee)
+          }
+          task.markPending()
+          syncManager.requestSync()
+        }
+
       case .activity(let a, _):
+        previousAssigneeIds = a.assigneeUserIds
         a.assignees.removeAll { !set.contains($0.userId) }
         let existing = Set(a.assignees.map { $0.userId })
-        for uid in userIds where !existing.contains(uid) { let x = ActivityAssignee(
-          activityId: a.id,
-          userId: uid,
-          assignedBy: currentUserId
-        )
-        x.activity = a
-        a.assignees.append(x)
+        for uid in userIds where !existing.contains(uid) {
+          let x = ActivityAssignee(
+            activityId: a.id,
+            userId: uid,
+            assignedBy: currentUserId
+          )
+          x.activity = a
+          a.assignees.append(x)
         }
         a.markPending()
+
+        // Register undo action to restore previous assignees
+        undoManager?.registerUndo(withTarget: a) { [previousAssigneeIds, currentUserId] activity in
+          let restoreSet = Set(previousAssigneeIds)
+          activity.assignees.removeAll { !restoreSet.contains($0.userId) }
+          let existingIds = Set(activity.assignees.map { $0.userId })
+          for uid in previousAssigneeIds where !existingIds.contains(uid) {
+            let assignee = ActivityAssignee(
+              activityId: activity.id,
+              userId: uid,
+              assignedBy: currentUserId
+            )
+            assignee.activity = activity
+            activity.assignees.append(assignee)
+          }
+          activity.markPending()
+          syncManager.requestSync()
+        }
       }
+      undoManager?.setActionName("Change Assignees")
       syncManager.requestSync()
     }
   }
@@ -309,6 +380,21 @@ struct ContentView: View {
         newAssignees.append(currentUserId)
       }
       workItemActions.onAssigneesChanged(item, newAssignees)
+    }
+  }
+
+  private func makeOnDeleteNote() -> (Note, WorkItem) -> Void {
+    { [syncManager, currentUserId, undoManager] note, _ in
+      // Perform soft delete
+      note.softDelete(by: currentUserId)
+      syncManager.requestSync()
+
+      // Register undo action
+      undoManager?.registerUndo(withTarget: note) { note in
+        note.undoDelete()
+        syncManager.requestSync()
+      }
+      undoManager?.setActionName("Delete Note")
     }
   }
 
