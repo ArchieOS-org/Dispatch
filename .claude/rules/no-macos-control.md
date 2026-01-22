@@ -92,6 +92,15 @@ When multiple agents run simultaneously (Conductor's normal mode):
 
 See `integrator.md` for targeted test strategy.
 
+## UI Tests (DispatchUITests) - NEVER RUN [ENFORCED]
+
+**DispatchUITests launches simulators and takes over the screen. NEVER run these tests.**
+
+Only `xcode-pilot` may run UI tests during explicit simulator validation. All other agents must prevent DispatchUITests from running:
+- Use `-only-testing:DispatchTests/` (unit tests only)
+- NEVER use `-only-testing:DispatchUITests/`
+- NEVER run tests without `-only-testing:DispatchTests/` (to prevent DispatchUITests from being included)
+
 ## Screenshot Restriction
 
 Agents MUST NOT take screenshots on macOS. Screenshots are only permitted via xcode-pilot on iOS/iPadOS simulators.
