@@ -70,7 +70,7 @@ enum SearchDocType: Int, Sendable, Comparable {
   case property = 2
   case task = 3
 
-  nonisolated static func < (lhs: Self, rhs: Self) -> Bool {
+  nonisolated static func <(lhs: Self, rhs: Self) -> Bool {
     lhs.rawValue < rhs.rawValue
   }
 }
