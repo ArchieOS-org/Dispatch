@@ -63,4 +63,13 @@ final class WorkItemActions: ObservableObject {
   /// Claim a work item by adding current user to assignees
   @MainActor var onClaim: (WorkItem) -> Void = { _ in }
 
+  /// UndoManager for registering undo actions (injected from SwiftUI Environment)
+  @MainActor weak var undoManager: UndoManager?
+
+  /// Change the stage of a listing (with undo support)
+  @MainActor var onListingStageChanged: ((Listing, ListingStage) -> Void)?
+
+  /// Add a note to a listing (with undo support)
+  @MainActor var onAddNoteToListing: ((String, Listing) -> Void)?
+
 }
