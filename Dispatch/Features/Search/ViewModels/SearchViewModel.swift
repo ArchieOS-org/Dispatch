@@ -148,22 +148,16 @@ final class SearchViewModel: ObservableObject {
     logger.info("warmStart: triggering index warm start")
     error = nil // Clear any previous error
 
-    do {
-      await searchIndex.warmStart(with: data)
-      isIndexReady = await searchIndex.isReady
+    await searchIndex.warmStart(with: data)
+    isIndexReady = await searchIndex.isReady
 
-      if !isIndexReady {
-        let errorMsg = "Index not ready after warm start"
-        logger.error("warmStart: \(errorMsg)")
-        error = .warmStartFailed(errorMsg)
-      } else {
-        // swiftformat:disable:next redundantSelf
-        logger.info("warmStart: index ready=\(self.isIndexReady)")
-      }
-    } catch {
-      let errorMsg = "Warm start failed: \(error.localizedDescription)"
+    if !isIndexReady {
+      let errorMsg = "Index not ready after warm start"
       logger.error("warmStart: \(errorMsg)")
-      self.error = .warmStartFailed(errorMsg)
+      error = .warmStartFailed(errorMsg)
+    } else {
+      // swiftformat:disable:next redundantSelf
+      logger.info("warmStart: index ready=\(self.isIndexReady)")
     }
   }
 
