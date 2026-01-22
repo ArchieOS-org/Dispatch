@@ -15,7 +15,7 @@ struct ListingTypePill: View {
   /// Creates a pill using only the listing type enum (uses default colors).
   init(type: ListingType) {
     self.type = type
-    self.definition = nil
+    definition = nil
   }
 
   /// Creates a pill using a listing type definition (uses custom color if set).
@@ -49,8 +49,15 @@ struct ListingTypePill: View {
   @ScaledMetric(relativeTo: .caption2)
   private var fontSize: CGFloat = 10
 
+  /// Returns custom name from definition if available, otherwise falls back to hardcoded defaults.
   private var title: String {
-    switch type {
+    // Use custom name from definition if available
+    if let definition {
+      return definition.name
+    }
+
+    // Fall back to hardcoded defaults per listing type
+    return switch type {
     case .sale: "Sale"
     case .lease: "Lease"
     case .preListing: "Pre-List"

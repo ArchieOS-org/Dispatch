@@ -146,6 +146,15 @@ CONTEXT7_TAKEAWAYS:
 CONTEXT7_APPLIED:
 - `Color(red: Double, green: Double, blue: Double, opacity: Double)` initializer -> Color+Hex.swift:63
 
+CONTEXT7_QUERY: ColorPicker binding color selection onChange supportsOpacity
+CONTEXT7_TAKEAWAYS:
+- ColorPicker accepts `Binding<Color>` with title string and optional supportsOpacity parameter
+- Use `$stateVariable` syntax for direct binding to @State property
+- supportsOpacity: false removes opacity controls and strips opacity from colors
+- Available on iOS 14.0+, macOS 11.0+
+CONTEXT7_APPLIED:
+- ColorPicker("", selection: $selectedColor, supportsOpacity: false) -> ListingTypeDetailView.swift:103
+
 ---
 
 ### Context7 Attestation (written by feature-owner at PATCHSET 1)
@@ -161,20 +170,42 @@ CONTEXT7_APPLIED:
 
 ### Jobs Critique (written by jobs-critic agent)
 
-**JOBS CRITIQUE**: PENDING
-**Reviewed**: PENDING
+**JOBS CRITIQUE**: SHIP YES
+**Reviewed**: 2026-01-22 (jobs-critic, updated for PATCHSET 2.5)
 
 #### Checklist
 
-- [ ] Ruthless simplicity - nothing can be removed without losing meaning
-- [ ] One clear primary action per screen/state
-- [ ] Strong hierarchy - headline -> primary -> secondary
-- [ ] No clutter - whitespace is a feature
-- [ ] Native feel - follows platform conventions
+- [x] Ruthless simplicity - nothing can be removed without losing meaning
+- [x] One clear primary action per screen/state
+- [x] Strong hierarchy - headline -> primary -> secondary
+- [x] No clutter - whitespace is a feature
+- [x] Native feel - follows platform conventions
 
 #### Verdict Notes
 
-(to be filled by jobs-critic)
+**Excellent implementation.** The color picker UI is minimal and native:
+
+1. **Simplicity**: One label ("Color"), one ColorPicker. No presets, palette, or reset button - exactly per non-goals in contract. Native SwiftUI ColorPicker is the right choice.
+
+2. **Hierarchy**: Clear section flow (Type Name -> Color -> Activity Templates). Color section matches typeNameSection styling with DS.Colors.Background.secondary grouping.
+
+3. **Native feel**: ColorPicker with `supportsOpacity: false` and `labelsHidden()` matches Apple Settings app patterns. Inline horizontal layout is platform-standard.
+
+4. **Execution details**:
+   - Uses DS tokens throughout (DS.Typography.body, DS.Colors.Text.primary, DS.Spacing.md)
+   - ListingTypePill has proper accessibility label
+   - Color+Hex extension handles both UIKit/AppKit correctly
+   - Fallback logic in ListingTypePill is clean: custom color if set, else hardcoded defaults
+
+**PATCHSET 2.5 Update - Main View Integration**:
+
+5. **StagedListingsView**: Pill placed below address in row VStack with DS.Spacing.xs gap. Clean secondary metadata placement, does not compete with address headline.
+
+6. **ListingDetailView**: Pill placed in metadata section between dividers. Consistent with other metadata elements (RealtorPill, DatePill). Proper visual framing.
+
+7. **Consistency**: Same ListingTypePill component used in all contexts - settings, staged list rows, and detail views. Custom colors propagate correctly throughout.
+
+No fixes required. Ship-ready UI maintained through integration work.
 
 ---
 

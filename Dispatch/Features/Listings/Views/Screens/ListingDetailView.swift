@@ -233,9 +233,7 @@ struct ListingDetailView: View {
       Divider().padding(.top, DS.Spacing.sm)
 
       // Listing type
-      Text(listing.listingType.rawValue.capitalized)
-        .font(DS.Typography.body)
-        .foregroundColor(DS.Colors.Text.primary)
+      ListingTypePill(type: listing.listingType, definition: listing.typeDefinition)
 
       Divider().padding(.top, DS.Spacing.sm)
     }

@@ -74,22 +74,26 @@ extension Color {
   var hexString: String? {
     // Resolve color components using UIColor/NSColor bridge
     #if canImport(UIKit)
-    guard let cgColor = UIColor(self).cgColor.converted(
-      to: CGColorSpaceCreateDeviceRGB(),
-      intent: .defaultIntent,
-      options: nil
-    ),
+    guard
+      let cgColor = UIColor(self).cgColor.converted(
+        to: CGColorSpaceCreateDeviceRGB(),
+        intent: .defaultIntent,
+        options: nil
+      ),
       let components = cgColor.components,
       components.count >= 3
     else {
       return nil
     }
     #elseif canImport(AppKit)
-    guard let nsColor = NSColor(self).usingColorSpace(.deviceRGB) else {
+    guard
+      let nsColor = NSColor(self).usingColorSpace(.deviceRGB)
+    else {
       return nil
     }
     let cgColor = nsColor.cgColor
-    guard let components = cgColor.components,
+    guard
+      let components = cgColor.components,
       components.count >= 3
     else {
       return nil

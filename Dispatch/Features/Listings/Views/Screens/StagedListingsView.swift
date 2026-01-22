@@ -17,10 +17,7 @@ private struct StagedListingRow: View {
           .font(DS.Typography.body)
           .foregroundStyle(.primary)
 
-        let colors = typeTagColors
-        Text(listing.listingType.rawValue.capitalized)
-          .font(DS.Typography.caption)
-          .foregroundStyle(colors.fg)
+        ListingTypePill(type: listing.listingType, definition: listing.typeDefinition)
       }
 
       Spacer(minLength: 0)
@@ -40,18 +37,6 @@ private struct StagedListingRow: View {
     default:
       true
     }
-  }
-
-  private var typeTagColors: (fg: Color, bg: Color) {
-    let base: Color =
-      switch listing.listingType {
-      case .sale: DS.Colors.success // Green
-      case .lease: Color.purple // Purple
-      case .preListing: DS.Colors.info // Blue
-      case .rental: DS.Colors.warning // Orange
-      case .other: DS.Colors.Text.tertiary // Gray
-      }
-    return (fg: base, bg: base.opacity(0.14))
   }
 
 }
