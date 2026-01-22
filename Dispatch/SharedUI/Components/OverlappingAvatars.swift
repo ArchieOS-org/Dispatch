@@ -50,8 +50,19 @@ struct OverlappingAvatars: View {
         .popover(isPresented: $isHovered, arrowEdge: .bottom) {
           userListPopover
         }
+        .onTapGesture {
+          if let onAssign {
+            onAssign()
+          }
+        }
       #else
-        .onTapGesture { showPopover = true }
+        .onTapGesture {
+          if let onAssign {
+            onAssign()
+          } else {
+            showPopover = true
+          }
+        }
         .popover(isPresented: $showPopover) {
           userListPopover
         }
