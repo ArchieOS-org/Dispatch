@@ -21,9 +21,18 @@ struct PropertyDetailView: View {
     StandardScreen(title: property.displayAddress.titleCased(), layout: .column, scroll: .automatic) {
       content
     } toolbarContent: {
+      // On iPhone (compact size class), show menu in toolbar
+      // On macOS and iPad, menu appears beside title via titleMenu instead
       ToolbarItem(placement: .primaryAction) {
-        OverflowMenu(actions: propertyActions)
+        #if os(iOS)
+        if horizontalSizeClass == .compact {
+          OverflowMenu(actions: propertyActions)
+        }
+        #endif
       }
+    } titleMenu: {
+      // On macOS and iPad, menu appears beside title via titleMenu
+      OverflowMenu(actions: propertyActions)
     }
     .alert("Delete Property?", isPresented: $showDeleteAlert) {
       Button("Cancel", role: .cancel) { }
@@ -40,6 +49,10 @@ struct PropertyDetailView: View {
   /// Scaled empty state icon size for Dynamic Type support (base: 32pt)
   @ScaledMetric(relativeTo: .title)
   private var emptyStateIconSize: CGFloat = 32
+
+  #if os(iOS)
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+  #endif
 
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var syncManager: SyncManager
