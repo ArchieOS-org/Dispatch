@@ -3,15 +3,14 @@
 //  Dispatch
 //
 //  Bottom toolbar for macOS with Add, Filter, and Search buttons.
-//  Uses Liquid Glass effect on button groups (iOS 26+/macOS 26+).
-//  No background on the container - glass effect is on each button group.
+//  Buttons use simple hover backgrounds (no glass effect) to match the top toolbar style.
 //
 
 #if os(macOS)
 import SwiftUI
 
 /// Bottom toolbar for macOS containing Add, Filter (grouped left), and Search (right).
-/// Uses Liquid Glass effect on button groups - no background on the toolbar container itself.
+/// Buttons use simple hover backgrounds to match the native top toolbar button style.
 struct MacBottomToolbar: View {
 
   // MARK: Internal
@@ -22,17 +21,17 @@ struct MacBottomToolbar: View {
 
   var body: some View {
     HStack(spacing: 0) {
-      // Left group: Add button + Filter menu (on glass background)
+      // Left group: Add button + Filter menu
       leftButtonGroup
 
       Spacer()
 
-      // Right: Search button (on separate glass background)
+      // Right: Search button
       searchButton
     }
     .padding(.horizontal, DS.Spacing.bottomToolbarPadding)
-    .frame(height: DS.Spacing.bottomToolbarHeight)
-    // No background on container - glass effect is on each button group
+    .padding(.bottom, DS.Spacing.lg)
+    .frame(height: DS.Spacing.bottomToolbarHeight + DS.Spacing.lg)
   }
 
   // MARK: Private
@@ -72,7 +71,6 @@ struct MacBottomToolbar: View {
       FilterMenu(audience: $audience)
     }
     .padding(.horizontal, DS.Spacing.xs)
-    .glassToolbarBackground()
   }
 
   @ViewBuilder
@@ -87,7 +85,7 @@ struct MacBottomToolbar: View {
         )
         .background {
           RoundedRectangle(cornerRadius: DS.Radius.small)
-            .fill(isSearchHovering ? Color.primary.opacity(0.08) : Color.clear)
+            .fill(isSearchHovering ? Color.primary.opacity(0.08) : Color.red)
         }
         .contentShape(Rectangle())
     }
@@ -98,7 +96,6 @@ struct MacBottomToolbar: View {
     .accessibilityLabel("Search")
     .accessibilityHint("Opens global search overlay")
     .padding(.horizontal, DS.Spacing.xs)
-    .glassToolbarBackground()
   }
 }
 
@@ -106,12 +103,7 @@ struct MacBottomToolbar: View {
 
 #Preview("Mac Bottom Toolbar - Default") {
   ZStack(alignment: .bottom) {
-    // Gradient background to show glass translucency
-    LinearGradient(
-      colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
-      startPoint: .topLeading,
-      endPoint: .bottomTrailing
-    )
+    DS.Colors.Background.primary.ignoresSafeArea()
 
     MacBottomToolbar(
       audience: .constant(.all),
@@ -124,11 +116,7 @@ struct MacBottomToolbar: View {
 
 #Preview("Mac Bottom Toolbar - Admin Filter") {
   ZStack(alignment: .bottom) {
-    LinearGradient(
-      colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
-      startPoint: .topLeading,
-      endPoint: .bottomTrailing
-    )
+    DS.Colors.Background.primary.ignoresSafeArea()
 
     MacBottomToolbar(
       audience: .constant(.admin),
@@ -141,11 +129,7 @@ struct MacBottomToolbar: View {
 
 #Preview("Mac Bottom Toolbar - Marketing Filter") {
   ZStack(alignment: .bottom) {
-    LinearGradient(
-      colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
-      startPoint: .topLeading,
-      endPoint: .bottomTrailing
-    )
+    DS.Colors.Background.primary.ignoresSafeArea()
 
     MacBottomToolbar(
       audience: .constant(.marketing),
@@ -158,11 +142,7 @@ struct MacBottomToolbar: View {
 
 #Preview("Mac Bottom Toolbar - Dark Mode") {
   ZStack(alignment: .bottom) {
-    LinearGradient(
-      colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
-      startPoint: .topLeading,
-      endPoint: .bottomTrailing
-    )
+    DS.Colors.Background.primary.ignoresSafeArea()
 
     MacBottomToolbar(
       audience: .constant(.admin),

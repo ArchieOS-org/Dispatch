@@ -38,8 +38,8 @@ Based on checked indicators:
 
 ### Acceptance Criteria (3 max)
 
-1. macOS shows a bottom toolbar with Add button and Filter button (grouped on Liquid Glass background, left side) and Search button (separate Liquid Glass background, right side)
-2. Bottom toolbar has NO container background - glass effect is applied to each button group separately via `.glassToolbarBackground()`
+1. macOS shows a bottom toolbar with Add button and Filter button (grouped left side) and Search button (right side)
+2. Buttons use simple hover backgrounds matching top toolbar style (no Liquid Glass)
 3. Toolbar extends to sidebar edge without overlapping it (positioned via `.safeAreaInset`)
 
 ### Non-goals (prevents scope creep)
@@ -169,7 +169,7 @@ CONTEXT7_APPLIED:
 ### Jobs Critique (written by jobs-critic agent)
 
 **JOBS CRITIQUE**: SHIP YES
-**Reviewed**: 2026-01-22 15:45 (jobs-critic, post-design-update)
+**Reviewed**: 2026-01-22 16:15 (jobs-critic, post-Liquid-Glass-removal)
 
 #### Checklist
 
@@ -181,29 +181,30 @@ CONTEXT7_APPLIED:
 
 #### Verdict Notes
 
-**Re-reviewed after design update (no container background, grouped glass islands).**
+**Re-reviewed after removing Liquid Glass - buttons now use simple hover backgrounds.**
 
-The updated implementation is architecturally cleaner and more aligned with macOS 26 Liquid Glass patterns:
+The simplified implementation is clean and consistent with the top toolbar pattern:
 
-1. **Ruthless simplicity**: Three controls only. No chrome, no container background. The glass groups ARE the UI.
+1. **Ruthless simplicity**: Three controls only. No glass effects, no container backgrounds. Pure icon buttons with hover states.
 
 2. **Clear hierarchy**: Two visual groups create natural hierarchy:
-   - Left group (Add + Filter): Creation/filtering workflow, grouped on shared glass
-   - Right (Search): Standalone utility on separate glass
-   - Whitespace between groups is functional, not decorative
+   - Left group (Add + Filter): Creation/filtering workflow, tightly grouped
+   - Right (Search): Standalone utility
+   - Whitespace (Spacer) between groups is functional, not decorative
 
-3. **Native macOS 26 feel**:
-   - `.glassToolbarBackground()` uses thinMaterial with 0.5pt stroke and subtle shadow
-   - Floating glass islands match how Apple ships Liquid Glass in macOS 26 apps
+3. **Native macOS feel**:
+   - Simple hover backgrounds using `Color.primary.opacity(0.08)` - matches native macOS toolbar conventions
+   - `RoundedRectangle(cornerRadius: DS.Radius.small)` for subtle 4pt rounding on hover
    - `.safeAreaInset(edge: .bottom, spacing: 0)` correctly scopes to content area
-   - Hover states use `Color.primary.opacity(0.08)` matching native macOS
+   - `.buttonStyle(.plain)` + manual hover states for consistent cross-platform behavior
    - Keyboard shortcuts preserved (Cmd+N, Cmd+F)
+   - Bottom padding (`DS.Spacing.lg`) matches toolbar spacing conventions
 
-4. **Design system compliance**: DS.Spacing.bottomToolbar* tokens, DS.Radius.large, @ScaledMetric
+4. **Design system compliance**: DS.Spacing.bottomToolbar* tokens, DS.Radius.small, @ScaledMetric for Dynamic Type
 
 5. **Accessibility**: VoiceOver labels + hints, .help() tooltips, keyboard shortcuts
 
-**This is how a macOS toolbar should look in 2026. Floating glass islands, not a horizontal bar. The design is confident and quiet.**
+**This is a quiet, confident toolbar. The buttons appear on hover, the layout is clear, and it matches the top toolbar pattern. No unnecessary chrome.**
 
 ---
 
