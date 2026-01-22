@@ -25,11 +25,8 @@ struct iPadContentView: View {
   /// Global Quick Find text state
   @Binding var quickFindText: String
 
-  /// Active tasks for search overlay
-  let activeTasks: [TaskItem]
-
-  /// Active activities for search overlay
-  let activeActivities: [Activity]
+  /// Instant search ViewModel
+  let searchViewModel: SearchViewModel
 
   /// Callback when search result is selected
   let onSelectSearchResult: (SearchResult) -> Void
@@ -98,9 +95,7 @@ struct iPadContentView: View {
             }
           ),
           searchText: $quickFindText,
-          tasks: activeTasks,
-          activities: activeActivities,
-          listings: activeListings,
+          searchViewModel: searchViewModel,
           onSelectResult: { result in
             onSelectSearchResult(result)
           }
