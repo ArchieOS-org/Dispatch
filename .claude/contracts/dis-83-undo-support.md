@@ -3,7 +3,7 @@
 **Feature**: DIS-83 - Shake to Undo and Command+Z Support
 **Created**: 2026-01-21
 **Status**: locked
-**Lock Version**: v1
+**Lock Version**: v2
 **UI Review Required**: NO
 
 ---
@@ -69,17 +69,17 @@ SwiftUI provides `@Environment(\.undoManager)` for accessing the window's UndoMa
 - Note soft-delete (already has `undoDelete()` method)
 - Task/Activity completion toggle
 - Task/Activity assignee changes
-- Future: Any mutation via WorkItemActions
+- Listing stage changes (via `onListingStageChanged` callback)
+- Note creation (via `onAddNote` and `onAddNoteToListing` callbacks - uses `softDelete` for undo)
 
 ### Acceptance Criteria (3 max)
 
-1. **iOS/iPadOS**: Shake device after deleting a note shows "Undo Delete" alert; tapping Undo restores the note
-2. **macOS**: Command+Z after deleting a note restores the note (no alert, immediate undo)
-3. **Cross-platform**: UndoManager actions work consistently for note deletion, task completion toggle, and assignee changes
+1. **iOS/iPadOS**: Shake device after deleting a note shows "Undo Delete" alert; tapping Undo restores the note; shake again shows "Redo Delete" alert
+2. **macOS**: Command+Z undoes actions, Command+Shift+Z redoes them (Edit menu shows Undo/Redo with action names)
+3. **Cross-platform**: Undo/redo works consistently for note deletion, note creation, task completion toggle, assignee changes, and listing stage changes
 
 ### Non-goals (prevents scope creep)
 
-- No redo support (Cmd+Shift+Z) in this iteration
 - No custom undo UI (uses system-provided shake alert on iOS)
 - No multi-level undo history display
 - No undo for navigation actions (only data mutations)
@@ -118,6 +118,19 @@ CONTEXT7_APPLIED:
 - registerUndo(withTarget:handler:) -> ContentView.swift:305 (task assignees)
 - registerUndo(withTarget:handler:) -> ContentView.swift:338 (activity assignees)
 - registerUndo(withTarget:handler:) -> ContentView.swift:393 (note delete)
+- registerUndo(withTarget:handler:) -> ContentView.swift:378 (note add to work item)
+- registerUndo(withTarget:handler:) -> ContentView.swift:418 (listing stage change)
+- registerUndo(withTarget:handler:) -> ContentView.swift:434 (note add to listing)
+
+CONTEXT7_QUERY: UndoManager redo registerUndo how to enable redo support by registering undo inside undo handler
+CONTEXT7_TAKEAWAYS:
+- Access UndoManager via `@Environment(\.undoManager)` in SwiftUI views
+- UndoManager is optional (nil when undo not supported)
+- By default, macOS provides Undo and Redo commands via CommandGroupPlacement.undoRedo
+- System handles Command+Z for undo and Command+Shift+Z for redo automatically
+- To enable redo: inside each undo handler, after restoring state, call registerUndo again with the forward action
+CONTEXT7_APPLIED:
+- Nested registerUndo for redo -> ContentView.swift:makeOnComplete(), makeOnAssigneesChanged(), makeOnAddNote(), makeOnDeleteNote(), makeOnListingStageChanged(), makeOnAddNoteToListing()
 
 ---
 

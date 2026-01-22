@@ -235,6 +235,8 @@ struct ContentView: View {
     workItemActions.onAddNote = makeOnAddNote()
     workItemActions.onDeleteNote = makeOnDeleteNote()
     workItemActions.onClaim = makeOnClaim()
+    workItemActions.onListingStageChanged = makeOnListingStageChanged()
+    workItemActions.onAddNoteToListing = makeOnAddNoteToListing()
   }
 
   private func makeOnComplete() -> (WorkItem) -> Void {
@@ -249,13 +251,25 @@ struct ContentView: View {
         t.status = t.status == .completed ? .open : .completed
         t.completedAt = t.status == .completed ? Date() : nil
         t.markPending()
-        actionName = t.status == .completed ? "Complete Task" : "Uncomplete Task"
+        let newStatus = t.status
+        let newCompletedAt = t.completedAt
+        actionName = newStatus == .completed ? "Complete Task" : "Uncomplete Task"
 
-        // Register undo action
-        undoManager?.registerUndo(withTarget: t) { task in
+        // Register undo action with redo support
+        undoManager?.registerUndo(withTarget: t) { [undoManager] task in
           task.status = previousStatus.isCompleted ? .completed : .open
           task.completedAt = previousStatus.completedAt
           task.markPending()
+
+          // Register redo action (reverse of undo)
+          undoManager?.registerUndo(withTarget: task) { [undoManager] task in
+            task.status = newStatus
+            task.completedAt = newCompletedAt
+            task.markPending()
+            syncManager.requestSync()
+            undoManager?.setActionName(actionName)
+          }
+          undoManager?.setActionName(actionName)
           syncManager.requestSync()
         }
 
@@ -264,13 +278,25 @@ struct ContentView: View {
         a.status = a.status == .completed ? .open : .completed
         a.completedAt = a.status == .completed ? Date() : nil
         a.markPending()
-        actionName = a.status == .completed ? "Complete Activity" : "Uncomplete Activity"
+        let newStatus = a.status
+        let newCompletedAt = a.completedAt
+        actionName = newStatus == .completed ? "Complete Activity" : "Uncomplete Activity"
 
-        // Register undo action
-        undoManager?.registerUndo(withTarget: a) { activity in
+        // Register undo action with redo support
+        undoManager?.registerUndo(withTarget: a) { [undoManager] activity in
           activity.status = previousStatus.isCompleted ? .completed : .open
           activity.completedAt = previousStatus.completedAt
           activity.markPending()
+
+          // Register redo action (reverse of undo)
+          undoManager?.registerUndo(withTarget: activity) { [undoManager] activity in
+            activity.status = newStatus
+            activity.completedAt = newCompletedAt
+            activity.markPending()
+            syncManager.requestSync()
+            undoManager?.setActionName(actionName)
+          }
+          undoManager?.setActionName(actionName)
           syncManager.requestSync()
         }
       }
@@ -300,9 +326,10 @@ struct ContentView: View {
           t.assignees.append(a)
         }
         t.markPending()
+        let newAssigneeIds = userIds
 
-        // Register undo action to restore previous assignees
-        undoManager?.registerUndo(withTarget: t) { [previousAssigneeIds, currentUserId] task in
+        // Register undo action to restore previous assignees with redo support
+        undoManager?.registerUndo(withTarget: t) { [previousAssigneeIds, newAssigneeIds, currentUserId, undoManager] task in
           let restoreSet = Set(previousAssigneeIds)
           task.assignees.removeAll { !restoreSet.contains($0.userId) }
           let existingIds = Set(task.assignees.map { $0.userId })
@@ -316,6 +343,26 @@ struct ContentView: View {
             task.assignees.append(assignee)
           }
           task.markPending()
+
+          // Register redo action (reverse of undo)
+          undoManager?.registerUndo(withTarget: task) { [newAssigneeIds, currentUserId, undoManager] task in
+            let redoSet = Set(newAssigneeIds)
+            task.assignees.removeAll { !redoSet.contains($0.userId) }
+            let existingIds = Set(task.assignees.map { $0.userId })
+            for uid in newAssigneeIds where !existingIds.contains(uid) {
+              let assignee = TaskAssignee(
+                taskId: task.id,
+                userId: uid,
+                assignedBy: currentUserId
+              )
+              assignee.task = task
+              task.assignees.append(assignee)
+            }
+            task.markPending()
+            syncManager.requestSync()
+            undoManager?.setActionName("Change Assignees")
+          }
+          undoManager?.setActionName("Change Assignees")
           syncManager.requestSync()
         }
 
@@ -333,9 +380,10 @@ struct ContentView: View {
           a.assignees.append(x)
         }
         a.markPending()
+        let newAssigneeIds = userIds
 
-        // Register undo action to restore previous assignees
-        undoManager?.registerUndo(withTarget: a) { [previousAssigneeIds, currentUserId] activity in
+        // Register undo action to restore previous assignees with redo support
+        undoManager?.registerUndo(withTarget: a) { [previousAssigneeIds, newAssigneeIds, currentUserId, undoManager] activity in
           let restoreSet = Set(previousAssigneeIds)
           activity.assignees.removeAll { !restoreSet.contains($0.userId) }
           let existingIds = Set(activity.assignees.map { $0.userId })
@@ -349,6 +397,26 @@ struct ContentView: View {
             activity.assignees.append(assignee)
           }
           activity.markPending()
+
+          // Register redo action (reverse of undo)
+          undoManager?.registerUndo(withTarget: activity) { [newAssigneeIds, currentUserId, undoManager] activity in
+            let redoSet = Set(newAssigneeIds)
+            activity.assignees.removeAll { !redoSet.contains($0.userId) }
+            let existingIds = Set(activity.assignees.map { $0.userId })
+            for uid in newAssigneeIds where !existingIds.contains(uid) {
+              let assignee = ActivityAssignee(
+                activityId: activity.id,
+                userId: uid,
+                assignedBy: currentUserId
+              )
+              assignee.activity = activity
+              activity.assignees.append(assignee)
+            }
+            activity.markPending()
+            syncManager.requestSync()
+            undoManager?.setActionName("Change Assignees")
+          }
+          undoManager?.setActionName("Change Assignees")
           syncManager.requestSync()
         }
       }
@@ -358,17 +426,35 @@ struct ContentView: View {
   }
 
   private func makeOnAddNote() -> (String, WorkItem) -> Void {
-    { [syncManager, currentUserId] content, item in
+    { [syncManager, currentUserId, undoManager] content, item in
+      let note: Note
       switch item {
-      case .task(let t, _): let n = Note(content: content, createdBy: currentUserId, parentType: .task, parentId: t.id)
-        t.notes.append(n)
+      case .task(let t, _):
+        note = Note(content: content, createdBy: currentUserId, parentType: .task, parentId: t.id)
+        t.notes.append(note)
         t.markPending()
 
-      case .activity(let a, _): let n = Note(content: content, createdBy: currentUserId, parentType: .activity, parentId: a.id)
-        a.notes.append(n)
+      case .activity(let a, _):
+        note = Note(content: content, createdBy: currentUserId, parentType: .activity, parentId: a.id)
+        a.notes.append(note)
         a.markPending()
       }
       syncManager.requestSync()
+
+      // Register undo action - soft-delete the newly created note with redo support
+      undoManager?.registerUndo(withTarget: note) { [currentUserId, undoManager] note in
+        note.softDelete(by: currentUserId)
+
+        // Register redo action (restore the note)
+        undoManager?.registerUndo(withTarget: note) { [currentUserId, undoManager] note in
+          note.undoDelete()
+          syncManager.requestSync()
+          undoManager?.setActionName("Add Note")
+        }
+        undoManager?.setActionName("Add Note")
+        syncManager.requestSync()
+      }
+      undoManager?.setActionName("Add Note")
     }
   }
 
@@ -389,12 +475,76 @@ struct ContentView: View {
       note.softDelete(by: currentUserId)
       syncManager.requestSync()
 
-      // Register undo action
-      undoManager?.registerUndo(withTarget: note) { note in
+      // Register undo action with redo support
+      undoManager?.registerUndo(withTarget: note) { [currentUserId, undoManager] note in
         note.undoDelete()
+
+        // Register redo action (re-delete the note)
+        undoManager?.registerUndo(withTarget: note) { [currentUserId, undoManager] note in
+          note.softDelete(by: currentUserId)
+          syncManager.requestSync()
+          undoManager?.setActionName("Delete Note")
+        }
+        undoManager?.setActionName("Delete Note")
         syncManager.requestSync()
       }
       undoManager?.setActionName("Delete Note")
+    }
+  }
+
+  private func makeOnListingStageChanged() -> (Listing, ListingStage) -> Void {
+    { [syncManager, undoManager] listing, newStage in
+      // Capture previous stage before mutation
+      let previousStage = listing.stage
+
+      // Only proceed if stage is actually changing
+      guard previousStage != newStage else { return }
+
+      // Apply the change
+      listing.stage = newStage
+      listing.markPending()
+      syncManager.requestSync()
+
+      // Register undo action to restore previous stage with redo support
+      undoManager?.registerUndo(withTarget: listing) { [previousStage, newStage, undoManager] listing in
+        listing.stage = previousStage
+        listing.markPending()
+
+        // Register redo action (re-apply the new stage)
+        undoManager?.registerUndo(withTarget: listing) { [newStage, undoManager] listing in
+          listing.stage = newStage
+          listing.markPending()
+          syncManager.requestSync()
+          undoManager?.setActionName("Change Stage")
+        }
+        undoManager?.setActionName("Change Stage")
+        syncManager.requestSync()
+      }
+      undoManager?.setActionName("Change Stage")
+    }
+  }
+
+  private func makeOnAddNoteToListing() -> (String, Listing) -> Void {
+    { [syncManager, currentUserId, undoManager] content, listing in
+      // Create and add the note
+      let note = Note(content: content, createdBy: currentUserId, parentType: .listing, parentId: listing.id)
+      listing.notes.append(note)
+      syncManager.requestSync()
+
+      // Register undo action - soft-delete the newly created note with redo support
+      undoManager?.registerUndo(withTarget: note) { [currentUserId, undoManager] note in
+        note.softDelete(by: currentUserId)
+
+        // Register redo action (restore the note)
+        undoManager?.registerUndo(withTarget: note) { [currentUserId, undoManager] note in
+          note.undoDelete()
+          syncManager.requestSync()
+          undoManager?.setActionName("Add Note")
+        }
+        undoManager?.setActionName("Add Note")
+        syncManager.requestSync()
+      }
+      undoManager?.setActionName("Add Note")
     }
   }
 

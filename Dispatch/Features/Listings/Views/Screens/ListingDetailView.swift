@@ -194,9 +194,14 @@ struct ListingDetailView: View {
       StagePicker(stage: .init(
         get: { listing.stage },
         set: { newStage in
-          listing.stage = newStage
-          listing.markPending()
-          syncManager.requestSync()
+          // Use callback with undo support if available, otherwise fall back to direct mutation
+          if let onStageChanged = actions.onListingStageChanged {
+            onStageChanged(listing, newStage)
+          } else {
+            listing.stage = newStage
+            listing.markPending()
+            syncManager.requestSync()
+          }
         }
       ))
     }
@@ -362,10 +367,15 @@ struct ListingDetailView: View {
   }
 
   private func addNote(content: String) {
-    let note = Note(content: content, createdBy: currentUserId, parentType: .listing, parentId: listing.id)
-    listing.notes.append(note)
-    // No need to mark listing pending, Note is first-class syncable now
-    syncManager.requestSync()
+    // Use callback with undo support if available, otherwise fall back to direct mutation
+    if let onAddNote = actions.onAddNoteToListing {
+      onAddNote(content, listing)
+    } else {
+      let note = Note(content: content, createdBy: currentUserId, parentType: .listing, parentId: listing.id)
+      listing.notes.append(note)
+      // No need to mark listing pending, Note is first-class syncable now
+      syncManager.requestSync()
+    }
   }
 
   private func confirmDeleteNote() {
