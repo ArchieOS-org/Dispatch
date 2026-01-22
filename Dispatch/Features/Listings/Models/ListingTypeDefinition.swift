@@ -8,6 +8,7 @@
 
 import Foundation
 import SwiftData
+import SwiftUI
 
 // MARK: - ListingTypeDefinition
 
@@ -21,6 +22,7 @@ final class ListingTypeDefinition {
     name: String,
     position: Int = 0,
     isArchived: Bool = false,
+    colorHex: String? = nil,
     ownedBy: UUID? = nil,
     createdAt: Date = Date(),
     updatedAt: Date = Date()
@@ -29,6 +31,7 @@ final class ListingTypeDefinition {
     self.name = name
     self.position = position
     self.isArchived = isArchived
+    self.colorHex = colorHex
     self.ownedBy = ownedBy
     self.createdAt = createdAt
     self.updatedAt = updatedAt
@@ -41,6 +44,9 @@ final class ListingTypeDefinition {
   var name: String
   var position: Int
   var isArchived: Bool
+
+  /// Custom display color (hex format: "#RRGGBB" or "#AARRGGBB")
+  var colorHex: String?
 
   /// Foreign keys
   var ownedBy: UUID?
@@ -64,6 +70,14 @@ final class ListingTypeDefinition {
   var syncState: EntitySyncState {
     get { syncStateRaw ?? .synced }
     set { syncStateRaw = newValue }
+  }
+
+  /// Returns the custom color if set, otherwise a default gray color.
+  var displayColor: Color {
+    if let hex = colorHex, let color = Color(hex: hex) {
+      return color
+    }
+    return .gray
   }
 
 }
