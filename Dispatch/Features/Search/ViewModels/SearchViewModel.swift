@@ -7,6 +7,11 @@
 
 import Combine
 import Foundation
+import os
+
+// MARK: - Logger
+
+private let logger = Logger(subsystem: "com.dispatch.app", category: "SearchViewModel")
 
 // MARK: - SearchViewModel
 
@@ -58,15 +63,20 @@ final class SearchViewModel: ObservableObject {
     query = newQuery
 
     // Cancel any previous search task
-    searchTask?.cancel()
+    if searchTask != nil {
+      logger.debug("onQueryChange: cancelling previous search task")
+      searchTask?.cancel()
+    }
 
     // Clear results immediately if query is empty
     if newQuery.isEmpty {
+      logger.debug("onQueryChange: empty query, clearing results")
       searchDocResults = []
       isSearching = false
       return
     }
 
+    logger.debug("onQueryChange: query='\(newQuery)' starting 200ms debounce")
     isSearching = true
 
     // Start new debounced search task
@@ -75,17 +85,27 @@ final class SearchViewModel: ObservableObject {
       do {
         try await Task.sleep(for: .milliseconds(200))
       } catch {
-        // Task was cancelled
+        logger.debug("onQueryChange: debounce cancelled for query='\(newQuery)'")
         return
       }
 
-      guard !Task.isCancelled else { return }
+      guard !Task.isCancelled else {
+        logger.debug("onQueryChange: task cancelled before search for query='\(newQuery)'")
+        return
+      }
 
       // Perform search
       guard let self else { return }
+      let searchStartTime = CFAbsoluteTimeGetCurrent()
       let results = await searchIndex.search(newQuery, limit: 30)
 
-      guard !Task.isCancelled else { return }
+      guard !Task.isCancelled else {
+        logger.debug("onQueryChange: task cancelled after search for query='\(newQuery)'")
+        return
+      }
+
+      let duration = (CFAbsoluteTimeGetCurrent() - searchStartTime) * 1000
+      logger.info("onQueryChange: search complete query='\(newQuery)' results=\(results.count) duration=\(duration, format: .fixed(precision: 2))ms")
 
       // Update results on main actor
       searchDocResults = results
@@ -96,8 +116,10 @@ final class SearchViewModel: ObservableObject {
   /// Warms up the search index with initial data. Call after first frame renders.
   /// - Parameter data: Initial data bundle containing entities to index
   func warmStart(with data: InitialSearchData) async {
+    logger.info("warmStart: triggering index warm start")
     await searchIndex.warmStart(with: data)
     isIndexReady = await searchIndex.isReady
+    logger.info("warmStart: index ready=\(self.isIndexReady)")
   }
 
   /// Applies an incremental change to the search index.

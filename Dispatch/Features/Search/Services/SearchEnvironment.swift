@@ -8,7 +8,12 @@
 
 import Combine
 import Foundation
+import os
 import SwiftUI
+
+// MARK: - Logger
+
+private let logger = Logger(subsystem: "com.dispatch.app", category: "SearchEnvironment")
 
 // MARK: - SearchEnvironment
 
@@ -20,6 +25,7 @@ final class SearchEnvironment: ObservableObject {
   // MARK: Lifecycle
 
   init() {
+    logger.info("SearchEnvironment: initializing with new SearchIndexService")
     searchIndex = SearchIndexService()
   }
 
@@ -47,7 +53,8 @@ final class SearchEnvironment: ObservableObject {
 
   /// Creates a new SearchViewModel connected to this environment's index.
   func makeViewModel() -> SearchViewModel {
-    SearchViewModel(searchIndex: searchIndex)
+    logger.debug("SearchEnvironment: creating new SearchViewModel")
+    return SearchViewModel(searchIndex: searchIndex)
   }
 
 }
