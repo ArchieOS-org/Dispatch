@@ -60,12 +60,21 @@ struct iPadContentView: View {
       .id(appState.router.selectedDestination)
     }
     .navigationSplitViewStyle(.balanced)
-    // FAB overlay for quick entry - uses .overlay to ensure proper sizing
+    // FAB Menu overlay for quick entry - uses .overlay to ensure proper sizing
     .overlay(alignment: .bottomTrailing) {
       if appState.overlayState == .none, !shouldHideFAB {
-        FloatingActionButton { appState.dispatch(.newItem) }
-          .padding(.trailing, DS.Spacing.floatingButtonMargin)
-          .padding(.bottom, DS.Spacing.floatingButtonBottomInset)
+        FABMenu { option in
+          switch option {
+          case .listing:
+            appState.sheetState = .addListing
+          case .task:
+            appState.sheetState = .quickEntry(type: .task)
+          case .activity:
+            appState.sheetState = .quickEntry(type: .activity)
+          }
+        }
+        .padding(.trailing, DS.Spacing.floatingButtonMargin)
+        .padding(.bottom, DS.Spacing.floatingButtonBottomInset)
       }
     }
     .overlay {

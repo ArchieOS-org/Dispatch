@@ -76,9 +76,16 @@ struct GlobalFloatingButtons: View {
 
       Spacer()
 
-      // FAB (right) - always visible
-      FloatingActionButton {
-        appState.sheetState = .quickEntry(type: nil)
+      // FAB Menu (right) - always visible
+      FABMenu { option in
+        switch option {
+        case .listing:
+          appState.sheetState = .addListing
+        case .task:
+          appState.sheetState = .quickEntry(type: .task)
+        case .activity:
+          appState.sheetState = .quickEntry(type: .activity)
+        }
       }
     }
   }
