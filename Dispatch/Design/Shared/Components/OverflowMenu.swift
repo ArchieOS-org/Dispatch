@@ -81,9 +81,9 @@ struct OverflowMenu: View {
 
   @State private var showingActions = false
 
-  /// Scaled icon size for Dynamic Type support (base: 20pt, relative to body)
+  /// Scaled icon size for Dynamic Type support (base: 24pt, relative to body)
   @ScaledMetric(relativeTo: .body)
-  private var iconSize: CGFloat = 20
+  private var iconSize: CGFloat = 24
 
   /// Menu label
   private var menuLabel: some View {

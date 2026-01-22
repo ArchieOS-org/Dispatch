@@ -6,7 +6,6 @@
 //  Created by Claude on 2025-12-18.
 //
 
-import SwiftData
 import SwiftUI
 
 // MARK: - SearchOverlay
@@ -21,43 +20,38 @@ import SwiftUI
 ///   - Results list (sectioned by type)
 ///
 /// **Focus Management (Framework-Correct Pattern):**
-/// - Uses `defaultFocus` modifier for instant focus when view appears
+/// - Uses `@FocusState` with `.onAppear` to auto-focus when view appears
+/// - On iOS, sets focus in `.onAppear` for reliable keyboard presentation
+/// - On macOS, uses `defaultFocus` for focus ring behavior
 /// - View is conditionally rendered in parent (standard `if` statement)
-/// - No delays needed - SwiftUI handles focus timing automatically
 /// - Clean view lifecycle enables proper keyboard/focus coordination
 ///
 /// **Navigation:**
 /// - Selecting a result dismisses overlay and triggers navigation immediately
 /// - No artificial delays - view removal is instant
+///
+/// **Instant Search:**
+/// - Uses background-indexed instant search via SearchViewModel
 struct SearchOverlay: View {
 
   // MARK: Lifecycle
 
-  /// Initialize SearchOverlay with pre-fetched data from parent.
-  ///
-  /// This pattern (same as QuickEntrySheet) avoids duplicate @Query properties
-  /// and ensures data is only fetched once at the ContentView level.
+  /// Initialize SearchOverlay with SearchViewModel for instant search.
   ///
   /// - Parameters:
   ///   - isPresented: Binding controlling overlay visibility
   ///   - searchText: Binding to the search query text
-  ///   - tasks: Pre-fetched active tasks from parent
-  ///   - activities: Pre-fetched active activities from parent
-  ///   - listings: Pre-fetched active listings from parent
+  ///   - searchViewModel: SearchViewModel for instant search
   ///   - onSelectResult: Callback when user selects a search result
   init(
     isPresented: Binding<Bool>,
     searchText: Binding<String>,
-    tasks: [TaskItem],
-    activities: [Activity],
-    listings: [Listing],
+    searchViewModel: SearchViewModel,
     onSelectResult: @escaping (SearchResult) -> Void
   ) {
     _isPresented = isPresented
     _searchText = searchText
-    self.tasks = tasks
-    self.activities = activities
-    self.listings = listings
+    self.searchViewModel = searchViewModel
     self.onSelectResult = onSelectResult
   }
 
@@ -66,12 +60,8 @@ struct SearchOverlay: View {
   @Binding var isPresented: Bool
   @Binding var searchText: String
 
-  /// Pre-fetched active tasks from ContentView (no @Query needed)
-  let tasks: [TaskItem]
-  /// Pre-fetched active activities from ContentView (no @Query needed)
-  let activities: [Activity]
-  /// Pre-fetched active listings from ContentView (no @Query needed)
-  let listings: [Listing]
+  /// SearchViewModel for instant search
+  let searchViewModel: SearchViewModel
 
   var onSelectResult: (SearchResult) -> Void
 
@@ -94,12 +84,21 @@ struct SearchOverlay: View {
         Spacer()
       }
     }
-    // Use defaultFocus for instant focus when view appears (framework-correct pattern)
-    // No delays needed - SwiftUI handles keyboard timing automatically
+    #if os(macOS)
+    // On macOS, use defaultFocus for focus ring behavior
     .defaultFocus($isFocused, true)
+    #endif
     .onAppear {
       // Register overlay reason (hides GlobalFloatingButtons)
       overlayState.hide(reason: .searchOverlay)
+
+      #if os(iOS)
+      // On iOS, set focus programmatically to ensure keyboard appears
+      // Task ensures view hierarchy is ready before focus is set
+      Task { @MainActor in
+        isFocused = true
+      }
+      #endif
     }
     .onDisappear {
       // Clean up overlay state when view is removed from hierarchy
@@ -124,18 +123,16 @@ struct SearchOverlay: View {
   private var modalContent: some View {
     VStack(spacing: 0) {
       // Search bar with external focus binding
-      SearchBar(text: $searchText, externalFocus: $isFocused) {
+      // Uses shared binding helper to bridge text to ViewModel
+      SearchBar(text: searchViewModel.searchTextBinding(for: $searchText), externalFocus: $isFocused) {
         dismiss()
       }
 
       Divider()
 
-      // Results list
-      SearchResultsList(
-        searchText: searchText,
-        tasks: tasks,
-        activities: activities,
-        listings: listings,
+      // Results list - uses instant search
+      InstantSearchResultsList(
+        searchViewModel: searchViewModel,
         onSelectResult: { result in
           selectResult(result)
         }
@@ -162,68 +159,14 @@ struct SearchOverlay: View {
   }
 }
 
-// MARK: - Preview
+// MARK: - SearchOverlayPreviewHost
 
 #if DEBUG
 
-private enum SearchOverlayPreviewData {
-  static func seededContainer() -> ModelContainer {
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container: ModelContainer
-    do {
-      container = try ModelContainer(for: TaskItem.self, Activity.self, Listing.self, configurations: config)
-    } catch {
-      fatalError("Failed to create Preview ModelContainer: \(error)")
-    }
-    let context = ModelContext(container)
-
-    // Seed standard data if available
-    PreviewDataFactory.seed(context)
-
-    // Add deterministic items that match a sample query
-    let listing = (try? context.fetch(FetchDescriptor<Listing>()).first)
-
-    let task1 = TaskItem(
-      title: "Fix Broken Window",
-      status: .open,
-      declaredBy: PreviewDataFactory.aliceID,
-      listingId: listing?.id,
-      assigneeUserIds: [PreviewDataFactory.bobID]
-    )
-    task1.syncState = .synced
-
-    let task2 = TaskItem(
-      title: "Window Measurements",
-      status: .open,
-      declaredBy: PreviewDataFactory.aliceID,
-      listingId: listing?.id,
-      assigneeUserIds: [PreviewDataFactory.bobID]
-    )
-    task2.syncState = .synced
-
-    let activity1 = Activity(
-      title: "Window inspection call",
-      declaredBy: PreviewDataFactory.aliceID,
-      listingId: listing?.id,
-      assigneeUserIds: [PreviewDataFactory.bobID]
-    )
-    activity1.syncState = .synced
-
-    context.insert(task1)
-    context.insert(task2)
-    context.insert(activity1)
-
-    try? context.save()
-    return container
-  }
-}
-
 private struct SearchOverlayPreviewHost: View {
-
-  // MARK: Internal
-
   @State var isPresented: Bool
   @State var searchText: String
+  @StateObject var searchViewModel = SearchViewModel()
 
   var body: some View {
     ZStack {
@@ -234,44 +177,21 @@ private struct SearchOverlayPreviewHost: View {
         SearchOverlay(
           isPresented: $isPresented,
           searchText: $searchText,
-          tasks: activeTasks,
-          activities: activeActivities,
-          listings: activeListings,
+          searchViewModel: searchViewModel,
           onSelectResult: { _ in }
         )
       }
     }
     .environmentObject(AppOverlayState(mode: .preview))
   }
-
-  // MARK: Private
-
-  @Query private var tasks: [TaskItem]
-  @Query private var activities: [Activity]
-  @Query private var listings: [Listing]
-
-  private var activeTasks: [TaskItem] {
-    tasks.filter { $0.status != .deleted }
-  }
-
-  private var activeActivities: [Activity] {
-    activities.filter { $0.status != .deleted }
-  }
-
-  private var activeListings: [Listing] {
-    listings.filter { $0.status != .deleted }
-  }
-
 }
 
 #Preview("Search Overlay · Empty") {
   SearchOverlayPreviewHost(isPresented: true, searchText: "")
-    .modelContainer(for: [TaskItem.self, Activity.self, Listing.self], inMemory: true)
 }
 
-#Preview("Search Overlay · With Results") {
+#Preview("Search Overlay · With Query") {
   SearchOverlayPreviewHost(isPresented: true, searchText: "win")
-    .modelContainer(SearchOverlayPreviewData.seededContainer())
 }
 
 #endif

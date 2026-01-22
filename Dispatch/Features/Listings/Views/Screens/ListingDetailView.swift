@@ -20,9 +20,18 @@ struct ListingDetailView: View {
     StandardScreen(title: listing.address.titleCased(), layout: .column, scroll: .automatic) {
       content
     } toolbarContent: {
+      // On iPhone (compact size class), show menu in toolbar
+      // On macOS and iPad, menu appears beside title via titleMenu instead
       ToolbarItem(placement: .primaryAction) {
-        OverflowMenu(actions: listingActions)
+        #if os(iOS)
+        if horizontalSizeClass == .compact {
+          OverflowMenu(actions: listingActions)
+        }
+        #endif
       }
+    } titleMenu: {
+      // On macOS and iPad, menu appears beside title via titleMenu
+      OverflowMenu(actions: listingActions)
     }
     // Alerts
     .alert("Delete Listing?", isPresented: $showDeleteListingAlert) {
@@ -61,6 +70,10 @@ struct ListingDetailView: View {
   /// Scaled empty state icon size for Dynamic Type support (base: 32pt)
   @ScaledMetric(relativeTo: .title)
   private var emptyStateIconSize: CGFloat = 32
+
+  #if os(iOS)
+  @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+  #endif
 
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var syncManager: SyncManager

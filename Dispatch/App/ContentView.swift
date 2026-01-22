@@ -43,10 +43,30 @@ struct ContentView: View {
 
   @StateObject private var workItemActions = WorkItemActions()
   @StateObject private var overlayState = AppOverlayState()
+  @StateObject private var searchEnvironment = SearchEnvironment()
 
   #if os(iOS)
   @State private var quickFindText = ""
   #endif
+
+  /// ViewModel for instant search - created immediately from searchEnvironment.
+  /// Non-optional to ensure all views share the same warmed SearchIndexService.
+  /// The VM is created eagerly but the index is warmed asynchronously via .task.
+  @State private var searchViewModel: SearchViewModel?
+  /// Flag to track if warm start has been triggered
+  @State private var hasStartedWarmStart = false
+
+  /// Pre-built task dictionary for O(1) lookup by ID.
+  /// Rebuilt when activeTasks changes.
+  private var taskLookup: [UUID: TaskItem] {
+    Dictionary(uniqueKeysWithValues: activeTasks.map { ($0.id, $0) })
+  }
+
+  /// Safe accessor for searchViewModel that creates one from shared environment if needed.
+  /// This ensures the ViewModel always shares the same SearchIndexService.
+  private var safeSearchViewModel: SearchViewModel {
+    searchViewModel ?? searchEnvironment.makeViewModel()
+  }
 
   private var userCache: [UUID: User] { Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) }) }
   private var currentUserId: UUID { syncManager.currentUserID ?? Self.unauthenticatedUserId }
@@ -64,7 +84,6 @@ struct ContentView: View {
   private var activeProperties: [Property] { allPropertiesRaw.filter { $0.deletedAt == nil } }
   private var activeListings: [Listing] { allListings.filter { $0.status != .deleted } }
   private var activeTasks: [TaskItem] { allTasksRaw.filter { $0.status != .deleted } }
-  private var activeActivities: [Activity] { allActivitiesRaw.filter { $0.status != .deleted } }
   private var activeRealtors: [User] { allRealtorsRaw.filter { $0.userType == .realtor } }
   private var stageCounts: [ListingStage: Int] { activeListings.stageCounts() }
 
@@ -120,11 +139,22 @@ struct ContentView: View {
       modelContext.undoManager = undoManager
       updateWorkItemActions()
       updateLensState()
+      // Create searchViewModel eagerly using shared environment.
+      // This ensures all child views share the same warmed SearchIndexService.
+      if searchViewModel == nil {
+        searchViewModel = searchEnvironment.makeViewModel()
+      }
     }
     .onChange(of: currentUserId) { _, _ in updateWorkItemActions() }
     .onChange(of: userCache) { _, _ in updateWorkItemActions() }
     .onChange(of: appState.router.selectedDestination) { _, _ in updateLensState() }
     .onChange(of: currentPathDepth) { _, _ in updateLensState() }
+    // Warm start search index after first frame renders (deferred via .task)
+    .task {
+      guard !hasStartedWarmStart else { return }
+      hasStartedWarmStart = true
+      await warmStartSearchIndex()
+    }
   }
 
   @ViewBuilder
@@ -134,6 +164,7 @@ struct ContentView: View {
       stageCounts: stageCounts, workspaceTasks: workspaceTasks, workspaceActivities: workspaceActivities,
       activeListings: activeListings, activeProperties: activeProperties, activeRealtors: activeRealtors,
       users: users, currentUserId: currentUserId, pathBindingProvider: pathBinding(for:),
+      searchViewModel: safeSearchViewModel,
       onSelectSearchResult: selectSearchResult(_:), onRequestSync: { syncManager.requestSync() }
     )
     #else
@@ -141,8 +172,9 @@ struct ContentView: View {
       iPhoneContentView(
         phonePathBinding: phonePathBinding, quickFindText: $quickFindText,
         stageCounts: stageCounts, phoneTabCounts: phoneTabCounts, overdueCount: sidebarOverdueCount,
-        activeTasks: activeTasks, activeActivities: activeActivities, activeListings: activeListings,
+        activeListings: activeListings,
         users: users, currentUserId: currentUserId,
+        searchViewModel: safeSearchViewModel,
         onSelectSearchResult: selectSearchResult(_:), onRequestSync: { syncManager.requestSync() }
       )
     } else {
@@ -152,7 +184,7 @@ struct ContentView: View {
         activeListings: activeListings, activeProperties: activeProperties, activeRealtors: activeRealtors,
         pathBindingProvider: pathBinding(for:),
         quickFindText: $quickFindText,
-        activeTasks: activeTasks, activeActivities: activeActivities,
+        searchViewModel: safeSearchViewModel,
         onSelectSearchResult: selectSearchResult(_:)
       )
     }
@@ -178,6 +210,74 @@ struct ContentView: View {
   }
   #endif
 
+  /// Builds InitialSearchData and warms up the search index.
+  /// Called via .task {} to ensure it runs after the first frame renders.
+  /// Extracts Sendable DTOs from @Model types ON MainActor before crossing to background actor.
+  @MainActor
+  private func warmStartSearchIndex() async {
+    // Create SearchViewModel from environment
+    let viewModel = searchEnvironment.makeViewModel()
+    searchViewModel = viewModel
+
+    // Extract Sendable DTOs from @Model types ON MainActor
+    // This is required because @Model types are MainActor-isolated and cannot cross actor boundaries
+    let searchableRealtors = activeRealtors.map { user in
+      SearchableRealtor(
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        updatedAt: user.updatedAt
+      )
+    }
+
+    let searchableListings = activeListings.map { listing in
+      SearchableListing(
+        id: listing.id,
+        address: listing.address,
+        city: listing.city,
+        postalCode: listing.postalCode,
+        statusRawValue: listing.status.rawValue,
+        statusDisplayName: listing.status.displayName,
+        updatedAt: listing.updatedAt
+      )
+    }
+
+    let searchableProperties = activeProperties.map { property in
+      SearchableProperty(
+        id: property.id,
+        displayAddress: property.displayAddress,
+        city: property.city,
+        postalCode: property.postalCode,
+        propertyTypeDisplayName: property.propertyType.displayName,
+        updatedAt: property.updatedAt
+      )
+    }
+
+    let searchableTasks = activeTasks.map { task in
+      SearchableTask(
+        id: task.id,
+        title: task.title,
+        taskDescription: task.taskDescription,
+        statusRawValue: task.status.rawValue,
+        statusDisplayName: task.status.displayName,
+        updatedAt: task.updatedAt
+      )
+    }
+
+    // Build initial data bundle with Sendable DTOs - NO Activities per contract
+    let data = InitialSearchData(
+      realtors: searchableRealtors,
+      listings: searchableListings,
+      properties: searchableProperties,
+      tasks: searchableTasks
+    )
+
+    // Warm start in background with utility priority
+    await Task(priority: .utility) {
+      await viewModel.warmStart(with: data)
+    }.value
+  }
+
   private func pathBinding(for destination: SidebarDestination) -> Binding<[AppRoute]> {
     Binding(
       get: { appState.router.paths[destination] ?? [] },
@@ -196,12 +296,15 @@ struct ContentView: View {
     case .task(let task):
       appState.dispatch(.selectTab(.workspace))
       appState.dispatch(.navigate(.workItem(.task(task))))
+
     case .activity(let activity):
       appState.dispatch(.selectTab(.workspace))
       appState.dispatch(.navigate(.workItem(.activity(activity))))
+
     case .listing(let listing):
       appState.dispatch(.selectTab(.listings))
       appState.dispatch(.navigate(.listing(listing.id)))
+
     case .navigation(_, _, let tab, _):
       #if os(iOS)
       if isCompactLayout {
@@ -211,6 +314,37 @@ struct ContentView: View {
       #else
       appState.dispatch(.selectTab(tab))
       #endif
+
+    case .searchDoc(let doc):
+      // Navigate based on SearchDoc type
+      navigateToSearchDoc(doc)
+    }
+  }
+
+  /// Navigates to the appropriate detail view for a SearchDoc result.
+  /// SearchDoc contains the entity ID and type, which we use to navigate.
+  private func navigateToSearchDoc(_ doc: SearchDoc) {
+    switch doc.type {
+    case .realtor:
+      appState.dispatch(.selectTab(.realtors))
+      appState.dispatch(.navigate(.realtor(doc.id)))
+
+    case .listing:
+      appState.dispatch(.selectTab(.listings))
+      appState.dispatch(.navigate(.listing(doc.id)))
+
+    case .property:
+      appState.dispatch(.selectTab(.properties))
+      appState.dispatch(.navigate(.property(doc.id)))
+
+    case .task:
+      // For tasks, we need to find the actual TaskItem to navigate
+      // Navigate to workspace and use the task ID
+      // Uses O(1) dictionary lookup instead of O(n) linear search
+      appState.dispatch(.selectTab(.workspace))
+      if let task = taskLookup[doc.id] {
+        appState.dispatch(.navigate(.workItem(.task(task))))
+      }
     }
   }
 
