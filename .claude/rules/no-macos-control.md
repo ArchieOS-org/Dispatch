@@ -96,10 +96,10 @@ See `integrator.md` for targeted test strategy.
 
 **DispatchUITests launches simulators and takes over the screen. NEVER run these tests.**
 
-Only `xcode-pilot` may run UI tests during explicit simulator validation. All other agents:
+Only `xcode-pilot` may run UI tests during explicit simulator validation. All other agents must prevent DispatchUITests from running:
 - Use `-only-testing:DispatchTests/` (unit tests only)
 - NEVER use `-only-testing:DispatchUITests/`
-- NEVER run the full test target without `-only-testing:`
+- NEVER run tests without `-only-testing:DispatchTests/` (to prevent DispatchUITests from being included)
 
 ## Screenshot Restriction
 

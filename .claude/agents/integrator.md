@@ -95,12 +95,11 @@ PATCHSET 4:
 ## Test Mapping
 | Changed Area | Tests |
 |--------------|-------|
-| `Dispatch/State/` | `AppStateTests`, `StateReducerTests` |
-| `Dispatch/Sync/` | `SyncTests`, `SyncManagerTests` |
-| `Dispatch/Features/Listing/` | `ListingTests` |
-| `Dispatch/Features/Auth/` | `AuthTests` |
-| `Dispatch/Design/` | `DesignSystemTests` |
-| `Dispatch/Utilities/` | `UtilityTests`, `AsyncTestHelpers` |
+| `Dispatch/State/` | `AppStateTests`, `AppRouterTests` |
+| `Dispatch/Sync/` | `SyncTests`, `SyncManagerOperationsTests`, `SyncManagerIsolationTests` |
+| `Dispatch/Features/Listing/` | `ListingSyncHandlerTests` |
+| `Dispatch/Features/Auth/` | `AuthManagerTests` |
+| `Dispatch/Utilities/` | `UtilityTests` |
 
 ## Parallel Test Command
 Run ALL relevant tests in ONE command (parallel execution):
