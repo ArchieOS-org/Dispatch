@@ -34,7 +34,7 @@ struct QuickEntrySheet: View {
     self.availableUsers = availableUsers
     self.onSave = onSave
     _itemType = State(initialValue: defaultItemType)
-    // Start with no assignee - user can tap "Assign to me" for quick self-assignment
+    // Start with no assignee - user can select themselves from the top of the list
     _selectedAssigneeIds = State(initialValue: [])
   }
 
