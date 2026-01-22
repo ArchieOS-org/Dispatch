@@ -31,6 +31,37 @@ struct RealtorProfileView: View {
     .sheet(isPresented: $showEditSheet) {
       EditRealtorSheet(user: user)
     }
+    .sheet(isPresented: $showAssigneePicker) {
+      NavigationStack {
+        MultiUserPicker(
+          selectedUserIds: $selectedAssigneeIds,
+          availableUsers: actions.availableUsers,
+          currentUserId: actions.currentUserId
+        )
+        .navigationTitle("Assign Users")
+        #if os(iOS)
+          .navigationBarTitleDisplayMode(.inline)
+        #endif
+          .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+              Button("Cancel") {
+                showAssigneePicker = false
+              }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+              Button("Done") {
+                if let item = editingWorkItem {
+                  actions.onAssigneesChanged(item, Array(selectedAssigneeIds))
+                }
+                showAssigneePicker = false
+              }
+            }
+          }
+      }
+      #if os(macOS)
+      .frame(minWidth: 300, minHeight: 400)
+      #endif
+    }
   }
 
   // MARK: Private
@@ -50,6 +81,9 @@ struct RealtorProfileView: View {
 
   @EnvironmentObject private var actions: WorkItemActions
   @State private var showEditSheet = false
+  @State private var showAssigneePicker = false
+  @State private var selectedAssigneeIds: Set<UUID> = []
+  @State private var editingWorkItem: WorkItem?
 
   private var userProperties: [Property] {
     allProperties.filter { $0.ownedBy == user.id && $0.deletedAt == nil }
@@ -118,7 +152,12 @@ struct RealtorProfileView: View {
                 onComplete: { actions.onComplete(item) },
                 onEdit: { },
                 onDelete: { },
-                onClaim: { actions.onClaim(item) }
+                onClaim: { actions.onClaim(item) },
+                onAssign: {
+                  selectedAssigneeIds = Set(item.assigneeUserIds)
+                  editingWorkItem = item
+                  showAssigneePicker = true
+                }
               )
             }
             .buttonStyle(.plain)

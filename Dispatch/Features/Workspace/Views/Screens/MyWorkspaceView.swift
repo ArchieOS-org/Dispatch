@@ -260,6 +260,11 @@ struct ListingWorkspaceSection: View {
                 onEdit: { },
                 onDelete: { },
                 onClaim: { actions.onClaim(item) },
+                onAssign: {
+                  selectedAssigneeIds = Set(item.assigneeUserIds)
+                  editingWorkItemId = item.id
+                  showAssigneePicker = true
+                },
                 hideAssignees: true // In workspace, we know it's assigned to me
               )
               .workItemRowStyle()
@@ -270,6 +275,40 @@ struct ListingWorkspaceSection: View {
         .transition(.opacity.combined(with: .move(edge: .top)))
       }
     }
+    .sheet(isPresented: $showAssigneePicker) {
+      NavigationStack {
+        MultiUserPicker(
+          selectedUserIds: $selectedAssigneeIds,
+          availableUsers: actions.availableUsers,
+          currentUserId: actions.currentUserId
+        )
+        .navigationTitle("Assign Users")
+        #if os(iOS)
+          .navigationBarTitleDisplayMode(.inline)
+        #endif
+          .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+              Button("Cancel") {
+                showAssigneePicker = false
+              }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+              Button("Done") {
+                if
+                  let itemId = editingWorkItemId,
+                  let item = group.items.first(where: { $0.id == itemId })
+                {
+                  actions.onAssigneesChanged(item, Array(selectedAssigneeIds))
+                }
+                showAssigneePicker = false
+              }
+            }
+          }
+      }
+      #if os(macOS)
+      .frame(minWidth: 300, minHeight: 400)
+      #endif
+    }
   }
 
   // MARK: Private
@@ -279,6 +318,9 @@ struct ListingWorkspaceSection: View {
   private var chevronIconSize: CGFloat = 12
 
   @State private var isExpanded = true
+  @State private var showAssigneePicker = false
+  @State private var selectedAssigneeIds: Set<UUID> = []
+  @State private var editingWorkItemId: UUID?
   @EnvironmentObject private var actions: WorkItemActions
 
   /// Contextual accessibility label includes address for VoiceOver users

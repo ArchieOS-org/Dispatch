@@ -56,6 +56,37 @@ struct ListingDetailView: View {
       // Refresh notes from server when viewing listing
       await syncManager.refreshNotesForParent(parentId: listing.id, parentType: .listing)
     }
+    .sheet(isPresented: $showAssigneePicker) {
+      NavigationStack {
+        MultiUserPicker(
+          selectedUserIds: $selectedAssigneeIds,
+          availableUsers: actions.availableUsers,
+          currentUserId: actions.currentUserId
+        )
+        .navigationTitle("Assign Users")
+        #if os(iOS)
+          .navigationBarTitleDisplayMode(.inline)
+        #endif
+          .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+              Button("Cancel") {
+                showAssigneePicker = false
+              }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+              Button("Done") {
+                if let item = editingWorkItem {
+                  actions.onAssigneesChanged(item, Array(selectedAssigneeIds))
+                }
+                showAssigneePicker = false
+              }
+            }
+          }
+      }
+      #if os(macOS)
+      .frame(minWidth: 300, minHeight: 400)
+      #endif
+    }
     #if os(macOS)
     .onDeleteCommand {
       showDeleteListingAlert = true
@@ -87,6 +118,9 @@ struct ListingDetailView: View {
   @State private var showDeleteNoteAlert = false
   @State private var noteToDelete: Note?
   @State private var showDeleteListingAlert = false
+  @State private var showAssigneePicker = false
+  @State private var selectedAssigneeIds: Set<UUID> = []
+  @State private var editingWorkItem: WorkItem?
 
   private var currentUserId: UUID {
     syncManager.currentUserID ?? Self.unauthenticatedUserId
@@ -288,6 +322,11 @@ struct ListingDetailView: View {
                 onEdit: { },
                 onDelete: { },
                 onClaim: { actions.onClaim(.task(task)) },
+                onAssign: {
+                  selectedAssigneeIds = Set(task.assigneeUserIds)
+                  editingWorkItem = .task(task)
+                  showAssigneePicker = true
+                },
                 hideDueDate: true
               )
             }
@@ -360,6 +399,11 @@ struct ListingDetailView: View {
             onEdit: { },
             onDelete: { },
             onClaim: { actions.onClaim(.activity(activity)) },
+            onAssign: {
+              selectedAssigneeIds = Set(activity.assigneeUserIds)
+              editingWorkItem = .activity(activity)
+              showAssigneePicker = true
+            },
             hideDueDate: true
           )
         }
