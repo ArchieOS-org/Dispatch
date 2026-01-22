@@ -140,7 +140,7 @@ struct SearchDoc: Identifiable, Sendable, Equatable, Hashable {
 
   // MARK: Lifecycle
 
-  init(
+  nonisolated init(
     id: UUID,
     type: SearchDocType,
     updatedAt: Date,
