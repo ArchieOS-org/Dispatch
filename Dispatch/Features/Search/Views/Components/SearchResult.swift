@@ -27,20 +27,27 @@ enum SearchResult: Identifiable, Hashable {
   case activity(Activity)
   case listing(Listing)
   case navigation(title: String, icon: String, tab: AppTab, badgeCount: Int? = nil)
+  /// Bridge case for SearchDoc-based results from instant search
+  case searchDoc(SearchDoc)
 
   // MARK: Internal
 
   var id: UUID {
     switch self {
     case .task(let task): return task.id
+
     case .activity(let activity): return activity.id
+
     case .listing(let listing): return listing.id
+
     case .navigation(let title, _, _, _):
       // Stable UUID based on title for navigation items
       // We implementation a simple stable hash to hex string conversion to ensure persistence stability
       let stableHash = title.utf8.reduce(5381) { ($0 << 5) &+ $0 &+ Int($1) }
       let hexSuffix = String(format: "%012x", stableHash & 0xFFFFFFFFFFFF)
       return UUID(uuidString: "DEADBEEF-0000-0000-0000-\(hexSuffix)") ?? UUID()
+
+    case .searchDoc(let doc): return doc.id
     }
   }
 
@@ -51,6 +58,7 @@ enum SearchResult: Identifiable, Hashable {
     case .activity(let activity): activity.title
     case .listing(let listing): listing.address.titleCased()
     case .navigation(let title, _, _, _): title
+    case .searchDoc(let doc): doc.primaryText
     }
   }
 
@@ -76,6 +84,8 @@ enum SearchResult: Identifiable, Hashable {
       return listing.city.isEmpty ? status : "\(listing.city.titleCased()) · \(status)"
 
     case .navigation: return "Quick Jump"
+
+    case .searchDoc(let doc): return doc.secondaryText
     }
   }
 
@@ -86,6 +96,7 @@ enum SearchResult: Identifiable, Hashable {
     case .activity: DS.Icons.Entity.activity
     case .listing: DS.Icons.Entity.listing
     case .navigation(_, let icon, _, _): icon
+    case .searchDoc(let doc): doc.type.icon
     }
   }
 
@@ -96,6 +107,7 @@ enum SearchResult: Identifiable, Hashable {
     case .activity: DS.Colors.Section.activities
     case .listing: DS.Colors.Section.listings
     case .navigation: .blue // Standard navigation color
+    case .searchDoc(let doc): doc.type.accentColor
     }
   }
 
@@ -106,6 +118,7 @@ enum SearchResult: Identifiable, Hashable {
     case .activity: "Activities"
     case .listing: "Listings"
     case .navigation: "Navigation"
+    case .searchDoc(let doc): doc.type.sectionTitle
     }
   }
 
@@ -116,6 +129,7 @@ enum SearchResult: Identifiable, Hashable {
     case .activity(let activity): activity.status == .completed
     case .listing: false
     case .navigation: false
+    case .searchDoc: false // SearchDoc doesn't track completion status
     }
   }
 
@@ -126,6 +140,7 @@ enum SearchResult: Identifiable, Hashable {
     case .activity(let activity): activity.status == .deleted
     case .listing(let listing): listing.status == .deleted
     case .navigation: false
+    case .searchDoc: false // SearchDoc doesn't include deleted items
     }
   }
 
@@ -136,12 +151,28 @@ enum SearchResult: Identifiable, Hashable {
     case .listing: 0
     case .task: 1
     case .activity: 2
+    case .searchDoc(let doc):
+      // Map SearchDocType to section order
+      switch doc.type {
+      case .realtor: -1 // Realtors first
+      case .listing: 0
+      case .property: 1
+      case .task: 2
+      }
     }
   }
 
   var badgeCount: Int? {
     switch self {
     case .navigation(_, _, _, let count): count
+    case .task, .activity, .listing, .searchDoc: nil
+    }
+  }
+
+  /// The underlying SearchDoc for searchDoc results, nil otherwise
+  var searchDocValue: SearchDoc? {
+    switch self {
+    case .searchDoc(let doc): doc
     default: nil
     }
   }

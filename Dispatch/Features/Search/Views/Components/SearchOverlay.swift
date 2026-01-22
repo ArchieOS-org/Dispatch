@@ -29,6 +29,10 @@ import SwiftUI
 /// **Navigation:**
 /// - Selecting a result dismisses overlay and triggers navigation immediately
 /// - No artificial delays - view removal is instant
+///
+/// **Instant Search (Optional):**
+/// - When searchViewModel is provided, uses background-indexed instant search
+/// - Falls back to legacy filtering when searchViewModel is nil
 struct SearchOverlay: View {
 
   // MARK: Lifecycle
@@ -41,13 +45,15 @@ struct SearchOverlay: View {
   /// - Parameters:
   ///   - isPresented: Binding controlling overlay visibility
   ///   - searchText: Binding to the search query text
-  ///   - tasks: Pre-fetched active tasks from parent
-  ///   - activities: Pre-fetched active activities from parent
-  ///   - listings: Pre-fetched active listings from parent
+  ///   - searchViewModel: Optional instant search ViewModel (uses legacy filtering if nil)
+  ///   - tasks: Pre-fetched active tasks from parent (fallback for legacy search)
+  ///   - activities: Pre-fetched active activities from parent (fallback for legacy search)
+  ///   - listings: Pre-fetched active listings from parent (fallback for legacy search)
   ///   - onSelectResult: Callback when user selects a search result
   init(
     isPresented: Binding<Bool>,
     searchText: Binding<String>,
+    searchViewModel: SearchViewModel? = nil,
     tasks: [TaskItem],
     activities: [Activity],
     listings: [Listing],
@@ -55,6 +61,7 @@ struct SearchOverlay: View {
   ) {
     _isPresented = isPresented
     _searchText = searchText
+    self.searchViewModel = searchViewModel
     self.tasks = tasks
     self.activities = activities
     self.listings = listings
@@ -65,6 +72,9 @@ struct SearchOverlay: View {
 
   @Binding var isPresented: Bool
   @Binding var searchText: String
+
+  /// Optional instant search ViewModel - when nil, falls back to legacy filtering
+  let searchViewModel: SearchViewModel?
 
   /// Pre-fetched active tasks from ContentView (no @Query needed)
   let tasks: [TaskItem]
@@ -124,23 +134,49 @@ struct SearchOverlay: View {
   private var modalContent: some View {
     VStack(spacing: 0) {
       // Search bar with external focus binding
-      SearchBar(text: $searchText, externalFocus: $isFocused) {
+      SearchBar(text: searchTextBinding, externalFocus: $isFocused) {
         dismiss()
       }
 
       Divider()
 
-      // Results list
-      SearchResultsList(
-        searchText: searchText,
-        tasks: tasks,
-        activities: activities,
-        listings: listings,
-        onSelectResult: { result in
-          selectResult(result)
+      // Results list - uses instant search if ViewModel is available
+      if let viewModel = searchViewModel {
+        InstantSearchResultsList(
+          searchViewModel: viewModel,
+          onSelectResult: { result in
+            selectResult(result)
+          }
+        )
+        .frame(maxHeight: 400)
+      } else {
+        // Legacy search fallback
+        SearchResultsList(
+          searchText: searchText,
+          tasks: tasks,
+          activities: activities,
+          listings: listings,
+          onSelectResult: { result in
+            selectResult(result)
+          }
+        )
+        .frame(maxHeight: 400)
+      }
+    }
+  }
+
+  /// Search text binding that bridges to SearchViewModel when available
+  private var searchTextBinding: Binding<String> {
+    if let viewModel = searchViewModel {
+      Binding(
+        get: { searchText },
+        set: { newValue in
+          searchText = newValue
+          viewModel.onQueryChange(newValue)
         }
       )
-      .frame(maxHeight: 400)
+    } else {
+      $searchText
     }
   }
 

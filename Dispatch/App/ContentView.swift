@@ -42,10 +42,16 @@ struct ContentView: View {
 
   @StateObject private var workItemActions = WorkItemActions()
   @StateObject private var overlayState = AppOverlayState()
+  @StateObject private var searchEnvironment = SearchEnvironment()
 
   #if os(iOS)
   @State private var quickFindText = ""
   #endif
+
+  /// ViewModel for instant search - lazy initialized from searchEnvironment
+  @State private var searchViewModel: SearchViewModel?
+  /// Flag to track if warm start has been triggered
+  @State private var hasStartedWarmStart = false
 
   private var userCache: [UUID: User] { Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) }) }
   private var currentUserId: UUID { syncManager.currentUserID ?? Self.unauthenticatedUserId }
@@ -121,6 +127,12 @@ struct ContentView: View {
     .onChange(of: userCache) { _, _ in updateWorkItemActions() }
     .onChange(of: appState.router.selectedDestination) { _, _ in updateLensState() }
     .onChange(of: currentPathDepth) { _, _ in updateLensState() }
+    // Warm start search index after first frame renders (deferred via .task)
+    .task {
+      guard !hasStartedWarmStart else { return }
+      hasStartedWarmStart = true
+      await warmStartSearchIndex()
+    }
   }
 
   @ViewBuilder
@@ -130,6 +142,7 @@ struct ContentView: View {
       stageCounts: stageCounts, workspaceTasks: workspaceTasks, workspaceActivities: workspaceActivities,
       activeListings: activeListings, activeProperties: activeProperties, activeRealtors: activeRealtors,
       users: users, currentUserId: currentUserId, pathBindingProvider: pathBinding(for:),
+      searchViewModel: searchViewModel,
       onSelectSearchResult: selectSearchResult(_:), onRequestSync: { syncManager.requestSync() }
     )
     #else
@@ -139,6 +152,7 @@ struct ContentView: View {
         stageCounts: stageCounts, phoneTabCounts: phoneTabCounts, overdueCount: sidebarOverdueCount,
         activeTasks: activeTasks, activeActivities: activeActivities, activeListings: activeListings,
         users: users, currentUserId: currentUserId,
+        searchViewModel: searchViewModel,
         onSelectSearchResult: selectSearchResult(_:), onRequestSync: { syncManager.requestSync() }
       )
     } else {
@@ -149,6 +163,7 @@ struct ContentView: View {
         pathBindingProvider: pathBinding(for:),
         quickFindText: $quickFindText,
         activeTasks: activeTasks, activeActivities: activeActivities,
+        searchViewModel: searchViewModel,
         onSelectSearchResult: selectSearchResult(_:)
       )
     }
@@ -174,6 +189,28 @@ struct ContentView: View {
   }
   #endif
 
+  /// Builds InitialSearchData and warms up the search index.
+  /// Called via .task {} to ensure it runs after the first frame renders.
+  @MainActor
+  private func warmStartSearchIndex() async {
+    // Create SearchViewModel from environment
+    let viewModel = searchEnvironment.makeViewModel()
+    searchViewModel = viewModel
+
+    // Build initial data bundle - NO Activities per contract
+    let data = InitialSearchData(
+      realtors: activeRealtors,
+      listings: activeListings,
+      properties: activeProperties,
+      tasks: activeTasks
+    )
+
+    // Warm start in background with utility priority
+    await Task(priority: .utility) {
+      await viewModel.warmStart(with: data)
+    }.value
+  }
+
   private func pathBinding(for destination: SidebarDestination) -> Binding<[AppRoute]> {
     Binding(
       get: { appState.router.paths[destination] ?? [] },
@@ -192,12 +229,15 @@ struct ContentView: View {
     case .task(let task):
       appState.dispatch(.selectTab(.workspace))
       appState.dispatch(.navigate(.workItem(.task(task))))
+
     case .activity(let activity):
       appState.dispatch(.selectTab(.workspace))
       appState.dispatch(.navigate(.workItem(.activity(activity))))
+
     case .listing(let listing):
       appState.dispatch(.selectTab(.listings))
       appState.dispatch(.navigate(.listing(listing.id)))
+
     case .navigation(_, _, let tab, _):
       #if os(iOS)
       if isCompactLayout {
@@ -207,6 +247,36 @@ struct ContentView: View {
       #else
       appState.dispatch(.selectTab(tab))
       #endif
+
+    case .searchDoc(let doc):
+      // Navigate based on SearchDoc type
+      navigateToSearchDoc(doc)
+    }
+  }
+
+  /// Navigates to the appropriate detail view for a SearchDoc result.
+  /// SearchDoc contains the entity ID and type, which we use to navigate.
+  private func navigateToSearchDoc(_ doc: SearchDoc) {
+    switch doc.type {
+    case .realtor:
+      appState.dispatch(.selectTab(.realtors))
+      appState.dispatch(.navigate(.realtor(doc.id)))
+
+    case .listing:
+      appState.dispatch(.selectTab(.listings))
+      appState.dispatch(.navigate(.listing(doc.id)))
+
+    case .property:
+      appState.dispatch(.selectTab(.properties))
+      appState.dispatch(.navigate(.property(doc.id)))
+
+    case .task:
+      // For tasks, we need to find the actual TaskItem to navigate
+      // Navigate to workspace and use the task ID
+      appState.dispatch(.selectTab(.workspace))
+      if let task = activeTasks.first(where: { $0.id == doc.id }) {
+        appState.dispatch(.navigate(.workItem(.task(task))))
+      }
     }
   }
 

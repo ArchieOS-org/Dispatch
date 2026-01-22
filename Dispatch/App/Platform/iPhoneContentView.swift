@@ -45,6 +45,9 @@ struct iPhoneContentView: View {
   /// Current user ID for sheets
   let currentUserId: UUID
 
+  /// Optional instant search ViewModel
+  let searchViewModel: SearchViewModel?
+
   /// Callback when search result is selected
   let onSelectSearchResult: (SearchResult) -> Void
 
@@ -90,6 +93,7 @@ struct iPhoneContentView: View {
             }
           ),
           searchText: $quickFindText,
+          searchViewModel: searchViewModel,
           tasks: activeTasks,
           activities: activeActivities,
           listings: activeListings,

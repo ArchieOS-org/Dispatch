@@ -31,6 +31,9 @@ struct iPadContentView: View {
   /// Active activities for search overlay
   let activeActivities: [Activity]
 
+  /// Optional instant search ViewModel
+  let searchViewModel: SearchViewModel?
+
   /// Callback when search result is selected
   let onSelectSearchResult: (SearchResult) -> Void
 
@@ -89,6 +92,7 @@ struct iPadContentView: View {
             }
           ),
           searchText: $quickFindText,
+          searchViewModel: searchViewModel,
           tasks: activeTasks,
           activities: activeActivities,
           listings: activeListings,
