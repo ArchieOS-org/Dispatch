@@ -12,14 +12,24 @@ import SwiftUI
 
 /// Priority ranking for search result types.
 /// Lower rawValue = higher priority in search results.
+/// Core enum is nonisolated and Sendable for use in SearchIndexService actor.
 enum SearchDocType: Int, Sendable, Comparable {
   case realtor = 0
   case listing = 1
   case property = 2
   case task = 3
 
-  // MARK: Internal
+  static func < (lhs: Self, rhs: Self) -> Bool {
+    lhs.rawValue < rhs.rawValue
+  }
+}
 
+// MARK: - SearchDocType UI Properties
+
+/// UI properties isolated to MainActor since they use SwiftUI types (Color).
+/// This separation keeps the core enum nonisolated for actor usage.
+@MainActor
+extension SearchDocType {
   var displayName: String {
     switch self {
     case .realtor: "Realtor"
@@ -58,11 +68,6 @@ enum SearchDocType: Int, Sendable, Comparable {
     case .task: DS.Colors.Section.tasks
     }
   }
-
-  static func <(lhs: Self, rhs: Self) -> Bool {
-    lhs.rawValue < rhs.rawValue
-  }
-
 }
 
 // MARK: - SearchDoc

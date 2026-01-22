@@ -9,10 +9,6 @@
 import Foundation
 import os
 
-// MARK: - Logger
-
-private let logger = Logger(subsystem: "com.dispatch.app", category: "SearchIndex")
-
 // MARK: - SearchIndexService
 
 /// Thread-safe search index using inverted index for efficient lookups.
@@ -22,6 +18,11 @@ actor SearchIndexService {
   // MARK: Lifecycle
 
   init() { }
+
+  // MARK: Private
+
+  /// Logger instance - static to avoid actor isolation issues with module-level constants
+  private static let logger = Logger(subsystem: "com.dispatch.app", category: "SearchIndex")
 
   // MARK: Internal
 
@@ -47,8 +48,8 @@ actor SearchIndexService {
   /// - Parameter data: Initial data bundle containing all entities to index
   func warmStart(with data: InitialSearchData) async {
     let startTime = CFAbsoluteTimeGetCurrent()
-    logger.info("warmStart: starting index build")
-    logger.debug(
+    Self.logger.info("warmStart: starting index build")
+    Self.logger.debug(
       "warmStart: documents to index - realtors=\(data.realtors.count), listings=\(data.listings.count), properties=\(data.properties.count), tasks=\(data.tasks.count)"
     )
 
@@ -65,7 +66,7 @@ actor SearchIndexService {
         await Task.yield()
       }
     }
-    logger.debug("warmStart: indexed \(data.realtors.count) realtors")
+    Self.logger.debug("warmStart: indexed \(data.realtors.count) realtors")
 
     // Index listings
     for listing in data.listings {
@@ -76,7 +77,7 @@ actor SearchIndexService {
         await Task.yield()
       }
     }
-    logger.debug("warmStart: indexed \(data.listings.count) listings")
+    Self.logger.debug("warmStart: indexed \(data.listings.count) listings")
 
     // Index properties
     for property in data.properties {
@@ -87,7 +88,7 @@ actor SearchIndexService {
         await Task.yield()
       }
     }
-    logger.debug("warmStart: indexed \(data.properties.count) properties")
+    Self.logger.debug("warmStart: indexed \(data.properties.count) properties")
 
     // Index tasks
     for task in data.tasks {
@@ -98,12 +99,12 @@ actor SearchIndexService {
         await Task.yield()
       }
     }
-    logger.debug("warmStart: indexed \(data.tasks.count) tasks")
+    Self.logger.debug("warmStart: indexed \(data.tasks.count) tasks")
 
     readiness = .ready
 
     let duration = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-    logger.info("warmStart: complete - \(processedCount) documents indexed in \(duration, format: .fixed(precision: 2))ms")
+    Self.logger.info("warmStart: complete - \(processedCount) documents indexed in \(duration, format: .fixed(precision: 2))ms")
   }
 
   /// Applies an incremental change to the index.
@@ -111,17 +112,17 @@ actor SearchIndexService {
   func apply(change: SearchModelChange) async {
     switch change {
     case .insert(let doc):
-      logger.debug("apply: insert \(doc.type.rawValue) id=\(doc.id)")
+      Self.logger.debug("apply: insert \(doc.type.rawValue) id=\(doc.id)")
       insertDoc(doc)
 
     case .update(let doc):
-      logger.debug("apply: update \(doc.type.rawValue) id=\(doc.id)")
+      Self.logger.debug("apply: update \(doc.type.rawValue) id=\(doc.id)")
       // Remove old tokens first, then insert new doc
       removeDoc(id: doc.id)
       insertDoc(doc)
 
     case .delete(let id):
-      logger.debug("apply: delete id=\(id)")
+      Self.logger.debug("apply: delete id=\(id)")
       removeDoc(id: id)
     }
   }
@@ -136,12 +137,12 @@ actor SearchIndexService {
     let normalizedQuery = SearchDoc.normalize(query)
     let queryTokens = SearchDoc.tokenize(query)
 
-    logger.debug("search: query='\(query)' normalized='\(normalizedQuery)' tokens=\(queryTokens.count)")
+    Self.logger.debug("search: query='\(query)' normalized='\(normalizedQuery)' tokens=\(queryTokens.count)")
 
     // Empty query: return most recent docs with type priority
     if queryTokens.isEmpty {
       let results = recentDocs(limit: limit)
-      logger.debug("search: empty query, returning \(results.count) recent docs")
+      Self.logger.debug("search: empty query, returning \(results.count) recent docs")
       return results
     }
 
@@ -152,10 +153,10 @@ actor SearchIndexService {
       let matchingIDs = tokenToIDs[token] ?? []
       if let existing = candidateIDs {
         candidateIDs = existing.intersection(matchingIDs)
-        logger.debug("search: token '\(token)' intersection -> \(candidateIDs?.count ?? 0) candidates")
+        Self.logger.debug("search: token '\(token)' intersection -> \(candidateIDs?.count ?? 0) candidates")
       } else {
         candidateIDs = matchingIDs
-        logger.debug("search: token '\(token)' initial -> \(matchingIDs.count) candidates")
+        Self.logger.debug("search: token '\(token)' initial -> \(matchingIDs.count) candidates")
       }
     }
 
@@ -164,7 +165,7 @@ actor SearchIndexService {
 
     // Fallback for no intersection matches with query >= 3 chars
     if candidates.isEmpty, query.count >= 3 {
-      logger.debug("search: no intersection matches, using fallback search")
+      Self.logger.debug("search: no intersection matches, using fallback search")
       candidates = fallbackSearch(normalizedQuery: normalizedQuery, limit: 500)
       usedFallback = true
     }
@@ -179,14 +180,12 @@ actor SearchIndexService {
     let results = Array(ranked.prefix(limit))
     let duration = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
 
-    logger.info(
+    Self.logger.info(
       "search: query='\(query)' results=\(results.count) candidates=\(candidates.count) fallback=\(usedFallback) duration=\(duration, format: .fixed(precision: 2))ms"
     )
 
     return results
   }
-
-  // MARK: Private
 
   /// Number of yield intervals during warm start (every N docs)
   private let yieldInterval = 100
