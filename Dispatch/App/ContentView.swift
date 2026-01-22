@@ -69,7 +69,6 @@ struct ContentView: View {
   private var activeProperties: [Property] { allPropertiesRaw.filter { $0.deletedAt == nil } }
   private var activeListings: [Listing] { allListings.filter { $0.status != .deleted } }
   private var activeTasks: [TaskItem] { allTasksRaw.filter { $0.status != .deleted } }
-  private var activeActivities: [Activity] { allActivitiesRaw.filter { $0.status != .deleted } }
   private var activeRealtors: [User] { allRealtorsRaw.filter { $0.userType == .realtor } }
   private var stageCounts: [ListingStage: Int] { activeListings.stageCounts() }
 
@@ -150,9 +149,9 @@ struct ContentView: View {
       iPhoneContentView(
         phonePathBinding: phonePathBinding, quickFindText: $quickFindText,
         stageCounts: stageCounts, phoneTabCounts: phoneTabCounts, overdueCount: sidebarOverdueCount,
-        activeTasks: activeTasks, activeActivities: activeActivities, activeListings: activeListings,
+        activeListings: activeListings,
         users: users, currentUserId: currentUserId,
-        searchViewModel: searchViewModel,
+        searchViewModel: searchViewModel ?? SearchViewModel(),
         onSelectSearchResult: selectSearchResult(_:), onRequestSync: { syncManager.requestSync() }
       )
     } else {
@@ -162,8 +161,7 @@ struct ContentView: View {
         activeListings: activeListings, activeProperties: activeProperties, activeRealtors: activeRealtors,
         pathBindingProvider: pathBinding(for:),
         quickFindText: $quickFindText,
-        activeTasks: activeTasks, activeActivities: activeActivities,
-        searchViewModel: searchViewModel,
+        searchViewModel: searchViewModel ?? SearchViewModel(),
         onSelectSearchResult: selectSearchResult(_:)
       )
     }

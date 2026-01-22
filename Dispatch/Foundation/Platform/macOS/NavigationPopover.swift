@@ -1,4 +1,3 @@
-import SwiftData
 import SwiftUI
 
 // MARK: - NavigationPopover
@@ -17,12 +16,14 @@ struct NavigationPopover: View {
   init(
     searchText: Binding<String>,
     isPresented: Binding<Bool>,
+    searchViewModel: SearchViewModel,
     currentTab: AppTab,
     onNavigate: @escaping (AppTab) -> Void,
     onSelectResult: @escaping (SearchResult) -> Void
   ) {
     _searchText = searchText
     _isPresented = isPresented
+    self.searchViewModel = searchViewModel
     self.currentTab = currentTab
     self.onNavigate = onNavigate
     self.onSelectResult = onSelectResult
@@ -33,6 +34,7 @@ struct NavigationPopover: View {
   @Binding var searchText: String
   @Binding var isPresented: Bool
 
+  let searchViewModel: SearchViewModel
   let currentTab: AppTab
   let onNavigate: (AppTab) -> Void
   let onSelectResult: (SearchResult) -> Void
@@ -41,7 +43,7 @@ struct NavigationPopover: View {
     VStack(spacing: 0) {
       // Unified Search Bar with external focus binding
       SearchBar(
-        text: $searchText,
+        text: searchTextBinding,
         externalFocus: $searchFieldFocused,
         showCancelButton: false,
         onCancel: {
@@ -54,17 +56,13 @@ struct NavigationPopover: View {
 
       Divider()
 
-      // Content Switching
+      // Content Switching - uses instant search
       Group {
         if searchText.isEmpty {
           navigationList
         } else {
-          // Search Results (Unified Component)
-          SearchResultsList(
-            searchText: searchText,
-            tasks: activeTasks,
-            activities: activeActivities,
-            listings: activeListings,
+          InstantSearchResultsList(
+            searchViewModel: searchViewModel,
             onSelectResult: { result in
               handleSearchResultSelection(result)
             }
@@ -90,25 +88,15 @@ struct NavigationPopover: View {
   /// Focus state for the search field - enables immediate typing
   @FocusState private var searchFieldFocused: Bool
 
-  /// Search Data Queries
-  @Query(sort: \TaskItem.title)
-  private var tasks: [TaskItem]
-  @Query(sort: \Activity.title)
-  private var activities: [Activity]
-  @Query(sort: \Listing.address)
-  private var listings: [Listing]
-
-  /// Filtered data for search
-  private var activeTasks: [TaskItem] {
-    tasks.filter { $0.status != .deleted }
-  }
-
-  private var activeActivities: [Activity] {
-    activities.filter { $0.status != .deleted }
-  }
-
-  private var activeListings: [Listing] {
-    listings.filter { $0.status != .deleted }
+  /// Search text binding that bridges to SearchViewModel
+  private var searchTextBinding: Binding<String> {
+    Binding(
+      get: { searchText },
+      set: { newValue in
+        searchText = newValue
+        searchViewModel.onQueryChange(newValue)
+      }
+    )
   }
 
   private var navigationList: some View {
@@ -149,29 +137,18 @@ struct NavigationPopover: View {
   }
 }
 
-// MARK: - Preview
-
-@MainActor private var previewContainer: ModelContainer = {
-  let schema = Schema([
-    TaskItem.self,
-    Activity.self,
-    Listing.self
-  ])
-
-  let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-  return try! ModelContainer(for: schema, configurations: [configuration])
-}()
-
 // MARK: - NavigationPopoverPreviewWrapper
 
 private struct NavigationPopoverPreviewWrapper: View {
   @State private var searchText: String = ""
   @State private var isPresented: Bool = true
+  @StateObject private var searchViewModel = SearchViewModel()
 
   var body: some View {
     NavigationPopover(
       searchText: $searchText,
       isPresented: $isPresented,
+      searchViewModel: searchViewModel,
       currentTab: .workspace,
       onNavigate: { _ in },
       onSelectResult: { _ in }
@@ -182,5 +159,4 @@ private struct NavigationPopoverPreviewWrapper: View {
 
 #Preview {
   NavigationPopoverPreviewWrapper()
-    .modelContainer(previewContainer)
 }

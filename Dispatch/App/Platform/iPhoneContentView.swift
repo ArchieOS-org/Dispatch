@@ -30,13 +30,7 @@ struct iPhoneContentView: View {
   /// Overdue count for MenuPageView
   let overdueCount: Int
 
-  /// Active tasks for search overlay
-  let activeTasks: [TaskItem]
-
-  /// Active activities for search overlay
-  let activeActivities: [Activity]
-
-  /// Active listings for search overlay
+  /// Active listings for sheet
   let activeListings: [Listing]
 
   /// All users for sheet
@@ -45,8 +39,8 @@ struct iPhoneContentView: View {
   /// Current user ID for sheets
   let currentUserId: UUID
 
-  /// Optional instant search ViewModel
-  let searchViewModel: SearchViewModel?
+  /// Instant search ViewModel
+  let searchViewModel: SearchViewModel
 
   /// Callback when search result is selected
   let onSelectSearchResult: (SearchResult) -> Void
@@ -94,9 +88,6 @@ struct iPhoneContentView: View {
           ),
           searchText: $quickFindText,
           searchViewModel: searchViewModel,
-          tasks: activeTasks,
-          activities: activeActivities,
-          listings: activeListings,
           onSelectResult: { result in
             onSelectSearchResult(result)
           }

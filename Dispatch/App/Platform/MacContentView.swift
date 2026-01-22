@@ -122,6 +122,7 @@ struct MacContentView: View {
         NavigationPopover(
           searchText: $quickFindText,
           isPresented: Binding(get: { true }, set: { if !$0 { windowUIState.closeOverlay() } }),
+          searchViewModel: searchViewModel ?? SearchViewModel(),
           currentTab: appState.router.selectedTab,
           onNavigate: { appState.dispatch(.selectTab($0))
             windowUIState.closeOverlay()

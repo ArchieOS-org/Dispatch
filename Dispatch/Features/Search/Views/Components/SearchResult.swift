@@ -6,7 +6,6 @@
 //  Created by Claude on 2025-12-18.
 //
 
-import SwiftData
 import SwiftUI
 
 // MARK: - SearchResult
@@ -208,24 +207,6 @@ enum SearchResult: Identifiable, Hashable {
 
 #if DEBUG
 
-private enum SearchResultPreviewData {
-  static func makeResults(context: ModelContext) -> [SearchResult] {
-    // Seed base data if available in your preview harness
-    PreviewDataFactory.seed(context)
-
-    let listings = (try? context.fetch(FetchDescriptor<Listing>())) ?? []
-    let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
-    let activities = (try? context.fetch(FetchDescriptor<Activity>())) ?? []
-
-    // Mix a few of each type for sectioning + ranking
-    let listingResults = listings.prefix(6).map { SearchResult.listing($0) }
-    let taskResults = tasks.prefix(10).map { SearchResult.task($0) }
-    let activityResults = activities.prefix(10).map { SearchResult.activity($0) }
-
-    return taskResults + activityResults + listingResults
-  }
-}
-
 private struct SearchResultPreviewRow: View {
   let result: SearchResult
 
@@ -263,175 +244,19 @@ private struct SearchResultPreviewRow: View {
   }
 }
 
-private struct SearchResultsPreviewList: View {
-  let results: [SearchResult]
-  @State var query: String
-
-  var body: some View {
-    List {
-      if query.isEmpty {
-        Section {
-          Text("Type to filter results")
-            .foregroundStyle(DS.Colors.Text.secondary)
-        }
-      } else if results.filtered(by: query).isEmpty {
-        Section {
-          Text("No matches")
-            .foregroundStyle(DS.Colors.Text.secondary)
-        }
-      } else {
-        ForEach(results.filtered(by: query).prefix(60)) { result in
-          SearchResultPreviewRow(result: result)
-        }
-      }
-    }
-    .navigationTitle("SearchResult")
-    #if os(iOS)
-      .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search")
-    #else
-      .searchable(text: $query, prompt: "Search")
-    #endif
-  }
-}
-
-#Preview("SearchResult · Grouped + Filtered") {
-  PreviewShell { context in
-    let results = SearchResultPreviewData.makeResults(context: context)
-
-    NavigationStack {
-      SearchResultsPreviewList(results: results, query: "a")
+#Preview("SearchResult · Navigation Items") {
+  List {
+    let navigationItems: [SearchResult] = [
+      .navigation(title: "My Workspace", icon: "briefcase", tab: .workspace),
+      .navigation(title: "Listings", icon: DS.Icons.Entity.listing, tab: .listings),
+      .navigation(title: "Properties", icon: DS.Icons.Entity.property, tab: .properties),
+      .navigation(title: "Realtors", icon: DS.Icons.Entity.realtor, tab: .realtors)
+    ]
+    ForEach(navigationItems) { result in
+      SearchResultPreviewRow(result: result)
     }
   }
-}
-
-#Preview("SearchResult · Ranking (prefix vs contains)") {
-  PreviewShell(setup: { context in
-    PreviewDataFactory.seed(context)
-
-    // Add a few deterministic titles so ranking differences are obvious
-    let listing = (try? context.fetch(FetchDescriptor<Listing>()).first)
-
-    let t1 = TaskItem(
-      title: "Fix Broken Window",
-      status: .open,
-      declaredBy: PreviewDataFactory.aliceID,
-      listingId: listing?.id,
-      assigneeUserIds: [PreviewDataFactory.bobID]
-    )
-    let t2 = TaskItem(
-      title: "Window Measurements",
-      status: .open,
-      declaredBy: PreviewDataFactory.aliceID,
-      listingId: listing?.id,
-      assigneeUserIds: [PreviewDataFactory.bobID]
-    )
-    let t3 = TaskItem(
-      title: "Schedule contractor",
-      status: .open,
-      declaredBy: PreviewDataFactory.aliceID,
-      listingId: listing?.id,
-      assigneeUserIds: [PreviewDataFactory.bobID]
-    )
-
-    context.insert(t1)
-    context.insert(t2)
-    context.insert(t3)
-    try? context.save()
-  }) { context in
-    let results = SearchResultPreviewData.makeResults(context: context)
-
-    NavigationStack {
-      SearchResultsPreviewList(results: results, query: "win")
-    }
-  }
+  .navigationTitle("SearchResult")
 }
 
 #endif
-
-// MARK: - Filtering & Ranking
-
-extension SearchResult {
-  /// Checks if this result matches the given query (case-insensitive)
-  func matches(query: String) -> Bool {
-    let lowercasedQuery = query.lowercased()
-    return title.lowercased().contains(lowercasedQuery) ||
-      subtitle.lowercased().contains(lowercasedQuery)
-  }
-
-  /// Calculates a ranking score for sorting results.
-  /// Higher score = better match.
-  ///
-  /// Ranking priorities:
-  /// 1. Prefix match on title (highest)
-  /// 2. Contains match on title
-  /// 3. Prefix match on subtitle
-  /// 4. Contains match on subtitle (lowest)
-  /// 5. Open items beat completed items
-  func rankingScore(for query: String) -> Int {
-    let lowercasedQuery = query.lowercased()
-    let lowercasedTitle = title.lowercased()
-    let lowercasedSubtitle = subtitle.lowercased()
-
-    var score = 0
-
-    // Prefix match on title is highest priority
-    if lowercasedTitle.hasPrefix(lowercasedQuery) {
-      score += 1000
-    } else if lowercasedTitle.contains(lowercasedQuery) {
-      score += 500
-    }
-
-    // Subtitle matches are lower priority
-    if lowercasedSubtitle.hasPrefix(lowercasedQuery) {
-      score += 100
-    } else if lowercasedSubtitle.contains(lowercasedQuery) {
-      score += 50
-    }
-
-    // Open items rank higher than completed
-    if !isCompleted {
-      score += 10
-    }
-
-    return score
-  }
-}
-
-// MARK: - Search Result Collection Helpers
-
-extension [SearchResult] {
-  /// Filters results matching the query and sorts by ranking score
-  func filtered(by query: String) -> [SearchResult] {
-    guard !query.isEmpty else { return [] }
-
-    return filter { !$0.isDeleted && $0.matches(query: query) }
-      .sorted {
-        let lhsScore = $0.rankingScore(for: query)
-        let rhsScore = $1.rankingScore(for: query)
-        if lhsScore != rhsScore { return lhsScore > rhsScore }
-
-        // Tie-break 1: type priority
-        if $0.sectionOrder != $1.sectionOrder { return $0.sectionOrder < $1.sectionOrder }
-
-        // Tie-break 2: open before completed
-        if $0.isCompleted != $1.isCompleted { return !$0.isCompleted }
-
-        // Tie-break 3: stable alpha
-        return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
-      }
-  }
-
-  /// Groups results by section with per-section limit
-  func groupedBySectionWithLimit(_ limit: Int = 20) -> [(section: String, results: [SearchResult])] {
-    let grouped = Dictionary(grouping: self) { $0.sectionTitle }
-
-    return grouped
-      .map { (section: $0.key, results: Array($0.value.prefix(limit))) }
-      .sorted { lhs, rhs in
-        // Sort sections: Navigation, Listings, Tasks, Activities
-        let lhsOrder = lhs.results.first?.sectionOrder ?? 0
-        let rhsOrder = rhs.results.first?.sectionOrder ?? 0
-        return lhsOrder < rhsOrder
-      }
-  }
-}
