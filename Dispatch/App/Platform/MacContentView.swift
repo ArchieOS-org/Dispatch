@@ -50,12 +50,6 @@ struct MacContentView: View {
     .navigationSplitViewStyle(.automatic)
     .toolbar {
       ToolbarItemGroup(placement: .primaryAction) {
-        FilterMenu(audience: $appState.lensState.audience)
-        Button { handleNew() } label: { Image(systemName: "plus") }
-          .help("New Item")
-          .keyboardShortcut("n", modifiers: .command)
-          .accessibilityLabel("New item")
-          .accessibilityHint("Creates a new task, activity, or listing based on current context")
         if supportsMultipleWindows {
           Button { openWindow(id: "main") } label: { Image(systemName: "square.on.square") }
             .help("New Window")
@@ -63,12 +57,14 @@ struct MacContentView: View {
             .accessibilityLabel("New window")
             .accessibilityHint("Opens a new Dispatch window")
         }
-        Button { windowUIState.openSearch(initialText: nil) } label: { Image(systemName: "magnifyingglass") }
-          .help("Search")
-          .keyboardShortcut("f", modifiers: .command)
-          .accessibilityLabel("Search")
-          .accessibilityHint("Opens global search overlay")
       }
+    }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      MacBottomToolbar(
+        audience: $appState.lensState.audience,
+        onAdd: handleNew,
+        onSearch: { windowUIState.openSearch(initialText: nil) }
+      )
     }
     .overlay(alignment: .top) { quickFindOverlay }
     .sheet(item: sheetBinding) { sheetContent(for: $0) }
