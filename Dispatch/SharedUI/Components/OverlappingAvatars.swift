@@ -45,28 +45,9 @@ struct OverlappingAvatars: View {
       avatarStack
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-      #if os(macOS)
-        .onHover { isHovered = $0 }
-        .popover(isPresented: $isHovered, arrowEdge: .bottom) {
-          userListPopover
-        }
         .onTapGesture {
-          if let onAssign {
-            onAssign()
-          }
+          onAssign?()
         }
-      #else
-        .onTapGesture {
-          if let onAssign {
-            onAssign()
-          } else {
-            showPopover = true
-          }
-        }
-        .popover(isPresented: $showPopover) {
-          userListPopover
-        }
-      #endif
     }
   }
 
@@ -83,9 +64,6 @@ struct OverlappingAvatars: View {
   /// Scaled font size for large avatars (base: 18pt, relative to headline)
   @ScaledMetric(relativeTo: .headline)
   private var largeFontSize: CGFloat = 18
-
-  @State private var isHovered = false
-  @State private var showPopover = false
 
   /// Returns the appropriate scaled font size for the current avatar size
   private var scaledFontSize: CGFloat {
@@ -166,35 +144,10 @@ struct OverlappingAvatars: View {
     )
   }
 
-  private var userListPopover: some View {
-    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-      Text("Assigned to")
-        .font(DS.Typography.caption)
-        .foregroundStyle(DS.Colors.Text.secondary)
-
-      ForEach(userIds, id: \.self) { userId in
-        userRow(for: userId)
-      }
-    }
-    .padding(DS.Spacing.md)
-    .frame(minWidth: 180)
-  }
-
   @ViewBuilder
   private func avatarView(for userId: UUID) -> some View {
     let user = users[userId]
     UserAvatar(user: user, size: size)
-  }
-
-  @ViewBuilder
-  private func userRow(for userId: UUID) -> some View {
-    let user = users[userId]
-    HStack(spacing: DS.Spacing.sm) {
-      UserAvatar(user: user, size: .small)
-      Text(user?.name ?? "Unknown user")
-        .font(DS.Typography.body)
-        .foregroundStyle(user != nil ? DS.Colors.Text.primary : DS.Colors.Text.tertiary)
-    }
   }
 
 }
