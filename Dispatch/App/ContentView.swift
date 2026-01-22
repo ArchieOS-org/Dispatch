@@ -115,7 +115,10 @@ struct ContentView: View {
     }
     .animation(.easeInOut(duration: 0.3), value: appState.syncCoordinator.isOffline)
     .animation(.easeInOut(duration: 0.3), value: appState.syncCoordinator.showRealtimeDegraded)
-    .onAppear { updateWorkItemActions()
+    .onAppear {
+      // Wire UndoManager to ModelContext for SwiftData undo/redo support
+      modelContext.undoManager = undoManager
+      updateWorkItemActions()
       updateLensState()
     }
     .onChange(of: currentUserId) { _, _ in updateWorkItemActions() }

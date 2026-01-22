@@ -194,13 +194,17 @@ struct ListingDetailView: View {
       StagePicker(stage: .init(
         get: { listing.stage },
         set: { newStage in
-          // Use callback with undo support if available, otherwise fall back to direct mutation
-          if let onStageChanged = actions.onListingStageChanged {
-            onStageChanged(listing, newStage)
-          } else {
-            listing.stage = newStage
-            listing.markPending()
-            syncManager.requestSync()
+          // Defer state change to avoid "Publishing changes from within view updates" warning.
+          // Task schedules the mutation for the next run loop iteration.
+          Task { @MainActor in
+            // Use callback with undo support if available, otherwise fall back to direct mutation
+            if let onStageChanged = actions.onListingStageChanged {
+              onStageChanged(listing, newStage)
+            } else {
+              listing.stage = newStage
+              listing.markPending()
+              syncManager.requestSync()
+            }
           }
         }
       ))
