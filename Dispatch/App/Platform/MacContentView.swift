@@ -46,6 +46,13 @@ struct MacContentView: View {
       }
       .id(appState.router.selectedDestination)
       .toolbar(removing: .title)
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        MacBottomToolbar(
+          audience: $appState.lensState.audience,
+          onAdd: handleNew,
+          onSearch: { windowUIState.openSearch(initialText: nil) }
+        )
+      }
     }
     .navigationSplitViewStyle(.automatic)
     .toolbar {
@@ -58,13 +65,6 @@ struct MacContentView: View {
             .accessibilityHint("Opens a new Dispatch window")
         }
       }
-    }
-    .safeAreaInset(edge: .bottom, spacing: 0) {
-      MacBottomToolbar(
-        audience: $appState.lensState.audience,
-        onAdd: handleNew,
-        onSearch: { windowUIState.openSearch(initialText: nil) }
-      )
     }
     .overlay(alignment: .top) { quickFindOverlay }
     .sheet(item: sheetBinding) { sheetContent(for: $0) }

@@ -38,9 +38,9 @@ Based on checked indicators:
 
 ### Acceptance Criteria (3 max)
 
-1. macOS shows a bottom toolbar with Add button and Filter button (grouped, left side) and Search button (right side)
-2. Bottom toolbar matches the style of the existing top toolbar (same look, hover states, `.thinMaterial` background)
-3. Add, Filter, and Search buttons are removed from top toolbar on macOS (moved to bottom toolbar)
+1. macOS shows a bottom toolbar with Add button and Filter button (grouped on Liquid Glass background, left side) and Search button (separate Liquid Glass background, right side)
+2. Bottom toolbar has NO container background - glass effect is applied to each button group separately via `.glassToolbarBackground()`
+3. Toolbar extends to sidebar edge without overlapping it (positioned via `.safeAreaInset`)
 
 ### Non-goals (prevents scope creep)
 
@@ -123,6 +123,34 @@ CONTEXT7_TAKEAWAYS:
 CONTEXT7_APPLIED:
 - `.safeAreaInset(edge: .bottom, spacing: 0)` -> MacContentView.swift:62
 
+CONTEXT7_QUERY: Liquid Glass glassEffect effect modifier macOS 26 iOS 26 glass background material
+CONTEXT7_TAKEAWAYS:
+- `.glassEffect(_ glass: Glass, in shape: Shape)` applies Liquid Glass material
+- Default uses `.regular` variant and `Capsule` shape
+- Use `.rect(cornerRadius:)` for rounded rectangle shapes
+- `GlassEffectContainer` groups multiple glass effects for morphing animations
+- `.buttonStyle(.glass)` applies glass to buttons
+CONTEXT7_APPLIED:
+- `.glassToolbarBackground()` (uses thinMaterial fallback) -> MacBottomToolbar.swift:70,101
+
+CONTEXT7_QUERY: glassEffect shape capsule rounded rectangle Glass regular variant GlassEffectContainer toolbar buttons
+CONTEXT7_TAKEAWAYS:
+- `glassEffect(in: .rect(cornerRadius: 16.0))` for custom rounded rectangles
+- `GlassEffectContainer(spacing:)` groups glass effects with morphing
+- `.glassEffectID(_:in:)` enables animation between states
+- Default shape is Capsule, can be customized
+CONTEXT7_APPLIED:
+- Confirmed existing `glassToolbarBackground()` uses `DS.Radius.large` (16pt) for cornerRadius
+
+CONTEXT7_QUERY: GlassEffectContainer spacing multiple buttons group toolbar interactive buttonStyle glass
+CONTEXT7_TAKEAWAYS:
+- `GlassEffectContainer(spacing:content:)` initializer for grouping
+- `.buttonStyle(.glass)` or `.buttonStyle(.glass(.clear))` for buttons
+- Built-in styles: `glass`, `glassProminent`, `bordered`, `borderless`
+- Interactive glass effects respond to touch/pointer
+CONTEXT7_APPLIED:
+- Design uses `.buttonStyle(.plain)` with manual hover states for more control
+
 ---
 
 ### Context7 Attestation (written by feature-owner at PATCHSET 1)
@@ -133,13 +161,15 @@ CONTEXT7_APPLIED:
 | Query | Pattern Used |
 |-------|--------------|
 | safeAreaInset edge bottom macOS toolbar placement | `.safeAreaInset(edge: .bottom, spacing: 0)` with content closure |
+| Liquid Glass glassEffect modifier iOS 26 macOS 26 | `.glassEffect(.regular, in: .rect(cornerRadius:))` - using `glassToolbarBackground()` fallback |
+| GlassEffectContainer toolbar buttons | `GlassEffectContainer(spacing:)` for grouping - using per-group glass instead |
 
 ---
 
 ### Jobs Critique (written by jobs-critic agent)
 
 **JOBS CRITIQUE**: SHIP YES
-**Reviewed**: 2026-01-22 (jobs-critic)
+**Reviewed**: 2026-01-22 15:45 (jobs-critic, post-design-update)
 
 #### Checklist
 
@@ -151,23 +181,29 @@ CONTEXT7_APPLIED:
 
 #### Verdict Notes
 
-The implementation is clean, native, and purposeful:
+**Re-reviewed after design update (no container background, grouped glass islands).**
 
-1. **Ruthless simplicity**: Three controls only (Add, Filter, Search). No excess UI.
+The updated implementation is architecturally cleaner and more aligned with macOS 26 Liquid Glass patterns:
 
-2. **Clear hierarchy**: Add button positioned first (leftmost), Filter secondary, Search as utility on right. Left-to-right reading order matches workflow.
+1. **Ruthless simplicity**: Three controls only. No chrome, no container background. The glass groups ARE the UI.
 
-3. **Native macOS feel**:
-   - `.thinMaterial` background matches existing top toolbar
-   - Hover states use `Color.primary.opacity(0.08)` matching AudienceFilterButton pattern
-   - `.safeAreaInset(edge: .bottom, spacing: 0)` is correct SwiftUI pattern
+2. **Clear hierarchy**: Two visual groups create natural hierarchy:
+   - Left group (Add + Filter): Creation/filtering workflow, grouped on shared glass
+   - Right (Search): Standalone utility on separate glass
+   - Whitespace between groups is functional, not decorative
+
+3. **Native macOS 26 feel**:
+   - `.glassToolbarBackground()` uses thinMaterial with 0.5pt stroke and subtle shadow
+   - Floating glass islands match how Apple ships Liquid Glass in macOS 26 apps
+   - `.safeAreaInset(edge: .bottom, spacing: 0)` correctly scopes to content area
+   - Hover states use `Color.primary.opacity(0.08)` matching native macOS
    - Keyboard shortcuts preserved (Cmd+N, Cmd+F)
 
-4. **Design system compliance**: All values from DS.Spacing.bottomToolbar* tokens, @ScaledMetric for Dynamic Type
+4. **Design system compliance**: DS.Spacing.bottomToolbar* tokens, DS.Radius.large, @ScaledMetric
 
 5. **Accessibility**: VoiceOver labels + hints, .help() tooltips, keyboard shortcuts
 
-Minor observation (not a blocker): FilterMenu buttons lack hover states while Add/Search have them. This matches the existing FilterMenu component behavior and could be addressed in a future polish pass if desired.
+**This is how a macOS toolbar should look in 2026. Floating glass islands, not a horizontal bar. The design is confident and quiet.**
 
 ---
 
