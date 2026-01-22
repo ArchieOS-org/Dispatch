@@ -118,6 +118,9 @@ struct TaskDTO: Codable, Sendable {
       resolvedCreatedVia = .dispatch
     }
 
+    // Normalize audiences to enforce mutual exclusivity (admin > marketing > default to admin)
+    let normalizedAudiences = normalizeAudiences(audiences)
+
     return TaskItem(
       id: id,
       title: title,
@@ -128,7 +131,7 @@ struct TaskDTO: Codable, Sendable {
       listingId: listing,
       createdVia: resolvedCreatedVia,
       sourceSlackMessages: sourceSlackMessages,
-      audiencesRaw: audiences ?? ["admin", "marketing"],
+      audiencesRaw: normalizedAudiences,
       createdAt: createdAt,
       updatedAt: updatedAt
     )

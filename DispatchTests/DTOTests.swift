@@ -374,3 +374,183 @@ struct SubtaskDTOTests {
     #expect(model.parentId == parentId)
   }
 }
+
+// MARK: - AudienceNormalizationTests
+
+/// Tests for audience mutual exclusivity enforcement (DIS-75)
+struct AudienceNormalizationTests {
+
+  // MARK: - normalizeAudiences() Tests
+
+  @Test("normalizeAudiences returns admin when both audiences present")
+  func testNormalizeBothAudiences() {
+    let result = normalizeAudiences(["admin", "marketing"])
+    #expect(result == ["admin"])
+  }
+
+  @Test("normalizeAudiences preserves single admin audience")
+  func testNormalizeSingleAdmin() {
+    let result = normalizeAudiences(["admin"])
+    #expect(result == ["admin"])
+  }
+
+  @Test("normalizeAudiences preserves single marketing audience")
+  func testNormalizeSingleMarketing() {
+    let result = normalizeAudiences(["marketing"])
+    #expect(result == ["marketing"])
+  }
+
+  @Test("normalizeAudiences defaults to admin for nil input")
+  func testNormalizeNil() {
+    let result = normalizeAudiences(nil)
+    #expect(result == ["admin"])
+  }
+
+  @Test("normalizeAudiences defaults to admin for empty array")
+  func testNormalizeEmpty() {
+    let result = normalizeAudiences([])
+    #expect(result == ["admin"])
+  }
+
+  @Test("normalizeAudiences defaults to admin for unknown values")
+  func testNormalizeUnknown() {
+    let result = normalizeAudiences(["unknown", "garbage"])
+    #expect(result == ["admin"])
+  }
+
+  @Test("normalizeAudiences prefers admin over marketing when both present with extras")
+  func testNormalizeWithExtras() {
+    let result = normalizeAudiences(["marketing", "admin", "extra"])
+    #expect(result == ["admin"])
+  }
+
+  // MARK: - normalizeTemplateAudiences() Tests
+
+  @Test("normalizeTemplateAudiences preserves empty array")
+  func testTemplateNormalizeEmpty() {
+    let result = normalizeTemplateAudiences([])
+    #expect(result == [])
+  }
+
+  @Test("normalizeTemplateAudiences normalizes multiple to admin")
+  func testTemplateNormalizeBoth() {
+    let result = normalizeTemplateAudiences(["admin", "marketing"])
+    #expect(result == ["admin"])
+  }
+
+  @Test("normalizeTemplateAudiences preserves single admin")
+  func testTemplateNormalizeSingleAdmin() {
+    let result = normalizeTemplateAudiences(["admin"])
+    #expect(result == ["admin"])
+  }
+
+  @Test("normalizeTemplateAudiences preserves single marketing")
+  func testTemplateNormalizeSingleMarketing() {
+    let result = normalizeTemplateAudiences(["marketing"])
+    #expect(result == ["marketing"])
+  }
+
+  @Test("normalizeTemplateAudiences defaults unknown to admin")
+  func testTemplateNormalizeUnknown() {
+    let result = normalizeTemplateAudiences(["unknown"])
+    #expect(result == ["admin"])
+  }
+
+  // MARK: - TaskDTO Audience Normalization Integration
+
+  @Test("TaskDTO.toModel normalizes multiple audiences to admin")
+  func testTaskDTONormalizesAudiences() {
+    let dto = TaskDTO(
+      id: UUID(),
+      title: "Test",
+      description: nil,
+      dueDate: nil,
+      status: "open",
+      declaredBy: UUID(),
+      listing: nil,
+      createdVia: "dispatch",
+      sourceSlackMessages: nil,
+      audiences: ["admin", "marketing"],
+      completedAt: nil,
+      deletedAt: nil,
+      createdAt: Date(),
+      updatedAt: Date()
+    )
+
+    let model = dto.toModel()
+    #expect(model.audiencesRaw == ["admin"])
+  }
+
+  @Test("TaskDTO.toModel defaults nil audiences to admin")
+  func testTaskDTODefaultsNilAudiences() {
+    let dto = TaskDTO(
+      id: UUID(),
+      title: "Test",
+      description: nil,
+      dueDate: nil,
+      status: "open",
+      declaredBy: UUID(),
+      listing: nil,
+      createdVia: "dispatch",
+      sourceSlackMessages: nil,
+      audiences: nil,
+      completedAt: nil,
+      deletedAt: nil,
+      createdAt: Date(),
+      updatedAt: Date()
+    )
+
+    let model = dto.toModel()
+    #expect(model.audiencesRaw == ["admin"])
+  }
+
+  // MARK: - ActivityDTO Audience Normalization Integration
+
+  @Test("ActivityDTO.toModel normalizes multiple audiences to admin")
+  func testActivityDTONormalizesAudiences() {
+    let dto = ActivityDTO(
+      id: UUID(),
+      title: "Test",
+      description: nil,
+      dueDate: nil,
+      status: "open",
+      declaredBy: UUID(),
+      listing: nil,
+      createdVia: "dispatch",
+      sourceSlackMessages: nil,
+      audiences: ["admin", "marketing"],
+      durationMinutes: nil,
+      completedAt: nil,
+      deletedAt: nil,
+      createdAt: Date(),
+      updatedAt: Date()
+    )
+
+    let model = dto.toModel()
+    #expect(model.audiencesRaw == ["admin"])
+  }
+
+  @Test("ActivityDTO.toModel preserves single marketing audience")
+  func testActivityDTOPreservesMarketing() {
+    let dto = ActivityDTO(
+      id: UUID(),
+      title: "Test",
+      description: nil,
+      dueDate: nil,
+      status: "open",
+      declaredBy: UUID(),
+      listing: nil,
+      createdVia: "dispatch",
+      sourceSlackMessages: nil,
+      audiences: ["marketing"],
+      durationMinutes: nil,
+      completedAt: nil,
+      deletedAt: nil,
+      createdAt: Date(),
+      updatedAt: Date()
+    )
+
+    let model = dto.toModel()
+    #expect(model.audiencesRaw == ["marketing"])
+  }
+}
