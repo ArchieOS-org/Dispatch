@@ -78,6 +78,9 @@ struct QuickEntrySheet: View {
         .sheet(isPresented: $showAssigneePicker) {
           assigneePickerSheet
         }
+        .sheet(isPresented: $showListingPicker) {
+          listingPickerSheet
+        }
     }
     #if os(iOS)
     .presentationDetents([.medium, .large])
@@ -97,6 +100,7 @@ struct QuickEntrySheet: View {
   @State private var dueDate = Date()
   @State private var selectedAssigneeIds: Set<UUID> = []
   @State private var showAssigneePicker = false
+  @State private var showListingPicker = false
 
   private var canSave: Bool {
     !title.trimmingCharacters(in: .whitespaces).isEmpty
@@ -146,13 +150,30 @@ struct QuickEntrySheet: View {
 
       if !listings.isEmpty {
         LabeledContent("Listing") {
-          Picker("Listing", selection: $selectedListing) {
-            Text("None").tag(nil as Listing?)
-            ForEach(listings) { listing in
-              Text(listing.address.titleCased()).tag(listing as Listing?)
+          Button {
+            showListingPicker = true
+          } label: {
+            HStack {
+              if let listing = selectedListing {
+                Text(listing.address.titleCased())
+                  .foregroundColor(DS.Colors.Text.primary)
+                  .lineLimit(1)
+              } else {
+                Text("None")
+                  .foregroundColor(DS.Colors.Text.tertiary)
+              }
+              Spacer()
+              Image(systemName: DS.Icons.Navigation.forward)
+                .font(DS.Typography.caption)
+                .foregroundColor(DS.Colors.Text.tertiary)
             }
+            .contentShape(Rectangle())
           }
-          .labelsHidden()
+          .buttonStyle(.plain)
+          .frame(minHeight: DS.Spacing.minTouchTarget)
+          .accessibilityLabel("Listing")
+          .accessibilityValue(selectedListing?.address ?? "None")
+          .accessibilityHint("Double tap to select a listing")
         }
       }
 
@@ -186,12 +207,17 @@ struct QuickEntrySheet: View {
               )
             }
             Spacer()
-            Image(systemName: "chevron.right")
+            Image(systemName: DS.Icons.Navigation.forward)
               .font(DS.Typography.caption)
               .foregroundColor(DS.Colors.Text.tertiary)
           }
+          .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .frame(minHeight: DS.Spacing.minTouchTarget)
+        .accessibilityLabel("Assign to")
+        .accessibilityValue(selectedAssigneeIds.isEmpty ? "No one assigned" : "\(selectedAssigneeIds.count) people")
+        .accessibilityHint("Double tap to select assignees")
       }
     }
     .padding()
@@ -229,13 +255,32 @@ struct QuickEntrySheet: View {
   }
 
   private var listingPicker: some View {
-    Picker("Listing", selection: $selectedListing) {
-      Text("None").tag(nil as Listing?)
-      ForEach(listings) { listing in
-        Text(listing.address.titleCased()).tag(listing as Listing?)
+    Button {
+      showListingPicker = true
+    } label: {
+      HStack {
+        Text("Listing")
+          .foregroundColor(DS.Colors.Text.primary)
+        Spacer()
+        if let listing = selectedListing {
+          Text(listing.address.titleCased())
+            .foregroundColor(DS.Colors.Text.secondary)
+            .lineLimit(1)
+        } else {
+          Text("None")
+            .foregroundColor(DS.Colors.Text.tertiary)
+        }
+        Image(systemName: DS.Icons.Navigation.forward)
+          .font(DS.Typography.caption)
+          .foregroundColor(DS.Colors.Text.tertiary)
       }
+      .contentShape(Rectangle())
     }
-    .pickerStyle(.menu)
+    .buttonStyle(.plain)
+    .frame(minHeight: DS.Spacing.minTouchTarget)
+    .accessibilityLabel("Listing")
+    .accessibilityValue(selectedListing?.address ?? "None")
+    .accessibilityHint("Double tap to select a listing")
   }
 
   private var dueDateRow: some View {
@@ -273,12 +318,17 @@ struct QuickEntrySheet: View {
             size: .small
           )
         }
-        Image(systemName: "chevron.right")
+        Image(systemName: DS.Icons.Navigation.forward)
           .font(DS.Typography.caption)
           .foregroundColor(DS.Colors.Text.tertiary)
       }
+      .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
+    .frame(minHeight: DS.Spacing.minTouchTarget)
+    .accessibilityLabel("Assign to")
+    .accessibilityValue(selectedAssigneeIds.isEmpty ? "No one" : "\(selectedAssigneeIds.count) people")
+    .accessibilityHint("Double tap to select assignees")
   }
 
   private var assigneePickerSheet: some View {
@@ -296,6 +346,75 @@ struct QuickEntrySheet: View {
           ToolbarItem(placement: .confirmationAction) {
             Button("Done") {
               showAssigneePicker = false
+            }
+          }
+        }
+    }
+    #if os(macOS)
+    .frame(minWidth: 300, minHeight: 400)
+    #endif
+  }
+
+  private var listingPickerSheet: some View {
+    NavigationStack {
+      List {
+        // "None" option
+        Button {
+          selectedListing = nil
+          showListingPicker = false
+        } label: {
+          HStack {
+            Text("None")
+              .foregroundColor(DS.Colors.Text.primary)
+            Spacer()
+            if selectedListing == nil {
+              Image(systemName: "checkmark")
+                .foregroundColor(DS.Colors.accent)
+            }
+          }
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .frame(minHeight: DS.Spacing.minTouchTarget)
+
+        // Listing options
+        ForEach(listings) { listing in
+          Button {
+            selectedListing = listing
+            showListingPicker = false
+          } label: {
+            HStack {
+              VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                Text(listing.address.titleCased())
+                  .font(DS.Typography.headline)
+                  .foregroundColor(DS.Colors.Text.primary)
+                  .lineLimit(1)
+                if !listing.city.isEmpty {
+                  Text(listing.city.titleCased())
+                    .font(DS.Typography.caption)
+                    .foregroundColor(DS.Colors.Text.secondary)
+                }
+              }
+              Spacer()
+              if selectedListing?.id == listing.id {
+                Image(systemName: "checkmark")
+                  .foregroundColor(DS.Colors.accent)
+              }
+            }
+            .contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .frame(minHeight: DS.Spacing.minTouchTarget)
+        }
+      }
+      .navigationTitle("Select Listing")
+      #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+      #endif
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("Cancel") {
+              showListingPicker = false
             }
           }
         }
