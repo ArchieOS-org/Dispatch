@@ -25,6 +25,9 @@ struct ListingTypeDetailView: View {
           // Header: Type Name Editor
           typeNameSection
 
+          // Color Picker
+          colorSection
+
           // Templates List
           templatesSection
         }
@@ -40,6 +43,7 @@ struct ListingTypeDetailView: View {
     }
     .onAppear {
       editedName = listingType.name
+      selectedColor = listingType.displayColor
     }
     .sheet(isPresented: $showAddTemplateSheet) {
       ActivityTemplateEditorView(listingType: listingType)
@@ -55,6 +59,7 @@ struct ListingTypeDetailView: View {
   @Environment(\.modelContext) private var modelContext
 
   @State private var editedName = ""
+  @State private var selectedColor: Color = .gray
   @State private var showAddTemplateSheet = false
   @State private var selectedTemplate: ActivityTemplate?
 
@@ -82,6 +87,24 @@ struct ListingTypeDetailView: View {
           .buttonStyle(.borderedProminent)
         }
       }
+    }
+    .padding(DS.Spacing.md)
+    .background(DS.Colors.Background.secondary)
+  }
+
+  private var colorSection: some View {
+    HStack {
+      Text("Color")
+        .font(DS.Typography.body)
+        .foregroundStyle(DS.Colors.Text.primary)
+
+      Spacer()
+
+      ColorPicker("", selection: $selectedColor, supportsOpacity: false)
+        .labelsHidden()
+        .onChange(of: selectedColor) { _, newColor in
+          saveColor(newColor)
+        }
     }
     .padding(DS.Spacing.md)
     .background(DS.Colors.Background.secondary)
@@ -133,6 +156,12 @@ struct ListingTypeDetailView: View {
 
   private func saveTypeName() {
     listingType.name = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+    listingType.markPending()
+    syncManager.requestSync()
+  }
+
+  private func saveColor(_ color: Color) {
+    listingType.colorHex = color.hexString
     listingType.markPending()
     syncManager.requestSync()
   }

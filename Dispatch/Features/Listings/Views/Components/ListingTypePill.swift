@@ -10,6 +10,20 @@ import SwiftUI
 
 struct ListingTypePill: View {
 
+  // MARK: Lifecycle
+
+  /// Creates a pill using only the listing type enum (uses default colors).
+  init(type: ListingType) {
+    self.type = type
+    definition = nil
+  }
+
+  /// Creates a pill using a listing type definition (uses custom color if set).
+  init(type: ListingType, definition: ListingTypeDefinition?) {
+    self.type = type
+    self.definition = definition
+  }
+
   // MARK: Internal
 
   let type: ListingType
@@ -28,12 +42,22 @@ struct ListingTypePill: View {
 
   // MARK: Private
 
+  /// Optional definition for custom color support
+  private let definition: ListingTypeDefinition?
+
   /// Scaled font size for Dynamic Type support (base: 10pt)
   @ScaledMetric(relativeTo: .caption2)
   private var fontSize: CGFloat = 10
 
+  /// Returns custom name from definition if available, otherwise falls back to hardcoded defaults.
   private var title: String {
-    switch type {
+    // Use custom name from definition if available
+    if let definition {
+      return definition.name
+    }
+
+    // Fall back to hardcoded defaults per listing type
+    return switch type {
     case .sale: "Sale"
     case .lease: "Lease"
     case .preListing: "Pre-List"
@@ -42,8 +66,15 @@ struct ListingTypePill: View {
     }
   }
 
+  /// Returns custom color from definition if available, otherwise falls back to hardcoded defaults.
   private var color: Color {
-    switch type {
+    // Use custom color from definition if available
+    if let definition, let hex = definition.colorHex, let customColor = Color(hex: hex) {
+      return customColor
+    }
+
+    // Fall back to hardcoded defaults per listing type
+    return switch type {
     case .sale: DS.Colors.success // Green
     case .lease: Color.purple // Purple
     case .preListing: DS.Colors.info // Blue

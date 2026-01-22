@@ -17,6 +17,7 @@ struct ListingTypeDefinitionDTO: Codable, Sendable {
     name = model.name
     position = model.position
     isArchived = model.isArchived
+    colorHex = model.colorHex
     ownedBy = model.ownedBy
     createdAt = model.createdAt
     updatedAt = model.updatedAt
@@ -29,6 +30,7 @@ struct ListingTypeDefinitionDTO: Codable, Sendable {
     case name
     case position
     case isArchived = "is_archived"
+    case colorHex = "color_hex"
     case ownedBy = "owned_by"
     case createdAt = "created_at"
     case updatedAt = "updated_at"
@@ -38,6 +40,7 @@ struct ListingTypeDefinitionDTO: Codable, Sendable {
   let name: String
   let position: Int
   let isArchived: Bool
+  let colorHex: String?
   let ownedBy: UUID?
   let createdAt: Date
   let updatedAt: Date
@@ -49,6 +52,7 @@ struct ListingTypeDefinitionDTO: Codable, Sendable {
       name: name,
       position: position,
       isArchived: isArchived,
+      colorHex: colorHex,
       ownedBy: ownedBy,
       createdAt: createdAt,
       updatedAt: updatedAt
