@@ -125,6 +125,9 @@ struct ActivityDTO: Codable, Sendable {
       resolvedCreatedVia = .dispatch
     }
 
+    // Normalize audiences to enforce mutual exclusivity (admin > marketing > default to admin)
+    let normalizedAudiences = normalizeAudiences(audiences)
+
     return Activity(
       id: id,
       title: title,
@@ -136,7 +139,7 @@ struct ActivityDTO: Codable, Sendable {
       createdVia: resolvedCreatedVia,
       sourceSlackMessages: sourceSlackMessages,
       duration: durationMinutes.map { TimeInterval($0 * 60) },
-      audiencesRaw: audiences ?? ["admin", "marketing"],
+      audiencesRaw: normalizedAudiences,
       createdAt: createdAt,
       updatedAt: updatedAt
     )

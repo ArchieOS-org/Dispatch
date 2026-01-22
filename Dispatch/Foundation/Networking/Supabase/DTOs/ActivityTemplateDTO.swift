@@ -53,13 +53,17 @@ struct ActivityTemplateDTO: Codable, Sendable {
 
   /// Create SwiftData model from DTO (for SyncDown)
   func toModel() -> ActivityTemplate {
-    ActivityTemplate(
+    // Normalize audiences to enforce mutual exclusivity
+    // Templates allow empty arrays (inherits from context)
+    let normalizedAudiences = normalizeTemplateAudiences(audiences)
+
+    return ActivityTemplate(
       id: id,
       title: title,
       templateDescription: description,
       position: position,
       isArchived: isArchived,
-      audiencesRaw: audiences,
+      audiencesRaw: normalizedAudiences,
       listingTypeId: listingTypeId,
       defaultAssigneeId: defaultAssigneeId,
       createdAt: createdAt,

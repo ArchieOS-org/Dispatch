@@ -9,13 +9,43 @@
 import SwiftData
 import SwiftUI
 
+// MARK: - AudienceSelection
+
+/// Represents the mutually exclusive audience selection.
+/// Templates may have no audience set (inherits from context).
+private enum AudienceSelection: String, CaseIterable, Identifiable {
+  case none = ""
+  case admin
+  case marketing
+
+  // MARK: Internal
+
+  var id: String { rawValue }
+
+  var displayName: String {
+    switch self {
+    case .none: "None"
+    case .admin: "Admin"
+    case .marketing: "Marketing"
+    }
+  }
+
+  var color: Color {
+    switch self {
+    case .none: DS.Colors.Text.tertiary
+    case .admin: DS.Colors.info
+    case .marketing: DS.Colors.warning
+    }
+  }
+}
+
 // MARK: - ActivityTemplateEditorView
 
 /// Editor sheet for ActivityTemplates.
 /// Features:
 /// - Title (required)
 /// - Description (optional)
-/// - Audience selection (Chips, NOT free text)
+/// - Audience selection (mutually exclusive - single selection only)
 /// - Default Assignee (optional)
 struct ActivityTemplateEditorView: View {
 
@@ -42,7 +72,7 @@ struct ActivityTemplateEditorView: View {
             .lineLimit(3 ... 6)
         }
 
-        // Audience Section - Chips Only
+        // Audience Section - Mutually Exclusive Selection
         Section {
           VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             Text("Who should see this activity?")
@@ -50,12 +80,12 @@ struct ActivityTemplateEditorView: View {
               .foregroundStyle(DS.Colors.Text.secondary)
 
             HStack(spacing: DS.Spacing.sm) {
-              ForEach(availableAudiences, id: \.self) { audience in
-                AudienceToggleChip(
+              ForEach(AudienceSelection.allCases) { audience in
+                AudienceChip(
                   audience: audience,
-                  isSelected: selectedAudiences.contains(audience)
+                  isSelected: selectedAudience == audience
                 ) {
-                  toggleAudience(audience)
+                  selectAudience(audience)
                 }
               }
             }
@@ -63,6 +93,8 @@ struct ActivityTemplateEditorView: View {
           .padding(.vertical, DS.Spacing.xs)
         } header: {
           Text("Audience")
+        } footer: {
+          Text("Each activity can only be visible to one audience.")
         }
 
         // Default Assignee Section
@@ -96,7 +128,7 @@ struct ActivityTemplateEditorView: View {
           if let template = existingTemplate {
             title = template.title
             templateDescription = template.templateDescription
-            selectedAudiences = Set(template.audiencesRaw)
+            selectedAudience = audienceFromRaw(template.audiencesRaw)
             defaultAssigneeId = template.defaultAssigneeId
           }
         }
@@ -111,13 +143,11 @@ struct ActivityTemplateEditorView: View {
 
   @State private var title = ""
   @State private var templateDescription = ""
-  @State private var selectedAudiences = Set<String>()
+  @State private var selectedAudience: AudienceSelection = .none
   @State private var defaultAssigneeId: UUID?
 
   @Query(sort: \User.name)
   private var users: [User]
-
-  private let availableAudiences = ["admin", "marketing"]
 
   private var isEditing: Bool {
     existingTemplate != nil
@@ -127,12 +157,30 @@ struct ActivityTemplateEditorView: View {
     !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
 
-  private func toggleAudience(_ audience: String) {
-    if selectedAudiences.contains(audience) {
-      selectedAudiences.remove(audience)
-    } else {
-      selectedAudiences.insert(audience)
+  /// Converts stored audiencesRaw array to AudienceSelection enum.
+  /// Uses normalizeTemplateAudiences to handle legacy multi-audience data.
+  private func audienceFromRaw(_ raw: [String]) -> AudienceSelection {
+    let normalized = normalizeTemplateAudiences(raw)
+    guard let first = normalized.first else {
+      return .none
     }
+    return AudienceSelection(rawValue: first) ?? .none
+  }
+
+  /// Converts AudienceSelection enum to array for storage.
+  private func audienceToRaw(_ selection: AudienceSelection) -> [String] {
+    switch selection {
+    case .none: []
+    case .admin: ["admin"]
+    case .marketing: ["marketing"]
+    }
+  }
+
+  /// Selects an audience with haptic feedback
+  private func selectAudience(_ audience: AudienceSelection) {
+    guard selectedAudience != audience else { return }
+    selectedAudience = audience
+    HapticFeedback.selection()
   }
 
   private func save() {
@@ -140,7 +188,7 @@ struct ActivityTemplateEditorView: View {
       // Update existing
       template.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
       template.templateDescription = templateDescription
-      template.audiencesRaw = Array(selectedAudiences)
+      template.audiencesRaw = audienceToRaw(selectedAudience)
       template.defaultAssigneeId = defaultAssigneeId
       template.markPending()
     } else {
@@ -150,7 +198,7 @@ struct ActivityTemplateEditorView: View {
         title: title.trimmingCharacters(in: .whitespacesAndNewlines),
         templateDescription: templateDescription,
         position: nextPosition,
-        audiencesRaw: Array(selectedAudiences),
+        audiencesRaw: audienceToRaw(selectedAudience),
         listingTypeId: listingType.id,
         defaultAssigneeId: defaultAssigneeId
       )
@@ -164,13 +212,15 @@ struct ActivityTemplateEditorView: View {
   }
 }
 
-// MARK: - AudienceToggleChip
+// MARK: - AudienceChip
 
-private struct AudienceToggleChip: View {
+/// A chip for selecting an audience. Part of a mutually exclusive group.
+/// Only one audience can be selected at a time.
+private struct AudienceChip: View {
 
   // MARK: Internal
 
-  let audience: String
+  let audience: AudienceSelection
   let isSelected: Bool
   let action: () -> Void
 
@@ -181,16 +231,19 @@ private struct AudienceToggleChip: View {
           Image(systemName: "checkmark")
             .font(.system(size: checkmarkSize, weight: .bold))
         }
-        Text(audience.capitalized)
+        Text(audience.displayName)
           .font(DS.Typography.body)
       }
-      .foregroundStyle(isSelected ? .white : color)
+      .foregroundStyle(isSelected ? .white : audience.color)
       .padding(.horizontal, DS.Spacing.md)
       .padding(.vertical, DS.Spacing.sm)
-      .background(isSelected ? color : color.opacity(0.15))
+      .background(isSelected ? audience.color : audience.color.opacity(0.15))
       .cornerRadius(DS.Spacing.radiusCard)
     }
     .buttonStyle(.plain)
+    .accessibilityLabel("\(audience.displayName) audience")
+    .accessibilityHint(isSelected ? "Selected" : "Tap to select")
+    .accessibilityAddTraits(isSelected ? [.isSelected] : [])
   }
 
   // MARK: Private
@@ -198,14 +251,6 @@ private struct AudienceToggleChip: View {
   /// Scaled checkmark icon size for Dynamic Type support (base: 10pt)
   @ScaledMetric(relativeTo: .caption2)
   private var checkmarkSize: CGFloat = 10
-
-  private var color: Color {
-    switch audience.lowercased() {
-    case "admin": DS.Colors.info
-    case "marketing": DS.Colors.warning
-    default: DS.Colors.Text.tertiary
-    }
-  }
 
 }
 

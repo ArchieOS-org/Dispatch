@@ -26,7 +26,7 @@ final class Activity: WorkItemProtocol, NotableProtocol {
     createdVia: CreationSource = .dispatch,
     sourceSlackMessages: [String]? = nil,
     duration: TimeInterval? = nil,
-    audiencesRaw: [String] = ["admin", "marketing"],
+    audiencesRaw: [String] = ["admin"],
     createdAt: Date = Date(),
     updatedAt: Date = Date()
   ) {
@@ -59,7 +59,7 @@ final class Activity: WorkItemProtocol, NotableProtocol {
     createdVia: CreationSource = .dispatch,
     sourceSlackMessages: [String]? = nil,
     duration: TimeInterval? = nil,
-    audiencesRaw: [String] = ["admin", "marketing"],
+    audiencesRaw: [String] = ["admin"],
     createdAt: Date = Date(),
     updatedAt: Date = Date()
   ) {
@@ -113,7 +113,8 @@ final class Activity: WorkItemProtocol, NotableProtocol {
 
   /// Audience targeting - stored as [String] for SwiftData compatibility
   /// Default value at property level required for SwiftData schema migration
-  var audiencesRaw: [String] = ["admin", "marketing"]
+  /// Note: Items should have exactly ONE audience (mutual exclusivity enforced)
+  var audiencesRaw: [String] = ["admin"]
 
   // Timestamps
   var completedAt: Date?

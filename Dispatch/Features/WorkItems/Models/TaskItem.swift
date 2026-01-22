@@ -27,7 +27,7 @@ final class TaskItem: WorkItemProtocol, NotableProtocol {
     listingId: UUID? = nil,
     createdVia: CreationSource = .dispatch,
     sourceSlackMessages: [String]? = nil,
-    audiencesRaw: [String] = ["admin", "marketing"],
+    audiencesRaw: [String] = ["admin"],
     createdAt: Date = Date(),
     updatedAt: Date = Date()
   ) {
@@ -58,7 +58,7 @@ final class TaskItem: WorkItemProtocol, NotableProtocol {
     assigneeUserIds: [UUID],
     createdVia: CreationSource = .dispatch,
     sourceSlackMessages: [String]? = nil,
-    audiencesRaw: [String] = ["admin", "marketing"],
+    audiencesRaw: [String] = ["admin"],
     createdAt: Date = Date(),
     updatedAt: Date = Date()
   ) {
@@ -109,7 +109,8 @@ final class TaskItem: WorkItemProtocol, NotableProtocol {
 
   /// Audience targeting - stored as [String] for SwiftData compatibility
   /// Default value at property level required for SwiftData schema migration
-  var audiencesRaw: [String] = ["admin", "marketing"]
+  /// Note: Items should have exactly ONE audience (mutual exclusivity enforced)
+  var audiencesRaw: [String] = ["admin"]
 
   // Timestamps
   var completedAt: Date?
