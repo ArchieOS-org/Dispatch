@@ -8,6 +8,57 @@
 import Foundation
 import SwiftUI
 
+// MARK: - SearchableRealtor
+
+/// Minimal data extracted from User model for search indexing.
+/// Sendable and safe to cross actor boundaries.
+struct SearchableRealtor: Sendable {
+  let id: UUID
+  let name: String
+  let email: String
+  let updatedAt: Date
+}
+
+// MARK: - SearchableListing
+
+/// Minimal data extracted from Listing model for search indexing.
+/// Sendable and safe to cross actor boundaries.
+struct SearchableListing: Sendable {
+  let id: UUID
+  let address: String
+  let city: String
+  let postalCode: String
+  let statusRawValue: String
+  let statusDisplayName: String
+  let updatedAt: Date
+}
+
+// MARK: - SearchableProperty
+
+/// Minimal data extracted from Property model for search indexing.
+/// Sendable and safe to cross actor boundaries.
+struct SearchableProperty: Sendable {
+  let id: UUID
+  let displayAddress: String
+  let city: String
+  let postalCode: String
+  let propertyTypeDisplayName: String
+  let updatedAt: Date
+}
+
+// MARK: - SearchableTask
+
+/// Minimal data extracted from TaskItem model for search indexing.
+/// Sendable and safe to cross actor boundaries.
+struct SearchableTask: Sendable {
+  let id: UUID
+  let title: String
+  let taskDescription: String
+  let statusRawValue: String
+  let statusDisplayName: String
+  let updatedAt: Date
+}
+
 // MARK: - SearchDocType
 
 /// Priority ranking for search result types.
@@ -19,7 +70,7 @@ enum SearchDocType: Int, Sendable, Comparable {
   case property = 2
   case task = 3
 
-  static func < (lhs: Self, rhs: Self) -> Bool {
+  nonisolated static func < (lhs: Self, rhs: Self) -> Bool {
     lhs.rawValue < rhs.rawValue
   }
 }
@@ -113,10 +164,10 @@ struct SearchDoc: Identifiable, Sendable, Equatable, Hashable {
 
   // MARK: - Factory Methods
 
-  /// Creates a SearchDoc from a User (realtor only).
-  /// - Parameter realtor: The User entity (must have userType == .realtor)
+  /// Creates a SearchDoc from a SearchableRealtor DTO.
+  /// - Parameter realtor: The SearchableRealtor DTO extracted from User model
   /// - Returns: A SearchDoc configured for realtor search
-  static func from(realtor: User) -> SearchDoc {
+  nonisolated static func from(realtor: SearchableRealtor) -> SearchDoc {
     let searchKey = normalize(buildSearchKey(
       realtor.name,
       realtor.email
@@ -132,9 +183,11 @@ struct SearchDoc: Identifiable, Sendable, Equatable, Hashable {
     )
   }
 
-  /// Creates a SearchDoc from a Listing.
-  static func from(listing: Listing) -> SearchDoc {
-    let secondary = [listing.city, listing.status.displayName]
+  /// Creates a SearchDoc from a SearchableListing DTO.
+  /// - Parameter listing: The SearchableListing DTO extracted from Listing model
+  /// - Returns: A SearchDoc configured for listing search
+  nonisolated static func from(listing: SearchableListing) -> SearchDoc {
+    let secondary = [listing.city, listing.statusDisplayName]
       .filter { !$0.isEmpty }
       .joined(separator: " - ")
 
@@ -142,7 +195,7 @@ struct SearchDoc: Identifiable, Sendable, Equatable, Hashable {
       listing.address,
       listing.city,
       listing.postalCode,
-      listing.status.rawValue
+      listing.statusRawValue
     ))
 
     return SearchDoc(
@@ -155,9 +208,11 @@ struct SearchDoc: Identifiable, Sendable, Equatable, Hashable {
     )
   }
 
-  /// Creates a SearchDoc from a Property.
-  static func from(property: Property) -> SearchDoc {
-    let secondary = [property.city, property.propertyType.displayName]
+  /// Creates a SearchDoc from a SearchableProperty DTO.
+  /// - Parameter property: The SearchableProperty DTO extracted from Property model
+  /// - Returns: A SearchDoc configured for property search
+  nonisolated static func from(property: SearchableProperty) -> SearchDoc {
+    let secondary = [property.city, property.propertyTypeDisplayName]
       .filter { !$0.isEmpty }
       .joined(separator: " - ")
 
@@ -177,16 +232,18 @@ struct SearchDoc: Identifiable, Sendable, Equatable, Hashable {
     )
   }
 
-  /// Creates a SearchDoc from a TaskItem.
-  static func from(task: TaskItem) -> SearchDoc {
+  /// Creates a SearchDoc from a SearchableTask DTO.
+  /// - Parameter task: The SearchableTask DTO extracted from TaskItem model
+  /// - Returns: A SearchDoc configured for task search
+  nonisolated static func from(task: SearchableTask) -> SearchDoc {
     let secondary = task.taskDescription.isEmpty
-      ? task.status.displayName
+      ? task.statusDisplayName
       : task.taskDescription
 
     let searchKey = normalize(buildSearchKey(
       task.title,
       task.taskDescription,
-      task.status.rawValue
+      task.statusRawValue
     ))
 
     return SearchDoc(
@@ -202,7 +259,7 @@ struct SearchDoc: Identifiable, Sendable, Equatable, Hashable {
   // MARK: - Normalization
 
   /// Normalizes a string for search: lowercase, remove diacritics, collapse whitespace.
-  static func normalize(_ text: String) -> String {
+  nonisolated static func normalize(_ text: String) -> String {
     text
       .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
       .components(separatedBy: .whitespaces)
@@ -211,7 +268,7 @@ struct SearchDoc: Identifiable, Sendable, Equatable, Hashable {
   }
 
   /// Tokenizes a string for inverted index: split on non-alphanumerics, drop short tokens.
-  static func tokenize(_ text: String) -> [String] {
+  nonisolated static func tokenize(_ text: String) -> [String] {
     let normalized = normalize(text)
     let tokens = normalized.components(separatedBy: CharacterSet.alphanumerics.inverted)
       .filter { token in
@@ -232,7 +289,7 @@ struct SearchDoc: Identifiable, Sendable, Equatable, Hashable {
   // MARK: Private
 
   /// Builds a search key from multiple optional/non-optional strings.
-  private static func buildSearchKey(_ components: String?...) -> String {
+  nonisolated private static func buildSearchKey(_ components: String?...) -> String {
     components
       .compactMap { $0 }
       .filter { !$0.isEmpty }

@@ -8,19 +8,20 @@
 import Foundation
 
 /// Container for all entity types needed to build the initial search index.
+/// Uses Sendable DTOs to safely cross actor boundaries from MainActor to SearchIndexService.
 /// NOTE: Activities are explicitly excluded from search scope per contract.
 struct InitialSearchData: Sendable {
-  /// Users filtered to userType == .realtor
-  let realtors: [User]
+  /// Realtor data extracted from User models (userType == .realtor)
+  let realtors: [SearchableRealtor]
 
-  /// All listings
-  let listings: [Listing]
+  /// Listing data extracted from Listing models
+  let listings: [SearchableListing]
 
-  /// All properties
-  let properties: [Property]
+  /// Property data extracted from Property models
+  let properties: [SearchableProperty]
 
-  /// All tasks
-  let tasks: [TaskItem]
+  /// Task data extracted from TaskItem models
+  let tasks: [SearchableTask]
 
   /// Total number of entities to index
   var totalCount: Int {

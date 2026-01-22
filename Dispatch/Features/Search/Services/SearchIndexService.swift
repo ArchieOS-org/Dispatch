@@ -19,11 +19,6 @@ actor SearchIndexService {
 
   init() { }
 
-  // MARK: Private
-
-  /// Logger instance - static to avoid actor isolation issues with module-level constants
-  private static let logger = Logger(subsystem: "com.dispatch.app", category: "SearchIndex")
-
   // MARK: Internal
 
   /// Readiness state of the index
@@ -186,6 +181,11 @@ actor SearchIndexService {
 
     return results
   }
+
+  // MARK: Private
+
+  /// Logger instance - static to avoid actor isolation issues with module-level constants
+  private static let logger = Logger(subsystem: "com.dispatch.app", category: "SearchIndex")
 
   /// Number of yield intervals during warm start (every N docs)
   private let yieldInterval = 100

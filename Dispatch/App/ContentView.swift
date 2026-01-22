@@ -189,18 +189,64 @@ struct ContentView: View {
 
   /// Builds InitialSearchData and warms up the search index.
   /// Called via .task {} to ensure it runs after the first frame renders.
+  /// Extracts Sendable DTOs from @Model types ON MainActor before crossing to background actor.
   @MainActor
   private func warmStartSearchIndex() async {
     // Create SearchViewModel from environment
     let viewModel = searchEnvironment.makeViewModel()
     searchViewModel = viewModel
 
-    // Build initial data bundle - NO Activities per contract
+    // Extract Sendable DTOs from @Model types ON MainActor
+    // This is required because @Model types are MainActor-isolated and cannot cross actor boundaries
+    let searchableRealtors = activeRealtors.map { user in
+      SearchableRealtor(
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        updatedAt: user.updatedAt
+      )
+    }
+
+    let searchableListings = activeListings.map { listing in
+      SearchableListing(
+        id: listing.id,
+        address: listing.address,
+        city: listing.city,
+        postalCode: listing.postalCode,
+        statusRawValue: listing.status.rawValue,
+        statusDisplayName: listing.status.displayName,
+        updatedAt: listing.updatedAt
+      )
+    }
+
+    let searchableProperties = activeProperties.map { property in
+      SearchableProperty(
+        id: property.id,
+        displayAddress: property.displayAddress,
+        city: property.city,
+        postalCode: property.postalCode,
+        propertyTypeDisplayName: property.propertyType.displayName,
+        updatedAt: property.updatedAt
+      )
+    }
+
+    let searchableTasks = activeTasks.map { task in
+      SearchableTask(
+        id: task.id,
+        title: task.title,
+        taskDescription: task.taskDescription,
+        statusRawValue: task.status.rawValue,
+        statusDisplayName: task.status.displayName,
+        updatedAt: task.updatedAt
+      )
+    }
+
+    // Build initial data bundle with Sendable DTOs - NO Activities per contract
     let data = InitialSearchData(
-      realtors: activeRealtors,
-      listings: activeListings,
-      properties: activeProperties,
-      tasks: activeTasks
+      realtors: searchableRealtors,
+      listings: searchableListings,
+      properties: searchableProperties,
+      tasks: searchableTasks
     )
 
     // Warm start in background with utility priority
