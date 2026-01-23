@@ -21,6 +21,7 @@ struct RecentlyDeletedRow: View {
       Image(systemName: entry.entityType.icon)
         .foregroundColor(entry.entityType.color)
         .frame(width: 24)
+        .accessibilityHidden(true)
 
       VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
         Text(entry.displayTitle)
@@ -43,15 +44,19 @@ struct RecentlyDeletedRow: View {
         if isRestoring {
           ProgressView()
             .controlSize(.small)
+            .accessibilityLabel("Restoring")
         } else {
           Text("Restore")
         }
       }
       .buttonStyle(.bordered)
       .disabled(isRestoring)
+      .accessibilityHint("Restores this \(entry.entityType.displayName)")
+      .frame(minHeight: DS.Spacing.minTouchTarget)
     }
     .padding(.vertical, DS.Spacing.xs)
     .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
   }
 
   // MARK: Private

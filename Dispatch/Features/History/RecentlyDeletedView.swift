@@ -16,7 +16,14 @@ struct RecentlyDeletedView: View {
   let supabase: SupabaseClient
 
   var body: some View {
-    StandardScreen(title: "Recently Deleted", layout: .column, scroll: .automatic) {
+    // Use scroll: .disabled when showing List, since List has its own scrolling.
+    // StandardScreen with scroll: .automatic wraps content in ScrollView,
+    // which conflicts with List's internal scrolling and causes List to collapse.
+    StandardScreen(
+      title: "Recently Deleted",
+      layout: .column,
+      scroll: showList ? .disabled : .automatic
+    ) {
       content
     }
     .task { await loadDeletedItems() }
@@ -36,6 +43,11 @@ struct RecentlyDeletedView: View {
   private var filteredEntries: [AuditEntry] {
     guard let filter else { return entries }
     return entries.filter { $0.entityType == filter }
+  }
+
+  /// Whether the list should be shown (determines scroll mode)
+  private var showList: Bool {
+    !isLoading && error == nil && !filteredEntries.isEmpty
   }
 
   @ViewBuilder
@@ -84,6 +96,7 @@ struct RecentlyDeletedView: View {
       Image(systemName: "trash")
         .font(.system(size: 48))
         .foregroundColor(DS.Colors.Text.tertiary)
+        .accessibilityHidden(true)
       Text("No deleted items")
         .font(DS.Typography.headline)
         .foregroundColor(DS.Colors.Text.secondary)
@@ -116,6 +129,7 @@ struct RecentlyDeletedView: View {
       Image(systemName: DS.Icons.Alert.error)
         .font(.system(size: 48))
         .foregroundColor(DS.Colors.destructive)
+        .accessibilityHidden(true)
       Text("Failed to load")
         .font(DS.Typography.headline)
         .foregroundColor(DS.Colors.Text.secondary)
@@ -174,7 +188,14 @@ private struct RecentlyDeletedPreview: View {
   let isLoading: Bool
 
   var body: some View {
-    StandardScreen(title: "Recently Deleted", layout: .column, scroll: .automatic) {
+    // Use scroll: .disabled when showing List, since List has its own scrolling.
+    // StandardScreen with scroll: .automatic wraps content in ScrollView,
+    // which conflicts with List's internal scrolling and causes List to collapse.
+    StandardScreen(
+      title: "Recently Deleted",
+      layout: .column,
+      scroll: showList ? .disabled : .automatic
+    ) {
       filterPicker
 
       if isLoading {
@@ -195,6 +216,11 @@ private struct RecentlyDeletedPreview: View {
   // MARK: Private
 
   @State private var filter: AuditableEntity?
+
+  /// Whether the list should be shown (determines scroll mode)
+  private var showList: Bool {
+    !isLoading && !filteredEntries.isEmpty
+  }
 
   private var filteredEntries: [AuditEntry] {
     guard let filter else { return entries }
@@ -227,6 +253,7 @@ private struct RecentlyDeletedPreview: View {
       Image(systemName: "trash")
         .font(.system(size: 48))
         .foregroundColor(DS.Colors.Text.tertiary)
+        .accessibilityHidden(true)
       Text("No deleted items")
         .font(DS.Typography.headline)
         .foregroundColor(DS.Colors.Text.secondary)
