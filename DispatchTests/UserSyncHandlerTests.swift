@@ -477,27 +477,18 @@ final class UserSyncHandlerTests: XCTestCase {
   //   supabase.storage.from("avatars").upload(path, data, options: FileOptions(upsert: true))
   //
   // Reference: https://supabase.com/docs/guides/storage/security/access-control
+  //
+  // REGRESSION PREVENTION:
+  // If the upsert behavior changes, ensure all three RLS policies
+  // (SELECT, INSERT, UPDATE) are in place.
+  //
+  // The uploadAvatar method uses:
+  //   FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
+  //
+  // Without upsert: true, users would get errors when re-uploading avatars
+  // because INSERT alone cannot replace existing files.
 
-  func test_avatarUploadRequiresUpsertTrue() {
-    // This test documents that avatar uploads use upsert: true.
-    // The actual upload is tested via integration tests against Supabase.
-    //
-    // REGRESSION PREVENTION:
-    // If this comment is removed or the upsert behavior changes,
-    // ensure all three RLS policies (SELECT, INSERT, UPDATE) are in place.
-    //
-    // The uploadAvatar method signature:
-    //   FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
-    //
-    // Without upsert: true, users would get errors when re-uploading avatars
-    // because INSERT alone cannot replace existing files.
-
-    // Verify handler is properly initialized (basic sanity)
-    XCTAssertNotNil(handler, "UserSyncHandler should be initialized")
-    XCTAssertEqual(handler.dependencies.mode, .test)
-  }
-
-  func test_avatarUpload_failureKeepsUserPending() async throws {
+  func test_avatarUpload_failureDoesNotMarkUserSynced() async throws {
     // Given: A user with avatar data that needs to sync
     let userId = UUID()
     let userWithAvatar = makeUser(id: userId, name: "Avatar User", email: "avatar@apple.com")
@@ -508,30 +499,15 @@ final class UserSyncHandlerTests: XCTestCase {
     try context.save()
 
     // When: syncUp is called (in test mode, upload will fail due to no network)
-    // The handler should gracefully handle the failure and keep user pending
+    // The handler should gracefully handle the failure
     try await handler.syncUp(context: context)
 
-    // Then: User should remain pending (not marked as synced or corrupted)
+    // Then: User should NOT be marked as synced (remains in non-synced state: pending or failed)
     let descriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == userId })
     let users = try context.fetch(descriptor)
-    // In test mode without network, the user stays pending or failed
+    // In test mode without network, the user stays in a non-synced state (pending or failed)
     // This verifies we don't accidentally mark users as synced when upload fails
     XCTAssertNotEqual(users.first?.syncState, .synced, "User should NOT be marked synced when avatar upload fails")
-  }
-
-  func test_avatarUpload_pathFormat() {
-    // Document the expected avatar path format used by the upload
-    // Path: "{user_id}.jpg"
-    //
-    // This is important for RLS policies which may filter by path pattern.
-    // Example RLS policy: storage.foldername(name) = 'avatars' AND auth.uid()::text = storage.filename(name)
-
-    let userId = UUID()
-    let expectedPath = "\(userId.uuidString).jpg"
-
-    // Verify path format (this is a documentation test)
-    XCTAssertTrue(expectedPath.hasSuffix(".jpg"), "Avatar path should end with .jpg")
-    XCTAssertTrue(expectedPath.contains(userId.uuidString), "Avatar path should contain user ID")
   }
 
   // MARK: - Avatar Hash Computation Tests
@@ -571,28 +547,16 @@ final class UserSyncHandlerTests: XCTestCase {
   //   let (data, _) = try await URLSession.shared.data(for: request)
   //
   // This ensures fresh data is fetched from Supabase Storage every time the hash changes.
-
-  func test_avatarDownload_requiresCacheBusting() {
-    // This test documents that avatar downloads must bypass URL cache.
-    //
-    // REGRESSION PREVENTION:
-    // If avatar downloads start using URLSession.shared.data(from:) directly,
-    // users will see stale avatars when other users update their photos.
-    //
-    // The correct implementation uses:
-    //   var request = URLRequest(url: publicURL)
-    //   request.cachePolicy = .reloadIgnoringLocalCacheData
-    //   let (data, _) = try await URLSession.shared.data(for: request)
-    //
-    // Without cache-busting:
-    // 1. User A uploads new avatar (hash changes to "abc123")
-    // 2. User B's device sees hash changed, triggers download
-    // 3. URLSession returns cached data from previous avatar
-    // 4. User B sees stale photo despite hash indicating update
-
-    // Verify handler is properly initialized (basic sanity)
-    XCTAssertNotNil(handler, "UserSyncHandler should be initialized")
-  }
+  //
+  // REGRESSION PREVENTION:
+  // If avatar downloads start using URLSession.shared.data(from:) directly,
+  // users will see stale avatars when other users update their photos.
+  //
+  // Without cache-busting:
+  // 1. User A uploads new avatar (hash changes to "abc123")
+  // 2. User B's device sees hash changed, triggers download
+  // 3. URLSession returns cached data from previous avatar
+  // 4. User B sees stale photo despite hash indicating update
 
   func test_avatarDownload_hashChangeTriggersFreshDownload() async throws {
     // Given: A user with existing avatar and hash
@@ -627,11 +591,14 @@ final class UserSyncHandlerTests: XCTestCase {
     // When: Upsert with different hash
     try await handler.upsertUser(dto: dto, context: context)
 
-    // Then: User should be updated (download fails in test mode, but hash logic is verified)
+    // Then: User record should be marked synced even if avatar download fails
+    // upsertUser() processes the DTO and marks the user record as synced.
+    // The avatar download is a best-effort operation - if it fails (e.g., test mode,
+    // network error), the user record is still considered synced, just with
+    // potentially missing avatar data. The avatar will be retried on next sync.
     let descriptor = FetchDescriptor<User>(predicate: #Predicate { $0.id == userId })
     let users = try context.fetch(descriptor)
     XCTAssertNotNil(users.first)
-    // Note: In test mode without network, avatar may not update, but the user record is processed
     XCTAssertEqual(users.first?.syncState, .synced)
   }
 
