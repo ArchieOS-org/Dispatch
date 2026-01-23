@@ -64,9 +64,10 @@ struct iPadContentView: View {
     .navigationSplitViewStyle(.balanced)
     // FAB Menu overlay for quick entry - uses .overlay to ensure proper sizing
     .overlay(alignment: .bottomTrailing) {
-      // FAB visibility controlled by shouldHideFAB (combines environment + AppOverlayState)
-      // Do NOT add appState.overlayState check here - causes state fragmentation with AppOverlayState
-      if !shouldHideFAB {
+      // Only show when no search/settings overlay AND not hidden by keyboard/text input
+      // appState.overlayState: hides during search/settings overlays
+      // shouldHideFAB: hides during keyboard/text input via AppOverlayState
+      if appState.overlayState == .none, !shouldHideFAB {
         FABMenu { option in
           switch option {
           case .listing:
