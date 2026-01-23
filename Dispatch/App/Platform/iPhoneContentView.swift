@@ -61,9 +61,9 @@ struct iPhoneContentView: View {
       // GlobalFloatingButtons MUST be inside NavigationStack to receive environment values
       // set by destination views (e.g., SettingsScreen sets .globalButtonsHidden)
       .overlay(alignment: .bottom) {
-        if appState.overlayState == .none {
-          GlobalFloatingButtons()
-        }
+        // GlobalFloatingButtons manages its own visibility via AppOverlayState
+        // Do NOT add outer overlayState checks here - causes state fragmentation
+        GlobalFloatingButtons()
       }
     }
     .overlay {

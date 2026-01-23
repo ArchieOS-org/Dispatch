@@ -38,6 +38,13 @@ struct QuickEntrySheet: View {
     _itemType = State(initialValue: defaultItemType)
     // Start with no assignee - user can select themselves from the top of the list
     _selectedAssigneeIds = State(initialValue: [])
+    // Initialize selectedListing synchronously in init (not .task) so it's set on first render
+    // This fixes macOS pre-selection which requires the value before the view appears
+    if let listingId = preselectedListingId {
+      _selectedListing = State(initialValue: listings.first { $0.id == listingId })
+    } else {
+      _selectedListing = State(initialValue: nil)
+    }
   }
 
   // MARK: Internal
@@ -91,12 +98,8 @@ struct QuickEntrySheet: View {
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.visible)
     #endif
-    .task {
-      // Pre-select listing if provided
-      if let listingId = preselectedListingId {
-        selectedListing = listings.first { $0.id == listingId }
-      }
-    }
+    // NOTE: Listing pre-selection moved to init() for synchronous initialization
+    // Using .task here caused macOS pre-selection to fail (async runs after first render)
   }
 
   // MARK: Private
@@ -107,7 +110,7 @@ struct QuickEntrySheet: View {
   @State private var itemType: QuickEntryItemType
   @State private var title = ""
   @State private var itemDescription = ""
-  @State private var selectedListing: Listing?
+  @State private var selectedListing: Listing? // Initialized in init() for synchronous pre-selection
   @State private var hasDueDate = false
   @State private var dueDate = Date()
   @State private var selectedAssigneeIds: Set<UUID> = []
