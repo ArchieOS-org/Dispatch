@@ -38,8 +38,9 @@ struct QuickEntrySheet: View {
     _itemType = State(initialValue: defaultItemType)
     // Start with no assignee - user can select themselves from the top of the list
     _selectedAssigneeIds = State(initialValue: [])
-    // Initialize selectedListing to nil - will be set via .onAppear (before first render)
-    _selectedListing = State(initialValue: nil)
+    // Initialize selectedListing directly with preselectedListing
+    // This makes the value available during first body evaluation (before .onAppear)
+    _selectedListing = State(initialValue: preselectedListing)
   }
 
   // MARK: Internal
@@ -93,14 +94,6 @@ struct QuickEntrySheet: View {
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.visible)
     #endif
-    .onAppear {
-      // Set preselected listing synchronously before first render
-      // Using .onAppear instead of .task because .task executes AFTER first render,
-      // causing the Picker to show "None" before the fetch completes
-      if selectedListing == nil, let listing = preselectedListing {
-        selectedListing = listing
-      }
-    }
   }
 
   // MARK: Private
