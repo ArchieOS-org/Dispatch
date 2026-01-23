@@ -87,6 +87,9 @@ struct ListingDetailView: View {
       .frame(minWidth: 300, minHeight: 400)
       #endif
     }
+    .sheet(isPresented: $showEditListingSheet) {
+      EditListingSheet(listing: listing)
+    }
     #if os(macOS)
     .onDeleteCommand {
       showDeleteListingAlert = true
@@ -118,6 +121,7 @@ struct ListingDetailView: View {
   @State private var showDeleteNoteAlert = false
   @State private var noteToDelete: Note?
   @State private var showDeleteListingAlert = false
+  @State private var showEditListingSheet = false
   @State private var showAssigneePicker = false
   @State private var selectedAssigneeIds: Set<UUID> = []
   @State private var editingWorkItem: WorkItem?
@@ -176,7 +180,7 @@ struct ListingDetailView: View {
   private var listingActions: [OverflowMenu.Action] {
     [
       OverflowMenu.Action(id: "edit", title: "Edit Listing", icon: DS.Icons.Action.edit) {
-        // Edit placeholder
+        showEditListingSheet = true
       },
       OverflowMenu.Action(id: "delete", title: "Delete Listing", icon: DS.Icons.Action.delete, role: .destructive) {
         showDeleteListingAlert = true
