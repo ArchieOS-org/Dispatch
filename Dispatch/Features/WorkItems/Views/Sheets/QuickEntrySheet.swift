@@ -94,6 +94,13 @@ struct QuickEntrySheet: View {
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.visible)
     #endif
+    .onAppear {
+      // Fallback: SwiftUI may ignore State(initialValue:) if it reuses view storage
+      // This ensures preselection works even when .id() doesn't force full recreation
+      if selectedListing == nil, let listing = preselectedListing {
+        selectedListing = listing
+      }
+    }
   }
 
   // MARK: Private
