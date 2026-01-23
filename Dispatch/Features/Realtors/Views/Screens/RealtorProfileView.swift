@@ -6,6 +6,7 @@
 //  Refactored for Layout Unification (StandardScreen)
 //
 
+import Supabase
 import SwiftData
 import SwiftUI
 
@@ -164,6 +165,16 @@ struct RealtorProfileView: View {
           }
         }
       }
+
+      // History Section
+      HistorySection(
+        entityType: .user,
+        entityId: user.id,
+        currentUserId: actions.currentUserId,
+        userLookup: { actions.userLookupDict[$0] },
+        supabase: supabase,
+        onRestore: nil
+      )
     }
     .padding(.bottom, DS.Spacing.xxl)
   }

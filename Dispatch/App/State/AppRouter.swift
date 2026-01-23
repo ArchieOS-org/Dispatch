@@ -40,6 +40,9 @@ enum AppRoute: Hashable, Sendable {
 
   /// Profile page (navigable from Settings)
   case profile
+
+  /// Recently deleted items (navigable from Settings)
+  case recentlyDeleted
 }
 
 // MARK: - SidebarDestination

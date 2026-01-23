@@ -6,6 +6,8 @@
 //  Refactored for Layout Unification (StandardScreen)
 //
 
+import Supabase
+import SwiftData
 import SwiftUI
 
 /// Full detail view for a work item (task or activity).
@@ -103,6 +105,17 @@ struct WorkItemDetailView: View {
 
       // Notes Section
       notesSection
+
+      // History Section
+      Color.clear.frame(height: DS.Spacing.lg)
+      HistorySection(
+        entityType: item.isTask ? .task : .activity,
+        entityId: item.id,
+        currentUserId: currentUserId,
+        userLookup: { userLookup[$0] },
+        supabase: supabase,
+        onRestore: nil
+      )
     }
     .padding(.bottom, DS.Spacing.md)
   }
@@ -328,43 +341,116 @@ struct WorkItemDetailView: View {
 
 // MARK: - Preview
 
-#Preview("Work Item Detail View") {
-  let users: [UUID: User] = {
-    var dict = [UUID: User]()
-    let ids = [UUID(), UUID(), UUID()]
-    let names = ["Alice Smith", "Bob Jones", "Carol White"]
-    for (id, name) in zip(ids, names) {
-      dict[id] = User(
-        id: id,
-        name: name,
-        email: "\(name.lowercased().replacingOccurrences(of: " ", with: "."))@example.com",
-        userType: .realtor
-      )
+#Preview("Task Detail View") {
+  PreviewShell(
+    setup: { context in
+      PreviewDataFactory.seed(context)
     }
-    return dict
-  }()
+  ) { context in
+    let users = (try? context.fetch(FetchDescriptor<User>())) ?? []
+    let usersById = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
 
-  let userIds = Array(users.keys)
-  let currentUserId = userIds[0]
+    let sampleTask = TaskItem(
+      title: "Review quarterly report",
+      taskDescription: "Go through the Q4 numbers and prepare a summary for the board meeting.",
+      dueDate: Calendar.current.date(byAdding: .day, value: 2, to: Date()),
+      declaredBy: PreviewDataFactory.bobID,
+      assigneeUserIds: [PreviewDataFactory.aliceID, PreviewDataFactory.bobID]
+    )
 
-  let sampleTask = TaskItem(
-    title: "Review quarterly report",
-    taskDescription: "Go through the Q4 numbers and prepare a summary for the board meeting.",
-    dueDate: Calendar.current.date(byAdding: .day, value: 2, to: Date()),
-    declaredBy: userIds[1],
-    assigneeUserIds: Array(userIds.prefix(2))
-  )
-
-  NavigationStack {
     WorkItemDetailView(
       item: .task(sampleTask),
-      userLookup: users,
-      currentUserId: currentUserId,
-      availableUsers: Array(users.values),
+      userLookup: usersById,
+      currentUserId: PreviewDataFactory.aliceID,
+      availableUsers: users,
       onComplete: { },
       onAssigneesChanged: { _ in },
       onAddNote: { _ in }
     )
   }
-  .environmentObject(LensState())
+}
+
+#Preview("Activity Detail View") {
+  PreviewShell(
+    setup: { context in
+      PreviewDataFactory.seed(context)
+    }
+  ) { context in
+    let users = (try? context.fetch(FetchDescriptor<User>())) ?? []
+    let usersById = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
+
+    let sampleActivity = Activity(
+      title: "Client follow-up call",
+      activityDescription: "Call to discuss the offer and next steps in the process.",
+      status: .open,
+      declaredBy: PreviewDataFactory.aliceID,
+      listingId: PreviewDataFactory.listingID,
+      assigneeUserIds: [PreviewDataFactory.bobID]
+    )
+
+    WorkItemDetailView(
+      item: .activity(sampleActivity),
+      userLookup: usersById,
+      currentUserId: PreviewDataFactory.aliceID,
+      availableUsers: users,
+      onComplete: { },
+      onAssigneesChanged: { _ in },
+      onAddNote: { _ in }
+    )
+  }
+}
+
+#Preview("Task with Notes") {
+  PreviewShell(
+    setup: { context in
+      PreviewDataFactory.seed(context)
+
+      // Add a task with notes during setup
+      let sampleTask = TaskItem(
+        title: "Update lockbox code",
+        taskDescription: "Change the lockbox code for the showing this weekend.",
+        status: .open,
+        declaredBy: PreviewDataFactory.aliceID,
+        listingId: PreviewDataFactory.listingID
+      )
+      sampleTask.syncState = .synced
+      context.insert(sampleTask)
+
+      // Add sample notes
+      let note1 = Note(
+        content: "New code should be 4567",
+        createdBy: PreviewDataFactory.aliceID,
+        parentType: .task,
+        parentId: sampleTask.id
+      )
+      note1.createdAt = Date().addingTimeInterval(-3600)
+      sampleTask.notes.append(note1)
+
+      let note2 = Note(
+        content: "Updated and confirmed with owner",
+        createdBy: PreviewDataFactory.bobID,
+        parentType: .task,
+        parentId: sampleTask.id
+      )
+      sampleTask.notes.append(note2)
+    }
+  ) { context in
+    let users = (try? context.fetch(FetchDescriptor<User>())) ?? []
+    let usersById = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
+
+    let taskDescriptor = FetchDescriptor<TaskItem>(predicate: #Predicate { $0.title == "Update lockbox code" })
+    if let task = try? context.fetch(taskDescriptor).first {
+      WorkItemDetailView(
+        item: .task(task),
+        userLookup: usersById,
+        currentUserId: PreviewDataFactory.aliceID,
+        availableUsers: users,
+        onComplete: { },
+        onAssigneesChanged: { _ in },
+        onAddNote: { _ in }
+      )
+    } else {
+      Text("Missing preview data")
+    }
+  }
 }

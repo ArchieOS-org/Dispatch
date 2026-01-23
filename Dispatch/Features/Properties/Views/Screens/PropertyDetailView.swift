@@ -5,6 +5,7 @@
 //  Full detail view for a Property
 //
 
+import Supabase
 import SwiftData
 import SwiftUI
 
@@ -86,6 +87,16 @@ struct PropertyDetailView: View {
       metadataSection
 
       listingsSection
+
+      // History Section
+      HistorySection(
+        entityType: .property,
+        entityId: property.id,
+        currentUserId: syncManager.currentUserID ?? UUID(),
+        userLookup: userLookup,
+        supabase: supabase,
+        onRestore: nil
+      )
     }
     .padding(.bottom, DS.Spacing.md)
   }
@@ -251,17 +262,78 @@ private struct PropertyListingRow: View {
 // MARK: - Previews
 
 #Preview("Property Detail View") {
-  PropertyDetailView(
-    property: Property(
-      address: "123 Main Street",
-      unit: "4B",
-      city: "Toronto",
-      province: "ON",
-      postalCode: "M5V 1A1",
-      ownedBy: UUID()
-    ),
-    userLookup: { _ in User(name: "John Smith", email: "john@example.com", userType: .realtor) }
-  )
-  .modelContainer(for: [Property.self, Listing.self, User.self], inMemory: true)
-  .environmentObject(SyncManager(mode: .preview))
+  PreviewShell(
+    setup: { context in
+      PreviewDataFactory.seed(context)
+
+      // Add a property for preview
+      let property = Property(
+        address: "123 Main Street",
+        unit: "4B",
+        city: "Toronto",
+        province: "ON",
+        postalCode: "M5V 1A1",
+        ownedBy: PreviewDataFactory.aliceID
+      )
+      property.syncState = .synced
+      context.insert(property)
+    }
+  ) { context in
+    let users = (try? context.fetch(FetchDescriptor<User>())) ?? []
+    let usersById = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
+
+    let propertyDescriptor = FetchDescriptor<Property>(predicate: #Predicate { $0.address == "123 Main Street" })
+    if let property = try? context.fetch(propertyDescriptor).first {
+      PropertyDetailView(
+        property: property,
+        userLookup: { id in usersById[id] }
+      )
+    } else {
+      Text("Missing preview data")
+    }
+  }
+}
+
+#Preview("Property with Listings") {
+  PreviewShell(
+    setup: { context in
+      PreviewDataFactory.seed(context)
+
+      // Add a property with listings
+      let property = Property(
+        address: "456 Oak Avenue",
+        city: "Vancouver",
+        province: "BC",
+        postalCode: "V6B 1A1",
+        ownedBy: PreviewDataFactory.bobID
+      )
+      property.syncState = .synced
+      context.insert(property)
+
+      // Add a listing linked to this property
+      let listing = Listing(
+        address: "456 Oak Avenue",
+        status: .active,
+        ownedBy: PreviewDataFactory.bobID
+      )
+      listing.city = "Vancouver"
+      listing.province = "BC"
+      listing.syncState = .synced
+      listing.property = property
+      context.insert(listing)
+    }
+  ) { context in
+    let users = (try? context.fetch(FetchDescriptor<User>())) ?? []
+    let usersById = Dictionary(uniqueKeysWithValues: users.map { ($0.id, $0) })
+
+    let propertyDescriptor = FetchDescriptor<Property>(predicate: #Predicate { $0.address == "456 Oak Avenue" })
+    if let property = try? context.fetch(propertyDescriptor).first {
+      PropertyDetailView(
+        property: property,
+        userLookup: { id in usersById[id] }
+      )
+    } else {
+      Text("Missing preview data")
+    }
+  }
 }

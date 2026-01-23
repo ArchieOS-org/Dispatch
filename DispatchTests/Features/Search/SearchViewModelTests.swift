@@ -240,12 +240,10 @@ struct SearchViewModelTests {
       SearchDoc(
         id: UUID(),
         type: .task,
+        updatedAt: Date(),
         primaryText: "First Result",
         secondaryText: "",
-        tertiaryText: nil,
-        primaryNorm: "first result",
-        searchKey: "first result",
-        updatedAt: Date()
+        searchKey: "first result"
       ),
     ]
     await MainActor.run {
@@ -285,12 +283,10 @@ struct SearchViewModelTests {
       SearchDoc(
         id: UUID(),
         type: .task,
+        updatedAt: Date(),
         primaryText: "Existing",
         secondaryText: "",
-        tertiaryText: nil,
-        primaryNorm: "existing",
-        searchKey: "existing",
-        updatedAt: Date()
+        searchKey: "existing"
       ),
     ]
 
@@ -317,12 +313,10 @@ struct SearchViewModelTests {
       SearchDoc(
         id: UUID(),
         type: .task,
+        updatedAt: Date(),
         primaryText: "Existing",
         secondaryText: "",
-        tertiaryText: nil,
-        primaryNorm: "existing",
-        searchKey: "existing",
-        updatedAt: Date()
+        searchKey: "existing"
       ),
     ]
 
@@ -348,12 +342,10 @@ struct SearchViewModelTests {
       SearchDoc(
         id: UUID(),
         type: .task,
+        updatedAt: Date(),
         primaryText: "Test Result",
         secondaryText: "",
-        tertiaryText: nil,
-        primaryNorm: "test result",
-        searchKey: "test result",
-        updatedAt: Date()
+        searchKey: "test result"
       ),
     ]
     await { @Sendable in
