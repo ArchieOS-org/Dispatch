@@ -62,7 +62,8 @@ final class AppState: ObservableObject {
     var id: String {
       switch self {
       case .none: "none"
-      case .quickEntry: "quickEntry"
+      case .quickEntry(_, let listingId):
+        "quickEntry-\(listingId?.uuidString ?? "none")"
       case .addListing: "addListing"
       case .addRealtor: "addRealtor"
       }
