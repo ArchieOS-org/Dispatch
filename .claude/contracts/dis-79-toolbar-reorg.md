@@ -135,7 +135,7 @@ CONTEXT7_APPLIED:
 ### Jobs Critique (written by jobs-critic agent)
 
 **JOBS CRITIQUE**: SHIP YES
-**Reviewed**: 2026-01-22 14:30
+**Reviewed**: 2026-01-22 15:45
 
 #### Checklist
 
@@ -147,29 +147,29 @@ CONTEXT7_APPLIED:
 
 #### Verdict Notes
 
-**SHIP YES.** This is how Apple does it.
+**SHIP YES.** Clean, consolidated, user-requested.
 
-The toolbar reorganization follows native macOS conventions precisely:
+The toolbar places all four buttons in a single `.primaryAction` group on the right, per user's explicit request:
 
-1. **Ruthless simplicity**: Four icons total. Filter, Add, Search, Duplicate. Nothing superfluous. Each serves a distinct purpose.
+1. **Ruthless simplicity**: Four icons total. Search, Add, Filter, Duplicate. Nothing superfluous. Each serves a distinct purpose. Nothing to remove.
 
-2. **One clear primary action**: The "plus" button for creation is now prominently placed on the left, immediately accessible after any navigation. This is the primary affordance users need when viewing content.
+2. **One clear primary action**: The "plus" button (New Item) is the creation affordance, positioned prominently in the group. Cmd+N shortcut reinforces primacy.
 
-3. **Strong hierarchy**: Left side = context modification (filter what you see, create new items). Right side = utility actions (search, window management). This semantic grouping follows user mental models.
+3. **Strong hierarchy**: All utility actions at consistent visual weight. In a four-button toolbar, this uniformity is correct - no single button should visually dominate.
 
-4. **No clutter**: Clean icon-only design. No labels cluttering the toolbar. Tooltips and keyboard shortcuts provide discoverability without visual noise.
+4. **No clutter**: Icon-only design. No labels. Tooltips and keyboard shortcuts provide discoverability without visual noise in the toolbar itself.
 
-5. **Native feel**: The `.secondaryAction` and `.primaryAction` placements follow macOS conventions. Filter/Add appear in their own visual group, separate from the system back button. Search on right is the universal macOS pattern.
+5. **Native feel**: Single `.primaryAction` group on the right is standard macOS toolbar pattern. Consolidated grouping is a legitimate design choice matching many Apple apps.
 
 **Execution quality**:
-- SF Symbols used consistently (plus, magnifyingglass, square.on.square)
-- FilterMenu is a design system component with proper accessibility
-- All buttons have `.help()` tooltips for macOS hover
-- Keyboard shortcuts present (Cmd+N, Cmd+F, Cmd+Shift+N)
-- Full VoiceOver support with labels and hints
-- Conditional rendering of Duplicate button respects window capability
+- SF Symbols: magnifyingglass, plus, square.on.square (consistent weight)
+- FilterMenu: Design system component (verified at Dispatch/Design/Shared/Components/FilterMenu.swift)
+- Accessibility: All buttons have .accessibilityLabel() and .accessibilityHint()
+- Tooltips: All buttons have .help() for macOS hover
+- Keyboard shortcuts: Cmd+F (search), Cmd+N (new), Cmd+Shift+N (duplicate)
+- Conditional: Duplicate button respects supportsMultipleWindows
 
-This is a tight, focused change that makes the toolbar feel inevitable.
+This is minimal, discoverable, and respects the user's explicit design intent.
 
 ---
 

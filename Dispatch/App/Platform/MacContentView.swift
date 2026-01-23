@@ -50,25 +50,19 @@ struct MacContentView: View {
     }
     .navigationSplitViewStyle(.automatic)
     .toolbar {
-      // Left side: Filter + Add as a grouped pair, separate from back button
-      // Using .secondaryAction places items left of center but in their own visual group,
-      // distinct from the system back button which appears in .navigation placement
-      ToolbarItemGroup(placement: .secondaryAction) {
-        FilterMenu(audience: $appState.lensState.audience)
-        Button { handleNew() } label: { Image(systemName: "plus") }
-          .help("New Item")
-          .keyboardShortcut("n", modifiers: .command)
-          .accessibilityLabel("New item")
-          .accessibilityHint("Creates a new task, activity, or listing based on current context")
-      }
-
-      // Right side: Search + Duplicate (duplicate on far right)
+      // All buttons in one group on the right: Search, Add, Filter, Duplicate
       ToolbarItemGroup(placement: .primaryAction) {
         Button { windowUIState.openSearch(initialText: nil) } label: { Image(systemName: "magnifyingglass") }
           .help("Search")
           .keyboardShortcut("f", modifiers: .command)
           .accessibilityLabel("Search")
           .accessibilityHint("Opens global search overlay")
+        Button { handleNew() } label: { Image(systemName: "plus") }
+          .help("New Item")
+          .keyboardShortcut("n", modifiers: .command)
+          .accessibilityLabel("New item")
+          .accessibilityHint("Creates a new task, activity, or listing based on current context")
+        FilterMenu(audience: $appState.lensState.audience)
         if supportsMultipleWindows {
           Button { openWindow(id: "main") } label: { Image(systemName: "square.on.square") }
             .help("New Window")
