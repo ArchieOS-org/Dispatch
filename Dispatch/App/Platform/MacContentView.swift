@@ -50,9 +50,10 @@ struct MacContentView: View {
     }
     .navigationSplitViewStyle(.automatic)
     .toolbar {
-      // Left side: Filter + Add (always present)
-      // Back button displaces these to its right when visible (handled by .navigation placement)
-      ToolbarItemGroup(placement: .navigation) {
+      // Left side: Filter + Add as a grouped pair, separate from back button
+      // Using .secondaryAction places items left of center but in their own visual group,
+      // distinct from the system back button which appears in .navigation placement
+      ToolbarItemGroup(placement: .secondaryAction) {
         FilterMenu(audience: $appState.lensState.audience)
         Button { handleNew() } label: { Image(systemName: "plus") }
           .help("New Item")

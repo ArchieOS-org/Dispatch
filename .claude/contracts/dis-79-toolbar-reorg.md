@@ -55,9 +55,10 @@ Based on checked indicators (Complex UI only):
 **Target State**:
 ```swift
 .toolbar {
-  // Left side: Filter + Add (always present)
-  // Back button displaces these to its right when visible (handled by .navigation placement)
-  ToolbarItemGroup(placement: .navigation) {
+  // Left side: Filter + Add as a grouped pair, separate from back button
+  // Using .secondaryAction places items left of center but in their own visual group,
+  // distinct from the system back button which appears in .navigation placement
+  ToolbarItemGroup(placement: .secondaryAction) {
     FilterMenu(audience: $appState.lensState.audience)
     Button { handleNew() } label: { Image(systemName: "plus") }
   }
@@ -107,15 +108,16 @@ Based on checked indicators (Complex UI only):
 
 Log all Context7 lookups here (see `.claude/rules/context7-mandatory.md`):
 
-CONTEXT7_QUERY: ToolbarItemGroup placement options macOS navigation primaryAction toolbar positioning
+CONTEXT7_QUERY: macOS toolbar ToolbarItemPlacement navigation cancellationAction automatic principal separate groups visual separation back button
 CONTEXT7_TAKEAWAYS:
-- `.navigation` placement positions items on leading edge of toolbar in macOS (ahead of inline title)
-- `.primaryAction` placement is for primary, frequently used actions
-- On macOS/Mac Catalyst, navigation items appear on leading edge of toolbar
-- Navigation items appear after system navigation items (like back button)
+- `.navigation` placement positions items on leading edge, BUT groups them with system back button
+- `ToolbarItemGroup` creates shared visual background (bubble) for all items within it
+- Using different placements creates separate visual groups in macOS toolbars
+- `.secondaryAction` is for items that are "frequently used but not essential for the current context"
+- `.sharedBackgroundVisibility(.hidden)` can separate items but requires macOS 26.0+ (too new)
 CONTEXT7_APPLIED:
-- `.navigation` for left side (Filter + Add) -> MacContentView.swift:52-59
-- `.primaryAction` for right side (Search + Duplicate) -> MacContentView.swift:61-72
+- `.secondaryAction` for left side (Filter + Add) - separate visual group from back button -> MacContentView.swift:55-62
+- `.primaryAction` for right side (Search + Duplicate) -> MacContentView.swift:65-78
 
 ---
 
@@ -126,7 +128,7 @@ CONTEXT7_APPLIED:
 
 | Query | Pattern Used |
 |-------|--------------|
-| ToolbarItemGroup placement options macOS navigation primaryAction | `.navigation` for left side items (positions after back button on leading edge), `.primaryAction` for right side items |
+| macOS toolbar ToolbarItemPlacement navigation separate groups visual separation | `.secondaryAction` for left side items (creates separate visual group from back button), `.primaryAction` for right side items |
 
 ---
 
@@ -157,7 +159,7 @@ The toolbar reorganization follows native macOS conventions precisely:
 
 4. **No clutter**: Clean icon-only design. No labels cluttering the toolbar. Tooltips and keyboard shortcuts provide discoverability without visual noise.
 
-5. **Native feel**: The `.navigation` and `.primaryAction` placements are exactly how Apple's own apps (Finder, Mail, Notes) organize toolbars. Filter/Add on left naturally flows after the back button when drilling into navigation. Search on right is the universal macOS pattern.
+5. **Native feel**: The `.secondaryAction` and `.primaryAction` placements follow macOS conventions. Filter/Add appear in their own visual group, separate from the system back button. Search on right is the universal macOS pattern.
 
 **Execution quality**:
 - SF Symbols used consistently (plus, magnifyingglass, square.on.square)
