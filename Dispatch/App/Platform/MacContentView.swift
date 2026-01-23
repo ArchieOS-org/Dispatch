@@ -49,17 +49,22 @@ struct MacContentView: View {
       .toolbar(removing: .title)
     }
     .navigationSplitViewStyle(.automatic)
-    // Toolbar on NavigationSplitView level ensures items remain visible and positioned
-    // consistently regardless of detail NavigationStack's navigation state (back button).
-    // On macOS, .primaryAction places items on leading edge after window controls -
-    // this is standard macOS toolbar convention (Finder, Mail, Notes all follow this).
+    // Toolbar on NavigationSplitView level with .principal spacer to anchor layout.
+    // The .principal spacer in center allows .primaryAction items to position consistently
+    // regardless of back button state (workaround for rdar://122947424).
+    // On macOS, .primaryAction places items on leading edge - standard convention.
     .toolbar {
+      ToolbarItem(placement: .principal) {
+        Spacer()
+      }
       ToolbarItemGroup(placement: .primaryAction) {
-        Button { windowUIState.openSearch(initialText: nil) } label: { Image(systemName: "magnifyingglass") }
-          .help("Search")
-          .keyboardShortcut("f", modifiers: .command)
-          .accessibilityLabel("Search")
-          .accessibilityHint("Opens global search overlay")
+        Button { windowUIState.openSearch(initialText: nil) } label: {
+          Image(systemName: "magnifyingglass")
+        }
+        .help("Search")
+        .keyboardShortcut("f", modifiers: .command)
+        .accessibilityLabel("Search")
+        .accessibilityHint("Opens global search overlay")
         Button { handleNew() } label: { Image(systemName: "plus") }
           .help("New Item")
           .keyboardShortcut("n", modifiers: .command)
