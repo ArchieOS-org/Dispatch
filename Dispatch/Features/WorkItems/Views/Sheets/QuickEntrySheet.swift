@@ -38,13 +38,9 @@ struct QuickEntrySheet: View {
     _itemType = State(initialValue: defaultItemType)
     // Start with no assignee - user can select themselves from the top of the list
     _selectedAssigneeIds = State(initialValue: [])
-    // Initialize selectedListing synchronously in init (not .task) so it's set on first render
-    // This fixes macOS pre-selection which requires the value before the view appears
-    if let listingId = preselectedListingId {
-      _selectedListing = State(initialValue: listings.first { $0.id == listingId })
-    } else {
-      _selectedListing = State(initialValue: nil)
-    }
+    // Initialize selectedListing to nil - will be fetched via .task using modelContext
+    // This ensures we get the ACTUAL listing from SwiftData regardless of query context
+    _selectedListing = State(initialValue: nil)
   }
 
   // MARK: Internal
@@ -98,8 +94,16 @@ struct QuickEntrySheet: View {
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.visible)
     #endif
-    // NOTE: Listing pre-selection moved to init() for synchronous initialization
-    // Using .task here caused macOS pre-selection to fail (async runs after first render)
+    .task {
+      // Fetch listing by ID using modelContext to ensure we get the ACTUAL listing
+      // from SwiftData, regardless of which query context it came from
+      if let listingId = preselectedListingId, selectedListing == nil {
+        let descriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingId })
+        if let listing = try? modelContext.fetch(descriptor).first {
+          selectedListing = listing
+        }
+      }
+    }
   }
 
   // MARK: Private
