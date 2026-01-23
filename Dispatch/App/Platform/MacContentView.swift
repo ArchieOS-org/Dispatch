@@ -50,13 +50,24 @@ struct MacContentView: View {
     }
     .navigationSplitViewStyle(.automatic)
     .toolbar {
-      ToolbarItemGroup(placement: .primaryAction) {
+      // Left side: Filter + Add (always present)
+      // Back button displaces these to its right when visible (handled by .navigation placement)
+      ToolbarItemGroup(placement: .navigation) {
         FilterMenu(audience: $appState.lensState.audience)
         Button { handleNew() } label: { Image(systemName: "plus") }
           .help("New Item")
           .keyboardShortcut("n", modifiers: .command)
           .accessibilityLabel("New item")
           .accessibilityHint("Creates a new task, activity, or listing based on current context")
+      }
+
+      // Right side: Search + Duplicate (duplicate on far right)
+      ToolbarItemGroup(placement: .primaryAction) {
+        Button { windowUIState.openSearch(initialText: nil) } label: { Image(systemName: "magnifyingglass") }
+          .help("Search")
+          .keyboardShortcut("f", modifiers: .command)
+          .accessibilityLabel("Search")
+          .accessibilityHint("Opens global search overlay")
         if supportsMultipleWindows {
           Button { openWindow(id: "main") } label: { Image(systemName: "square.on.square") }
             .help("New Window")
@@ -64,11 +75,6 @@ struct MacContentView: View {
             .accessibilityLabel("New window")
             .accessibilityHint("Opens a new Dispatch window")
         }
-        Button { windowUIState.openSearch(initialText: nil) } label: { Image(systemName: "magnifyingglass") }
-          .help("Search")
-          .keyboardShortcut("f", modifiers: .command)
-          .accessibilityLabel("Search")
-          .accessibilityHint("Opens global search overlay")
       }
     }
     .overlay(alignment: .top) { quickFindOverlay }
