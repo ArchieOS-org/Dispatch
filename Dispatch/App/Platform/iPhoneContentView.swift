@@ -121,12 +121,13 @@ struct iPhoneContentView: View {
   @ViewBuilder
   private func sheetContent(for state: AppState.SheetState) -> some View {
     switch state {
-    case .quickEntry(let type):
+    case .quickEntry(let type, let preselectedListingId):
       QuickEntrySheet(
         defaultItemType: type ?? .task,
         currentUserId: currentUserId,
         listings: activeListings,
         availableUsers: users,
+        preselectedListingId: preselectedListingId,
         onSave: { onRequestSync() }
       )
 

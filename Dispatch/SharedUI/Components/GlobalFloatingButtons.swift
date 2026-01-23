@@ -82,9 +82,9 @@ struct GlobalFloatingButtons: View {
         case .listing:
           appState.sheetState = .addListing
         case .task:
-          appState.sheetState = .quickEntry(type: .task)
+          appState.sheetState = .quickEntry(type: .task, preselectedListingId: nil)
         case .activity:
-          appState.sheetState = .quickEntry(type: .activity)
+          appState.sheetState = .quickEntry(type: .activity, preselectedListingId: nil)
         }
       }
     }

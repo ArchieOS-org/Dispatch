@@ -147,7 +147,7 @@ struct MacContentView: View {
     switch appState.router.selectedDestination {
     case .tab(.listings), .stage: appState.sheetState = .addListing
     case .tab(.realtors): appState.sheetState = .addRealtor
-    default: appState.sheetState = .quickEntry(type: nil)
+    default: appState.sheetState = .quickEntry(type: nil, preselectedListingId: nil)
     }
   }
 
@@ -171,12 +171,13 @@ struct MacContentView: View {
   @ViewBuilder
   private func sheetContent(for state: AppState.SheetState) -> some View {
     switch state {
-    case .quickEntry(let type):
+    case .quickEntry(let type, let preselectedListingId):
       QuickEntrySheet(
         defaultItemType: type ?? .task,
         currentUserId: currentUserId,
         listings: activeListings,
         availableUsers: users,
+        preselectedListingId: preselectedListingId,
         onSave: onRequestSync
       )
 

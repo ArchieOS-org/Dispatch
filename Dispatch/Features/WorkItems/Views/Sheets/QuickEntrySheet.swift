@@ -26,12 +26,14 @@ struct QuickEntrySheet: View {
     currentUserId: UUID,
     listings: [Listing] = [],
     availableUsers: [User] = [],
+    preselectedListingId: UUID? = nil,
     onSave: @escaping () -> Void
   ) {
     self.defaultItemType = defaultItemType
     self.currentUserId = currentUserId
     self.listings = listings
     self.availableUsers = availableUsers
+    self.preselectedListingId = preselectedListingId
     self.onSave = onSave
     _itemType = State(initialValue: defaultItemType)
     // Start with no assignee - user can select themselves from the top of the list
@@ -51,6 +53,9 @@ struct QuickEntrySheet: View {
 
   /// Available users for assignee selection
   let availableUsers: [User]
+
+  /// Optional listing ID to pre-select when opening from a listing detail view
+  let preselectedListingId: UUID?
 
   /// Callback when save completes (for triggering sync)
   var onSave: () -> Void
@@ -86,6 +91,12 @@ struct QuickEntrySheet: View {
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.visible)
     #endif
+    .task {
+      // Pre-select listing if provided
+      if let listingId = preselectedListingId {
+        selectedListing = listings.first { $0.id == listingId }
+      }
+    }
   }
 
   // MARK: Private

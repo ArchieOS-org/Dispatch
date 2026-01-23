@@ -53,7 +53,7 @@ final class AppState: ObservableObject {
 
   enum SheetState: Equatable, Identifiable {
     case none
-    case quickEntry(type: QuickEntryItemType?)
+    case quickEntry(type: QuickEntryItemType?, preselectedListingId: UUID? = nil)
     case addListing
     case addRealtor
 
@@ -74,8 +74,8 @@ final class AppState: ObservableObject {
       switch (lhs, rhs) {
       case (.none, .none):
         true
-      case (.quickEntry(let l), .quickEntry(let r)):
-        l == r
+      case (.quickEntry(let lType, let lListingId), .quickEntry(let rType, let rListingId)):
+        lType == rType && lListingId == rListingId
       case (.addListing, .addListing):
         true
       case (.addRealtor, .addRealtor):
@@ -205,7 +205,7 @@ final class AppState: ObservableObject {
         break
       case .workspace, .search:
         // Default to quick entry for workspace or search
-        sheetState = .quickEntry(type: nil) // nil uses default behavior
+        sheetState = .quickEntry(type: nil, preselectedListingId: nil)
       }
 
     case .openSearch(let initialText):

@@ -20,6 +20,8 @@ struct iPadContentView: View {
   let activeListings: [Listing]
   let activeProperties: [Property]
   let activeRealtors: [User]
+  let users: [User]
+  let currentUserId: UUID
   let pathBindingProvider: (SidebarDestination) -> Binding<[AppRoute]>
 
   /// Global Quick Find text state
@@ -30,6 +32,9 @@ struct iPadContentView: View {
 
   /// Callback when search result is selected
   let onSelectSearchResult: (SearchResult) -> Void
+
+  /// Callback to request sync after save
+  let onRequestSync: () -> Void
 
   var body: some View {
     NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -65,14 +70,18 @@ struct iPadContentView: View {
           case .listing:
             appState.sheetState = .addListing
           case .task:
-            appState.sheetState = .quickEntry(type: .task)
+            appState.sheetState = .quickEntry(type: .task, preselectedListingId: nil)
           case .activity:
-            appState.sheetState = .quickEntry(type: .activity)
+            appState.sheetState = .quickEntry(type: .activity, preselectedListingId: nil)
           }
         }
         .padding(.trailing, DS.Spacing.floatingButtonMargin)
         .padding(.bottom, DS.Spacing.floatingButtonBottomInset)
       }
+    }
+    // iPad Sheet Handling
+    .sheet(item: appState.sheetBinding) { state in
+      sheetContent(for: state)
     }
     .overlay {
       // Search overlay - Conditional rendering per SwiftUI best practices
@@ -153,6 +162,33 @@ struct iPadContentView: View {
       }
 
     case .stage(let stage): StagedListingsView(stage: stage)
+    }
+  }
+
+  @ViewBuilder
+  private func sheetContent(for state: AppState.SheetState) -> some View {
+    switch state {
+    case .quickEntry(let type, let preselectedListingId):
+      QuickEntrySheet(
+        defaultItemType: type ?? .task,
+        currentUserId: currentUserId,
+        listings: activeListings,
+        availableUsers: users,
+        preselectedListingId: preselectedListingId,
+        onSave: { onRequestSync() }
+      )
+
+    case .addListing:
+      AddListingSheet(
+        currentUserId: currentUserId,
+        onSave: { onRequestSync() }
+      )
+
+    case .addRealtor:
+      EditRealtorSheet()
+
+    case .none:
+      EmptyView()
     }
   }
 }
