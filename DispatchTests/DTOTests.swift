@@ -196,6 +196,7 @@ struct ListingDTOTests {
           "country": "Canada",
           "price": 750000.00,
           "mls_number": "C1234567",
+          "real_dirt": null,
           "listing_type": "sale",
           "listing_type_id": null,
           "status": "active",
@@ -238,6 +239,7 @@ struct ListingDTOTests {
       country: "Canada",
       price: 1200000.00,
       mlsNumber: "V9876543",
+      realDirt: "Previous owner had water damage in basement",
       listingType: "lease",
       listingTypeId: nil,
       status: "active",
@@ -263,6 +265,40 @@ struct ListingDTOTests {
     #expect(model.listingType == ListingType.lease)
     #expect(model.status == ListingStatus.active)
     #expect(model.ownedBy == ownedBy)
+    #expect(model.realDirt == "Previous owner had water damage in basement")
+  }
+
+  @Test("ListingDTO handles nil realDirt correctly")
+  func testNilRealDirt() {
+    let dto = ListingDTO(
+      id: UUID(),
+      address: "789 Pine St",
+      city: "Calgary",
+      province: "AB",
+      postalCode: "T2P 1A1",
+      country: "Canada",
+      price: nil,
+      mlsNumber: nil,
+      realDirt: nil,
+      listingType: "sale",
+      listingTypeId: nil,
+      status: "draft",
+      stage: nil,
+      ownedBy: UUID(),
+      propertyId: nil,
+      createdVia: "dispatch",
+      sourceSlackMessages: nil,
+      activatedAt: nil,
+      pendingAt: nil,
+      closedAt: nil,
+      deletedAt: nil,
+      dueDate: nil,
+      createdAt: Date(),
+      updatedAt: Date()
+    )
+
+    let model = dto.toModel()
+    #expect(model.realDirt == nil)
   }
 }
 

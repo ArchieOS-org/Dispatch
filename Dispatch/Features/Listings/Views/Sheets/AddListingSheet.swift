@@ -70,6 +70,8 @@ struct AddListingSheet: View {
   @State private var address = ""
   @State private var city = ""
   @State private var province = ""
+  @State private var realDirt = ""
+  @State private var initialNote = ""
   @State private var selectedTypeId: UUID?
   @State private var selectedOwnerId: UUID?
 
@@ -108,6 +110,8 @@ struct AddListingSheet: View {
       locationSection
       typeSection
       ownerSection
+      realDirtSection
+      notesSection
     }
   }
 
@@ -167,6 +171,20 @@ struct AddListingSheet: View {
     }
   }
 
+  private var realDirtSection: some View {
+    Section("Real Dirt") {
+      TextField("Insider info, history, quirks...", text: $realDirt, axis: .vertical)
+        .lineLimit(1 ... 5)
+    }
+  }
+
+  private var notesSection: some View {
+    Section("Notes") {
+      TextField("Initial note...", text: $initialNote, axis: .vertical)
+        .lineLimit(1 ... 5)
+    }
+  }
+
   private func setSmartDefaults() {
     // Default type: "Sale" by name, fallback to first type
     if selectedTypeId == nil {
@@ -201,8 +219,28 @@ struct AddListingSheet: View {
     listing.typeDefinitionId = typeId
     listing.typeDefinition = selectedType
 
+    // Set realDirt if provided
+    let trimmedRealDirt = realDirt.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmedRealDirt.isEmpty {
+      listing.realDirt = trimmedRealDirt
+    }
+
     modelContext.insert(listing)
     listing.markPending()
+
+    // Create initial note if provided
+    let trimmedNote = initialNote.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmedNote.isEmpty {
+      let note = Note(
+        content: trimmedNote,
+        createdBy: currentUserId,
+        parentType: .listing,
+        parentId: listing.id
+      )
+      modelContext.insert(note)
+      listing.notes.append(note)
+    }
+
     onSave()
     dismiss()
   }

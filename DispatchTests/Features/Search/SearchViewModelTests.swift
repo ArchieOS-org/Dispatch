@@ -5,9 +5,10 @@
 //  Unit tests for SearchViewModel: debouncing, cancellation, and empty query handling.
 //
 
+import Combine
 import Foundation
 import Testing
-@testable import Dispatch
+@testable import DispatchApp
 
 // MARK: - Mock Search Index
 

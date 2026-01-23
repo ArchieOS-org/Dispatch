@@ -64,6 +64,7 @@ final class Listing: NotableProtocol {
   var country: String
   var price: Decimal?
   var mlsNumber: String?
+  var realDirt: String?
   var listingType: ListingType
   var status: ListingStatus
   var stageRaw: ListingStage?
