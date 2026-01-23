@@ -57,30 +57,31 @@ struct QuickEntrySheet: View {
 
   var body: some View {
     NavigationStack {
-      formContent
-        .navigationTitle("Quick Add")
-      #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-      #endif
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") {
-              dismiss()
-            }
-          }
-          ToolbarItem(placement: .confirmationAction) {
-            Button("Add") {
-              saveAndDismiss()
-            }
-            .disabled(!canSave)
+      StandardScreen(
+        title: "Quick Add",
+        layout: .column,
+        scroll: .disabled
+      ) {
+        formContent
+      } toolbarContent: {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Cancel") {
+            dismiss()
           }
         }
-        .sheet(isPresented: $showAssigneePicker) {
-          assigneePickerSheet
+        ToolbarItem(placement: .confirmationAction) {
+          Button("Add") {
+            saveAndDismiss()
+          }
+          .disabled(!canSave)
         }
-        .sheet(isPresented: $showListingPicker) {
-          listingPickerSheet
-        }
+      }
+      .sheet(isPresented: $showAssigneePicker) {
+        assigneePickerSheet
+      }
+      .sheet(isPresented: $showListingPicker) {
+        listingPickerSheet
+      }
     }
     #if os(iOS)
     .presentationDetents([.medium, .large])
@@ -118,120 +119,9 @@ struct QuickEntrySheet: View {
     Dictionary(uniqueKeysWithValues: availableUsers.map { ($0.id, $0) })
   }
 
-  // MARK: - Platform Form Content
+  // MARK: - Form Content
 
-  @ViewBuilder
   private var formContent: some View {
-    #if os(macOS)
-    macOSForm
-    #else
-    iOSForm
-    #endif
-  }
-
-  #if os(macOS)
-  private var macOSForm: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      LabeledContent("Type") {
-        Picker("Type", selection: $itemType) {
-          ForEach(QuickEntryItemType.allCases) { type in
-            Label(type.displayName, systemImage: type.icon)
-              .tag(type)
-          }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-      }
-
-      LabeledContent("Title") {
-        TextField("Title", text: $title, prompt: Text(titlePlaceholder))
-          .labelsHidden()
-          .textFieldStyle(.roundedBorder)
-      }
-
-      LabeledContent("Description") {
-        TextField("Description", text: $itemDescription, prompt: Text("Add details (optional)"))
-          .labelsHidden()
-          .textFieldStyle(.roundedBorder)
-      }
-
-      if !listings.isEmpty {
-        LabeledContent("Listing") {
-          Button {
-            showListingPicker = true
-          } label: {
-            HStack {
-              if let listing = selectedListing {
-                Text(listing.address.titleCased())
-                  .foregroundColor(DS.Colors.Text.primary)
-                  .lineLimit(1)
-              } else {
-                Text("None")
-                  .foregroundColor(DS.Colors.Text.tertiary)
-              }
-              Spacer()
-              Image(systemName: DS.Icons.Navigation.forward)
-                .font(DS.Typography.caption)
-                .foregroundColor(DS.Colors.Text.tertiary)
-            }
-            .contentShape(Rectangle())
-          }
-          .buttonStyle(.plain)
-          .frame(minHeight: DS.Spacing.minTouchTarget)
-          .accessibilityLabel("Listing")
-          .accessibilityValue(selectedListing?.address ?? "None")
-          .accessibilityHint("Double tap to select a listing")
-        }
-      }
-
-      VStack(alignment: .leading, spacing: 8) {
-        LabeledContent("Due Date") {
-          Toggle("", isOn: $hasDueDate)
-            .labelsHidden()
-        }
-        if hasDueDate {
-          DatePicker("", selection: $dueDate, displayedComponents: [.date])
-            .datePickerStyle(.graphical)
-            .labelsHidden()
-        }
-      }
-
-      LabeledContent("Assign to") {
-        Button {
-          showAssigneePicker = true
-        } label: {
-          HStack {
-            if selectedAssigneeIds.isEmpty {
-              Text("No one assigned")
-                .foregroundColor(DS.Colors.Text.tertiary)
-            } else {
-              let userLookup = Dictionary(uniqueKeysWithValues: availableUsers.map { ($0.id, $0) })
-              OverlappingAvatars(
-                userIds: Array(selectedAssigneeIds),
-                users: userLookup,
-                maxVisible: 3,
-                size: .small
-              )
-            }
-            Spacer()
-            Image(systemName: DS.Icons.Navigation.forward)
-              .font(DS.Typography.caption)
-              .foregroundColor(DS.Colors.Text.tertiary)
-          }
-          .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .frame(minHeight: DS.Spacing.minTouchTarget)
-        .accessibilityLabel("Assign to")
-        .accessibilityValue(selectedAssigneeIds.isEmpty ? "No one assigned" : "\(selectedAssigneeIds.count) people")
-        .accessibilityHint("Double tap to select assignees")
-      }
-    }
-    .padding()
-  }
-  #endif
-
-  private var iOSForm: some View {
     Form {
       Section {
         typePicker
@@ -244,6 +134,7 @@ struct QuickEntrySheet: View {
         assigneesRow
       }
     }
+    .formStyle(.grouped)
   }
 
   // MARK: - Form Rows
@@ -344,96 +235,20 @@ struct QuickEntrySheet: View {
   }
 
   private var assigneePickerSheet: some View {
-    NavigationStack {
-      MultiUserPicker(
-        selectedUserIds: $selectedAssigneeIds,
-        availableUsers: availableUsers,
-        currentUserId: currentUserId
-      )
-      .navigationTitle("Assign Users")
-      #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-      #endif
-        .toolbar {
-          ToolbarItem(placement: .confirmationAction) {
-            Button("Done") {
-              showAssigneePicker = false
-            }
-          }
-        }
-    }
-    #if os(macOS)
-    .frame(minWidth: 300, minHeight: 400)
-    #endif
+    MultiUserPickerSheet(
+      selectedUserIds: $selectedAssigneeIds,
+      availableUsers: availableUsers,
+      currentUserId: currentUserId,
+      onDone: { showAssigneePicker = false }
+    )
   }
 
   private var listingPickerSheet: some View {
-    NavigationStack {
-      List {
-        // "None" option
-        Button {
-          selectedListing = nil
-          showListingPicker = false
-        } label: {
-          HStack {
-            Text("None")
-              .foregroundColor(DS.Colors.Text.primary)
-            Spacer()
-            if selectedListing == nil {
-              Image(systemName: "checkmark")
-                .foregroundColor(DS.Colors.accent)
-            }
-          }
-          .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .frame(minHeight: DS.Spacing.minTouchTarget)
-
-        // Listing options
-        ForEach(listings) { listing in
-          Button {
-            selectedListing = listing
-            showListingPicker = false
-          } label: {
-            HStack {
-              VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-                Text(listing.address.titleCased())
-                  .font(DS.Typography.headline)
-                  .foregroundColor(DS.Colors.Text.primary)
-                  .lineLimit(1)
-                if !listing.city.isEmpty {
-                  Text(listing.city.titleCased())
-                    .font(DS.Typography.caption)
-                    .foregroundColor(DS.Colors.Text.secondary)
-                }
-              }
-              Spacer()
-              if selectedListing?.id == listing.id {
-                Image(systemName: "checkmark")
-                  .foregroundColor(DS.Colors.accent)
-              }
-            }
-            .contentShape(Rectangle())
-          }
-          .buttonStyle(.plain)
-          .frame(minHeight: DS.Spacing.minTouchTarget)
-        }
-      }
-      .navigationTitle("Select Listing")
-      #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-      #endif
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") {
-              showListingPicker = false
-            }
-          }
-        }
-    }
-    #if os(macOS)
-    .frame(minWidth: 300, minHeight: 400)
-    #endif
+    StandardListingPickerSheet(
+      selectedListing: $selectedListing,
+      listings: listings,
+      onDismiss: { showListingPicker = false }
+    )
   }
 
   private func saveAndDismiss() {

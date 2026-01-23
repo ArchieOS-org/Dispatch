@@ -266,33 +266,15 @@ struct WorkItemDetailView: View {
   }
 
   private var assigneePickerSheet: some View {
-    NavigationStack {
-      MultiUserPicker(
-        selectedUserIds: $selectedAssigneeIds,
-        availableUsers: availableUsers,
-        currentUserId: currentUserId
-      )
-      .navigationTitle("Assign Users")
-      #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-      #endif
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") {
-              showAssigneePicker = false
-            }
-          }
-          ToolbarItem(placement: .confirmationAction) {
-            Button("Done") {
-              showAssigneePicker = false
-              onAssigneesChanged?(Array(selectedAssigneeIds))
-            }
-          }
-        }
-    }
-    #if os(macOS)
-    .frame(minWidth: 300, minHeight: 400)
-    #endif
+    MultiUserPickerSheet(
+      selectedUserIds: $selectedAssigneeIds,
+      availableUsers: availableUsers,
+      currentUserId: currentUserId,
+      onDone: {
+        showAssigneePicker = false
+        onAssigneesChanged?(Array(selectedAssigneeIds))
+      }
+    )
   }
 
   private func sectionHeader(_ title: String) -> some View {

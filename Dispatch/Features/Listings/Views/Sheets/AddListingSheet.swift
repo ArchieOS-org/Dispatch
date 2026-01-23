@@ -27,27 +27,28 @@ struct AddListingSheet: View {
 
   var body: some View {
     NavigationStack {
-      Group {
-        if syncManager.isListingConfigReady {
-          formContent
-        } else {
-          loadingContent
+      StandardScreen(
+        title: "New Listing",
+        layout: .column,
+        scroll: .disabled
+      ) {
+        Group {
+          if syncManager.isListingConfigReady {
+            formContent
+          } else {
+            loadingContent
+          }
+        }
+      } toolbarContent: {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Cancel") { dismiss() }
+        }
+        ToolbarItem(placement: .confirmationAction) {
+          Button("Add") { saveAndDismiss() }
+            .disabled(!canSave || !syncManager.isListingConfigReady)
         }
       }
-      .navigationTitle("New Listing")
-      #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-      #endif
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") { dismiss() }
-          }
-          ToolbarItem(placement: .confirmationAction) {
-            Button("Add") { saveAndDismiss() }
-              .disabled(!canSave || !syncManager.isListingConfigReady)
-          }
-        }
-        .onAppear { setSmartDefaults() }
+      .onAppear { setSmartDefaults() }
     }
     #if os(iOS)
     .presentationDetents([.medium, .large])
@@ -113,6 +114,7 @@ struct AddListingSheet: View {
       realDirtSection
       notesSection
     }
+    .formStyle(.grouped)
   }
 
   private var addressSection: some View {
