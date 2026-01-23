@@ -49,8 +49,11 @@ struct MacContentView: View {
       .toolbar(removing: .title)
     }
     .navigationSplitViewStyle(.automatic)
+    // Toolbar on NavigationSplitView level ensures items remain visible and positioned
+    // consistently regardless of detail NavigationStack's navigation state (back button).
+    // On macOS, .primaryAction places items on leading edge after window controls -
+    // this is standard macOS toolbar convention (Finder, Mail, Notes all follow this).
     .toolbar {
-      // All buttons in one group on the right: Search, Add, Filter, Duplicate
       ToolbarItemGroup(placement: .primaryAction) {
         Button { windowUIState.openSearch(initialText: nil) } label: { Image(systemName: "magnifyingglass") }
           .help("Search")
