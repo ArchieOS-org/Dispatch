@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// Simple list picker for selecting multiple users.
-/// Features "Assign to me" quick action and sorted user list.
+/// Current user is sorted to top of list for easy access.
 struct MultiUserPicker: View {
 
   // MARK: Lifecycle
@@ -32,14 +32,7 @@ struct MultiUserPicker: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      // Quick action: Assign to me
-      if !selectedUserIds.contains(currentUserId), let currentUser = currentUserLookup {
-        assignToMeButton(user: currentUser)
-        Divider()
-          .padding(.vertical, DS.Spacing.xs)
-      }
-
-      // User list
+      // User list (current user sorted to top)
       ForEach(sortedUsers, id: \.id) { user in
         userRow(user: user)
       }
@@ -53,10 +46,6 @@ struct MultiUserPicker: View {
   @ScaledMetric(relativeTo: .footnote)
   private var checkmarkSize: CGFloat = 14
 
-  private var currentUserLookup: User? {
-    availableUsers.first { $0.id == currentUserId }
-  }
-
   private var sortedUsers: [User] {
     availableUsers.sorted { lhs, rhs in
       // Current user first, then alphabetical
@@ -64,25 +53,6 @@ struct MultiUserPicker: View {
       if rhs.id == currentUserId { return false }
       return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
     }
-  }
-
-  private func assignToMeButton(user _: User) -> some View {
-    Button {
-      selectedUserIds.insert(currentUserId)
-    } label: {
-      HStack(spacing: DS.Spacing.sm) {
-        Image(systemName: "person.fill.badge.plus")
-          .foregroundStyle(DS.Colors.accent)
-        Text("Assign to me")
-          .font(DS.Typography.body)
-          .foregroundStyle(DS.Colors.accent)
-        Spacer()
-      }
-      .padding(.horizontal, DS.Spacing.md)
-      .padding(.vertical, DS.Spacing.sm)
-      .contentShape(Rectangle())
-    }
-    .buttonStyle(.plain)
   }
 
   private func userRow(user: User) -> some View {
