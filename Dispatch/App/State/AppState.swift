@@ -61,11 +61,15 @@ final class AppState: ObservableObject {
 
     var id: String {
       switch self {
-      case .none: "none"
-      case .quickEntry(_, let listingId):
-        "quickEntry-\(listingId?.uuidString ?? "none")"
-      case .addListing: "addListing"
-      case .addRealtor: "addRealtor"
+      case .none:
+        return "none"
+      case .quickEntry(let type, let listingId):
+        let typeStr = type?.rawValue ?? "none"
+        return "quickEntry-\(typeStr)-\(listingId?.uuidString ?? "none")"
+      case .addListing:
+        return "addListing"
+      case .addRealtor:
+        return "addRealtor"
       }
     }
 
