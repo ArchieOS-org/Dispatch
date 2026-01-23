@@ -15,6 +15,7 @@ import SwiftUI
 /// - Smart defaults (system "Sale", current user if Realtor)
 /// - Single source of truth (ownedBy is authoritative)
 /// - Legacy enum derived, not hardcoded
+/// - Platform-adaptive layout (Form on iOS, VStack on macOS)
 struct AddListingSheet: View {
 
   // MARK: Internal
@@ -94,6 +95,8 @@ struct AddListingSheet: View {
     listingTypes.first { $0.id == selectedTypeId }
   }
 
+  // MARK: - Content Views
+
   private var loadingContent: some View {
     VStack(spacing: DS.Spacing.md) {
       ProgressView()
@@ -105,7 +108,7 @@ struct AddListingSheet: View {
   }
 
   private var formContent: some View {
-    Form {
+    FormSheetContainer {
       addressSection
       locationSection
       typeSection
@@ -115,75 +118,101 @@ struct AddListingSheet: View {
     }
   }
 
+  // MARK: - Form Sections
+
   private var addressSection: some View {
-    Section {
-      TextField("Property address", text: $address)
-    } header: {
-      Text("Address")
-    } footer: {
-      if trimmedAddress.isEmpty {
-        Text("Required")
-          .foregroundColor(DS.Colors.destructive)
-      }
-    }
+    FormSheetTextRow(
+      "Address",
+      placeholder: "Property address",
+      text: $address,
+      isRequired: true,
+      errorMessage: "Required"
+    )
   }
 
   private var locationSection: some View {
-    Section("Location") {
-      TextField("City", text: $city)
-      TextField("Province", text: $province)
+    FormSheetSection("Location") {
+      FormSheetRow("City") {
+        TextField("City", text: $city)
+      }
+      FormSheetRow("Province") {
+        TextField("Province", text: $province)
+      }
     }
   }
 
   private var typeSection: some View {
-    Section("Type") {
-      Picker("Listing Type", selection: $selectedTypeId) {
+    FormSheetSection("Type") {
+      FormSheetPickerRow("Listing Type", selection: $selectedTypeId) {
         ForEach(listingTypes) { type in
           Text(type.name).tag(type.id as UUID?)
         }
       }
-      .pickerStyle(.menu)
     }
   }
 
+  @ViewBuilder
   private var ownerSection: some View {
-    Section("Owner") {
+    FormSheetSection("Owner") {
       if realtors.isEmpty {
-        Text("No realtors available")
-          .foregroundStyle(DS.Colors.Text.secondary)
+        noRealtorsView
       } else if realtors.count == 1, selectedOwnerId == realtors.first?.id {
-        // Single realtor, auto-selected - show as read-only
-        HStack {
-          Text("Realtor")
-          Spacer()
-          Text(realtors.first?.name ?? "")
-            .foregroundStyle(DS.Colors.Text.secondary)
-        }
+        singleRealtorView
       } else {
-        Picker("Realtor", selection: $selectedOwnerId) {
-          Text("Select Realtor").tag(nil as UUID?)
-          ForEach(realtors) { realtor in
-            Text(realtor.name).tag(realtor.id as UUID?)
-          }
-        }
-        .pickerStyle(.menu)
+        realtorPickerView
+      }
+    }
+  }
+
+  private var noRealtorsView: some View {
+    Text("No realtors available")
+      .foregroundStyle(DS.Colors.Text.secondary)
+  }
+
+  private var singleRealtorView: some View {
+    HStack {
+      Text("Realtor")
+      Spacer()
+      Text(realtors.first?.name ?? "")
+        .foregroundStyle(DS.Colors.Text.secondary)
+    }
+    .frame(minHeight: DS.Spacing.minTouchTarget)
+  }
+
+  private var realtorPickerView: some View {
+    FormSheetPickerRow("Realtor", selection: $selectedOwnerId) {
+      Text("Select Realtor").tag(nil as UUID?)
+      ForEach(realtors) { realtor in
+        Text(realtor.name).tag(realtor.id as UUID?)
       }
     }
   }
 
   private var realDirtSection: some View {
-    Section("Real Dirt") {
-      TextField("Insider info, history, quirks...", text: $realDirt, axis: .vertical)
-        .lineLimit(1 ... 5)
+    FormSheetSection("Real Dirt") {
+      FormSheetTextRow(
+        "Details",
+        placeholder: "Insider info, history, quirks...",
+        text: $realDirt,
+        axis: .vertical,
+        lineLimit: 1 ... 5
+      )
     }
   }
 
   private var notesSection: some View {
-    Section("Notes") {
-      TextField("Initial note...", text: $initialNote, axis: .vertical)
-        .lineLimit(1 ... 5)
+    FormSheetSection("Notes") {
+      FormSheetTextRow(
+        "Note",
+        placeholder: "Initial note...",
+        text: $initialNote,
+        axis: .vertical,
+        lineLimit: 1 ... 5
+      )
     }
   }
+
+  // MARK: - Actions
 
   private func setSmartDefaults() {
     // Default type: "Sale" by name, fallback to first type

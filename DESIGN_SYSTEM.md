@@ -593,6 +593,76 @@ if text.isEmpty {
 
 ---
 
+## Form Sheet Patterns
+
+### FormSheetContainer
+
+A platform-adaptive container for entity creation/editing sheets. Provides consistent layout across iOS (Form) and macOS (VStack + LabeledContent).
+
+**Location**: `Dispatch/Design/Shared/Components/FormSheetContainer.swift`
+
+**Components**:
+- `FormSheetContainer` - Main wrapper (Form on iOS, VStack on macOS)
+- `FormSheetSection` - Section with header (Section on iOS, VStack with title on macOS)
+- `FormSheetRow` - Single labeled row (LabeledContent on macOS)
+- `FormSheetTextRow` - Text field with validation support
+- `FormSheetPickerRow` - Picker with consistent styling
+- `FormSheetNavigationRow` - Drill-down selection row
+
+**Usage**:
+```swift
+FormSheetContainer {
+    FormSheetTextRow(
+        "Address",
+        placeholder: "Property address",
+        text: $address,
+        isRequired: true,
+        errorMessage: "Required"
+    )
+
+    FormSheetSection("Location") {
+        FormSheetRow("City") {
+            TextField("City", text: $city)
+        }
+        FormSheetRow("Province") {
+            TextField("Province", text: $province)
+        }
+    }
+
+    FormSheetSection("Type") {
+        FormSheetPickerRow("Listing Type", selection: $selectedTypeId) {
+            ForEach(listingTypes) { type in
+                Text(type.name).tag(type.id as UUID?)
+            }
+        }
+    }
+
+    FormSheetSection("Notes", footer: "Optional notes") {
+        FormSheetTextRow(
+            "Note",
+            placeholder: "Add notes...",
+            text: $notes,
+            axis: .vertical,
+            lineLimit: 1...5
+        )
+    }
+}
+```
+
+**Features**:
+- Platform-adaptive: Form on iOS/iPadOS, VStack + LabeledContent on macOS
+- DS.Spacing tokens throughout (lg, xl, sm, xs)
+- Validation support with error messages
+- Multiline text fields with line limits
+- Minimum touch targets (44pt)
+
+**When to Use**:
+- Entity creation sheets (AddListingSheet, QuickEntrySheet)
+- Edit forms
+- Settings forms with labeled fields
+
+---
+
 ## Sidebar Patterns
 
 ### UnifiedSidebarContent
