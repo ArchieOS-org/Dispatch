@@ -7,7 +7,7 @@
 
 import Foundation
 import Testing
-@testable import Dispatch
+@testable import DispatchApp
 
 // MARK: - Test Helpers
 

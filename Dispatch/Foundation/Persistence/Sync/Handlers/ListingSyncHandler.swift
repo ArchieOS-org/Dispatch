@@ -153,6 +153,7 @@ final class ListingSyncHandler: EntitySyncHandlerProtocol {
       existing.country = dto.country ?? "Canada"
       existing.price = dto.price.map { Decimal($0) }
       existing.mlsNumber = dto.mlsNumber
+      existing.realDirt = dto.realDirt
       existing.listingType = ListingType(rawValue: dto.listingType) ?? .sale
       existing.status = ListingStatus(rawValue: dto.status) ?? .draft
       if let stageValue = dto.stage, let resolvedStage = ListingStage(rawValue: stageValue) {

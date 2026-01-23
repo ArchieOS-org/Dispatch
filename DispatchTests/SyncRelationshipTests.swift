@@ -52,7 +52,7 @@ final class SyncRelationshipTests: XCTestCase {
     let listingDTO = ListingDTO(
       id: listingId,
       address: "123 Main St",
-      city: nil, province: nil, postalCode: nil, country: nil, price: nil, mlsNumber: nil,
+      city: nil, province: nil, postalCode: nil, country: nil, price: nil, mlsNumber: nil, realDirt: nil,
       listingType: "sale", listingTypeId: nil, status: "active", stage: nil,
       ownedBy: userId, propertyId: nil, // Points to user
       createdVia: "dispatch", sourceSlackMessages: nil,

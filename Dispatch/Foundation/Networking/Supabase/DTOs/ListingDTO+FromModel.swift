@@ -19,6 +19,7 @@ extension ListingDTO {
     // Convert Decimal to Double for Supabase
     price = model.price.map { NSDecimalNumber(decimal: $0).doubleValue }
     mlsNumber = model.mlsNumber
+    realDirt = model.realDirt
     listingType = model.listingType.rawValue
     listingTypeId = model.typeDefinitionId
     status = model.status.rawValue
