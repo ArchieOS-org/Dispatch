@@ -127,13 +127,15 @@ struct iPadContentView: View {
 
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var overlayState: AppOverlayState
-  @Environment(\.globalButtonsHidden) private var environmentHidden
   @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
   /// Single source of truth for FAB visibility.
-  /// Combines environment-based hiding (SettingsScreen) with state-based hiding (keyboard, modals).
+  /// Uses AppOverlayState which tracks all hide reasons including:
+  /// - .settingsScreen (set by SettingsScreen wrapper)
+  /// - .textInput (set when text fields are focused)
+  /// - .keyboard (set when keyboard is visible)
   private var shouldHideFAB: Bool {
-    environmentHidden || overlayState.isOverlayHidden
+    overlayState.isOverlayHidden
   }
 
   private var tabCounts: [AppTab: Int] {

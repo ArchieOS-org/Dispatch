@@ -49,23 +49,26 @@ struct iPhoneContentView: View {
   let onRequestSync: () -> Void
 
   var body: some View {
-    NavigationStack(path: phonePathBinding) {
-      PullToSearchHost {
-        MenuPageView(
-          stageCounts: stageCounts,
-          tabCounts: phoneTabCounts,
-          overdueCount: overdueCount
-        )
-      }
-      .appDestinations()
-      // GlobalFloatingButtons MUST be inside NavigationStack to receive environment values
-      // set by destination views (e.g., SettingsScreen sets .globalButtonsHidden)
-      .overlay(alignment: .bottom) {
-        // Only show when no search/settings overlay is active
-        // GlobalFloatingButtons internally handles keyboard/text input hiding via AppOverlayState
-        if appState.overlayState == .none {
-          GlobalFloatingButtons()
+    // ZStack allows GlobalFloatingButtons to persist during NavigationStack transitions.
+    // The overlay is a sibling to NavigationStack, not a descendant of the root view,
+    // so it remains visible when navigating to destination views.
+    ZStack(alignment: .bottom) {
+      NavigationStack(path: phonePathBinding) {
+        PullToSearchHost {
+          MenuPageView(
+            stageCounts: stageCounts,
+            tabCounts: phoneTabCounts,
+            overdueCount: overdueCount
+          )
         }
+        .appDestinations()
+      }
+
+      // GlobalFloatingButtons uses AppOverlayState (EnvironmentObject) for visibility.
+      // SettingsScreen calls overlayState.hide(.settingsScreen) to hide during settings.
+      // Only show when no search/settings overlay is active.
+      if appState.overlayState == .none {
+        GlobalFloatingButtons()
       }
     }
     .overlay {
