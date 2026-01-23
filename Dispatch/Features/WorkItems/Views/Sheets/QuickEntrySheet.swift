@@ -26,20 +26,19 @@ struct QuickEntrySheet: View {
     currentUserId: UUID,
     listings: [Listing] = [],
     availableUsers: [User] = [],
-    preselectedListingId: UUID? = nil,
+    preselectedListing: Listing? = nil,
     onSave: @escaping () -> Void
   ) {
     self.defaultItemType = defaultItemType
     self.currentUserId = currentUserId
     self.listings = listings
     self.availableUsers = availableUsers
-    self.preselectedListingId = preselectedListingId
+    self.preselectedListing = preselectedListing
     self.onSave = onSave
     _itemType = State(initialValue: defaultItemType)
     // Start with no assignee - user can select themselves from the top of the list
     _selectedAssigneeIds = State(initialValue: [])
-    // Initialize selectedListing to nil - will be fetched via .task using modelContext
-    // This ensures we get the ACTUAL listing from SwiftData regardless of query context
+    // Initialize selectedListing to nil - will be set via .onAppear (before first render)
     _selectedListing = State(initialValue: nil)
   }
 
@@ -57,8 +56,8 @@ struct QuickEntrySheet: View {
   /// Available users for assignee selection
   let availableUsers: [User]
 
-  /// Optional listing ID to pre-select when opening from a listing detail view
-  let preselectedListingId: UUID?
+  /// Optional listing to pre-select when opening from a listing detail view
+  let preselectedListing: Listing?
 
   /// Callback when save completes (for triggering sync)
   var onSave: () -> Void
@@ -94,14 +93,12 @@ struct QuickEntrySheet: View {
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.visible)
     #endif
-    .task {
-      // Fetch listing by ID using modelContext to ensure we get the ACTUAL listing
-      // from SwiftData, regardless of which query context it came from
-      if let listingId = preselectedListingId, selectedListing == nil {
-        let descriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingId })
-        if let listing = try? modelContext.fetch(descriptor).first {
-          selectedListing = listing
-        }
+    .onAppear {
+      // Set preselected listing synchronously before first render
+      // Using .onAppear instead of .task because .task executes AFTER first render,
+      // causing the Picker to show "None" before the fetch completes
+      if selectedListing == nil, let listing = preselectedListing {
+        selectedListing = listing
       }
     }
   }

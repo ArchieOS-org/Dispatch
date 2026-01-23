@@ -147,7 +147,7 @@ struct MacContentView: View {
     switch appState.router.selectedDestination {
     case .tab(.listings), .stage: appState.sheetState = .addListing
     case .tab(.realtors): appState.sheetState = .addRealtor
-    default: appState.sheetState = .quickEntry(type: nil, preselectedListingId: nil)
+    default: appState.sheetState = .quickEntry(type: nil, preselectedListing: nil)
     }
   }
 
@@ -171,15 +171,16 @@ struct MacContentView: View {
   @ViewBuilder
   private func sheetContent(for state: AppState.SheetState) -> some View {
     switch state {
-    case .quickEntry(let type, let preselectedListingId):
+    case .quickEntry(let type, let preselectedListing):
       QuickEntrySheet(
         defaultItemType: type ?? .task,
         currentUserId: currentUserId,
         listings: activeListings,
         availableUsers: users,
-        preselectedListingId: preselectedListingId,
+        preselectedListing: preselectedListing,
         onSave: onRequestSync
       )
+      .id(state.id) // Force view recreation when state changes (fixes pre-selection timing)
 
     case .addListing: AddListingSheet(currentUserId: currentUserId, onSave: onRequestSync)
 

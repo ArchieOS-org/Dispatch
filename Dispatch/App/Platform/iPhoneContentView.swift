@@ -126,15 +126,16 @@ struct iPhoneContentView: View {
   @ViewBuilder
   private func sheetContent(for state: AppState.SheetState) -> some View {
     switch state {
-    case .quickEntry(let type, let preselectedListingId):
+    case .quickEntry(let type, let preselectedListing):
       QuickEntrySheet(
         defaultItemType: type ?? .task,
         currentUserId: currentUserId,
         listings: activeListings,
         availableUsers: users,
-        preselectedListingId: preselectedListingId,
+        preselectedListing: preselectedListing,
         onSave: { onRequestSync() }
       )
+      .id(state.id) // Force view recreation when state changes (fixes pre-selection timing)
 
     case .addListing:
       AddListingSheet(

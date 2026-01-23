@@ -73,9 +73,9 @@ struct iPadContentView: View {
           case .listing:
             appState.sheetState = .addListing
           case .task:
-            appState.sheetState = .quickEntry(type: .task, preselectedListingId: nil)
+            appState.sheetState = .quickEntry(type: .task, preselectedListing: nil)
           case .activity:
-            appState.sheetState = .quickEntry(type: .activity, preselectedListingId: nil)
+            appState.sheetState = .quickEntry(type: .activity, preselectedListing: nil)
           }
         }
         .padding(.trailing, DS.Spacing.floatingButtonMargin)
@@ -173,15 +173,16 @@ struct iPadContentView: View {
   @ViewBuilder
   private func sheetContent(for state: AppState.SheetState) -> some View {
     switch state {
-    case .quickEntry(let type, let preselectedListingId):
+    case .quickEntry(let type, let preselectedListing):
       QuickEntrySheet(
         defaultItemType: type ?? .task,
         currentUserId: currentUserId,
         listings: activeListings,
         availableUsers: users,
-        preselectedListingId: preselectedListingId,
+        preselectedListing: preselectedListing,
         onSave: { onRequestSync() }
       )
+      .id(state.id) // Force view recreation when state changes (fixes pre-selection timing)
 
     case .addListing:
       AddListingSheet(

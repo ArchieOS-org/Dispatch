@@ -180,10 +180,10 @@ struct ListingDetailView: View {
   private var listingActions: [OverflowMenu.Action] {
     [
       OverflowMenu.Action(id: "addTask", title: "Add Task", icon: DS.Icons.Entity.task) {
-        appState.sheetState = .quickEntry(type: .task, preselectedListingId: listing.id)
+        appState.sheetState = .quickEntry(type: .task, preselectedListing: listing)
       },
       OverflowMenu.Action(id: "addActivity", title: "Add Activity", icon: DS.Icons.Entity.activity) {
-        appState.sheetState = .quickEntry(type: .activity, preselectedListingId: listing.id)
+        appState.sheetState = .quickEntry(type: .activity, preselectedListing: listing)
       },
       OverflowMenu.Action(id: "edit", title: "Edit Listing", icon: DS.Icons.Action.edit) {
         showEditListingSheet = true
