@@ -95,6 +95,7 @@ struct QuickEntrySheet: View {
 
   @State private var itemType: QuickEntryItemType
   @State private var title = ""
+  @State private var itemDescription = ""
   @State private var selectedListing: Listing?
   @State private var hasDueDate = false
   @State private var dueDate = Date()
@@ -144,6 +145,12 @@ struct QuickEntrySheet: View {
 
       LabeledContent("Title") {
         TextField("Title", text: $title, prompt: Text(titlePlaceholder))
+          .labelsHidden()
+          .textFieldStyle(.roundedBorder)
+      }
+
+      LabeledContent("Description") {
+        TextField("Description", text: $itemDescription, prompt: Text("Add details (optional)"))
           .labelsHidden()
           .textFieldStyle(.roundedBorder)
       }
@@ -229,6 +236,7 @@ struct QuickEntrySheet: View {
       Section {
         typePicker
         titleField
+        descriptionField
         if !listings.isEmpty {
           listingPicker
         }
@@ -252,6 +260,10 @@ struct QuickEntrySheet: View {
 
   private var titleField: some View {
     TextField("Title", text: $title, prompt: Text(titlePlaceholder))
+  }
+
+  private var descriptionField: some View {
+    TextField("Description", text: $itemDescription, prompt: Text("Add details (optional)"))
   }
 
   private var listingPicker: some View {
@@ -429,11 +441,13 @@ struct QuickEntrySheet: View {
     guard !trimmedTitle.isEmpty else { return }
 
     let effectiveDueDate = hasDueDate ? dueDate : nil
+    let trimmedDescription = itemDescription.trimmingCharacters(in: .whitespaces)
 
     switch itemType {
     case .task:
       let task = TaskItem(
         title: trimmedTitle,
+        taskDescription: trimmedDescription,
         dueDate: effectiveDueDate,
         declaredBy: currentUserId,
         listingId: selectedListing?.id,
@@ -452,6 +466,7 @@ struct QuickEntrySheet: View {
     case .activity:
       let activity = Activity(
         title: trimmedTitle,
+        activityDescription: trimmedDescription,
         dueDate: effectiveDueDate,
         declaredBy: currentUserId,
         listingId: selectedListing?.id,
