@@ -54,7 +54,12 @@ struct HistorySection: View {
   @State private var restoreToastMessage: String?
 
   private var displayedEntries: [AuditEntry] {
-    showAllHistory ? entries : Array(entries.prefix(5))
+    let deduped = deduplicateEntries(entries)
+    return showAllHistory ? deduped : Array(deduped.prefix(5))
+  }
+
+  private var dedupedEntryCount: Int {
+    deduplicateEntries(entries).count
   }
 
   private var sectionHeader: some View {
@@ -62,13 +67,13 @@ struct HistorySection: View {
       Text("History")
         .font(DS.Typography.headline)
         .foregroundColor(DS.Colors.Text.primary)
-      Text("(\(entries.count))")
+      Text("(\(dedupedEntryCount))")
         .font(DS.Typography.bodySecondary)
         .foregroundColor(DS.Colors.Text.secondary)
       Spacer()
     }
     .accessibilityElement(children: .combine)
-    .accessibilityLabel("History, \(entries.count)")
+    .accessibilityLabel("History, \(dedupedEntryCount)")
   }
 
   @ViewBuilder
@@ -139,17 +144,64 @@ struct HistorySection: View {
         }
       }
 
-      if entries.count > 5, !showAllHistory {
+      if dedupedEntryCount > 5, !showAllHistory {
         Button {
           withAnimation { showAllHistory = true }
         } label: {
-          Text("Show all \(entries.count) events")
+          Text("Show all \(dedupedEntryCount) events")
             .font(DS.Typography.caption)
             .foregroundColor(DS.Colors.accent)
         }
         .padding(.top, DS.Spacing.sm)
       }
     }
+  }
+
+  /// Collapse entries at the same timestamp from the same logical operation.
+  /// - Task creation + initial assignee at same timestamp -> single "Created" entry
+  /// - Multiple INSERT entries at same second -> collapsed into first
+  private func deduplicateEntries(_ entries: [AuditEntry]) -> [AuditEntry] {
+    guard !entries.isEmpty else { return [] }
+
+    // Group by (timestamp rounded to second, changedBy, action)
+    // Keep only the primary entity entry when multiple entries occur at same timestamp
+    var result: [AuditEntry] = []
+    var seenTimestampKeys: Set<String> = []
+
+    for entry in entries {
+      // Create a key based on timestamp (to second), user, and action
+      let timestampKey = makeTimestampKey(entry)
+
+      // For INSERT actions at the same timestamp, keep the primary entity (task/activity/listing)
+      // and skip related entities (assignees, notes)
+      if entry.action == .insert {
+        if seenTimestampKeys.contains(timestampKey) {
+          // Skip duplicate INSERTs at same timestamp - likely creation + initial assignment
+          // But only skip if this is a related entity type
+          let isRelatedEntity =
+            entry.entityType == .taskAssignee ||
+            entry.entityType == .activityAssignee ||
+            entry.entityType == .note
+          if isRelatedEntity {
+            continue
+          }
+        }
+        seenTimestampKeys.insert(timestampKey)
+      }
+
+      result.append(entry)
+    }
+
+    return result
+  }
+
+  /// Create a deduplication key from timestamp (rounded to second) and user
+  private func makeTimestampKey(_ entry: AuditEntry) -> String {
+    // Round timestamp to nearest second for grouping
+    let roundedTimestamp = Int(entry.changedAt.timeIntervalSince1970)
+    let userId = entry.changedBy?.uuidString ?? "system"
+    let action = entry.action.rawValue
+    return "\(roundedTimestamp)-\(userId)-\(action)"
   }
 
   private func errorState(_: Error) -> some View {

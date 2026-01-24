@@ -32,9 +32,16 @@ struct HistoryEntryRow: View {
         }
       }
 
-      Text(AuditSummaryBuilder(entry: entry, actorName: actorName, entityType: entry.entityType).build())
-        .font(DS.Typography.caption)
-        .foregroundColor(DS.Colors.Text.secondary)
+      Text(
+        AuditSummaryBuilder(
+          entry: entry,
+          actorName: actorName,
+          entityType: entry.entityType,
+          userLookup: userLookup
+        ).build()
+      )
+      .font(DS.Typography.caption)
+      .foregroundColor(DS.Colors.Text.secondary)
 
       HStack(spacing: DS.Spacing.xs) {
         Text(entry.changedAt.formatted(date: .abbreviated, time: .shortened))
@@ -84,7 +91,12 @@ struct HistoryEntryRow: View {
   }
 
   private var accessibilityLabel: String {
-    let summary = AuditSummaryBuilder(entry: entry, actorName: actorName, entityType: entry.entityType).build()
+    let summary = AuditSummaryBuilder(
+      entry: entry,
+      actorName: actorName,
+      entityType: entry.entityType,
+      userLookup: userLookup
+    ).build()
     let timestamp = entry.changedAt.formatted(date: .abbreviated, time: .shortened)
     return "\(summary), \(timestamp)"
   }

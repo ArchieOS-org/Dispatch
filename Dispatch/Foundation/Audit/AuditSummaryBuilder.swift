@@ -17,6 +17,8 @@ struct AuditSummaryBuilder {
   let entry: AuditEntry
   let actorName: String
   let entityType: AuditableEntity
+  /// Optional user lookup for resolving assignee names. Defaults to nil.
+  var userLookup: ((UUID) -> User?)? = nil
 
   /// Build a human-readable summary sentence.
   func build() -> String {
@@ -50,37 +52,52 @@ struct AuditSummaryBuilder {
   private func buildAssignmentSummary() -> String {
     let row = entry.newRow ?? entry.oldRow
 
-    // Get the assigned user's ID
-    let assigneeId = row?["user_id"]?.value as? String
+    // Get the assigned user's ID and who assigned them
+    let assigneeIdString = row?["user_id"]?.value as? String
+    let assignedByIdString = row?["assigned_by"]?.value as? String
+
+    // Parse UUIDs for lookup
+    let assigneeId = assigneeIdString.flatMap { UUID(uuidString: $0) }
+
+    // Get assignee name via lookup if available
+    let assigneeName: String? = assigneeId.flatMap { userLookup?($0)?.name }
+
+    // Determine if this was a self-assignment (claim) vs assigned by another
+    let isSelfAssignment = assigneeIdString != nil && assigneeIdString == assignedByIdString
 
     switch entry.action {
     case .insert:
       // Someone was assigned
-      if let assigneeId, assigneeId == actorName || isCurrentActor(assigneeId) {
-        return "\(actorName) was assigned to this"
+      if isSelfAssignment {
+        return "\(actorName) claimed this"
       }
-      return "\(actorName) assigned someone to this"
+      // actorName is the person who made the change (changedBy = assigned_by)
+      if let assigneeName {
+        return "\(actorName) assigned \(assigneeName)"
+      }
+      return "\(actorName) assigned someone"
 
     case .delete:
       // Someone was unassigned
-      if let assigneeId, assigneeId == actorName || isCurrentActor(assigneeId) {
-        return "\(actorName) was unassigned from this"
+      // Check if the actor (changedBy) is the same as assignee
+      let actorIsAssignee = entry.changedBy != nil && entry.changedBy == assigneeId
+      if actorIsAssignee || isSelfAssignment {
+        return "\(actorName) removed themselves"
       }
-      return "\(actorName) unassigned someone from this"
+      if let assigneeName {
+        return "\(actorName) unassigned \(assigneeName)"
+      }
+      return "\(actorName) unassigned someone"
 
     case .update:
       return "\(actorName) updated assignment"
 
     case .restore:
+      if let assigneeName {
+        return "\(actorName) restored \(assigneeName)'s assignment"
+      }
       return "\(actorName) restored assignment"
     }
-  }
-
-  /// Check if the given ID string represents the current actor
-  private func isCurrentActor(_: String) -> Bool {
-    // The actorName is the display name, not the UUID, so we can't directly compare
-    // This is a simplified check - in practice the caller provides the resolved name
-    false
   }
 
   // MARK: - Note Summaries
@@ -106,8 +123,9 @@ struct AuditSummaryBuilder {
     let systemFields = Set(["id", "sync_status", "pending_changes", "created_at", "updated_at"])
     let changedFields = newRow.keys.filter { key in
       guard !systemFields.contains(key) else { return false }
-      guard let oldValue = oldRow[key], let newValue = newRow[key] else { return false }
-      return String(describing: oldValue.value) != String(describing: newValue.value)
+      let oldValue = oldRow[key]
+      let newValue = newRow[key]
+      return !valuesAreEqual(oldValue, newValue)
     }
 
     guard !changedFields.isEmpty else { return "\(actorName) made changes" }
@@ -154,7 +172,9 @@ struct AuditSummaryBuilder {
 
   private func formatValue(_ value: AnyCodable?, for field: String) -> String {
     guard let value else { return "none" }
-    let raw = String(describing: value.value)
+
+    // Extract the actual value from AnyCodable
+    let raw = normalizeValue(value)
 
     if field == "price", let number = Double(raw) {
       let formatter = NumberFormatter()
@@ -168,5 +188,46 @@ struct AuditSummaryBuilder {
     }
 
     return raw.isEmpty ? "none" : raw
+  }
+
+  /// Compare two AnyCodable values for equality with proper type handling
+  private func valuesAreEqual(_ lhs: AnyCodable?, _ rhs: AnyCodable?) -> Bool {
+    // Handle nil cases
+    switch (lhs, rhs) {
+    case (nil, nil):
+      true
+    case (nil, _), (_, nil):
+      false
+    case (let left?, let right?):
+      normalizeValue(left) == normalizeValue(right)
+    }
+  }
+
+  /// Normalize an AnyCodable value to a comparable string representation
+  private func normalizeValue(_ value: AnyCodable) -> String {
+    let raw = value.value
+
+    // Handle NSNull explicitly
+    if raw is NSNull {
+      return ""
+    }
+
+    // Handle common types explicitly for consistent comparison
+    switch raw {
+    case let bool as Bool:
+      return bool ? "true" : "false"
+    case let int as Int:
+      return String(int)
+    case let double as Double:
+      // Use fixed precision to avoid floating point comparison issues
+      return String(format: "%.6f", double)
+    case let string as String:
+      return string
+    case let uuid as UUID:
+      return uuid.uuidString
+    default:
+      // Fallback to string description
+      return String(describing: raw)
+    }
   }
 }
