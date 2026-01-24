@@ -5,6 +5,7 @@
 //
 
 import Supabase
+import SwiftData
 import SwiftUI
 
 // MARK: - RecentlyDeletedView
@@ -33,6 +34,8 @@ struct RecentlyDeletedView: View {
   }
 
   // MARK: Private
+
+  @Environment(\.modelContext) private var modelContext
 
   @State private var entries: [AuditEntry] = []
   @State private var filter: AuditableEntity?
@@ -196,6 +199,13 @@ struct RecentlyDeletedView: View {
       )
       #endif
 
+      // CRITICAL: Fetch and insert restored entity into local SwiftData immediately.
+      // Without this, the entity only exists on server until next sync.
+      // The reconciliation pass would then fetch it, but with timestamp precision issues
+      // that can cause a sync loop (server timestamp >= lastSyncTime -> re-fetched each sync).
+      // By inserting it here with markSynced(), we ensure proper sync state.
+      try await fetchAndInsertRestoredEntity(entityType: entry.entityType, entityId: restoredId)
+
       // Remove from list
       Task { @MainActor in
         entries.removeAll { $0.id == entry.id }
@@ -208,6 +218,94 @@ struct RecentlyDeletedView: View {
       Task { @MainActor in
         self.error = error
       }
+    }
+  }
+
+  /// Fetches the restored entity from Supabase and inserts it into local SwiftData.
+  /// This prevents sync loops by ensuring the entity exists locally with correct sync state
+  /// before the next sync cycle runs.
+  private func fetchAndInsertRestoredEntity(entityType: AuditableEntity, entityId: UUID) async throws {
+    switch entityType {
+    case .task:
+      let dto: TaskDTO = try await supabase
+        .from("tasks")
+        .select()
+        .eq("id", value: entityId.uuidString)
+        .single()
+        .execute()
+        .value
+      let task = dto.toModel()
+      task.markSynced()
+      modelContext.insert(task)
+      #if DEBUG
+      debugLog.log(
+        "[AUDIT] Inserted restored task into SwiftData: \(entityId) - \(task.title)",
+        category: .sync
+      )
+      #endif
+
+    case .listing:
+      let dto: ListingDTO = try await supabase
+        .from("listings")
+        .select()
+        .eq("id", value: entityId.uuidString)
+        .single()
+        .execute()
+        .value
+      let listing = dto.toModel()
+      listing.markSynced()
+      modelContext.insert(listing)
+      #if DEBUG
+      debugLog.log(
+        "[AUDIT] Inserted restored listing into SwiftData: \(entityId) - \(listing.address)",
+        category: .sync
+      )
+      #endif
+
+    case .activity:
+      let dto: ActivityDTO = try await supabase
+        .from("activities")
+        .select()
+        .eq("id", value: entityId.uuidString)
+        .single()
+        .execute()
+        .value
+      let activity = dto.toModel()
+      activity.markSynced()
+      modelContext.insert(activity)
+      #if DEBUG
+      debugLog.log(
+        "[AUDIT] Inserted restored activity into SwiftData: \(entityId) - \(activity.title)",
+        category: .sync
+      )
+      #endif
+
+    case .property:
+      let dto: PropertyDTO = try await supabase
+        .from("properties")
+        .select()
+        .eq("id", value: entityId.uuidString)
+        .single()
+        .execute()
+        .value
+      let property = dto.toModel()
+      property.markSynced()
+      modelContext.insert(property)
+      #if DEBUG
+      debugLog.log(
+        "[AUDIT] Inserted restored property into SwiftData: \(entityId)",
+        category: .sync
+      )
+      #endif
+
+    case .user, .taskAssignee, .activityAssignee, .note:
+      // These entity types are either not directly restorable or are handled differently
+      #if DEBUG
+      debugLog.log(
+        "[AUDIT] Entity type \(entityType.rawValue) does not require local insertion after restore",
+        category: .sync
+      )
+      #endif
     }
   }
 }

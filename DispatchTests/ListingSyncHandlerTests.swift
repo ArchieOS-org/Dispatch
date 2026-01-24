@@ -228,15 +228,18 @@ final class ListingSyncHandlerTests: XCTestCase {
   // MARK: - Local-Authoritative Protection Tests
 
   func test_upsertListing_skipsPendingListing() throws {
-    // Given: A listing with pending local changes
+    // Given: A listing with pending local changes that is NEWER than remote
+    // The timestamp-aware conflict resolution protects local changes only when local is newer
     let listingId = UUID()
     let ownerId = UUID()
     let existingListing = makeListing(id: listingId, address: "Pending local edit", ownedBy: ownerId)
     existingListing.markPending()
+    // Ensure local is definitively newer than the remote DTO (which uses Date())
+    existingListing.updatedAt = Date().addingTimeInterval(1)
     context.insert(existingListing)
     try context.save()
 
-    // When: Remote update arrives
+    // When: Remote update arrives (with older timestamp)
     let dto = makeListingDTO(
       id: listingId,
       address: "Remote content",
@@ -244,7 +247,7 @@ final class ListingSyncHandlerTests: XCTestCase {
     )
     try handler.upsertListing(dto: dto, context: context)
 
-    // Then: Local content should be preserved (local-authoritative protection)
+    // Then: Local content should be preserved (local-authoritative protection for newer pending changes)
     let descriptor = FetchDescriptor<Listing>(predicate: #Predicate { $0.id == listingId })
     let listings = try context.fetch(descriptor)
     XCTAssertEqual(listings.first?.address, "Pending local edit")
