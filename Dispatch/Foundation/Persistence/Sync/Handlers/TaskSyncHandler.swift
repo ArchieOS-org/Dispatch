@@ -430,6 +430,16 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
       // UPSERT: For each local assignee (deduplicated), upsert to server
       for compositeKey in localKeysForTask {
         guard let assignee = dedupedAssignees[compositeKey] else { continue }
+
+        // Skip if server already has this assignment and local record is synced (no pending changes)
+        if
+          serverCompositeKeys.contains(compositeKey),
+          assignee.syncState == .synced
+        {
+          debugLog.log("    Skipping upsert for \(compositeKey) - server already has assignment", category: .sync)
+          continue
+        }
+
         let dto = TaskAssigneeDTO(model: assignee)
 
         do {
