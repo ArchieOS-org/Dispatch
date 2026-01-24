@@ -4,12 +4,24 @@
 //
 //  A floating button with liquid glass styling for iOS 26+ with material fallback
 //
+//  iOS 26 Glass Styling:
+//  - iOS 26+: Uses native `glassCircleBackground()` for Liquid Glass
+//  - Pre-iOS 26: Falls back to `ultraThinMaterial` with shadow
+//
+//  Glass styling is handled by the DesignSystem's GlassEffect modifiers,
+//  which automatically apply native glass on iOS 26+ with material fallback.
+//
 
+import DesignSystem
 import SwiftUI
 
 /// A circular button with liquid glass styling.
-/// Uses `glassEffect` on iOS 26+, falls back to `ultraThinMaterial` on earlier versions.
-/// Used for the FAB and similar simple glass buttons.
+/// Uses `glassCircleBackground()` which applies native glass on iOS 26+, material fallback on earlier versions.
+/// Used for secondary floating buttons that need a glass appearance.
+///
+/// iOS 26 Glass Styling:
+/// - iOS 26+: Native Liquid Glass via `glassCircleBackground()`
+/// - Pre-iOS 26: Falls back to `ultraThinMaterial` with shadow
 struct GlassButton: View {
 
   // MARK: Internal
@@ -23,9 +35,11 @@ struct GlassButton: View {
     Button(action: action) {
       ZStack(alignment: .topTrailing) {
         // Glass background on container, not icon
+        // iOS 26+: Native Liquid Glass via glassCircleBackground()
+        // Pre-iOS 26: Falls back to ultraThinMaterial with shadow
         Circle()
           .fill(.clear)
-          .frame(width: 56, height: 56)
+          .frame(width: DS.Spacing.floatingButtonSizeLarge, height: DS.Spacing.floatingButtonSizeLarge)
           .glassCircleBackground()
           .overlay {
             Image(systemName: icon)

@@ -5,6 +5,14 @@
 //  Persistent floating buttons for filter and quick entry (iPhone only).
 //  iPad uses toolbar FilterMenu + floating FAB instead.
 //
+//  iOS 26 Glass Styling:
+//  - Uses `.safeAreaInset(edge: .bottom)` for floating button placement
+//  - Individual button components receive native Liquid Glass on iOS 26+
+//  - Pre-iOS 26 falls back to material-based glass styling
+//
+//  Architecture Note: This app uses NavigationStack (Things 3 style), NOT TabView.
+//  `tabViewBottomAccessory` is NOT applicable. We use safeAreaInset for floating buttons.
+//
 
 import SwiftUI
 
@@ -16,6 +24,10 @@ import SwiftUI
 ///
 /// iPhone only (by device idiom, not size class).
 /// iPad gets a toolbar FilterMenu + separate FAB overlay in ContentView.
+///
+/// iOS 26 Glass Styling:
+/// - FloatingFilterButton and FABMenu receive native Liquid Glass on iOS 26+
+/// - Pre-iOS 26: Buttons use material-based glass fallbacks via DesignSystem
 struct GlobalFloatingButtons: View {
 
   // MARK: Internal
@@ -29,9 +41,11 @@ struct GlobalFloatingButtons: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .allowsHitTesting(false) // Spacer doesn't block touches
         .safeAreaInset(edge: .bottom, spacing: 0) {
+          // safeAreaInset is the correct placement for NavigationStack-based apps.
+          // Individual button components handle their own iOS 26 glass styling.
           floatingButtonsContent
             .padding(.horizontal, DS.Spacing.floatingButtonMargin) // 20pt
-            .padding(.bottom, DS.Spacing.floatingButtonBottomInset) // 24pt
+            .padding(.bottom, DS.Spacing.floatingButtonBottomInset) // 16pt
         }
         .opacity(shouldHideButtons ? 0 : 1)
         .offset(y: shouldHideButtons ? 12 : 0)
@@ -47,13 +61,12 @@ struct GlobalFloatingButtons: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var overlayState: AppOverlayState
 
-  /// Environment key set by SettingsScreen wrapper to hide buttons
-  @Environment(\.globalButtonsHidden) private var environmentHidden
-
   /// Single source of truth for button visibility.
-  /// Combines environment-based hiding (SettingsScreen) with state-based hiding (keyboard, modals).
+  /// All hiding reasons (keyboard, modals, settings screens) are tracked via AppOverlayState.
+  /// This component is rendered as a sibling to NavigationStack, so environment keys
+  /// from pushed views cannot reach it - we use EnvironmentObject instead.
   private var shouldHideButtons: Bool {
-    environmentHidden || overlayState.isOverlayHidden
+    overlayState.isOverlayHidden
   }
 
   #if os(iOS)

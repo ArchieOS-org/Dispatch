@@ -5,11 +5,18 @@
 //  iPad navigation using native NavigationSplitView and .toolbar.
 //  Target: ~50 LOC. No custom wrappers.
 //
+//  iOS 26 Glass Styling:
+//  - Sidebar `.toolbar(.bottomBar)` gets automatic glass styling on iOS 26+
+//  - FABMenu overlay receives native Liquid Glass via component-level modifiers
+//  - Pre-iOS 26: Falls back to material-based glass via DesignSystem
+//
 
 #if os(iOS)
 import SwiftUI
 
 /// iPad navigation container using native SwiftUI patterns.
+///
+/// iOS 26 Glass Styling: Sidebar toolbar and FABMenu receive native Liquid Glass on iOS 26+.
 struct iPadContentView: View {
 
   // MARK: Internal
@@ -115,13 +122,13 @@ struct iPadContentView: View {
 
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var overlayState: AppOverlayState
-  @Environment(\.globalButtonsHidden) private var environmentHidden
   @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
   /// Single source of truth for FAB visibility.
-  /// Combines environment-based hiding (SettingsScreen) with state-based hiding (keyboard, modals).
+  /// All hiding reasons (keyboard, modals, settings screens) are tracked via AppOverlayState.
+  /// Environment keys from pushed views cannot reach overlay siblings, so we use EnvironmentObject.
   private var shouldHideFAB: Bool {
-    environmentHidden || overlayState.isOverlayHidden
+    overlayState.isOverlayHidden
   }
 
   private var tabCounts: [AppTab: Int] {

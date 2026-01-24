@@ -8,8 +8,16 @@
 //  - Tap to cycle filters
 //  - Long-press (hold) for filter menu
 //
+//  iOS 26 Glass Styling:
+//  - iOS 26+: Uses native `glassCircleBackground()` for Liquid Glass
+//  - Pre-iOS 26: Falls back to `.ultraThinMaterial` with shadow
+//
+//  Glass styling is handled by the DesignSystem's GlassEffect modifiers,
+//  which automatically apply native glass on iOS 26+ with material fallback.
+//
 
 #if os(iOS)
+import DesignSystem
 import SwiftUI
 
 /// A floating filter button for iPhone with glass background and haptic feedback.
@@ -57,10 +65,12 @@ struct FloatingFilterButton: View {
   private var filterButtonVisual: some View {
     ZStack {
       // 44pt glass circle, centered in 56pt hit area
+      // iOS 26+: Native Liquid Glass via glassCircleBackground()
+      // Pre-iOS 26: Falls back to ultraThinMaterial with shadow
       Circle()
-        .fill(.ultraThinMaterial)
+        .fill(.clear)
         .frame(width: DS.Spacing.floatingButtonSize, height: DS.Spacing.floatingButtonSize)
-        .dsShadow(DS.Shadows.medium)
+        .glassCircleBackground()
 
       // Icon
       Image(systemName: audience.icon)
