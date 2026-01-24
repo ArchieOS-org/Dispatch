@@ -175,8 +175,15 @@ extension SyncManager {
     // which SwiftData's dirty tracking may interpret as modifications. This second pass
     // ensures the syncState is definitively set to .synced AFTER all relationship
     // modifications are complete.
+    //
+    // Note: With the shouldSuppressPending guard in markPending(), this should rarely be needed,
+    // but we keep it as a safety net for edge cases where SwiftData dirty tracking occurs
+    // outside of markPending() calls.
     try finalizeTaskSyncState(context: context, taskIds: pendingTaskIds)
     try finalizeActivitySyncState(context: context, activityIds: pendingActivityIds)
+
+    // ADDITIONAL SAFETY: Finalize listings that were pending at sync start
+    try finalizeListingSyncState(context: context)
 
     debugLog.log("syncUp() complete", category: .sync)
   }
@@ -255,6 +262,40 @@ extension SyncManager {
 
     if finalizedCount > 0 {
       debugLog.log("  Finalized \(finalizedCount) activities to .synced state after assignee sync", category: .sync)
+    }
+  }
+
+  /// Final pass to ensure listings remain in .synced state after relationship reconciliation.
+  /// This catches listings that may have been inadvertently marked pending during owner/property
+  /// relationship establishment.
+  ///
+  /// **Note**: With the shouldSuppressPending guard now in place, this is primarily a safety net.
+  /// Listings that were successfully synced up but then had their owner relationship modified
+  /// should not flip back to pending because markPending() checks shouldSuppressPending.
+  private func finalizeListingSyncState(context: ModelContext) throws {
+    let descriptor = FetchDescriptor<Listing>()
+    let allListings = try context.fetch(descriptor)
+
+    var finalizedCount = 0
+    for listing in allListings {
+      // Only re-mark synced listings that somehow drifted to pending during sync
+      // Key insight: A listing that was just successfully synced (syncedAt is recent) but is now
+      // marked pending with no user changes is a victim of relationship dirty tracking
+      if listing.syncState == .pending, let syncedAt = listing.syncedAt {
+        // If syncedAt is within the last 30 seconds, this was likely dirty-tracking induced
+        if Date().timeIntervalSince(syncedAt) < 30 {
+          listing.syncState = .synced
+          finalizedCount += 1
+          debugLog.log(
+            "    FINALIZE_SYNCED listing=\(listing.id) (was pending but recently synced at \(syncedAt))",
+            category: .sync
+          )
+        }
+      }
+    }
+
+    if finalizedCount > 0 {
+      debugLog.log("  Finalized \(finalizedCount) listings to .synced state after relationship reconciliation", category: .sync)
     }
   }
 }

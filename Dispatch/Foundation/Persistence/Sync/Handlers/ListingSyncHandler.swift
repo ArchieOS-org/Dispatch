@@ -150,15 +150,17 @@ final class ListingSyncHandler: EntitySyncHandlerProtocol {
     )
 
     if let existing = try context.fetch(descriptor).first {
-      // Local-first: skip ALL updates if local-authoritative
+      // Local-first: skip updates if local-authoritative (timestamp-aware)
       if
         dependencies.conflictResolver.isLocalAuthoritative(
           existing,
+          localUpdatedAt: existing.updatedAt,
+          remoteUpdatedAt: dto.updatedAt,
           inFlight: dependencies.conflictResolver.isListingInFlight(existing.id)
         )
       {
         debugLog.log(
-          "[SyncDown] Skip update for listing \(dto.id) - local-authoritative (state=\(existing.syncState))",
+          "[SyncDown] Skip update for listing \(dto.id) - local-authoritative (state=\(existing.syncState), local=\(existing.updatedAt), remote=\(dto.updatedAt))",
           category: .sync
         )
         return

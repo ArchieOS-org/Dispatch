@@ -126,15 +126,17 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
     )
 
     if let existing = try context.fetch(descriptor).first {
-      // Local-first: skip ALL updates if local-authoritative
+      // Local-first: skip updates if local-authoritative (timestamp-aware)
       if
         dependencies.conflictResolver.isLocalAuthoritative(
           existing,
+          localUpdatedAt: existing.updatedAt,
+          remoteUpdatedAt: dto.updatedAt,
           inFlight: dependencies.conflictResolver.isTaskInFlight(existing.id)
         )
       {
         debugLog.log(
-          "[SyncDown] Skip update for task \(dto.id) - local-authoritative (state=\(existing.syncState))",
+          "[SyncDown] Skip update for task \(dto.id) - local-authoritative (state=\(existing.syncState), local=\(existing.updatedAt), remote=\(dto.updatedAt))",
           category: .sync
         )
         return
@@ -480,15 +482,17 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
     )
 
     if let existing = try context.fetch(descriptor).first {
-      // Local-first: skip ALL updates if local-authoritative
+      // Local-first: skip updates if local-authoritative (timestamp-aware)
       if
         dependencies.conflictResolver.isLocalAuthoritative(
           existing,
+          localUpdatedAt: existing.updatedAt,
+          remoteUpdatedAt: dto.updatedAt,
           inFlight: dependencies.conflictResolver.isTaskAssigneeInFlight(existing.id)
         )
       {
         debugLog.log(
-          "[SyncDown] Skip update for task assignee \(dto.id) - local-authoritative (state=\(existing.syncState))",
+          "[SyncDown] Skip update for task assignee \(dto.id) - local-authoritative (state=\(existing.syncState), local=\(existing.updatedAt), remote=\(dto.updatedAt))",
           category: .sync
         )
         return

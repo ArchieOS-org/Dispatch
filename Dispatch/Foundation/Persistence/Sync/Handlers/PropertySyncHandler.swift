@@ -135,10 +135,17 @@ final class PropertySyncHandler: EntitySyncHandlerProtocol {
     )
 
     if let existing = try context.fetch(descriptor).first {
-      // Local-first: skip ALL updates if local-authoritative
-      if dependencies.conflictResolver.isLocalAuthoritative(existing, inFlight: false) {
+      // Local-first: skip updates if local-authoritative (timestamp-aware)
+      if
+        dependencies.conflictResolver.isLocalAuthoritative(
+          existing,
+          localUpdatedAt: existing.updatedAt,
+          remoteUpdatedAt: dto.updatedAt,
+          inFlight: dependencies.conflictResolver.isPropertyInFlight(existing.id)
+        )
+      {
         debugLog.log(
-          "[SyncDown] Skip update for property \(dto.id) - local-authoritative (state=\(existing.syncState))",
+          "[SyncDown] Skip update for property \(dto.id) - local-authoritative (state=\(existing.syncState), local=\(existing.updatedAt), remote=\(dto.updatedAt))",
           category: .sync
         )
         return
