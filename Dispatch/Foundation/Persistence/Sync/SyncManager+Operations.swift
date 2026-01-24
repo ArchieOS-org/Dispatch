@@ -169,6 +169,15 @@ extension SyncManager {
     try await entitySyncHandler.syncUpTaskAssignees(context: context, taskIdsToSync: pendingTaskIds)
     try await entitySyncHandler.syncUpActivityAssignees(context: context, activityIdsToSync: pendingActivityIds)
     try await entitySyncHandler.syncUpNotes(context: context)
+
+    // CRITICAL FIX: Re-mark synced tasks/activities after assignee sync completes.
+    // Assignee sync can modify Task/Activity relationship arrays (e.g., deleting duplicates),
+    // which SwiftData's dirty tracking may interpret as modifications. This second pass
+    // ensures the syncState is definitively set to .synced AFTER all relationship
+    // modifications are complete.
+    try finalizeTaskSyncState(context: context, taskIds: pendingTaskIds)
+    try finalizeActivitySyncState(context: context, activityIds: pendingActivityIds)
+
     debugLog.log("syncUp() complete", category: .sync)
   }
 
@@ -192,5 +201,60 @@ extension SyncManager {
     let allActivities = try context.fetch(descriptor)
     let pendingActivities = allActivities.filter { $0.syncState == .pending || $0.syncState == .failed }
     return Set(pendingActivities.map { $0.id })
+  }
+
+  /// Final pass to ensure tasks that were synced remain in .synced state.
+  /// This runs AFTER all relationship modifications (assignee sync) complete.
+  ///
+  /// **Why this is needed**: Assignee sync operations can modify Task's `assignees` relationship
+  /// array (e.g., deleting duplicate local assignees). SwiftData's dirty tracking may see these
+  /// as modifications to the Task, even though we don't call `markPending()`. By re-asserting
+  /// `.synced` state here, we ensure the final persisted state is correct.
+  private func finalizeTaskSyncState(context: ModelContext, taskIds: Set<UUID>) throws {
+    guard !taskIds.isEmpty else { return }
+
+    let descriptor = FetchDescriptor<TaskItem>()
+    let allTasks = try context.fetch(descriptor)
+    let tasksToFinalize = allTasks.filter { taskIds.contains($0.id) }
+
+    var finalizedCount = 0
+    for task in tasksToFinalize {
+      // Only re-mark if the task was supposed to be synced but drifted to pending
+      // Don't override .failed state (those need retry)
+      if task.syncState == .pending {
+        task.syncState = .synced
+        finalizedCount += 1
+        debugLog.log("    FINALIZE_SYNCED task=\(task.id) (was pending after assignee sync)", category: .sync)
+      }
+    }
+
+    if finalizedCount > 0 {
+      debugLog.log("  Finalized \(finalizedCount) tasks to .synced state after assignee sync", category: .sync)
+    }
+  }
+
+  /// Final pass to ensure activities that were synced remain in .synced state.
+  /// This runs AFTER all relationship modifications (assignee sync) complete.
+  private func finalizeActivitySyncState(context: ModelContext, activityIds: Set<UUID>) throws {
+    guard !activityIds.isEmpty else { return }
+
+    let descriptor = FetchDescriptor<Activity>()
+    let allActivities = try context.fetch(descriptor)
+    let activitiesToFinalize = allActivities.filter { activityIds.contains($0.id) }
+
+    var finalizedCount = 0
+    for activity in activitiesToFinalize {
+      // Only re-mark if the activity was supposed to be synced but drifted to pending
+      // Don't override .failed state (those need retry)
+      if activity.syncState == .pending {
+        activity.syncState = .synced
+        finalizedCount += 1
+        debugLog.log("    FINALIZE_SYNCED activity=\(activity.id) (was pending after assignee sync)", category: .sync)
+      }
+    }
+
+    if finalizedCount > 0 {
+      debugLog.log("  Finalized \(finalizedCount) activities to .synced state after assignee sync", category: .sync)
+    }
   }
 }

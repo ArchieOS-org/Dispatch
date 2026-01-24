@@ -101,6 +101,7 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
           .execute()
         task.markSynced()
         debugLog.log("    Upserted task \(task.id) - \(task.title)", category: .sync)
+        debugLog.log("    MARKSYNCED task=\(task.id) state=\(task.syncState)", category: .sync)
       } catch {
         let message = dependencies.userFacingMessage(for: error)
         task.markFailed(message)
@@ -153,10 +154,12 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
         try establishListing(existing, dto.listing, context)
       }
       existing.markSynced()
+      debugLog.log("    MARKSYNCED (syncDown UPDATE) task=\(existing.id) state=\(existing.syncState)", category: .sync)
     } else {
       debugLog.log("    INSERT new task: \(dto.id)", category: .sync)
       let newTask = dto.toModel()
       newTask.markSynced()
+      debugLog.log("    MARKSYNCED (syncDown INSERT) task=\(newTask.id) state=\(newTask.syncState)", category: .sync)
       context.insert(newTask)
       if let establishListing = establishListingRelationship {
         try establishListing(newTask, dto.listing, context)

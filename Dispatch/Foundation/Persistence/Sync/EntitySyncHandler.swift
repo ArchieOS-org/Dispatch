@@ -352,6 +352,11 @@ final class EntitySyncHandler {
       return
     }
 
+    debugLog.log(
+      "      RELATIONSHIP task=\(parentTask.id) assignee=\(assignee.id) taskState=\(parentTask.syncState)",
+      category: .sync
+    )
+
     if !parentTask.assignees.contains(where: { $0.id == assignee.id }) {
       parentTask.assignees.append(assignee)
     }
