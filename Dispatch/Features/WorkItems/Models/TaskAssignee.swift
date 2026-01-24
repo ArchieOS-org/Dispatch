@@ -34,7 +34,7 @@ final class TaskAssignee {
     self.assignedAt = assignedAt
     self.createdAt = createdAt
     self.updatedAt = updatedAt
-    syncStateRaw = .synced
+    syncStateRaw = .pending
   }
 
   // MARK: Internal

@@ -278,18 +278,31 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
   /// appear in the audit history. This method ensures:
   /// - Unclaiming generates a DELETE audit event
   /// - Claiming (including re-claiming) generates an INSERT audit event
-  func syncUpTaskAssignees(context: ModelContext) async throws {
-    // Find tasks that have pending changes (their assignees may have changed)
-    let taskDescriptor = FetchDescriptor<TaskItem>()
-    let allTasks = try context.fetch(taskDescriptor)
-    let pendingTasks = allTasks.filter { $0.syncState == .pending || $0.syncState == .failed }
-
-    guard !pendingTasks.isEmpty else {
-      debugLog.log("syncUpTaskAssignees() - no pending tasks, skipping", category: .sync)
-      return
+  ///
+  /// - Parameter taskIdsToSync: Pre-captured task IDs to sync assignees for. If nil, falls back to checking
+  ///   current pending tasks (legacy behavior). This parameter is critical because task sync marks tasks as
+  ///   synced BEFORE assignee sync runs, so we must capture pending IDs at the start of the sync cycle.
+  func syncUpTaskAssignees(context: ModelContext, taskIdsToSync: Set<UUID>? = nil) async throws {
+    // Use pre-captured IDs if provided, otherwise fall back to current pending tasks
+    let pendingTaskIds: [UUID]
+    if let preCaputredIds = taskIdsToSync {
+      pendingTaskIds = Array(preCaputredIds)
+      debugLog.log(
+        "syncUpTaskAssignees() - using \(pendingTaskIds.count) pre-captured task IDs",
+        category: .sync
+      )
+    } else {
+      // Legacy fallback: Find tasks that have pending changes (their assignees may have changed)
+      let taskDescriptor = FetchDescriptor<TaskItem>()
+      let allTasks = try context.fetch(taskDescriptor)
+      let pendingTasks = allTasks.filter { $0.syncState == .pending || $0.syncState == .failed }
+      pendingTaskIds = pendingTasks.map { $0.id }
     }
 
-    let pendingTaskIds = pendingTasks.map { $0.id }
+    guard !pendingTaskIds.isEmpty else {
+      debugLog.log("syncUpTaskAssignees() - no tasks to process, skipping", category: .sync)
+      return
+    }
     debugLog.log(
       "syncUpTaskAssignees() - processing assignees for \(pendingTaskIds.count) pending tasks",
       category: .sync

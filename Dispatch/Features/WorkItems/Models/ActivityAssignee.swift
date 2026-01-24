@@ -34,7 +34,7 @@ final class ActivityAssignee {
     self.assignedAt = assignedAt
     self.createdAt = createdAt
     self.updatedAt = updatedAt
-    syncStateRaw = .synced
+    syncStateRaw = .pending
   }
 
   // MARK: Internal

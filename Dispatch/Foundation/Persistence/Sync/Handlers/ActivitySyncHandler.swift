@@ -283,20 +283,35 @@ final class ActivitySyncHandler: EntitySyncHandlerProtocol {
   /// appear in the audit history. This method ensures:
   /// - Unclaiming generates a DELETE audit event
   /// - Claiming (including re-claiming) generates an INSERT audit event
-  func syncUpActivityAssignees(context: ModelContext) async throws {
-    // Find activities that have pending changes (their assignees may have changed)
-    let activityDescriptor = FetchDescriptor<Activity>()
-    let allActivities = try context.fetch(activityDescriptor)
-    let pendingActivities = allActivities.filter { $0.syncState == .pending || $0.syncState == .failed }
+  ///
+  /// - Parameter activityIdsToSync: Pre-captured activity IDs to sync assignees for. If nil, falls back to
+  ///   checking current pending activities (legacy behavior). This parameter is critical because activity sync
+  ///   marks activities as synced BEFORE assignee sync runs, so we must capture pending IDs at the start of
+  ///   the sync cycle.
+  func syncUpActivityAssignees(context: ModelContext, activityIdsToSync: Set<UUID>? = nil) async throws {
+    // Use pre-captured IDs if provided, otherwise fall back to current pending activities
+    let pendingActivityIds: [UUID]
+    if let preCapturedIds = activityIdsToSync {
+      pendingActivityIds = Array(preCapturedIds)
+      debugLog.log(
+        "syncUpActivityAssignees() - using \(pendingActivityIds.count) pre-captured activity IDs",
+        category: .sync
+      )
+    } else {
+      // Legacy fallback: Find activities that have pending changes (their assignees may have changed)
+      let activityDescriptor = FetchDescriptor<Activity>()
+      let allActivities = try context.fetch(activityDescriptor)
+      let pendingActivities = allActivities.filter { $0.syncState == .pending || $0.syncState == .failed }
+      pendingActivityIds = pendingActivities.map { $0.id }
+    }
 
-    guard !pendingActivities.isEmpty else {
-      debugLog.log("syncUpActivityAssignees() - no pending activities, skipping", category: .sync)
+    guard !pendingActivityIds.isEmpty else {
+      debugLog.log("syncUpActivityAssignees() - no activities to process, skipping", category: .sync)
       return
     }
 
-    let pendingActivityIds = pendingActivities.map { $0.id }
     debugLog.log(
-      "syncUpActivityAssignees() - processing assignees for \(pendingActivityIds.count) pending activities",
+      "syncUpActivityAssignees() - processing assignees for \(pendingActivityIds.count) activities",
       category: .sync
     )
 

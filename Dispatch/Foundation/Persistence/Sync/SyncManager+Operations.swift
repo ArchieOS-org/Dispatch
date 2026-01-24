@@ -141,15 +141,48 @@ extension SyncManager {
       category: .sync
     )
 
+    // CRITICAL: Capture pending task/activity IDs BEFORE syncing them.
+    // Task/activity sync uses DELETE+INSERT pattern which triggers CASCADE delete of assignees.
+    // After sync, tasks/activities are marked as .synced, so assignee sync would find no pending
+    // parents and skip syncing assignees. By capturing IDs here, we ensure assignees are synced
+    // for all entities that were pending at the START of this sync cycle.
+    let pendingTaskIds = try capturePendingTaskIds(context: context)
+    let pendingActivityIds = try capturePendingActivityIds(context: context)
+    debugLog.log(
+      "Captured pending IDs - Tasks: \(pendingTaskIds.count), Activities: \(pendingActivityIds.count)",
+      category: .sync
+    )
+
     // Sync in FK dependency order: Users first (owners), then Properties, then Listings, then Tasks/Activities
     try await entitySyncHandler.syncUpUsers(context: context)
     try await entitySyncHandler.syncUpProperties(context: context)
     try await entitySyncHandler.syncUpListings(context: context)
     try await entitySyncHandler.syncUpTasks(context: context)
     try await entitySyncHandler.syncUpActivities(context: context)
-    try await entitySyncHandler.syncUpTaskAssignees(context: context)
-    try await entitySyncHandler.syncUpActivityAssignees(context: context)
+    // Pass pre-captured IDs to ensure assignees are synced even though parents are now .synced
+    try await entitySyncHandler.syncUpTaskAssignees(context: context, taskIdsToSync: pendingTaskIds)
+    try await entitySyncHandler.syncUpActivityAssignees(context: context, activityIdsToSync: pendingActivityIds)
     try await entitySyncHandler.syncUpNotes(context: context)
     debugLog.log("syncUp() complete", category: .sync)
+  }
+
+  // MARK: - Private Helpers
+
+  /// Captures IDs of pending tasks before sync. This is critical because task sync marks tasks as
+  /// synced, but we need to sync their assignees afterward.
+  private func capturePendingTaskIds(context: ModelContext) throws -> Set<UUID> {
+    let descriptor = FetchDescriptor<TaskItem>()
+    let allTasks = try context.fetch(descriptor)
+    let pendingTasks = allTasks.filter { $0.syncState == .pending || $0.syncState == .failed }
+    return Set(pendingTasks.map { $0.id })
+  }
+
+  /// Captures IDs of pending activities before sync. This is critical because activity sync marks
+  /// activities as synced, but we need to sync their assignees afterward.
+  private func capturePendingActivityIds(context: ModelContext) throws -> Set<UUID> {
+    let descriptor = FetchDescriptor<Activity>()
+    let allActivities = try context.fetch(descriptor)
+    let pendingActivities = allActivities.filter { $0.syncState == .pending || $0.syncState == .failed }
+    return Set(pendingActivities.map { $0.id })
   }
 }
