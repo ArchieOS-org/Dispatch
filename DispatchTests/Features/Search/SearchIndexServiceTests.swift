@@ -122,7 +122,7 @@ struct SearchIndexServiceTests {
       ownedBy: UUID()
     )
 
-    let doc = SearchDoc.from(listing: listing)
+    let doc = SearchDoc.from(listing: listing.asSearchable)
 
     #expect(doc.id == listing.id)
     #expect(doc.type == .listing)
