@@ -59,6 +59,13 @@ final class ListingSyncHandler: EntitySyncHandlerProtocol {
 
   // MARK: - SyncUp Listings
 
+  /// Syncs listings using explicit DELETE + INSERT to ensure proper audit logging.
+  ///
+  /// The audit system only captures INSERT and DELETE events, not UPDATE events.
+  /// Using UPSERT would trigger UPDATE when modifying an existing listing, which wouldn't
+  /// appear in the audit history. This method ensures:
+  /// - Soft-deletes are handled via the deletedAt field (server-side)
+  /// - All creates/updates generate INSERT audit events (DELETE first if exists)
   func syncUp(context: ModelContext) async throws {
     let descriptor = FetchDescriptor<Listing>()
     let allListings = try context.fetch(descriptor)
@@ -77,44 +84,55 @@ final class ListingSyncHandler: EntitySyncHandlerProtocol {
       return
     }
 
-    // Mark as in-flight before upsert to prevent realtime echo from overwriting local state
+    // Mark as in-flight before sync to prevent realtime echo from overwriting local state
     dependencies.conflictResolver.markListingsInFlight(Set(pendingListings.map { $0.id }))
     defer { dependencies.conflictResolver.clearListingsInFlight() } // Always clear, even on error
 
-    // Try batch first for efficiency
-    do {
-      let dtos = pendingListings.map { ListingDTO(from: $0) }
-      debugLog.log("  Batch upserting \(dtos.count) listings to Supabase...", category: .sync)
-      try await supabase
-        .from("listings")
-        .upsert(dtos)
-        .execute()
-      debugLog.log("  Batch upsert successful", category: .sync)
+    // Fetch server-side listings to know which ones already exist
+    let pendingIds = pendingListings.map { $0.id }
+    let serverListings: [ListingDTO] = try await supabase
+      .from("listings")
+      .select("id")
+      .in("id", values: pendingIds.map { $0.uuidString })
+      .execute()
+      .value
+    let serverIds = Set(serverListings.map { $0.id })
 
-      for listing in pendingListings {
-        listing.markSynced()
-      }
-      debugLog.log("  Marked \(pendingListings.count) listings as synced", category: .sync)
-    } catch {
-      // Batch failed - try individual items to isolate failures
-      debugLog.log("Batch listing sync failed, trying individually: \(error.localizedDescription)", category: .error)
+    debugLog.log(
+      "  Pending listings: \(pendingListings.count), Already on server: \(serverIds.count)",
+      category: .sync
+    )
 
-      for listing in pendingListings {
-        do {
-          let dto = ListingDTO(from: listing)
+    // Process each listing individually with DELETE + INSERT pattern
+    for listing in pendingListings {
+      let dto = ListingDTO(from: listing)
+
+      do {
+        // Delete if exists on server (ensures INSERT audit event, not UPDATE)
+        if serverIds.contains(listing.id) {
           try await supabase
             .from("listings")
-            .upsert([dto])
+            .delete()
+            .eq("id", value: listing.id.uuidString)
             .execute()
-          listing.markSynced()
-          debugLog.log("  Listing \(listing.id) synced individually", category: .sync)
-        } catch {
-          let message = dependencies.userFacingMessage(for: error)
-          listing.markFailed(message)
-          debugLog.error("  Listing \(listing.id) sync failed: \(message)")
+          debugLog.log("    Deleted existing listing \(listing.id) for re-insert", category: .sync)
         }
+
+        // Insert the listing (generates INSERT audit event)
+        try await supabase
+          .from("listings")
+          .insert(dto)
+          .execute()
+        listing.markSynced()
+        debugLog.log("    Inserted listing \(listing.id) - \(listing.address)", category: .sync)
+      } catch {
+        let message = dependencies.userFacingMessage(for: error)
+        listing.markFailed(message)
+        debugLog.error("    Failed to sync listing \(listing.id): \(message)")
       }
     }
+
+    debugLog.log("syncUpListings() complete", category: .sync)
   }
 
   // MARK: - Upsert Listing

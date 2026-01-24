@@ -37,6 +37,9 @@ final class ConflictResolver {
   /// Listings currently being synced up - skip realtime echoes for these
   private(set) var inFlightListingIds = Set<UUID>()
 
+  /// Properties currently being synced up - skip realtime echoes for these
+  private(set) var inFlightPropertyIds = Set<UUID>()
+
   // MARK: - Mark In-Flight
 
   /// Mark task IDs as in-flight before sync up to prevent realtime echo overwrites
@@ -67,6 +70,11 @@ final class ConflictResolver {
   /// Mark listing IDs as in-flight before sync up to prevent realtime echo overwrites
   func markListingsInFlight(_ ids: Set<UUID>) {
     inFlightListingIds = ids
+  }
+
+  /// Mark property IDs as in-flight before sync up to prevent realtime echo overwrites
+  func markPropertiesInFlight(_ ids: Set<UUID>) {
+    inFlightPropertyIds = ids
   }
 
   // MARK: - Clear In-Flight
@@ -101,6 +109,11 @@ final class ConflictResolver {
     inFlightListingIds.removeAll()
   }
 
+  /// Clear all property in-flight IDs after sync completes
+  func clearPropertiesInFlight() {
+    inFlightPropertyIds.removeAll()
+  }
+
   /// Clear all in-flight IDs (used during shutdown or error recovery)
   func clearAllInFlight() {
     inFlightTaskIds.removeAll()
@@ -109,6 +122,7 @@ final class ConflictResolver {
     inFlightTaskAssigneeIds.removeAll()
     inFlightActivityAssigneeIds.removeAll()
     inFlightListingIds.removeAll()
+    inFlightPropertyIds.removeAll()
   }
 
   // MARK: - In-Flight Checks
@@ -141,6 +155,11 @@ final class ConflictResolver {
   /// Check if a listing is currently in-flight (being synced up)
   func isListingInFlight(_ id: UUID) -> Bool {
     inFlightListingIds.contains(id)
+  }
+
+  /// Check if a property is currently in-flight (being synced up)
+  func isPropertyInFlight(_ id: UUID) -> Bool {
+    inFlightPropertyIds.contains(id)
   }
 
   // MARK: - Conflict Resolution

@@ -55,6 +55,13 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
 
   // MARK: - SyncUp Tasks
 
+  /// Syncs tasks using explicit DELETE + INSERT to ensure proper audit logging.
+  ///
+  /// The audit system only captures INSERT and DELETE events, not UPDATE events.
+  /// Using UPSERT would trigger UPDATE when modifying an existing task, which wouldn't
+  /// appear in the audit history. This method ensures:
+  /// - Task modifications generate DELETE + INSERT audit events
+  /// - Soft-deleted tasks are synced with their deletedAt value preserved
   func syncUp(context: ModelContext) async throws {
     let descriptor = FetchDescriptor<TaskItem>()
     let allTasks = try context.fetch(descriptor)
@@ -74,45 +81,55 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
       return
     }
 
-    // Mark as in-flight before upsert to prevent realtime echo from overwriting local state
+    // Fetch server-side state for pending tasks to know which ones exist
+    let pendingTaskIds = pendingTasks.map { $0.id }
+    let serverTasks: [TaskDTO] = try await supabase
+      .from("tasks")
+      .select("id")
+      .in("id", values: pendingTaskIds.map { $0.uuidString })
+      .execute()
+      .value
+    let serverTaskIds = Set(serverTasks.map { $0.id })
+
+    debugLog.log(
+      "  Local pending: \(pendingTasks.count), Exist on server: \(serverTaskIds.count)",
+      category: .sync
+    )
+
+    // Mark as in-flight before sync to prevent realtime echo from overwriting local state
     dependencies.conflictResolver.markTasksInFlight(Set(pendingTasks.map { $0.id }))
     defer { dependencies.conflictResolver.clearTasksInFlight() } // Always clear, even on error
 
-    // Try batch first for efficiency
-    do {
-      let dtos = pendingTasks.map { TaskDTO(from: $0) }
-      debugLog.log("  Batch upserting \(dtos.count) tasks to Supabase...", category: .sync)
-      try await supabase
-        .from("tasks")
-        .upsert(dtos)
-        .execute()
-      debugLog.log("  Batch upsert successful", category: .sync)
+    // Process each task with DELETE + INSERT pattern
+    for task in pendingTasks {
+      let dto = TaskDTO(from: task)
 
-      // Success - mark all synced
-      for task in pendingTasks {
-        task.markSynced()
-      }
-      debugLog.log("  Marked \(pendingTasks.count) tasks as synced", category: .sync)
-    } catch {
-      // Batch failed - try individual items to isolate failures
-      debugLog.log("Batch task sync failed, trying individually: \(error.localizedDescription)", category: .error)
-
-      for task in pendingTasks {
-        do {
-          let dto = TaskDTO(from: task)
+      do {
+        // Delete if exists on server (ensures audit trigger fires for the change)
+        if serverTaskIds.contains(task.id) {
           try await supabase
             .from("tasks")
-            .upsert([dto])
+            .delete()
+            .eq("id", value: task.id.uuidString)
             .execute()
-          task.markSynced()
-          debugLog.log("  Task \(task.id) synced individually", category: .sync)
-        } catch {
-          let message = dependencies.userFacingMessage(for: error)
-          task.markFailed(message)
-          debugLog.error("  Task \(task.id) sync failed: \(message)")
+          debugLog.log("    Deleted existing task \(task.id) for re-insert", category: .sync)
         }
+
+        // Insert the task (generates INSERT audit event)
+        try await supabase
+          .from("tasks")
+          .insert(dto)
+          .execute()
+        task.markSynced()
+        debugLog.log("    Inserted task \(task.id) - \(task.title)", category: .sync)
+      } catch {
+        let message = dependencies.userFacingMessage(for: error)
+        task.markFailed(message)
+        debugLog.error("    Task \(task.id) sync failed: \(message)")
       }
     }
+
+    debugLog.log("syncUpTasks() complete", category: .sync)
   }
 
   // MARK: - Upsert Task
@@ -254,62 +271,122 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
 
   // MARK: - SyncUp TaskAssignees
 
+  /// Syncs task assignees using explicit DELETE + INSERT to ensure proper audit logging.
+  ///
+  /// The audit system only captures INSERT and DELETE events, not UPDATE events.
+  /// Using UPSERT would trigger UPDATE when re-claiming a task, which wouldn't
+  /// appear in the audit history. This method ensures:
+  /// - Unclaiming generates a DELETE audit event
+  /// - Claiming (including re-claiming) generates an INSERT audit event
   func syncUpTaskAssignees(context: ModelContext) async throws {
-    let descriptor = FetchDescriptor<TaskAssignee>()
-    let allAssignees = try context.fetch(descriptor)
-    debugLog.log("syncUpTaskAssignees() - fetched \(allAssignees.count) total task assignees from SwiftData", category: .sync)
+    // Find tasks that have pending changes (their assignees may have changed)
+    let taskDescriptor = FetchDescriptor<TaskItem>()
+    let allTasks = try context.fetch(taskDescriptor)
+    let pendingTasks = allTasks.filter { $0.syncState == .pending || $0.syncState == .failed }
 
-    let pendingAssignees = allAssignees.filter { $0.syncState == .pending || $0.syncState == .failed }
-    debugLog.logSyncOperation(
-      operation: "PENDING",
-      table: "task_assignees",
-      count: pendingAssignees.count,
-      details: "of \(allAssignees.count) total"
-    )
-
-    guard !pendingAssignees.isEmpty else {
-      debugLog.log("  No pending task assignees to sync", category: .sync)
+    guard !pendingTasks.isEmpty else {
+      debugLog.log("syncUpTaskAssignees() - no pending tasks, skipping", category: .sync)
       return
     }
 
-    // Mark as in-flight before upsert to prevent realtime echo from overwriting local state
-    dependencies.conflictResolver.markTaskAssigneesInFlight(Set(pendingAssignees.map { $0.id }))
-    defer { dependencies.conflictResolver.clearTaskAssigneesInFlight() } // Always clear, even on error
+    let pendingTaskIds = pendingTasks.map { $0.id }
+    debugLog.log(
+      "syncUpTaskAssignees() - processing assignees for \(pendingTaskIds.count) pending tasks",
+      category: .sync
+    )
 
-    // Try batch first for efficiency
-    do {
-      let dtos = pendingAssignees.map { TaskAssigneeDTO(model: $0) }
-      debugLog.log("  Batch upserting \(dtos.count) task assignees to Supabase...", category: .sync)
-      try await supabase
-        .from("task_assignees")
-        .upsert(dtos)
-        .execute()
-      debugLog.log("  Batch upsert successful", category: .sync)
+    // Get current local assignees for pending tasks
+    let assigneeDescriptor = FetchDescriptor<TaskAssignee>()
+    let allLocalAssignees = try context.fetch(assigneeDescriptor)
+    let localAssigneesForPending = allLocalAssignees.filter { pendingTaskIds.contains($0.taskId) }
 
-      for assignee in pendingAssignees {
-        assignee.markSynced()
+    // Build a map of task ID -> local assignee IDs
+    var localAssigneesByTask: [UUID: Set<UUID>] = [:]
+    var localAssigneesById: [UUID: TaskAssignee] = [:]
+    for assignee in localAssigneesForPending {
+      localAssigneesByTask[assignee.taskId, default: []].insert(assignee.id)
+      localAssigneesById[assignee.id] = assignee
+    }
+
+    // Fetch server-side assignees for these tasks
+    let serverAssignees: [TaskAssigneeDTO] = try await supabase
+      .from("task_assignees")
+      .select()
+      .in("task_id", values: pendingTaskIds.map { $0.uuidString })
+      .execute()
+      .value
+
+    // Build a map of task ID -> server assignee IDs
+    var serverAssigneesByTask: [UUID: Set<UUID>] = [:]
+    for dto in serverAssignees {
+      serverAssigneesByTask[dto.taskId, default: []].insert(dto.id)
+    }
+
+    debugLog.log(
+      "  Local assignees: \(localAssigneesForPending.count), Server assignees: \(serverAssignees.count)",
+      category: .sync
+    )
+
+    // Mark local assignees as in-flight to prevent realtime echo
+    dependencies.conflictResolver.markTaskAssigneesInFlight(Set(localAssigneesById.keys))
+    defer { dependencies.conflictResolver.clearTaskAssigneesInFlight() }
+
+    // Process each pending task
+    for taskId in pendingTaskIds {
+      let localIds = localAssigneesByTask[taskId] ?? []
+      let serverIds = serverAssigneesByTask[taskId] ?? []
+
+      // 1. DELETE: Assignees on server but not local (user unclaimed)
+      let toDelete = serverIds.subtracting(localIds)
+      if !toDelete.isEmpty {
+        debugLog.log("  Task \(taskId): deleting \(toDelete.count) removed assignees", category: .sync)
+        for assigneeId in toDelete {
+          do {
+            try await supabase
+              .from("task_assignees")
+              .delete()
+              .eq("id", value: assigneeId.uuidString)
+              .execute()
+            debugLog.log("    Deleted assignee \(assigneeId)", category: .sync)
+          } catch {
+            debugLog.error("    Failed to delete assignee \(assigneeId): \(error.localizedDescription)")
+          }
+        }
       }
-      debugLog.log("  Marked \(pendingAssignees.count) task assignees as synced", category: .sync)
-    } catch {
-      // Batch failed - try individual items to isolate failures
-      debugLog.log("Batch task assignee sync failed, trying individually: \(error.localizedDescription)", category: .error)
 
-      for assignee in pendingAssignees {
+      // 2. DELETE + INSERT: For local assignees, delete first (if exists) then insert
+      // This ensures INSERT audit events even for re-claims
+      for assigneeId in localIds {
+        guard let assignee = localAssigneesById[assigneeId] else { continue }
+        let dto = TaskAssigneeDTO(model: assignee)
+
         do {
-          let dto = TaskAssigneeDTO(model: assignee)
+          // Delete if exists on server (handles re-claim case)
+          if serverIds.contains(assigneeId) {
+            try await supabase
+              .from("task_assignees")
+              .delete()
+              .eq("id", value: assigneeId.uuidString)
+              .execute()
+            debugLog.log("    Deleted existing assignee \(assigneeId) for re-insert", category: .sync)
+          }
+
+          // Insert the assignee (generates INSERT audit event)
           try await supabase
             .from("task_assignees")
-            .upsert([dto])
+            .insert(dto)
             .execute()
           assignee.markSynced()
-          debugLog.log("  TaskAssignee \(assignee.id) synced individually", category: .sync)
+          debugLog.log("    Inserted assignee \(assigneeId)", category: .sync)
         } catch {
           let message = dependencies.userFacingMessage(for: error)
           assignee.markFailed(message)
-          debugLog.error("  TaskAssignee \(assignee.id) sync failed: \(message)")
+          debugLog.error("    Failed to sync assignee \(assigneeId): \(message)")
         }
       }
     }
+
+    debugLog.log("syncUpTaskAssignees() complete", category: .sync)
   }
 
   // MARK: - Upsert TaskAssignee
