@@ -83,7 +83,7 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
 
     // Fetch server-side state for pending tasks to know which ones exist
     let pendingTaskIds = pendingTasks.map { $0.id }
-    let serverTasks: [TaskDTO] = try await supabase
+    let serverTasks: [IDOnlyDTO] = try await supabase
       .from("tasks")
       .select("id")
       .in("id", values: pendingTaskIds.map { $0.uuidString })
@@ -116,7 +116,8 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
         }
 
         // Insert the task (generates INSERT audit event)
-        try await supabase
+        // Discard result to prevent type inference causing decode errors
+        _ = try await supabase
           .from("tasks")
           .insert(dto)
           .execute()
@@ -385,7 +386,8 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
           }
 
           // Insert the assignee (generates INSERT audit event)
-          try await supabase
+          // Discard result to prevent type inference causing decode errors
+          _ = try await supabase
             .from("task_assignees")
             .insert(dto)
             .execute()

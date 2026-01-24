@@ -90,7 +90,7 @@ final class ListingSyncHandler: EntitySyncHandlerProtocol {
 
     // Fetch server-side listings to know which ones already exist
     let pendingIds = pendingListings.map { $0.id }
-    let serverListings: [ListingDTO] = try await supabase
+    let serverListings: [IDOnlyDTO] = try await supabase
       .from("listings")
       .select("id")
       .in("id", values: pendingIds.map { $0.uuidString })
@@ -119,7 +119,8 @@ final class ListingSyncHandler: EntitySyncHandlerProtocol {
         }
 
         // Insert the listing (generates INSERT audit event)
-        try await supabase
+        // Discard result to prevent type inference causing decode errors
+        _ = try await supabase
           .from("listings")
           .insert(dto)
           .execute()

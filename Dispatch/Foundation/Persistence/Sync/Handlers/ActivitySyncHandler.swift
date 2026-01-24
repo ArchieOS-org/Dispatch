@@ -121,7 +121,8 @@ final class ActivitySyncHandler: EntitySyncHandlerProtocol {
         }
 
         // INSERT the activity (generates INSERT audit event)
-        try await supabase
+        // Discard result to prevent type inference causing decode errors
+        _ = try await supabase
           .from("activities")
           .insert(dto)
           .execute()
@@ -392,7 +393,8 @@ final class ActivitySyncHandler: EntitySyncHandlerProtocol {
           }
 
           // Insert the assignee (generates INSERT audit event)
-          try await supabase
+          // Discard result to prevent type inference causing decode errors
+          _ = try await supabase
             .from("activity_assignees")
             .insert(dto)
             .execute()

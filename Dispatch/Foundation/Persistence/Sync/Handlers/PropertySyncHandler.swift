@@ -109,7 +109,8 @@ final class PropertySyncHandler: EntitySyncHandlerProtocol {
         }
 
         // Insert the property (generates INSERT audit event)
-        try await supabase
+        // Discard result to prevent type inference causing decode errors
+        _ = try await supabase
           .from("properties")
           .insert(dto)
           .execute()
