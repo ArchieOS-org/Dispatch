@@ -150,26 +150,61 @@ struct RecentlyDeletedView: View {
   }
 
   private func loadDeletedItems() async {
+    #if DEBUG
+    debugLog.log("[AUDIT] RecentlyDeletedView.loadDeletedItems started", category: .sync)
+    #endif
+
     isLoading = true
     error = nil
     do {
       entries = try await AuditSyncHandler(supabase: supabase).fetchRecentlyDeleted()
+
+      #if DEBUG
+      debugLog.log(
+        "[AUDIT] RecentlyDeletedView.loadDeletedItems complete: entries=\(entries.count)",
+        category: .sync
+      )
+      if entries.isEmpty {
+        debugLog.log("[AUDIT] RecentlyDeletedView: No deleted items returned", category: .sync)
+      }
+      #endif
     } catch {
+      #if DEBUG
+      debugLog.error("[AUDIT] RecentlyDeletedView.loadDeletedItems FAILED", error: error)
+      #endif
       self.error = error
     }
     isLoading = false
   }
 
   private func restoreEntry(_ entry: AuditEntry) async {
+    #if DEBUG
+    debugLog.log(
+      "[AUDIT] RecentlyDeletedView.restoreEntry started: entityType=\(entry.entityType.rawValue), entityId=\(entry.entityId)",
+      category: .sync
+    )
+    #endif
+
     do {
       let restoredId = try await AuditSyncHandler(supabase: supabase)
         .restoreEntity(entry.entityType, entityId: entry.entityId)
+
+      #if DEBUG
+      debugLog.log(
+        "[AUDIT] RecentlyDeletedView.restoreEntry SUCCESS: restoredId=\(restoredId)",
+        category: .sync
+      )
+      #endif
+
       // Remove from list
       Task { @MainActor in
         entries.removeAll { $0.id == entry.id }
         restoredEntityNavigation = RestoredNavTarget(type: entry.entityType, entityId: restoredId)
       }
     } catch {
+      #if DEBUG
+      debugLog.error("[AUDIT] RecentlyDeletedView.restoreEntry FAILED", error: error)
+      #endif
       Task { @MainActor in
         self.error = error
       }

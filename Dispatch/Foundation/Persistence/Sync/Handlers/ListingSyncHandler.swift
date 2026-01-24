@@ -45,7 +45,7 @@ final class ListingSyncHandler: EntitySyncHandlerProtocol {
     let dtos: [ListingDTO] = try await supabase
       .from("listings")
       .select()
-      .gt("updated_at", value: since)
+      .gte("updated_at", value: since)
       .execute()
       .value
 

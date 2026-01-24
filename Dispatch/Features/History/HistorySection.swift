@@ -169,6 +169,13 @@ struct HistorySection: View {
   }
 
   private func loadHistory() async {
+    #if DEBUG
+    debugLog.log(
+      "[AUDIT] HistorySection.loadHistory started: entityType=\(entityType.rawValue), entityId=\(entityId)",
+      category: .sync
+    )
+    #endif
+
     isLoading = true
     error = nil
     do {
@@ -177,7 +184,20 @@ struct HistorySection: View {
         for: entityType,
         entityId: entityId
       )
+
+      #if DEBUG
+      debugLog.log(
+        "[AUDIT] HistorySection.loadHistory complete: entries=\(entries.count)",
+        category: .sync
+      )
+      if entries.isEmpty {
+        debugLog.log("[AUDIT] HistorySection: No history entries returned for this entity", category: .sync)
+      }
+      #endif
     } catch {
+      #if DEBUG
+      debugLog.error("[AUDIT] HistorySection.loadHistory FAILED", error: error)
+      #endif
       self.error = error
     }
     isLoading = false
@@ -185,12 +205,25 @@ struct HistorySection: View {
 
   private func restoreEntry(_ entry: AuditEntry) async {
     guard let onRestore else {
+      #if DEBUG
+      debugLog.log("[AUDIT] HistorySection.restoreEntry: onRestore callback is nil", category: .sync)
+      #endif
       restoreToastMessage = "Restore unavailable"
       return
     }
 
+    #if DEBUG
+    debugLog.log(
+      "[AUDIT] HistorySection.restoreEntry started: entityType=\(entry.entityType.rawValue), entityId=\(entry.entityId)",
+      category: .sync
+    )
+    #endif
+
     do {
       try await onRestore(entry)
+      #if DEBUG
+      debugLog.log("[AUDIT] HistorySection.restoreEntry SUCCESS", category: .sync)
+      #endif
       restoreToastMessage = "\(entityType.displayName) restored successfully"
       await loadHistory()
       // Auto-dismiss toast after 3 seconds
@@ -202,6 +235,9 @@ struct HistorySection: View {
         }
       }
     } catch {
+      #if DEBUG
+      debugLog.error("[AUDIT] HistorySection.restoreEntry FAILED", error: error)
+      #endif
       restoreToastMessage = error.localizedDescription
     }
   }

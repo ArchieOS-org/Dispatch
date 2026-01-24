@@ -41,7 +41,7 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
     let dtos: [TaskDTO] = try await supabase
       .from("tasks")
       .select()
-      .gt("updated_at", value: since)
+      .gte("updated_at", value: since)
       .execute()
       .value
 
@@ -55,13 +55,14 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
 
   // MARK: - SyncUp Tasks
 
-  /// Syncs tasks using explicit DELETE + INSERT to ensure proper audit logging.
+  /// Syncs tasks using UPSERT to avoid triggering CASCADE DELETE on foreign keys.
   ///
-  /// The audit system only captures INSERT and DELETE events, not UPDATE events.
-  /// Using UPSERT would trigger UPDATE when modifying an existing task, which wouldn't
-  /// appear in the audit history. This method ensures:
-  /// - Task modifications generate DELETE + INSERT audit events
-  /// - Soft-deleted tasks are synced with their deletedAt value preserved
+  /// Previously used DELETE + INSERT for audit logging, but this caused CASCADE DELETE
+  /// on task_assignees FK constraint, wiping out assignees when syncing tasks.
+  /// UPSERT performs INSERT or UPDATE without DELETE, preserving related records.
+  ///
+  /// **Audit Note**: UPSERT triggers UPDATE events for existing rows. The audit system
+  /// handles UPDATE events correctly via database triggers.
   func syncUp(context: ModelContext) async throws {
     let descriptor = FetchDescriptor<TaskItem>()
     let allTasks = try context.fetch(descriptor)
@@ -81,48 +82,25 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
       return
     }
 
-    // Fetch server-side state for pending tasks to know which ones exist
-    let pendingTaskIds = pendingTasks.map { $0.id }
-    let serverTasks: [IDOnlyDTO] = try await supabase
-      .from("tasks")
-      .select("id")
-      .in("id", values: pendingTaskIds.map { $0.uuidString })
-      .execute()
-      .value
-    let serverTaskIds = Set(serverTasks.map { $0.id })
-
-    debugLog.log(
-      "  Local pending: \(pendingTasks.count), Exist on server: \(serverTaskIds.count)",
-      category: .sync
-    )
+    debugLog.log("  Local pending: \(pendingTasks.count)", category: .sync)
 
     // Mark as in-flight before sync to prevent realtime echo from overwriting local state
     dependencies.conflictResolver.markTasksInFlight(Set(pendingTasks.map { $0.id }))
     defer { dependencies.conflictResolver.clearTasksInFlight() } // Always clear, even on error
 
-    // Process each task with DELETE + INSERT pattern
+    // Process each task with UPSERT (INSERT or UPDATE, no DELETE)
     for task in pendingTasks {
       let dto = TaskDTO(from: task)
 
       do {
-        // Delete if exists on server (ensures audit trigger fires for the change)
-        if serverTaskIds.contains(task.id) {
-          try await supabase
-            .from("tasks")
-            .delete()
-            .eq("id", value: task.id.uuidString)
-            .execute()
-          debugLog.log("    Deleted existing task \(task.id) for re-insert", category: .sync)
-        }
-
-        // Insert the task (generates INSERT audit event)
+        // UPSERT: Insert if new, update if exists - no CASCADE DELETE triggered
         // Discard result to prevent type inference causing decode errors
         _ = try await supabase
           .from("tasks")
-          .insert(dto)
+          .upsert(dto)
           .execute()
         task.markSynced()
-        debugLog.log("    Inserted task \(task.id) - \(task.title)", category: .sync)
+        debugLog.log("    Upserted task \(task.id) - \(task.title)", category: .sync)
       } catch {
         let message = dependencies.userFacingMessage(for: error)
         task.markFailed(message)
@@ -258,7 +236,7 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
     let dtos: [TaskAssigneeDTO] = try await supabase
       .from("task_assignees")
       .select()
-      .gt("updated_at", value: since)
+      .gte("updated_at", value: since)
       .execute()
       .value
 
@@ -272,22 +250,38 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
 
   // MARK: - SyncUp TaskAssignees
 
-  /// Syncs task assignees using explicit DELETE + INSERT to ensure proper audit logging.
+  /// Syncs task assignees using UPSERT with local deduplication.
   ///
-  /// The audit system only captures INSERT and DELETE events, not UPDATE events.
-  /// Using UPSERT would trigger UPDATE when re-claiming a task, which wouldn't
-  /// appear in the audit history. This method ensures:
-  /// - Unclaiming generates a DELETE audit event
-  /// - Claiming (including re-claiming) generates an INSERT audit event
+  /// **Problem Solved**: Multiple local assignees can exist for the same (task_id, user_id) composite key,
+  /// causing duplicate sync operations and inconsistent state.
+  ///
+  /// **Solution**:
+  /// 1. Deduplicate locally first - group by (task_id, user_id), keep newest (by updatedAt), delete rest
+  /// 2. Use UPSERT with `onConflict: "task_id,user_id"` for efficient single-operation sync
+  /// 3. Process each composite key exactly once
+  ///
+  /// **Audit Note**: UPSERT triggers INSERT for new records and UPDATE for existing records.
+  /// The audit system captures all these events via database triggers.
+  ///
+  /// **IMPORTANT**: This method only syncs the CURRENT USER's assignee records.
+  /// RLS policies only allow users to INSERT their own assignee records (or others'
+  /// if they are task creator/listing owner). To avoid permission errors, each user
+  /// manages their own claim/unclaim independently.
   ///
   /// - Parameter taskIdsToSync: Pre-captured task IDs to sync assignees for. If nil, falls back to checking
   ///   current pending tasks (legacy behavior). This parameter is critical because task sync marks tasks as
   ///   synced BEFORE assignee sync runs, so we must capture pending IDs at the start of the sync cycle.
   func syncUpTaskAssignees(context: ModelContext, taskIdsToSync: Set<UUID>? = nil) async throws {
+    // Get current user ID - required for filtering assignees
+    guard let currentUserId = dependencies.getCurrentUserID() else {
+      debugLog.log("syncUpTaskAssignees() - no current user, skipping", category: .sync)
+      return
+    }
+
     // Use pre-captured IDs if provided, otherwise fall back to current pending tasks
     let pendingTaskIds: [UUID]
-    if let preCaputredIds = taskIdsToSync {
-      pendingTaskIds = Array(preCaputredIds)
+    if let preCapturedIds = taskIdsToSync {
+      pendingTaskIds = Array(preCapturedIds)
       debugLog.log(
         "syncUpTaskAssignees() - using \(pendingTaskIds.count) pre-captured task IDs",
         category: .sync
@@ -305,39 +299,81 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
       return
     }
     debugLog.log(
-      "syncUpTaskAssignees() - processing assignees for \(pendingTaskIds.count) pending tasks",
+      "syncUpTaskAssignees() - processing assignees for \(pendingTaskIds.count) pending tasks (user: \(currentUserId))",
       category: .sync
     )
 
-    // Get current local assignees for pending tasks
+    // Get current local assignees for pending tasks - ONLY for current user
     let assigneeDescriptor = FetchDescriptor<TaskAssignee>()
     let allLocalAssignees = try context.fetch(assigneeDescriptor)
-    let localAssigneesForPending = allLocalAssignees.filter { pendingTaskIds.contains($0.taskId) }
+    let localAssigneesForPending = allLocalAssignees.filter {
+      pendingTaskIds.contains($0.taskId) && $0.userId == currentUserId
+    }
 
-    // Build a map of task ID -> local assignee IDs
-    var localAssigneesByTask: [UUID: Set<UUID>] = [:]
-    var localAssigneesById: [UUID: TaskAssignee] = [:]
+    // =========================================================================
+    // STEP 1: Local Deduplication
+    // Group by composite key (task_id, user_id), keep newest by updatedAt, delete rest
+    // =========================================================================
+    var assigneesByCompositeKey: [String: [TaskAssignee]] = [:]
     for assignee in localAssigneesForPending {
-      localAssigneesByTask[assignee.taskId, default: []].insert(assignee.id)
+      let compositeKey = "\(assignee.taskId)-\(assignee.userId)"
+      assigneesByCompositeKey[compositeKey, default: []].append(assignee)
+    }
+
+    // Deduplicate: keep newest, delete duplicates
+    var dedupedAssignees: [String: TaskAssignee] = [:]
+    var duplicatesDeleted = 0
+    for (compositeKey, assignees) in assigneesByCompositeKey {
+      if assignees.count > 1 {
+        // Sort by updatedAt descending, keep the newest
+        let sorted = assignees.sorted { $0.updatedAt > $1.updatedAt }
+        let keeper = sorted[0]
+        dedupedAssignees[compositeKey] = keeper
+
+        // Delete the duplicates from local DB
+        for duplicate in sorted.dropFirst() {
+          debugLog.log(
+            "    Deleting local duplicate assignee \(duplicate.id) for composite key \(compositeKey)",
+            category: .sync
+          )
+          context.delete(duplicate)
+          duplicatesDeleted += 1
+        }
+      } else if let single = assignees.first {
+        dedupedAssignees[compositeKey] = single
+      }
+    }
+
+    if duplicatesDeleted > 0 {
+      debugLog.log(
+        "  Deduplication: removed \(duplicatesDeleted) local duplicates, \(dedupedAssignees.count) unique assignees remain",
+        category: .sync
+      )
+    }
+
+    // Build lookup by ID for the deduplicated set
+    var localAssigneesById: [UUID: TaskAssignee] = [:]
+    for assignee in dedupedAssignees.values {
       localAssigneesById[assignee.id] = assignee
     }
 
-    // Fetch server-side assignees for these tasks
+    // Fetch server-side assignees for these tasks - ONLY current user's records
     let serverAssignees: [TaskAssigneeDTO] = try await supabase
       .from("task_assignees")
       .select()
       .in("task_id", values: pendingTaskIds.map { $0.uuidString })
+      .eq("user_id", value: currentUserId.uuidString)
       .execute()
       .value
 
-    // Build a map of task ID -> server assignee IDs
-    var serverAssigneesByTask: [UUID: Set<UUID>] = [:]
+    // Build a set of (task_id, user_id) composite keys that exist on server
+    var serverCompositeKeys: Set<String> = []
     for dto in serverAssignees {
-      serverAssigneesByTask[dto.taskId, default: []].insert(dto.id)
+      serverCompositeKeys.insert("\(dto.taskId)-\(dto.userId)")
     }
 
     debugLog.log(
-      "  Local assignees: \(localAssigneesForPending.count), Server assignees: \(serverAssignees.count)",
+      "  Local assignees (after dedup): \(dedupedAssignees.count), Server assignees (current user): \(serverAssignees.count)",
       category: .sync
     )
 
@@ -345,58 +381,71 @@ final class TaskSyncHandler: EntitySyncHandlerProtocol {
     dependencies.conflictResolver.markTaskAssigneesInFlight(Set(localAssigneesById.keys))
     defer { dependencies.conflictResolver.clearTaskAssigneesInFlight() }
 
+    // =========================================================================
+    // STEP 2: Compute desired state per task
+    // Local composite keys = what should exist, Server keys - Local keys = what to delete
+    // =========================================================================
+    let localCompositeKeys = Set(dedupedAssignees.keys)
+
     // Process each pending task
     for taskId in pendingTaskIds {
-      let localIds = localAssigneesByTask[taskId] ?? []
-      let serverIds = serverAssigneesByTask[taskId] ?? []
+      // Find server keys for this task that are NOT in local (user unclaimed)
+      let serverKeysForTask = serverCompositeKeys.filter { $0.hasPrefix("\(taskId)-") }
+      let localKeysForTask = localCompositeKeys.filter { $0.hasPrefix("\(taskId)-") }
+      let toDeleteKeys = serverKeysForTask.subtracting(localKeysForTask)
 
-      // 1. DELETE: Assignees on server but not local (user unclaimed)
-      let toDelete = serverIds.subtracting(localIds)
-      if !toDelete.isEmpty {
-        debugLog.log("  Task \(taskId): deleting \(toDelete.count) removed assignees", category: .sync)
-        for assigneeId in toDelete {
+      // DELETE: Current user's assignee on server but not local (user unclaimed)
+      if !toDeleteKeys.isEmpty {
+        debugLog.log(
+          "  Task \(taskId): deleting \(toDeleteKeys.count) removed assignees (current user)",
+          category: .sync
+        )
+        for compositeKey in toDeleteKeys {
+          // Parse the composite key to get task_id and user_id
+          let parts = compositeKey.split(separator: "-")
+          guard
+            parts.count == 2,
+            let deleteTaskId = UUID(uuidString: String(parts[0])),
+            let deleteUserId = UUID(uuidString: String(parts[1]))
+          else {
+            debugLog.error("    Invalid composite key format: \(compositeKey)")
+            continue
+          }
           do {
             try await supabase
               .from("task_assignees")
               .delete()
-              .eq("id", value: assigneeId.uuidString)
+              .eq("task_id", value: deleteTaskId.uuidString)
+              .eq("user_id", value: deleteUserId.uuidString)
               .execute()
-            debugLog.log("    Deleted assignee \(assigneeId)", category: .sync)
+            debugLog.log("    Deleted assignee with composite key \(compositeKey)", category: .sync)
           } catch {
-            debugLog.error("    Failed to delete assignee \(assigneeId): \(error.localizedDescription)")
+            debugLog.error(
+              "    Failed to delete assignee with composite key \(compositeKey): \(error.localizedDescription)"
+            )
           }
         }
       }
 
-      // 2. DELETE + INSERT: For local assignees, delete first (if exists) then insert
-      // This ensures INSERT audit events even for re-claims
-      for assigneeId in localIds {
-        guard let assignee = localAssigneesById[assigneeId] else { continue }
+      // UPSERT: For each local assignee (deduplicated), upsert to server
+      for compositeKey in localKeysForTask {
+        guard let assignee = dedupedAssignees[compositeKey] else { continue }
         let dto = TaskAssigneeDTO(model: assignee)
 
         do {
-          // Delete if exists on server (handles re-claim case)
-          if serverIds.contains(assigneeId) {
-            try await supabase
-              .from("task_assignees")
-              .delete()
-              .eq("id", value: assigneeId.uuidString)
-              .execute()
-            debugLog.log("    Deleted existing assignee \(assigneeId) for re-insert", category: .sync)
-          }
-
-          // Insert the assignee (generates INSERT audit event)
-          // Discard result to prevent type inference causing decode errors
+          // UPSERT with onConflict ensures single operation:
+          // - INSERT if (task_id, user_id) doesn't exist
+          // - UPDATE if (task_id, user_id) already exists
           _ = try await supabase
             .from("task_assignees")
-            .insert(dto)
+            .upsert(dto, onConflict: "task_id,user_id")
             .execute()
           assignee.markSynced()
-          debugLog.log("    Inserted assignee \(assigneeId)", category: .sync)
+          debugLog.log("    Upserted assignee \(assignee.id) for composite key \(compositeKey)", category: .sync)
         } catch {
           let message = dependencies.userFacingMessage(for: error)
           assignee.markFailed(message)
-          debugLog.error("    Failed to sync assignee \(assigneeId): \(message)")
+          debugLog.error("    Failed to upsert assignee \(assignee.id): \(message)")
         }
       }
     }

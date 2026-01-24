@@ -13,12 +13,18 @@ import SwiftData
 
 extension SyncManager {
 
+  // MARK: Internal
+
   /// Downloads remote changes from Supabase to local SwiftData.
   /// Fetches all entities updated since lastSyncTime.
+  /// Uses a 1-second overlap window to prevent edge-case skips from timestamp precision.
   func syncDown(context: ModelContext) async throws {
     let lastSync = lastSyncTime ?? Date.distantPast
-    let lastSyncISO = ISO8601DateFormatter().string(from: lastSync)
-    debugLog.log("syncDown() - fetching records updated since: \(lastSyncISO)", category: .sync)
+    // Subtract 1 second to create overlap window - prevents missing records
+    // when updated_at equals lastSyncTime exactly (common with rapid syncs)
+    let safeLastSync = lastSync.addingTimeInterval(-1)
+    let lastSyncISO = ISO8601DateFormatter().string(from: safeLastSync)
+    debugLog.log("syncDown() - fetching records updated since: \(lastSyncISO) (1s buffer applied)", category: .sync)
 
     // Determine if we should run full reconciliation
     // Run on first sync (no lastSyncTime) to ensure clean slate
@@ -142,10 +148,10 @@ extension SyncManager {
     )
 
     // CRITICAL: Capture pending task/activity IDs BEFORE syncing them.
-    // Task/activity sync uses DELETE+INSERT pattern which triggers CASCADE delete of assignees.
     // After sync, tasks/activities are marked as .synced, so assignee sync would find no pending
     // parents and skip syncing assignees. By capturing IDs here, we ensure assignees are synced
     // for all entities that were pending at the START of this sync cycle.
+    // NOTE: Task/activity sync now uses UPSERT (not DELETE+INSERT) to avoid CASCADE delete of assignees.
     let pendingTaskIds = try capturePendingTaskIds(context: context)
     let pendingActivityIds = try capturePendingActivityIds(context: context)
     debugLog.log(
@@ -165,6 +171,8 @@ extension SyncManager {
     try await entitySyncHandler.syncUpNotes(context: context)
     debugLog.log("syncUp() complete", category: .sync)
   }
+
+  // MARK: Private
 
   // MARK: - Private Helpers
 

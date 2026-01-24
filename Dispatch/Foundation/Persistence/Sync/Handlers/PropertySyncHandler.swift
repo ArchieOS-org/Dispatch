@@ -33,7 +33,7 @@ final class PropertySyncHandler: EntitySyncHandlerProtocol {
     let dtos: [PropertyDTO] = try await supabase
       .from("properties")
       .select()
-      .gt("updated_at", value: since)
+      .gte("updated_at", value: since)
       .execute()
       .value
 
