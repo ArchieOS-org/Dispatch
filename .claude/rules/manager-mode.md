@@ -216,13 +216,54 @@ Execute agents in order specified by the contract:
 | High-risk flow checked | xcode-pilot (PATCHSET 3) |
 | Always | feature-owner, integrator |
 
-### Step 4: Agent Prompts Reference Contract
+### Step 4: Agent Prompts Reference Contract [MANDATORY Context7 Reminder]
 
-When invoking agents, reference the contract:
+When invoking agents, you MUST include the Context7 reminder in EVERY agent prompt.
+
+**Required Template for Agent Prompts:**
 
 ```
-Task(subagent_type="feature-owner", prompt="Implement per contract at .claude/contracts/xyz.md.
-Use Context7 for framework patterns. Fill Context7 Attestation section.")
+Task(subagent_type="[agent-name]", prompt="[task description]
+
+Contract: .claude/contracts/[feature].md
+
+**CRITICAL: Check Context7 for ALL APIs before using them (training data is outdated).**
+- Use mcp__context7__resolve-library-id + mcp__context7__query-docs
+- Log queries to contract's Context7 Attestation section
+- Fill your agent report section before completing")
+```
+
+**Example Prompts with Context7 Reminder:**
+
+```
+Task(subagent_type="feature-owner", prompt="Implement favorites feature per contract at .claude/contracts/favorites.md.
+
+**CRITICAL: Check Context7 for ALL APIs before using them (training data is outdated).**
+- Query SwiftUI patterns before writing views
+- Query Supabase SDK before writing queries
+- Fill feature-owner report in Context7 Attestation section")
+```
+
+```
+Task(subagent_type="ui-polish", prompt="Polish UI per contract at .claude/contracts/favorites.md.
+
+**CRITICAL: Check Context7 for ALL APIs before using them (training data is outdated).**
+- Query accessibility APIs before adding labels
+- Fill ui-polish report if making code changes")
+```
+
+```
+Task(subagent_type="swift-debugger", prompt="Investigate crash in ListingView per contract.
+
+**CRITICAL: Check Context7 for ALL APIs before using them (training data is outdated).**
+- Research framework patterns BEFORE diagnosing
+- Fill swift-debugger report with investigations")
+```
+
+```
+Task(subagent_type="integrator", prompt="Verify PATCHSET 4 per contract at .claude/contracts/favorites.md.
+
+Verify Context7 reports are filled in contract before allowing DONE.")
 ```
 
 ### Step 5: Report Back
@@ -239,8 +280,10 @@ After each agent completes, summarize results to user before invoking next agent
 User: "Fix the typo in the sync error message - manager mode"
 
 Claude: "This is a simple change (1 file, no schema, no UI). Bypassing planner."
-→ Task(feature-owner): Fix typo in SyncManager.swift
-→ Task(integrator): Verify build
+→ Task(feature-owner, prompt="Fix typo in SyncManager.swift.
+   **CRITICAL: Check Context7 for ALL APIs before using them (training data is outdated).**
+   N/A for this task - pure text change, no framework code.")
+→ Task(integrator, prompt="Verify build. Context7 N/A for text-only change.")
 → DONE
 ```
 
@@ -255,9 +298,13 @@ Claude: "Manager mode activated. This affects sync logic but no UI. Invoking pla
 dispatch-planner returns:
 - Contract with UI Review Required: NO
 - Patchsets: 1 (compiles), 2 (complete + tests)
+- Required Libraries: Swift (async/await patterns)
 
-→ Task(feature-owner): Implement per contract
-→ Task(integrator): Build + tests
+→ Task(feature-owner, prompt="Implement per contract at .claude/contracts/sync-backoff.md.
+   **CRITICAL: Check Context7 for ALL APIs before using them (training data is outdated).**
+   - Query Swift async/await patterns before implementation
+   - Fill feature-owner report in Context7 Attestation section")
+→ Task(integrator, prompt="Build + tests. Verify Context7 reports filled.")
 → DONE (jobs-critic skipped - no UI)
 ```
 
@@ -273,11 +320,19 @@ dispatch-planner returns:
 - Contract with UI Review Required: YES
 - Complexity: UI changes checked
 - Patchsets: 1, 2, 2.5 (jobs-critic)
+- Required Libraries: SwiftUI, Supabase
 
-→ Task(feature-owner): Implement per contract
+→ Task(feature-owner, prompt="Implement per contract at .claude/contracts/favorites.md.
+   **CRITICAL: Check Context7 for ALL APIs before using them (training data is outdated).**
+   - Query SwiftUI TabView patterns
+   - Query Supabase realtime subscription
+   - Fill feature-owner report in Context7 Attestation section")
 → Task(jobs-critic): Design review → SHIP: YES
-→ Task(ui-polish): Final UI refinements
-→ Task(integrator): Build + verify Jobs Critique
+→ Task(ui-polish, prompt="Polish UI per contract.
+   **CRITICAL: Check Context7 for ALL APIs before using them (training data is outdated).**
+   - Query accessibility APIs if adding labels
+   - Fill ui-polish report if making code changes")
+→ Task(integrator, prompt="Build + verify Jobs Critique + verify Context7 reports.")
 → DONE
 ```
 

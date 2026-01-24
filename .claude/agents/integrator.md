@@ -137,21 +137,69 @@ At PATCHSET 4, read the contract at `.claude/contracts/<feature>.md`:
 - `JOBS CRITIQUE: SHIP YES` is present
 
 # Context7 Gate (PATCHSET 4 - MANDATORY)
-At PATCHSET 4, verify Context7 attestation in the contract.
 
-**Step 1**: Determine if Context7 was required:
-- Feature uses SwiftUI patterns? → Required
-- Feature uses Supabase SDK? → Required
-- Feature uses Swift concurrency? → Required
-- Pure refactor with no framework code? → N/A
+At PATCHSET 4, verify ALL agent Context7 reports in the contract.
 
-**Step 2**: Read contract's "Context7 Attestation" section:
-- `CONTEXT7 CONSULTED: YES` with populated table → PASS
-- `CONTEXT7 CONSULTED: N/A` (for pure refactors) → PASS
-- `CONTEXT7 CONSULTED: NO` → BLOCKED
-- Section missing → BLOCKED (feature-owner must fill in)
+**CRITICAL**: This is now a per-agent verification. Each agent that ran must have their report section filled.
 
-Report: `CONTEXT7: [PASS | BLOCKED | N/A] + reason`
+## Verification Steps
+
+### Step 1: Read contract's "Context7 Attestation" section
+
+Find the section at `.claude/contracts/<feature>.md`:
+- Look for "### Context7 Attestation [MANDATORY]"
+- Check "Required Libraries" table
+- Check each "Agent Reports" subsection
+
+### Step 2: Verify Required Libraries table
+
+| Status | Action |
+|--------|--------|
+| Table has entries | Note which libraries were expected |
+| Table is N/A (pure refactor) | Verify no framework code was written |
+| Table empty but framework code exists | BLOCKED |
+
+### Step 3: Verify feature-owner Report (ALWAYS REQUIRED)
+
+| Report Status | Action |
+|---------------|--------|
+| `CONTEXT7 CONSULTED: YES` + filled table | PASS |
+| `CONTEXT7 CONSULTED: N/A` (pure refactor justified) | PASS |
+| `CONTEXT7 CONSULTED: NO` | BLOCKED |
+| Report section missing | BLOCKED |
+| Table empty but framework code written | BLOCKED |
+
+### Step 4: Verify ui-polish Report (IF UI-POLISH RAN)
+
+| Report Status | Action |
+|---------------|--------|
+| `CODE CHANGES MADE: YES` + filled table | PASS |
+| `CODE CHANGES MADE: NO` (review only) | PASS |
+| `CODE CHANGES MADE: YES` but table empty | BLOCKED |
+| Report section missing (when ui-polish ran) | BLOCKED |
+
+### Step 5: Verify swift-debugger Report (IF DEBUGGER RAN)
+
+| Report Status | Action |
+|---------------|--------|
+| `DEBUGGING PERFORMED: YES` + filled table | PASS |
+| `DEBUGGING PERFORMED: NO` | PASS |
+| `DEBUGGING PERFORMED: YES` but table empty | BLOCKED |
+| Report section missing (when swift-debugger ran) | BLOCKED |
+
+## Output Format
+
+Report the verification result:
+
+```
+CONTEXT7: [PASS | BLOCKED | N/A]
+- Required Libraries: [list or N/A]
+- feature-owner: [PASS/BLOCKED/reason]
+- ui-polish: [PASS/BLOCKED/N/A (not invoked)]
+- swift-debugger: [PASS/BLOCKED/N/A (not invoked)]
+```
+
+**BLOCKED if ANY required report is missing or shows NO.**
 
 # Style Enforcement Commands (PATCHSET 4)
 
@@ -196,5 +244,10 @@ If BLOCKED, include the smallest next fix.
 **DONE is only valid if:**
 1. You are the LAST agent to run (after ui-polish, xcode-pilot complete)
 2. Jobs Critique = SHIP YES (if UI Review Required: YES) OR Jobs Critique = N/A (if UI Review Required: NO)
-3. Context7 = PASS (or N/A for pure refactors)
+3. Context7 = PASS for ALL required agent reports:
+   - feature-owner report: MUST be filled (YES or N/A with justification)
+   - ui-polish report: MUST be filled if CODE CHANGES MADE: YES
+   - swift-debugger report: MUST be filled if DEBUGGING PERFORMED: YES
 4. All builds/tests/lint pass
+
+**Context7 Blocking Rule**: If ANY required agent report is missing, empty, or shows "NO", you MUST report BLOCKED.

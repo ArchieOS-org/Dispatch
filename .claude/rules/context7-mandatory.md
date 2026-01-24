@@ -1,7 +1,7 @@
-# Context7 Usage [GUIDELINE - STRONGLY RECOMMENDED]
+# Context7 Usage [MANDATORY - BLOCKING]
 
-> **Version**: 2.1
-> **Tier**: GUIDELINE (logged, not blocking)
+> **Version**: 3.0
+> **Tier**: MANDATORY (blocks DONE if reports missing)
 
 **Your training data is outdated. Context7 is the source of truth for all library documentation.**
 
@@ -9,9 +9,11 @@
 
 You were trained on documentation that is months or years old. APIs change, patterns evolve, and best practices get updated. **Context7 provides current, accurate documentation** that supersedes your training.
 
+**CRITICAL**: Integrator BLOCKS DONE if Context7 reports are missing or attestation is NO (when applicable).
+
 ## Behavior
 
-Before writing ANY code that uses external libraries or frameworks, you SHOULD:
+Before writing ANY code that uses external libraries or frameworks, you MUST:
 
 1. **Resolve the library ID**:
    ```
@@ -106,19 +108,78 @@ CONTEXT7_APPLIED:
 
 | Aspect | Tier | Consequence |
 |--------|------|-------------|
-| Using Context7 before framework code | GUIDELINE | Strongly recommended, not blocking |
+| Using Context7 before framework code | MANDATORY | Blocks DONE if reports missing |
 | Machine-verifiable output format | ENFORCED | Integrator auto-validates headers |
-| Logging queries to contract | ENFORCED | Integrator checks, warns if missing |
-| Following documented patterns | GUIDELINE | Evaluated by jobs-critic for UI |
+| Logging queries to contract | ENFORCED | Integrator blocks DONE if missing |
+| Following documented patterns | ENFORCED | Evaluated by jobs-critic for UI |
 | Verbosity limits (5 takeaways max) | ENFORCED | Excess takeaways flagged |
+| Per-agent report in contract | MANDATORY | Integrator blocks DONE if missing |
 
-## Agent Responsibilities
+---
 
-- **feature-owner**: Should use Context7 before implementing patterns; MUST log to contract using machine-verifiable format; MUST emit output format in conversation
-- **swift-debugger**: Should use Context7 before second fix attempt; MUST emit output format or UNAVAILABLE token
-- **ui-polish**: Should use Context7 for SwiftUI modifiers; MUST log to contract using machine-verifiable format
-- **dispatch-explorer**: May use Context7 to understand framework patterns; SHOULD emit output format when used
-- **integrator**: MUST validate presence of `CONTEXT7_QUERY:` or `CONTEXT7: UNAVAILABLE` headers in agent output when framework code was written
+## Per-Agent Responsibilities [MANDATORY]
+
+Each agent has specific Context7 reporting requirements. **Reports are logged to the contract's Context7 Attestation section.**
+
+### feature-owner (MUST REPORT)
+
+**Requirement**: MUST fill "Agent Reports > feature-owner" section in contract.
+
+| Condition | Action |
+|-----------|--------|
+| Writing SwiftUI code | Query Context7, log to contract |
+| Using Supabase SDK | Query Context7, log to contract |
+| Using Swift concurrency | Query Context7, log to contract |
+| Using any framework API | Query Context7, log to contract |
+| Pure refactor (no framework code) | Mark N/A in contract |
+
+**Output**: Emit machine-verifiable format in conversation AND log to contract.
+
+### ui-polish (REPORTS IF CODE CHANGES)
+
+**Requirement**: MUST fill "Agent Reports > ui-polish" section if making code changes.
+
+| Condition | Action |
+|-----------|--------|
+| Modifying SwiftUI views | Query Context7, log to contract |
+| Adding accessibility APIs | Query Context7, log to contract |
+| No code changes (review only) | Mark "No code changes" in contract |
+
+**Output**: Emit machine-verifiable format when querying, log to contract.
+
+### swift-debugger (REPORTS INVESTIGATIONS)
+
+**Requirement**: MUST fill "Agent Reports > swift-debugger" section for framework investigations.
+
+| Condition | Action |
+|-----------|--------|
+| Investigating SwiftUI issue | Query Context7, log to contract |
+| Investigating Swift concurrency | Query Context7, log to contract |
+| Investigating Supabase issue | Query Context7, log to contract |
+| Second fix attempt failed | MUST query Context7 before retry |
+
+**Output**: Emit FRAMEWORK-FIRST CHECK format with Context7 research.
+
+### integrator (VERIFIES REPORTS)
+
+**Requirement**: MUST verify Context7 reports are present before allowing DONE.
+
+**Verification Steps**:
+1. Read contract's "Context7 Attestation" section
+2. Check "Required Libraries" table (filled by planner/feature-owner)
+3. Check each agent's report subsection:
+   - feature-owner: MUST have entries OR explicit N/A
+   - ui-polish: MUST have entries if code was changed
+   - swift-debugger: MUST have entries if invoked for debugging
+4. If any required report is missing → BLOCKED
+
+**Output**: Report `CONTEXT7: [PASS | BLOCKED | N/A] + reason`
+
+### dispatch-explorer (OPTIONAL)
+
+**Requirement**: MAY use Context7 to understand framework patterns.
+
+**Output**: SHOULD emit output format when used, not required to log to contract.
 
 ## Why This Matters
 
@@ -173,7 +234,21 @@ Proceeding with training knowledge - flagged for manual review.
 
 ---
 
-**Remember: Context7 is strongly recommended but not blocking. What IS required:**
+## Blocking Rules Summary [MANDATORY]
+
+**Context7 is MANDATORY and blocks DONE when reports are missing.**
+
+| Check | Blocks DONE? |
+|-------|--------------|
+| feature-owner report missing (when framework code written) | YES |
+| ui-polish report missing (when code changes made) | YES |
+| swift-debugger report missing (when debugging invoked) | YES |
+| CONTEXT7 CONSULTED: NO | YES |
+| Required Libraries table empty (when framework used) | YES |
+| N/A without justification | YES |
+
+**What IS required:**
 1. **Machine-verifiable output format** (`CONTEXT7_QUERY:` or `CONTEXT7: UNAVAILABLE`)
-2. **Logging queries to the contract** using the same format
+2. **Logging queries to the contract** in the appropriate agent report section
 3. **Respecting verbosity limits** (max 5 takeaways, 1-2 lines applied)
+4. **Per-agent report filled** before integrator final pass

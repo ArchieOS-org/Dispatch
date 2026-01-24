@@ -64,24 +64,53 @@ Based on checked indicators:
 
 ---
 
-### Context7 Queries
+### Context7 Attestation [MANDATORY]
 
-Log all Context7 lookups here (see `.claude/rules/context7-mandatory.md`):
+> **Enforcement**: Integrator BLOCKS DONE if required reports are missing or CONTEXT7 CONSULTED: NO
 
-- [library]: [question asked] → [brief pattern/answer used]
+#### Required Libraries (filled by planner or feature-owner)
+
+| Library | Context7 ID | Why Needed |
+|---------|-------------|------------|
+| [e.g., SwiftUI] | [e.g., /websites/developer_apple_swiftui] | [e.g., View binding patterns] |
+
+**N/A is only valid** for pure refactors with no framework/library usage.
 
 ---
 
-### Context7 Attestation (written by feature-owner at PATCHSET 1)
+#### Agent Reports
+
+Each agent fills their section below. **Integrator verifies these are complete before DONE.**
+
+##### feature-owner Report (MUST FILL)
 
 **CONTEXT7 CONSULTED**: [YES | NO | N/A]
-**Libraries Queried**: [list or "N/A"]
 
-| Query | Pattern Used |
-|-------|--------------|
-| [what was asked] | [what was applied] |
+| Library | Query | Result |
+|---------|-------|--------|
+| [e.g., SwiftUI] | [what was asked] | [pattern/answer applied] |
 
-**N/A**: Only valid for pure refactors with no framework/library usage.
+_N/A only valid for pure refactors with zero framework code._
+
+##### ui-polish Report (FILL IF CODE CHANGES)
+
+**CODE CHANGES MADE**: [YES | NO]
+
+| Library | Query | Result |
+|---------|-------|--------|
+| [e.g., SwiftUI] | [what was asked] | [pattern/answer applied] |
+
+_Leave empty if no code changes (review only)._
+
+##### swift-debugger Report (FILL IF INVOKED)
+
+**DEBUGGING PERFORMED**: [YES | NO]
+
+| Library | Query | Result |
+|---------|-------|--------|
+| [e.g., Swift] | [what was asked] | [framework pattern found] |
+
+_Leave empty if swift-debugger not invoked._
 
 ---
 
@@ -108,5 +137,11 @@ Log all Context7 lookups here (see `.claude/rules/context7-mandatory.md`):
 - If `UI Review Required: YES` → integrator MUST verify `JOBS CRITIQUE: SHIP YES` before reporting DONE
 - If `UI Review Required: NO` → Jobs Critique section is not required; integrator skips this check
 - If UI Review Required but Jobs Critique is missing/PENDING/SHIP NO → integrator MUST reject DONE
-- **Context7 Attestation**: integrator MUST verify `CONTEXT7 CONSULTED: YES` (or `N/A` for pure refactors) before reporting DONE
-- If Context7 Attestation is missing or `NO` → integrator MUST reject DONE
+
+**Context7 Attestation [MANDATORY]**:
+- Integrator MUST verify each agent's Context7 report is filled:
+  - **feature-owner**: MUST have report with `CONTEXT7 CONSULTED: YES` (or `N/A` for pure refactors)
+  - **ui-polish**: MUST have report if `CODE CHANGES MADE: YES`
+  - **swift-debugger**: MUST have report if `DEBUGGING PERFORMED: YES`
+- If any required report is missing or shows `CONTEXT7 CONSULTED: NO` → integrator MUST reject DONE
+- `N/A` is only valid for pure refactors with zero framework/library code

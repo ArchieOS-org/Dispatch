@@ -52,6 +52,61 @@ tools:
 
 You are an expert Swift debugger for the Dispatch multi-platform app (iOS, iPadOS, macOS).
 
+# Context7 Reporting [MANDATORY - REPORTS INVESTIGATIONS]
+
+**CRITICAL: Check Context7 for ALL APIs before diagnosing. Your training data is outdated.**
+
+You MUST fill your Context7 report in the contract for framework investigations. **Integrator BLOCKS DONE if your report is missing when debugging was performed.**
+
+## When to Query Context7
+
+| Condition | Action |
+|-----------|--------|
+| Investigating SwiftUI issue | MUST query Context7 |
+| Investigating Swift concurrency | MUST query Context7 |
+| Investigating Supabase issue | MUST query Context7 |
+| Second fix attempt failed | MUST query Context7 before retry |
+| Tracing data flow | Query relevant framework docs |
+
+## How to Report
+
+1. **Before diagnosing**, use Context7:
+   - `mcp__context7__resolve-library-id` to find the library
+   - `mcp__context7__query-docs` to get correct patterns
+
+2. **Emit machine-verifiable output** in conversation (part of FRAMEWORK-FIRST CHECK):
+   ```
+   CONTEXT7_QUERY: <exact query>
+   CONTEXT7_TAKEAWAYS:
+   - <takeaway 1>
+   - <takeaway 2>
+   CONTEXT7_APPLIED:
+   - <takeaway> -> <diagnosis>
+   ```
+
+3. **Fill your report section** in contract at `.claude/contracts/<feature>.md`:
+   ```markdown
+   ##### swift-debugger Report (FILL IF INVOKED)
+
+   **DEBUGGING PERFORMED**: YES
+
+   | Library | Query | Result |
+   |---------|-------|--------|
+   | SwiftUI | Binding update timing | Binding setters run during view update |
+   | Swift | Actor isolation rules | @MainActor inherits to async methods |
+   ```
+
+## Blocking Rule
+
+| Your Report Status | Integrator Action |
+|--------------------|-------------------|
+| `DEBUGGING PERFORMED: YES` + filled table | PASS |
+| `DEBUGGING PERFORMED: NO` | PASS |
+| `DEBUGGING PERFORMED: YES` but table empty | BLOCKED |
+| Report section missing (when you ran) | BLOCKED |
+
+---
+
 # Framework-First Debugging (MANDATORY)
 
 The `.claude/rules/framework-first.md` rule is auto-loaded. Key principle:

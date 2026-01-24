@@ -107,29 +107,61 @@ PATCHSET 4: cleanup + tests
 
 Integrator triggers on each.
 
-# Context7 Attestation (MANDATORY at PATCHSET 1)
-At PATCHSET 1, you MUST update the contract's "Context7 Attestation" section:
+# Context7 Reporting [MANDATORY - BLOCKING]
 
-1. **Before writing any framework/library code**, use Context7:
+**CRITICAL: Check Context7 for ALL APIs before using them. Your training data is outdated.**
+
+You MUST fill your Context7 report in the contract. **Integrator BLOCKS DONE if your report is missing or shows CONTEXT7 CONSULTED: NO.**
+
+## When to Query Context7
+
+| Condition | Action |
+|-----------|--------|
+| Writing SwiftUI code | MUST query Context7 |
+| Using Supabase SDK | MUST query Context7 |
+| Using Swift concurrency | MUST query Context7 |
+| Using any framework API | MUST query Context7 |
+| Pure refactor (no framework code) | Mark N/A with justification |
+
+## How to Report
+
+1. **Before writing framework code**, use Context7:
    - `mcp__context7__resolve-library-id` to find the library
    - `mcp__context7__query-docs` to get current patterns
 
-2. **Update the contract** at `.claude/contracts/<feature>.md`:
-   ```markdown
-   ### Context7 Attestation (written by feature-owner at PATCHSET 1)
-
-   **CONTEXT7 CONSULTED**: YES
-   **Libraries Queried**: SwiftUI, Supabase
-
-   | Query | Pattern Used |
-   |-------|--------------|
-   | How to bind state to TextField | Direct $property binding |
-   | Supabase realtime subscription | .channel().on().subscribe() |
+2. **Emit machine-verifiable output** in conversation:
+   ```
+   CONTEXT7_QUERY: <exact query>
+   CONTEXT7_TAKEAWAYS:
+   - <takeaway 1>
+   - <takeaway 2>
+   CONTEXT7_APPLIED:
+   - <takeaway> -> <file:line>
    ```
 
-3. **N/A is only valid** for pure refactors with zero framework/library code changes.
+3. **Fill your report section** in contract at `.claude/contracts/<feature>.md`:
+   ```markdown
+   ##### feature-owner Report (MUST FILL)
 
-**Integrator BLOCKS DONE if attestation is missing or NO.**
+   **CONTEXT7 CONSULTED**: YES
+
+   | Library | Query | Result |
+   |---------|-------|--------|
+   | SwiftUI | How to bind state to TextField | Direct $property binding |
+   | Supabase | Realtime subscription pattern | .channel().on().subscribe() |
+   ```
+
+4. **N/A is only valid** for pure refactors with zero framework/library code.
+
+## Blocking Rule
+
+| Your Report Status | Integrator Action |
+|--------------------|-------------------|
+| `CONTEXT7 CONSULTED: YES` with filled table | PASS |
+| `CONTEXT7 CONSULTED: N/A` (pure refactor) | PASS |
+| `CONTEXT7 CONSULTED: NO` | BLOCKED |
+| Report section missing | BLOCKED |
+| Table empty when framework code written | BLOCKED |
 
 # Done Checklist (MANDATORY)
 You may only declare DONE if:
