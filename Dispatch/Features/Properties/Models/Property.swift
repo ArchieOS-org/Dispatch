@@ -124,10 +124,10 @@ extension Property: RealtimeSyncable {
   }
 }
 
-// MARK: - Hashable
+// MARK: Hashable
 
 extension Property: Hashable {
-  static func == (lhs: Property, rhs: Property) -> Bool {
+  static func ==(lhs: Property, rhs: Property) -> Bool {
     lhs.id == rhs.id
   }
 
