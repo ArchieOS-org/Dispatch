@@ -118,20 +118,8 @@ extension Property: RealtimeSyncable {
   }
 
   /// Mark as failed after sync error
-  func markFailed(_ error: Error) {
+  func markFailed(_ message: String) {
     syncState = .failed
-    lastSyncError = error.localizedDescription
-  }
-}
-
-// MARK: Hashable
-
-extension Property: Hashable {
-  static func ==(lhs: Property, rhs: Property) -> Bool {
-    lhs.id == rhs.id
-  }
-
-  func hash(into hasher: inout Hasher) {
-    hasher.combine(id)
+    lastSyncError = message
   }
 }
