@@ -187,21 +187,7 @@ extension Activity: RealtimeSyncable {
   /// Suppress state changes to prevent sync loops.
   @MainActor
   func markPending() {
-    let isSyncing = SyncManager.shared.isSyncing
-    let suppressed = shouldSuppressPending
-
-    #if DEBUG
-    if suppressed {
-      print("[SYNC_DEBUG] markPending SUPPRESSED on Activity id=\(id) - isSyncing=\(isSyncing)")
-    } else {
-      print("[SYNC_DEBUG] markPending EXECUTED on Activity id=\(id) - isSyncing=\(isSyncing)")
-      // Print first 10 relevant stack frames to identify caller
-      let stack = Thread.callStackSymbols.prefix(10).joined(separator: "\n")
-      print("[SYNC_DEBUG] Stack:\n\(stack)")
-    }
-    #endif
-
-    guard !suppressed else { return }
+    guard !shouldSuppressPending else { return }
     syncState = .pending
     lastSyncError = nil
     updatedAt = Date()

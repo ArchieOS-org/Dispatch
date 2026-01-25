@@ -105,21 +105,7 @@ extension Property: RealtimeSyncable {
   /// Suppress state changes to prevent sync loops.
   @MainActor
   func markPending() {
-    let isSyncing = SyncManager.shared.isSyncing
-    let suppressed = shouldSuppressPending
-
-    #if DEBUG
-    if suppressed {
-      print("[SYNC_DEBUG] markPending SUPPRESSED on Property id=\(id) - isSyncing=\(isSyncing)")
-    } else {
-      print("[SYNC_DEBUG] markPending EXECUTED on Property id=\(id) - isSyncing=\(isSyncing)")
-      // Print first 10 relevant stack frames to identify caller
-      let stack = Thread.callStackSymbols.prefix(10).joined(separator: "\n")
-      print("[SYNC_DEBUG] Stack:\n\(stack)")
-    }
-    #endif
-
-    guard !suppressed else { return }
+    guard !shouldSuppressPending else { return }
     syncState = .pending
     lastSyncError = nil
     updatedAt = Date()
@@ -129,12 +115,23 @@ extension Property: RealtimeSyncable {
   func markSynced() {
     syncState = .synced
     lastSyncError = nil
-    syncedAt = Date()
   }
 
-  /// Mark as failed with error message
-  func markFailed(_ message: String) {
+  /// Mark as failed after sync error
+  func markFailed(_ error: Error) {
     syncState = .failed
-    lastSyncError = message
+    lastSyncError = error.localizedDescription
+  }
+}
+
+// MARK: - Hashable
+
+extension Property: Hashable {
+  static func == (lhs: Property, rhs: Property) -> Bool {
+    lhs.id == rhs.id
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine(id)
   }
 }
