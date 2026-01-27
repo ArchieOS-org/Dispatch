@@ -105,8 +105,8 @@ struct HistoryEntryRow: View {
     Button {
       Task {
         isRestoring = true
+        defer { isRestoring = false }
         await action()
-        isRestoring = false
       }
     } label: {
       if isRestoring {

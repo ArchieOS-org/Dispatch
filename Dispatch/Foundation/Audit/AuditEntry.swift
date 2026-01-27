@@ -101,17 +101,21 @@ extension AuditEntry {
 
 // MARK: - AuditEntry + Preview Mocks
 
+// swiftlint:disable force_unwrapping
+
 extension AuditEntry {
+
+  // MARK: Internal
 
   /// Mock INSERT entry for previews
   static var mockInsert: AuditEntry {
     AuditEntry(
-      id: UUID(),
+      id: PreviewID.insertEntry,
       action: .insert,
-      changedAt: Date().addingTimeInterval(-3600), // 1 hour ago
+      changedAt: previewReferenceDate.addingTimeInterval(-3600), // 1 hour before reference
       changedBy: PreviewDataFactory.aliceID,
       entityType: .listing,
-      entityId: UUID(),
+      entityId: PreviewID.insertEntityId,
       summary: "Created",
       oldRow: nil,
       newRow: [
@@ -125,12 +129,12 @@ extension AuditEntry {
   /// Mock UPDATE entry for previews
   static var mockUpdate: AuditEntry {
     AuditEntry(
-      id: UUID(),
+      id: PreviewID.updateEntry,
       action: .update,
-      changedAt: Date().addingTimeInterval(-1800), // 30 min ago
+      changedAt: previewReferenceDate.addingTimeInterval(-1800), // 30 min before reference
       changedBy: PreviewDataFactory.bobID,
       entityType: .listing,
-      entityId: UUID(),
+      entityId: PreviewID.updateEntityId,
       summary: "Updated",
       oldRow: [
         "price": AnyCodable(500_000),
@@ -146,12 +150,12 @@ extension AuditEntry {
   /// Mock DELETE entry for previews
   static var mockDelete: AuditEntry {
     AuditEntry(
-      id: UUID(),
+      id: PreviewID.deleteEntry,
       action: .delete,
-      changedAt: Date().addingTimeInterval(-86_400), // 1 day ago
+      changedAt: previewReferenceDate.addingTimeInterval(-86_400), // 1 day before reference
       changedBy: PreviewDataFactory.aliceID,
       entityType: .listing,
-      entityId: UUID(),
+      entityId: PreviewID.deleteEntityId,
       summary: "Deleted",
       oldRow: [
         "address": AnyCodable("456 Oak Ave"),
@@ -164,12 +168,12 @@ extension AuditEntry {
   /// Mock RESTORE entry for previews
   static var mockRestore: AuditEntry {
     AuditEntry(
-      id: UUID(),
+      id: PreviewID.restoreEntry,
       action: .restore,
-      changedAt: Date().addingTimeInterval(-300), // 5 min ago
+      changedAt: previewReferenceDate.addingTimeInterval(-300), // 5 min before reference
       changedBy: PreviewDataFactory.bobID,
       entityType: .listing,
-      entityId: UUID(),
+      entityId: PreviewID.restoreEntityId,
       summary: "Restored",
       oldRow: nil,
       newRow: [
@@ -182,12 +186,12 @@ extension AuditEntry {
   /// Mock deleted task entry for Recently Deleted view
   static var mockDeletedTask: AuditEntry {
     AuditEntry(
-      id: UUID(),
+      id: PreviewID.deletedTask,
       action: .delete,
-      changedAt: Date().addingTimeInterval(-7200), // 2 hours ago
+      changedAt: previewReferenceDate.addingTimeInterval(-7200), // 2 hours before reference
       changedBy: PreviewDataFactory.aliceID,
       entityType: .task,
-      entityId: UUID(),
+      entityId: PreviewID.deletedTaskEntityId,
       summary: "Deleted",
       oldRow: [
         "title": AnyCodable("Update lockbox code"),
@@ -200,16 +204,33 @@ extension AuditEntry {
   /// Mock deleted property entry for Recently Deleted view
   static var mockDeletedProperty: AuditEntry {
     AuditEntry(
-      id: UUID(),
+      id: PreviewID.deletedProperty,
       action: .delete,
-      changedAt: Date().addingTimeInterval(-172_800), // 2 days ago
+      changedAt: previewReferenceDate.addingTimeInterval(-172_800), // 2 days before reference
       changedBy: PreviewDataFactory.bobID,
       entityType: .property,
-      entityId: UUID(),
+      entityId: PreviewID.deletedPropertyEntityId,
       summary: "Deleted",
       oldRow: [
         "address": AnyCodable("321 Elm Street"),
         "city": AnyCodable("Toronto")
+      ],
+      newRow: nil
+    )
+  }
+
+  /// Mock deleted activity entry for Recently Deleted view
+  static var mockDeletedActivity: AuditEntry {
+    AuditEntry(
+      id: PreviewID.deletedActivity,
+      action: .delete,
+      changedAt: previewReferenceDate.addingTimeInterval(-3600), // 1 hour before reference
+      changedBy: PreviewDataFactory.aliceID,
+      entityType: .activity,
+      entityId: PreviewID.deletedActivityEntityId,
+      summary: "Deleted",
+      oldRow: [
+        "title": AnyCodable("Client follow-up call")
       ],
       newRow: nil
     )
@@ -225,9 +246,36 @@ extension AuditEntry {
     [mockDelete, mockDeletedTask, mockDeletedProperty]
   }
 
+  // MARK: Private
+
+  /// Fixed UUIDs for deterministic preview entries
+  private enum PreviewID {
+    static let insertEntry = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+    static let updateEntry = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
+    static let deleteEntry = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
+    static let restoreEntry = UUID(uuidString: "44444444-4444-4444-4444-444444444444")!
+    static let deletedTask = UUID(uuidString: "55555555-5555-5555-5555-555555555555")!
+    static let deletedProperty = UUID(uuidString: "66666666-6666-6666-6666-666666666666")!
+    static let insertEntityId = UUID(uuidString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!
+    static let updateEntityId = UUID(uuidString: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")!
+    static let deleteEntityId = UUID(uuidString: "cccccccc-cccc-cccc-cccc-cccccccccccc")!
+    static let restoreEntityId = UUID(uuidString: "dddddddd-dddd-dddd-dddd-dddddddddddd")!
+    static let deletedTaskEntityId = UUID(uuidString: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")!
+    static let deletedPropertyEntityId = UUID(uuidString: "ffffffff-ffff-ffff-ffff-ffffffffffff")!
+    static let deletedActivity = UUID(uuidString: "77777777-7777-7777-7777-777777777777")!
+    static let deletedActivityEntityId = UUID(uuidString: "88888888-8888-8888-8888-888888888888")!
+  }
+
+  // MARK: - Deterministic Preview Data
+
+  /// Fixed reference date for deterministic previews (Jan 15, 2025 12:00 UTC)
+  private static let previewReferenceDate = Date(timeIntervalSinceReferenceDate: 758_980_800)
+
 }
 
 // MARK: - AnyCodable
+
+// swiftlint:enable force_unwrapping
 
 /// Type-erased wrapper for JSON values from RPC responses.
 struct AnyCodable: Codable, Sendable {

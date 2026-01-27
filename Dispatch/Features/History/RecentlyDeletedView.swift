@@ -438,17 +438,7 @@ private struct RecentlyDeletedPreview: View {
     .mockDelete,
     .mockDeletedTask,
     .mockDeletedProperty,
-    AuditEntry(
-      id: UUID(),
-      action: .delete,
-      changedAt: Date().addingTimeInterval(-3600),
-      changedBy: PreviewDataFactory.aliceID,
-      entityType: .activity,
-      entityId: UUID(),
-      summary: "Deleted",
-      oldRow: ["title": AnyCodable("Client follow-up call")],
-      newRow: nil
-    )
+    .mockDeletedActivity
   ]
 
   NavigationStack {
