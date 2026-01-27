@@ -29,6 +29,12 @@ struct iPadContentView: View {
   let activeRealtors: [User]
   let pathBindingProvider: (SidebarDestination) -> Binding<[AppRoute]>
 
+  /// Available users for sheet assignment pickers
+  let users: [User]
+
+  /// Current authenticated user ID
+  let currentUserId: UUID
+
   /// Global Quick Find text state
   @Binding var quickFindText: String
 
@@ -37,6 +43,9 @@ struct iPadContentView: View {
 
   /// Callback when search result is selected
   let onSelectSearchResult: (SearchResult) -> Void
+
+  /// Callback to trigger sync after sheet actions
+  let onRequestSync: () -> Void
 
   var body: some View {
     NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -116,6 +125,10 @@ struct iPadContentView: View {
         quickFindText = initialText ?? ""
       }
     }
+    // iPad Sheet Handling driven by AppState
+    .sheet(item: appState.sheetBinding) { state in
+      sheetContent(for: state)
+    }
   }
 
   // MARK: Private
@@ -160,6 +173,32 @@ struct iPadContentView: View {
       }
 
     case .stage(let stage): StagedListingsView(stage: stage)
+    }
+  }
+
+  @ViewBuilder
+  private func sheetContent(for state: AppState.SheetState) -> some View {
+    switch state {
+    case .quickEntry(let type):
+      QuickEntrySheet(
+        defaultItemType: type ?? .task,
+        currentUserId: currentUserId,
+        listings: activeListings,
+        availableUsers: users,
+        onSave: { onRequestSync() }
+      )
+
+    case .addListing:
+      AddListingSheet(
+        currentUserId: currentUserId,
+        onSave: { onRequestSync() }
+      )
+
+    case .addRealtor:
+      EditRealtorSheet()
+
+    case .none:
+      EmptyView()
     }
   }
 }
