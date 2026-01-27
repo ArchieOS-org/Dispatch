@@ -53,7 +53,7 @@ final class AppState: ObservableObject {
 
   enum SheetState: Equatable, Identifiable {
     case none
-    case quickEntry(type: QuickEntryItemType?)
+    case quickEntry(type: QuickEntryItemType?, preselectedListing: Listing? = nil)
     case addListing
     case addRealtor
 
@@ -61,10 +61,15 @@ final class AppState: ObservableObject {
 
     var id: String {
       switch self {
-      case .none: "none"
-      case .quickEntry: "quickEntry"
-      case .addListing: "addListing"
-      case .addRealtor: "addRealtor"
+      case .none:
+        return "none"
+      case .quickEntry(let type, let listing):
+        let typeStr = type?.rawValue ?? "none"
+        return "quickEntry-\(typeStr)-\(listing?.id.uuidString ?? "none")"
+      case .addListing:
+        return "addListing"
+      case .addRealtor:
+        return "addRealtor"
       }
     }
 
@@ -74,8 +79,8 @@ final class AppState: ObservableObject {
       switch (lhs, rhs) {
       case (.none, .none):
         true
-      case (.quickEntry(let l), .quickEntry(let r)):
-        l == r
+      case (.quickEntry(let lType, let lListing), .quickEntry(let rType, let rListing)):
+        lType == rType && lListing?.id == rListing?.id
       case (.addListing, .addListing):
         true
       case (.addRealtor, .addRealtor):
@@ -205,7 +210,7 @@ final class AppState: ObservableObject {
         break
       case .workspace, .search:
         // Default to quick entry for workspace or search
-        sheetState = .quickEntry(type: nil) // nil uses default behavior
+        sheetState = .quickEntry(type: nil, preselectedListing: nil)
       }
 
     case .openSearch(let initialText):

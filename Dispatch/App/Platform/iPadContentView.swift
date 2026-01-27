@@ -20,6 +20,8 @@ struct iPadContentView: View {
   let activeListings: [Listing]
   let activeProperties: [Property]
   let activeRealtors: [User]
+  let users: [User]
+  let currentUserId: UUID
   let pathBindingProvider: (SidebarDestination) -> Binding<[AppRoute]>
 
   /// Global Quick Find text state
@@ -30,6 +32,9 @@ struct iPadContentView: View {
 
   /// Callback when search result is selected
   let onSelectSearchResult: (SearchResult) -> Void
+
+  /// Callback to request sync after save
+  let onRequestSync: () -> Void
 
   var body: some View {
     NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -59,20 +64,27 @@ struct iPadContentView: View {
     .navigationSplitViewStyle(.balanced)
     // FAB Menu overlay for quick entry - uses .overlay to ensure proper sizing
     .overlay(alignment: .bottomTrailing) {
+      // Only show when no search/settings overlay AND not hidden by keyboard/text input
+      // appState.overlayState: hides during search/settings overlays
+      // shouldHideFAB: hides during keyboard/text input via AppOverlayState
       if appState.overlayState == .none, !shouldHideFAB {
         FABMenu { option in
           switch option {
           case .listing:
             appState.sheetState = .addListing
           case .task:
-            appState.sheetState = .quickEntry(type: .task)
+            appState.sheetState = .quickEntry(type: .task, preselectedListing: nil)
           case .activity:
-            appState.sheetState = .quickEntry(type: .activity)
+            appState.sheetState = .quickEntry(type: .activity, preselectedListing: nil)
           }
         }
         .padding(.trailing, DS.Spacing.floatingButtonMargin)
         .padding(.bottom, DS.Spacing.floatingButtonBottomInset)
       }
+    }
+    // iPad Sheet Handling
+    .sheet(item: appState.sheetBinding) { state in
+      sheetContent(for: state)
     }
     .overlay {
       // Search overlay - Conditional rendering per SwiftUI best practices
@@ -115,13 +127,15 @@ struct iPadContentView: View {
 
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var overlayState: AppOverlayState
-  @Environment(\.globalButtonsHidden) private var environmentHidden
   @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
   /// Single source of truth for FAB visibility.
-  /// Combines environment-based hiding (SettingsScreen) with state-based hiding (keyboard, modals).
+  /// Uses AppOverlayState which tracks all hide reasons including:
+  /// - .settingsScreen (set by SettingsScreen wrapper)
+  /// - .textInput (set when text fields are focused)
+  /// - .keyboard (set when keyboard is visible)
   private var shouldHideFAB: Bool {
-    environmentHidden || overlayState.isOverlayHidden
+    overlayState.isOverlayHidden
   }
 
   private var tabCounts: [AppTab: Int] {
@@ -153,6 +167,34 @@ struct iPadContentView: View {
       }
 
     case .stage(let stage): StagedListingsView(stage: stage)
+    }
+  }
+
+  @ViewBuilder
+  private func sheetContent(for state: AppState.SheetState) -> some View {
+    switch state {
+    case .quickEntry(let type, let preselectedListing):
+      QuickEntrySheet(
+        defaultItemType: type ?? .task,
+        currentUserId: currentUserId,
+        listings: activeListings,
+        availableUsers: users,
+        preselectedListing: preselectedListing,
+        onSave: { onRequestSync() }
+      )
+      .id(state.id) // Force view recreation when state changes (fixes pre-selection timing)
+
+    case .addListing:
+      AddListingSheet(
+        currentUserId: currentUserId,
+        onSave: { onRequestSync() }
+      )
+
+    case .addRealtor:
+      EditRealtorSheet()
+
+    case .none:
+      EmptyView()
     }
   }
 }

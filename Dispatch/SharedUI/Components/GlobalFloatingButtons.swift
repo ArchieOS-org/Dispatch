@@ -47,13 +47,13 @@ struct GlobalFloatingButtons: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var overlayState: AppOverlayState
 
-  /// Environment key set by SettingsScreen wrapper to hide buttons
-  @Environment(\.globalButtonsHidden) private var environmentHidden
-
   /// Single source of truth for button visibility.
-  /// Combines environment-based hiding (SettingsScreen) with state-based hiding (keyboard, modals).
+  /// Uses AppOverlayState which tracks all hide reasons including:
+  /// - .settingsScreen (set by SettingsScreen wrapper)
+  /// - .textInput (set when text fields are focused)
+  /// - .keyboard (set when keyboard is visible)
   private var shouldHideButtons: Bool {
-    environmentHidden || overlayState.isOverlayHidden
+    overlayState.isOverlayHidden
   }
 
   #if os(iOS)
@@ -82,9 +82,9 @@ struct GlobalFloatingButtons: View {
         case .listing:
           appState.sheetState = .addListing
         case .task:
-          appState.sheetState = .quickEntry(type: .task)
+          appState.sheetState = .quickEntry(type: .task, preselectedListing: nil)
         case .activity:
-          appState.sheetState = .quickEntry(type: .activity)
+          appState.sheetState = .quickEntry(type: .activity, preselectedListing: nil)
         }
       }
     }

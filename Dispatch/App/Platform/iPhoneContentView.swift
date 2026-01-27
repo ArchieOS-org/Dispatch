@@ -49,21 +49,26 @@ struct iPhoneContentView: View {
   let onRequestSync: () -> Void
 
   var body: some View {
-    NavigationStack(path: phonePathBinding) {
-      PullToSearchHost {
-        MenuPageView(
-          stageCounts: stageCounts,
-          tabCounts: phoneTabCounts,
-          overdueCount: overdueCount
-        )
-      }
-      .appDestinations()
-      // GlobalFloatingButtons MUST be inside NavigationStack to receive environment values
-      // set by destination views (e.g., SettingsScreen sets .globalButtonsHidden)
-      .overlay(alignment: .bottom) {
-        if appState.overlayState == .none {
-          GlobalFloatingButtons()
+    // ZStack allows GlobalFloatingButtons to persist during NavigationStack transitions.
+    // The overlay is a sibling to NavigationStack, not a descendant of the root view,
+    // so it remains visible when navigating to destination views.
+    ZStack(alignment: .bottom) {
+      NavigationStack(path: phonePathBinding) {
+        PullToSearchHost {
+          MenuPageView(
+            stageCounts: stageCounts,
+            tabCounts: phoneTabCounts,
+            overdueCount: overdueCount
+          )
         }
+        .appDestinations()
+      }
+
+      // GlobalFloatingButtons uses AppOverlayState (EnvironmentObject) for visibility.
+      // SettingsScreen calls overlayState.hide(.settingsScreen) to hide during settings.
+      // Only show when no search/settings overlay is active.
+      if appState.overlayState == .none {
+        GlobalFloatingButtons()
       }
     }
     .overlay {
@@ -121,14 +126,16 @@ struct iPhoneContentView: View {
   @ViewBuilder
   private func sheetContent(for state: AppState.SheetState) -> some View {
     switch state {
-    case .quickEntry(let type):
+    case .quickEntry(let type, let preselectedListing):
       QuickEntrySheet(
         defaultItemType: type ?? .task,
         currentUserId: currentUserId,
         listings: activeListings,
         availableUsers: users,
+        preselectedListing: preselectedListing,
         onSave: { onRequestSync() }
       )
+      .id(state.id) // Force view recreation when state changes (fixes pre-selection timing)
 
     case .addListing:
       AddListingSheet(

@@ -26,16 +26,21 @@ struct QuickEntrySheet: View {
     currentUserId: UUID,
     listings: [Listing] = [],
     availableUsers: [User] = [],
+    preselectedListing: Listing? = nil,
     onSave: @escaping () -> Void
   ) {
     self.defaultItemType = defaultItemType
     self.currentUserId = currentUserId
     self.listings = listings
     self.availableUsers = availableUsers
+    self.preselectedListing = preselectedListing
     self.onSave = onSave
     _itemType = State(initialValue: defaultItemType)
     // Start with no assignee - user can select themselves from the top of the list
     _selectedAssigneeIds = State(initialValue: [])
+    // Initialize selectedListing directly with preselectedListing
+    // This makes the value available during first body evaluation (before .onAppear)
+    _selectedListing = State(initialValue: preselectedListing)
   }
 
   // MARK: Internal
@@ -51,6 +56,9 @@ struct QuickEntrySheet: View {
 
   /// Available users for assignee selection
   let availableUsers: [User]
+
+  /// Optional listing to pre-select when opening from a listing detail view
+  let preselectedListing: Listing?
 
   /// Callback when save completes (for triggering sync)
   var onSave: () -> Void
@@ -86,6 +94,13 @@ struct QuickEntrySheet: View {
     .presentationDetents([.medium, .large])
     .presentationDragIndicator(.visible)
     #endif
+    .onAppear {
+      // Fallback: SwiftUI may ignore State(initialValue:) if it reuses view storage
+      // This ensures preselection works even when .id() doesn't force full recreation
+      if selectedListing == nil, let listing = preselectedListing {
+        selectedListing = listing
+      }
+    }
   }
 
   // MARK: Private
@@ -96,7 +111,7 @@ struct QuickEntrySheet: View {
   @State private var itemType: QuickEntryItemType
   @State private var title = ""
   @State private var itemDescription = ""
-  @State private var selectedListing: Listing?
+  @State private var selectedListing: Listing? // Initialized in init() for synchronous pre-selection
   @State private var hasDueDate = false
   @State private var dueDate = Date()
   @State private var selectedAssigneeIds: Set<UUID> = []
