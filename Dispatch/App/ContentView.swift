@@ -183,9 +183,11 @@ struct ContentView: View {
         workspaceTasks: workspaceTasks, workspaceActivities: workspaceActivities,
         activeListings: activeListings, activeProperties: activeProperties, activeRealtors: activeRealtors,
         pathBindingProvider: pathBinding(for:),
+        users: users, currentUserId: currentUserId,
         quickFindText: $quickFindText,
         searchViewModel: safeSearchViewModel,
-        onSelectSearchResult: selectSearchResult(_:)
+        onSelectSearchResult: selectSearchResult(_:),
+        onRequestSync: { syncManager.requestSync() }
       )
     }
     #endif

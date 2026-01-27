@@ -5,7 +5,15 @@
 //  Floating action button menu that springs out with options for creating
 //  Listings, Tasks, and Activities. Replaces the single FAB when expanded.
 //
+//  iOS 26 Glass Styling:
+//  - iOS 26+: Uses native `glassCapsuleBackground()` for Liquid Glass
+//  - Pre-iOS 26: Falls back to `.regularMaterial` capsule backgrounds
+//
+//  Glass styling is handled by the DesignSystem's GlassEffect modifiers,
+//  which automatically apply native glass on iOS 26+ with material fallback.
+//
 
+import DesignSystem
 import SwiftUI
 
 // MARK: - FABMenuOption
@@ -144,6 +152,10 @@ struct FABMenu: View {
 // MARK: - FABMenuButton
 
 /// Individual menu button for FAB menu options
+///
+/// iOS 26 Glass Styling:
+/// - iOS 26+: Uses native Liquid Glass background via `glassCapsuleBackground()`
+/// - Pre-iOS 26: Falls back to `.regularMaterial` capsule background
 private struct FABMenuButton: View {
 
   // MARK: Internal
@@ -169,11 +181,9 @@ private struct FABMenuButton: View {
       .padding(.leading, DS.Spacing.md)
       .padding(.trailing, DS.Spacing.xs)
       .padding(.vertical, DS.Spacing.xs)
-      .background(
-        Capsule()
-          .fill(.regularMaterial)
-          .dsShadow(DS.Shadows.card)
-      )
+      // iOS 26+: Native Liquid Glass via glassCapsuleBackground()
+      // Pre-iOS 26: Falls back to regularMaterial capsule
+      .glassCapsuleBackground()
     }
     .buttonStyle(.plain)
     #if os(iOS)
