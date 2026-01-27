@@ -24,6 +24,9 @@ struct SettingsView: View {
           // Profile Row (navigates to ProfilePageView)
           ProfileRow()
 
+          // Data Section (Recently Deleted)
+          RecentlyDeletedSettingsRow()
+
           // Admin Settings (only for admin users)
           if syncManager.currentUser?.userType == .admin {
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
@@ -147,6 +150,70 @@ private struct ProfileRow: View {
   private var currentUser: User? {
     syncManager.currentUser
   }
+
+}
+
+// MARK: - RecentlyDeletedSettingsRow
+
+/// Row that navigates to RecentlyDeletedView.
+private struct RecentlyDeletedSettingsRow: View {
+
+  // MARK: Internal
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+      Text("Data")
+        .font(DS.Typography.caption)
+        .foregroundStyle(DS.Colors.Text.secondary)
+        .textCase(.uppercase)
+        .padding(.horizontal, DS.Spacing.xs)
+
+      ListRowLink(value: AppRoute.recentlyDeleted) {
+        HStack(spacing: DS.Spacing.md) {
+          Circle()
+            .fill(DS.Colors.Background.secondary)
+            .frame(width: 40, height: 40)
+            .overlay {
+              Image(systemName: "trash")
+                .font(.system(size: iconSize, weight: .medium))
+                .foregroundStyle(DS.Colors.Text.primary)
+            }
+
+          VStack(alignment: .leading, spacing: 2) {
+            Text("Recently Deleted")
+              .font(DS.Typography.body)
+              .foregroundStyle(DS.Colors.Text.primary)
+
+            Text("Restore deleted items")
+              .font(DS.Typography.caption)
+              .foregroundStyle(DS.Colors.Text.secondary)
+          }
+
+          Spacer()
+
+          Image(systemName: "chevron.right")
+            .font(.system(size: chevronIconSize, weight: .semibold))
+            .foregroundStyle(DS.Colors.Text.tertiary)
+        }
+        .padding(DS.Spacing.md)
+        .frame(minHeight: DS.Spacing.minTouchTarget)
+        .contentShape(Rectangle())
+      }
+    }
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("Recently Deleted. Restore deleted items")
+    .accessibilityHint("Tap to view and restore deleted items")
+  }
+
+  // MARK: Private
+
+  /// Scaled icon size for Dynamic Type support (base: 18pt)
+  @ScaledMetric(relativeTo: .body)
+  private var iconSize: CGFloat = 18
+
+  /// Scaled chevron icon size for Dynamic Type support (base: 14pt)
+  @ScaledMetric(relativeTo: .footnote)
+  private var chevronIconSize: CGFloat = 14
 
 }
 

@@ -33,7 +33,7 @@ final class PropertySyncHandler: EntitySyncHandlerProtocol {
     let dtos: [PropertyDTO] = try await supabase
       .from("properties")
       .select()
-      .gt("updated_at", value: since)
+      .gte("updated_at", value: since)
       .execute()
       .value
 
@@ -47,6 +47,14 @@ final class PropertySyncHandler: EntitySyncHandlerProtocol {
 
   // MARK: - SyncUp
 
+  /// Syncs properties using explicit DELETE + INSERT to ensure proper audit logging.
+  ///
+  /// The audit system only captures INSERT and DELETE events, not UPDATE events.
+  /// Using UPSERT would trigger UPDATE when modifying a property, which wouldn't
+  /// appear in the audit history. This method ensures:
+  /// - Property creation generates an INSERT audit event
+  /// - Property modification generates DELETE + INSERT audit events
+  /// - Soft-deleted properties (deletedAt set) are synced but remain in database
   func syncUp(context: ModelContext) async throws {
     let descriptor = FetchDescriptor<Property>()
     let allProperties = try context.fetch(descriptor)
@@ -65,40 +73,57 @@ final class PropertySyncHandler: EntitySyncHandlerProtocol {
       return
     }
 
-    // Try batch first for efficiency
-    do {
-      let dtos = pendingProperties.map { PropertyDTO(from: $0) }
-      debugLog.log("  Batch upserting \(dtos.count) properties to Supabase...", category: .sync)
-      try await supabase
-        .from("properties")
-        .upsert(dtos)
-        .execute()
-      debugLog.log("  Batch upsert successful", category: .sync)
+    let pendingPropertyIds = pendingProperties.map { $0.id }
 
-      for property in pendingProperties {
-        property.markSynced()
-      }
-      debugLog.log("  Marked \(pendingProperties.count) properties as synced", category: .sync)
-    } catch {
-      // Batch failed - try individual items to isolate failures
-      debugLog.log("Batch property sync failed, trying individually: \(error.localizedDescription)", category: .error)
+    // Fetch server-side properties to determine which ones already exist
+    let serverProperties: [PropertyDTO] = try await supabase
+      .from("properties")
+      .select()
+      .in("id", values: pendingPropertyIds.map { $0.uuidString })
+      .execute()
+      .value
 
-      for property in pendingProperties {
-        do {
-          let dto = PropertyDTO(from: property)
+    let serverPropertyIds = Set(serverProperties.map { $0.id })
+    debugLog.log(
+      "  Local pending: \(pendingProperties.count), Already on server: \(serverPropertyIds.count)",
+      category: .sync
+    )
+
+    // Mark properties as in-flight to prevent realtime echo
+    dependencies.conflictResolver.markPropertiesInFlight(Set(pendingPropertyIds))
+    defer { dependencies.conflictResolver.clearPropertiesInFlight() }
+
+    // Process each pending property with DELETE + INSERT
+    for property in pendingProperties {
+      let dto = PropertyDTO(from: property)
+
+      do {
+        // Delete if exists on server (to trigger DELETE audit event)
+        if serverPropertyIds.contains(property.id) {
           try await supabase
             .from("properties")
-            .upsert([dto])
+            .delete()
+            .eq("id", value: property.id.uuidString)
             .execute()
-          property.markSynced()
-          debugLog.log("  Property \(property.id) synced individually", category: .sync)
-        } catch {
-          let message = dependencies.userFacingMessage(for: error)
-          property.markFailed(message)
-          debugLog.error("  Property \(property.id) sync failed: \(message)")
+          debugLog.log("    Deleted existing property \(property.id) for re-insert", category: .sync)
         }
+
+        // Insert the property (generates INSERT audit event)
+        // Discard result to prevent type inference causing decode errors
+        _ = try await supabase
+          .from("properties")
+          .insert(dto)
+          .execute()
+        property.markSynced()
+        debugLog.log("    Inserted property \(property.id)", category: .sync)
+      } catch {
+        let message = dependencies.userFacingMessage(for: error)
+        property.markFailed(message)
+        debugLog.error("    Property \(property.id) sync failed: \(message)")
       }
     }
+
+    debugLog.log("syncUpProperties() complete", category: .sync)
   }
 
   // MARK: - Upsert
@@ -110,10 +135,17 @@ final class PropertySyncHandler: EntitySyncHandlerProtocol {
     )
 
     if let existing = try context.fetch(descriptor).first {
-      // Local-first: skip ALL updates if local-authoritative
-      if dependencies.conflictResolver.isLocalAuthoritative(existing, inFlight: false) {
+      // Local-first: skip updates if local-authoritative (timestamp-aware)
+      if
+        dependencies.conflictResolver.isLocalAuthoritative(
+          existing,
+          localUpdatedAt: existing.updatedAt,
+          remoteUpdatedAt: dto.updatedAt,
+          inFlight: dependencies.conflictResolver.isPropertyInFlight(existing.id)
+        )
+      {
         debugLog.log(
-          "[SyncDown] Skip update for property \(dto.id) - local-authoritative (state=\(existing.syncState))",
+          "[SyncDown] Skip update for property \(dto.id) - local-authoritative (state=\(existing.syncState), local=\(existing.updatedAt), remote=\(dto.updatedAt))",
           category: .sync
         )
         return

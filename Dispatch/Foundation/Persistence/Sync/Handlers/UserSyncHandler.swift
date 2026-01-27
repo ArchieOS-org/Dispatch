@@ -35,7 +35,7 @@ final class UserSyncHandler: EntitySyncHandlerProtocol {
     var dtos: [UserDTO] = try await supabase
       .from("users")
       .select()
-      .gt("updated_at", value: since)
+      .gte("updated_at", value: since)
       .execute()
       .value
 

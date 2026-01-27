@@ -21,12 +21,14 @@ final class SupabaseService {
   private init() {
     #if DEBUG
     Self.logger.debug("Initializing SupabaseService via SharedBackend...")
+    Self.logger.info("Supabase Environment: \(SupabaseEnvironment.current.description)")
     #endif
 
     do {
       backend = try Backend(config: AppBackendConfig())
       #if DEBUG
       Self.logger.info("SupabaseService initialized successfully via SharedBackend")
+      Self.logger.info("Connected to: \(SupabaseEnvironment.current.url)")
       #endif
     } catch {
       fatalError("Failed to initialize SharedBackend: \(error)")

@@ -33,4 +33,17 @@ extension RealtimeSyncable {
   var isSyncFailed: Bool {
     syncState == .failed
   }
+
+  /// Check if sync operations should suppress markPending() calls.
+  /// This prevents SwiftData dirty tracking from flipping synced entities back to pending
+  /// during relationship mutations that occur as part of sync operations.
+  ///
+  /// **Why this is needed**: During sync, relationship mutations (e.g., appending assignees
+  /// to a task's array) trigger SwiftData's dirty tracking, which can call markPending()
+  /// and flip entities back to .pending even though they were just synced. This creates
+  /// infinite sync loops where remote updates are perpetually skipped.
+  @MainActor
+  var shouldSuppressPending: Bool {
+    SyncManager.shared.isSyncing
+  }
 }

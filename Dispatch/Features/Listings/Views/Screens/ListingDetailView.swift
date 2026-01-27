@@ -6,6 +6,7 @@
 //  Refactored for Layout Unification (StandardScreen)
 //
 
+import Supabase
 import SwiftData
 import SwiftUI
 
@@ -230,6 +231,17 @@ struct ListingDetailView: View {
           }
         }
       }
+
+      // History Section
+      Color.clear.frame(height: DS.Spacing.lg)
+      HistorySection(
+        entityType: .listing,
+        entityId: listing.id,
+        currentUserId: currentUserId,
+        userLookup: userLookup,
+        supabase: supabase,
+        onRestore: nil
+      )
     }
     .padding(.bottom, DS.Spacing.md)
   }

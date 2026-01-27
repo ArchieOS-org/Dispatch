@@ -76,17 +76,17 @@ final class DebugLogger: ObservableObject {
     // Print to console with detailed formatting
     let timestamp = Self.isoFormatter.string(from: entry.timestamp)
     let logLine = "[\(timestamp)] [\(category.emoji) \(category.rawValue)] \(message)"
-    consoleLog.debug("\(logLine)")
 
-    // Also log to os_log for Console.app filtering
+    // Log to category-specific os_log for Console.app filtering
+    // Note: We only log once per message to avoid duplicate output
     switch category {
-    case .realtime: realtimeLog.debug("\(message)")
-    case .channel: channelLog.debug("\(message)")
-    case .sync: syncLog.debug("\(message)")
-    case .websocket: websocketLog.debug("\(message)")
-    case .event: realtimeLog.info("\(message)")
-    case .error: realtimeLog.error("\(message)")
-    case .auth: syncLog.debug("\(message)")
+    case .realtime: realtimeLog.debug("\(logLine)")
+    case .channel: channelLog.debug("\(logLine)")
+    case .sync: syncLog.debug("\(logLine)")
+    case .websocket: websocketLog.debug("\(logLine)")
+    case .event: realtimeLog.info("\(logLine)")
+    case .error: realtimeLog.error("\(logLine)")
+    case .auth: syncLog.debug("\(logLine)")
     }
   }
 
@@ -197,7 +197,6 @@ final class DebugLogger: ObservableObject {
   private let channelLog = Logger(subsystem: "com.dispatch.app", category: "Channel")
   private let syncLog = Logger(subsystem: "com.dispatch.app", category: "Sync")
   private let websocketLog = Logger(subsystem: "com.dispatch.app", category: "WebSocket")
-  private let consoleLog = Logger(subsystem: "com.dispatch.app", category: "DebugConsole")
 
   private var operationStartTimes = [String: Date]()
 

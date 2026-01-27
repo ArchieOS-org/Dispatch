@@ -57,9 +57,12 @@ final class NavigationUITests: XCTestCase {
     listingCell.tap()
 
     // Verify navigation completed with reasonable timeout
-    // Search staticTexts instead of navigationBars for more reliable element matching
-    let detailTitle = app.staticTexts["123 Job Standard Blvd"]
-    XCTAssertTrue(detailTitle.waitForExistence(timeout: 10), "Should navigate to listing detail")
+    // On iPhone: title appears in navigation bar
+    // On iPad/macOS: title appears inline with accessibilityIdentifier "screen_title"
+    let navBarTitle = app.navigationBars["123 Job Standard Blvd"]
+    let inlineTitle = app.staticTexts["screen_title"]
+    let titleFound = navBarTitle.waitForExistence(timeout: 10) || inlineTitle.waitForExistence(timeout: 5)
+    XCTAssertTrue(titleFound, "Should navigate to listing detail")
   }
 
   /// Verifies that property navigation resolves correctly via ID

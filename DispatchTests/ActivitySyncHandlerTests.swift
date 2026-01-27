@@ -139,6 +139,9 @@ final class ActivitySyncHandlerTests: XCTestCase {
     let activityId = UUID()
     let existingActivity = makeActivity(id: activityId, title: "Pending Local Edit")
     existingActivity.markPending()
+    // Set local timestamp AFTER calling markPending() to ensure it's newer than the DTO's timestamp
+    // This simulates real-world conditions where local pending edits have newer timestamps
+    existingActivity.updatedAt = Date().addingTimeInterval(10)
     context.insert(existingActivity)
     try context.save()
 
@@ -393,6 +396,9 @@ final class ActivitySyncHandlerTests: XCTestCase {
     let remoteUserId = UUID()
     let existingAssignee = makeActivityAssignee(id: assigneeId, activityId: activityId, userId: localUserId)
     existingAssignee.markPending()
+    // Set local timestamp AFTER calling markPending() to ensure it's newer than the DTO's timestamp
+    // This simulates real-world conditions where local pending edits have newer timestamps
+    existingAssignee.updatedAt = Date().addingTimeInterval(10)
     context.insert(existingAssignee)
     try context.save()
 

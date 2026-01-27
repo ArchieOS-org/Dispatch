@@ -218,6 +218,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent, TitleMenu: Vi
       Text(title)
         .font(DS.Typography.largeTitle)
         .foregroundStyle(DS.Colors.Text.primary)
+        .accessibilityIdentifier("screen_title")
 
       if hasTitleMenu {
         titleMenu()

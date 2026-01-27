@@ -37,6 +37,9 @@ final class ConflictResolver {
   /// Listings currently being synced up - skip realtime echoes for these
   private(set) var inFlightListingIds = Set<UUID>()
 
+  /// Properties currently being synced up - skip realtime echoes for these
+  private(set) var inFlightPropertyIds = Set<UUID>()
+
   // MARK: - Mark In-Flight
 
   /// Mark task IDs as in-flight before sync up to prevent realtime echo overwrites
@@ -67,6 +70,11 @@ final class ConflictResolver {
   /// Mark listing IDs as in-flight before sync up to prevent realtime echo overwrites
   func markListingsInFlight(_ ids: Set<UUID>) {
     inFlightListingIds = ids
+  }
+
+  /// Mark property IDs as in-flight before sync up to prevent realtime echo overwrites
+  func markPropertiesInFlight(_ ids: Set<UUID>) {
+    inFlightPropertyIds = ids
   }
 
   // MARK: - Clear In-Flight
@@ -101,6 +109,11 @@ final class ConflictResolver {
     inFlightListingIds.removeAll()
   }
 
+  /// Clear all property in-flight IDs after sync completes
+  func clearPropertiesInFlight() {
+    inFlightPropertyIds.removeAll()
+  }
+
   /// Clear all in-flight IDs (used during shutdown or error recovery)
   func clearAllInFlight() {
     inFlightTaskIds.removeAll()
@@ -109,6 +122,7 @@ final class ConflictResolver {
     inFlightTaskAssigneeIds.removeAll()
     inFlightActivityAssigneeIds.removeAll()
     inFlightListingIds.removeAll()
+    inFlightPropertyIds.removeAll()
   }
 
   // MARK: - In-Flight Checks
@@ -143,10 +157,19 @@ final class ConflictResolver {
     inFlightListingIds.contains(id)
   }
 
+  /// Check if a property is currently in-flight (being synced up)
+  func isPropertyInFlight(_ id: UUID) -> Bool {
+    inFlightPropertyIds.contains(id)
+  }
+
   // MARK: - Conflict Resolution
 
   /// Determines if a model should be treated as "local-authoritative" during SyncDown.
   /// Local-authoritative items should NOT be overwritten by server state until SyncUp succeeds.
+  ///
+  /// **DEPRECATED**: Use `isLocalAuthoritative(_:localUpdatedAt:remoteUpdatedAt:inFlight:)` for
+  /// timestamp-aware conflict resolution. This legacy method treats ALL pending entities as
+  /// local-authoritative regardless of timestamps, which can cause sync loops.
   ///
   /// Returns true if:
   /// - The model has pending local changes (syncState == .pending)
@@ -155,5 +178,44 @@ final class ConflictResolver {
   @inline(__always)
   func isLocalAuthoritative(_ model: some RealtimeSyncable, inFlight: Bool) -> Bool {
     model.syncState == .pending || model.syncState == .failed || inFlight
+  }
+
+  /// Determines if a model should be treated as "local-authoritative" during SyncDown,
+  /// using timestamp comparison for pending entities.
+  ///
+  /// **Resolution Rules**:
+  /// 1. **In-flight** (being synced up right now): Local always wins - we just sent this to server
+  /// 2. **Failed** (needs retry): Local always wins - don't overwrite failed items needing retry
+  /// 3. **Synced**: Remote always wins - no local pending changes, accept server state
+  /// 4. **Pending**: Compare timestamps - local wins ONLY if `localUpdatedAt > remoteUpdatedAt`
+  ///
+  /// This prevents sync loops by allowing remote updates to be applied when the remote is newer,
+  /// even if the local entity was erroneously marked pending (e.g., by SwiftData dirty tracking
+  /// during relationship mutations).
+  ///
+  /// - Parameters:
+  ///   - model: The local model to check
+  ///   - localUpdatedAt: The local model's updatedAt timestamp
+  ///   - remoteUpdatedAt: The remote DTO's updatedAt timestamp
+  ///   - inFlight: Whether this model is currently being synced up
+  /// - Returns: `true` if local should be preserved, `false` if remote should be applied
+  @inline(__always)
+  func isLocalAuthoritative(
+    _ model: some RealtimeSyncable,
+    localUpdatedAt: Date,
+    remoteUpdatedAt: Date,
+    inFlight: Bool
+  ) -> Bool {
+    // In-flight always wins (we just sent this to server)
+    guard !inFlight else { return true }
+
+    // Failed entities need retry, don't overwrite
+    guard model.syncState != .failed else { return true }
+
+    // Synced entities always accept remote updates
+    guard model.syncState == .pending else { return false }
+
+    // Pending entities: local wins only if local is newer
+    return localUpdatedAt > remoteUpdatedAt
   }
 }

@@ -589,6 +589,16 @@ final class SyncManager: ObservableObject {
         try await syncUp(context: context)
         debugLog.endTiming("syncUp")
 
+        // Diagnostic: Log pending task count before save
+        do {
+          let taskDescriptor = FetchDescriptor<TaskItem>()
+          let allTasks = try context.fetch(taskDescriptor)
+          let pendingCount = allTasks.filter { $0.syncState == .pending }.count
+          debugLog.log("BEFORE_SAVE pendingTasks=\(pendingCount)", category: .sync)
+        } catch {
+          debugLog.error("Failed to count pending tasks before save", error: error)
+        }
+
         debugLog.log("Saving ModelContext...", category: .sync)
         try context.save()
         debugLog.log("ModelContext saved successfully", category: .sync)

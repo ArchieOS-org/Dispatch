@@ -94,6 +94,9 @@ struct AppDestinationsModifier: ViewModifier {
 
     case .profile:
       ProfilePageView()
+
+    case .recentlyDeleted:
+      RecentlyDeletedView(supabase: supabase)
     }
   }
 

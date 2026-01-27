@@ -70,7 +70,12 @@ final class Note {
 // MARK: RealtimeSyncable
 
 extension Note: RealtimeSyncable {
+  /// Mark as pending when modified.
+  /// During sync, relationship mutations trigger SwiftData dirty tracking.
+  /// Suppress state changes to prevent sync loops.
+  @MainActor
   func markPending() {
+    guard !shouldSuppressPending else { return }
     syncState = .pending
     lastSyncError = nil
     updatedAt = Date()
@@ -87,12 +92,14 @@ extension Note: RealtimeSyncable {
     lastSyncError = message
   }
 
+  @MainActor
   func softDelete(by userId: UUID) {
     deletedAt = Date()
     deletedBy = userId
     markPending()
   }
 
+  @MainActor
   func undoDelete() {
     deletedAt = nil
     deletedBy = nil
