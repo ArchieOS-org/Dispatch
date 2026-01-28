@@ -94,6 +94,7 @@ struct SearchIndexServiceTests {
   // MARK: - SearchDoc Factory Tests
 
   @Test("SearchDoc.from(task:) creates correct document")
+  @MainActor
   func testSearchDocFromTask() {
     let task = TaskItem(
       title: "Fix Window",
@@ -112,6 +113,7 @@ struct SearchIndexServiceTests {
   }
 
   @Test("SearchDoc.from(listing:) creates correct document")
+  @MainActor
   func testSearchDocFromListing() {
     let listing = Listing(
       address: "123 Main Street",
@@ -140,6 +142,7 @@ struct SearchIndexServiceTests {
   }
 
   @Test("warmStart indexes all entities")
+  @MainActor
   func testWarmStart() async {
     let service = SearchIndexService()
 
@@ -162,6 +165,7 @@ struct SearchIndexServiceTests {
   }
 
   @Test("search matches on phrase")
+  @MainActor
   func testPhraseMatch() async {
     let service = SearchIndexService()
 
@@ -182,6 +186,7 @@ struct SearchIndexServiceTests {
   }
 
   @Test("search ranks type priority correctly")
+  @MainActor
   func testTypePriorityRanking() async {
     let service = SearchIndexService()
 
@@ -214,6 +219,7 @@ struct SearchIndexServiceTests {
   // MARK: - Incremental Update Tests
 
   @Test("apply insert adds document to index")
+  @MainActor
   func testApplyInsert() async {
     let service = SearchIndexService()
 
@@ -241,6 +247,7 @@ struct SearchIndexServiceTests {
   }
 
   @Test("apply update replaces document in index")
+  @MainActor
   func testApplyUpdate() async {
     let service = SearchIndexService()
 
@@ -264,6 +271,7 @@ struct SearchIndexServiceTests {
   }
 
   @Test("apply delete removes document from index")
+  @MainActor
   func testApplyDelete() async {
     let service = SearchIndexService()
 
@@ -286,6 +294,7 @@ struct SearchIndexServiceTests {
   // MARK: - Empty Query Tests
 
   @Test("empty query returns recent docs with type priority")
+  @MainActor
   func testEmptyQueryReturnsRecent() async {
     let service = SearchIndexService()
 
@@ -317,6 +326,7 @@ struct SearchIndexServiceTests {
   // MARK: - Ranking Order Tests
 
   @Test("ranking order: phrase match beats token match")
+  @MainActor
   func testRankingPhraseBeatsToken() async {
     let service = SearchIndexService()
 
@@ -340,6 +350,7 @@ struct SearchIndexServiceTests {
   }
 
   @Test("ranking order: starts-with boost applies")
+  @MainActor
   func testRankingStartsWithBoost() async {
     let service = SearchIndexService()
 

@@ -55,7 +55,8 @@ final class SearchViewModel: ObservableObject {
 
   /// Debounce delay for search queries in milliseconds.
   /// Prevents excessive search operations while user is typing.
-  static let searchDebounceDelayMs: UInt64 = 200
+  /// Marked nonisolated since it's a compile-time constant with no actor-isolated state.
+  nonisolated static let searchDebounceDelayMs: UInt64 = 200
 
   /// Current search query text
   @Published var query: String = ""
