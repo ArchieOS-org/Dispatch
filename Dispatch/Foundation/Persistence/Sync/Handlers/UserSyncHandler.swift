@@ -139,7 +139,9 @@ final class UserSyncHandler: EntitySyncHandlerProtocol {
               .from("avatars")
               .getPublicURL(path: path)
 
-            let (data, _) = try await URLSession.shared.data(from: publicURL)
+            var request = URLRequest(url: publicURL)
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            let (data, _) = try await URLSession.shared.data(for: request)
 
             newAvatarData = data
             shouldUpdateAvatar = true
