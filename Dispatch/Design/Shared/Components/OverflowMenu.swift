@@ -10,6 +10,9 @@ import SwiftUI
 /// A reusable overflow menu button displaying an ellipsis icon.
 /// Tapping reveals a menu of actions. Supports normal and destructive actions.
 ///
+/// On macOS, uses native `Menu` for proper dropdown with arrow attached to button.
+/// On iOS, uses `confirmationDialog` for native action sheet presentation.
+///
 /// Usage:
 /// ```swift
 /// OverflowMenu(actions: [
@@ -60,6 +63,29 @@ struct OverflowMenu: View {
   var accessibilityLabelText = "More actions"
 
   var body: some View {
+    #if os(macOS)
+    // macOS: Use native Menu for proper dropdown with arrow
+    // NOTE: .menuStyle(.borderlessButton) is deprecated and creates pill-shaped background.
+    // Use .menuStyle(.button) + .buttonStyle(.plain) for minimal chrome matching ToolbarIconButton.
+    Menu {
+      ForEach(actions) { item in
+        Button(role: item.role) {
+          item.action()
+        } label: {
+          Label(item.title, systemImage: item.icon)
+        }
+      }
+    } label: {
+      menuLabel
+    }
+    .menuStyle(.button)
+    .buttonStyle(.plain)
+    .menuIndicator(.hidden)
+    .fixedSize()
+    .accessibilityLabel(accessibilityLabelText)
+    .help(accessibilityLabelText)
+    #else
+    // iOS: Use confirmationDialog for native action sheet
     menuLabel
       .contentShape(Rectangle())
       .onTapGesture {
@@ -75,6 +101,7 @@ struct OverflowMenu: View {
         }
       }
       .accessibilityLabel(accessibilityLabelText)
+    #endif
   }
 
   // MARK: Private
@@ -85,8 +112,20 @@ struct OverflowMenu: View {
   @ScaledMetric(relativeTo: .body)
   private var iconSize: CGFloat = 24
 
-  /// Menu label
+  /// Menu label with proper circular touch target (44pt x 44pt)
+  /// On macOS, matches ToolbarIconButton styling for consistent toolbar appearance.
   private var menuLabel: some View {
+    #if os(macOS)
+    // Match ToolbarIconButton: medium weight, 0.6 opacity
+    Image(systemName: icon)
+      .font(.system(size: DS.Spacing.bottomToolbarIconSize, weight: .medium))
+      .foregroundStyle(.primary.opacity(0.6))
+      .frame(
+        width: DS.Spacing.bottomToolbarButtonSize,
+        height: DS.Spacing.bottomToolbarButtonSize
+      )
+      .contentShape(Rectangle())
+    #else
     Image(systemName: icon)
       .font(.system(size: iconSize))
       .foregroundColor(iconColor)
@@ -95,6 +134,7 @@ struct OverflowMenu: View {
         height: CGFloat(DS.Spacing.minTouchTarget)
       )
       .contentShape(Rectangle())
+    #endif
   }
 }
 

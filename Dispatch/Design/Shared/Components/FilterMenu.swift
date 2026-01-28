@@ -62,7 +62,10 @@ struct FilterMenu: View {
           .frame(width: DS.Spacing.minTouchTarget, height: DS.Spacing.bottomToolbarButtonSize)
           .contentShape(Rectangle())
       }
-      .menuStyle(.borderlessButton)
+      // NOTE: .menuStyle(.borderlessButton) is deprecated and creates pill-shaped background.
+      // Use .menuStyle(.button) + .buttonStyle(.plain) for minimal chrome.
+      .menuStyle(.button)
+      .buttonStyle(.plain)
       .menuIndicator(.hidden)
       .tint(.secondary)
       #if os(macOS)
