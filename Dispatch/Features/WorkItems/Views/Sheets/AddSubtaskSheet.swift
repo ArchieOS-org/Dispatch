@@ -20,35 +20,38 @@ struct AddSubtaskSheet: View {
 
   var body: some View {
     NavigationStack {
-      Form {
-        Section {
-          TextField("Subtask title", text: $title)
-        } header: {
-          Text("New Subtask")
+      StandardScreen(
+        title: "Add Subtask",
+        layout: .column,
+        scroll: .disabled
+      ) {
+        Form {
+          Section {
+            TextField("Subtask title", text: $title)
+          } header: {
+            Text("New Subtask")
+          }
+        }
+        .formStyle(.grouped)
+      } toolbarContent: {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Cancel") {
+            title = ""
+            dismiss()
+          }
+        }
+        ToolbarItem(placement: .confirmationAction) {
+          Button("Add") {
+            title = title.trimmingCharacters(in: .whitespaces)
+            onSave()
+          }
+          .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
         }
       }
-      .navigationTitle("Add Subtask")
-      #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
-      #endif
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button("Cancel") {
-              title = ""
-              dismiss()
-            }
-          }
-          ToolbarItem(placement: .confirmationAction) {
-            Button("Add") {
-              title = title.trimmingCharacters(in: .whitespaces)
-              onSave()
-            }
-            .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
-          }
-        }
     }
     #if os(iOS)
-    .presentationDetents([.medium])
+    .presentationDetents([.medium, .large])
+    .presentationDragIndicator(.visible)
     #endif
   }
 

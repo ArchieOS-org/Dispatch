@@ -33,35 +33,17 @@ struct RealtorProfileView: View {
       EditRealtorSheet(user: user)
     }
     .sheet(isPresented: $showAssigneePicker) {
-      NavigationStack {
-        MultiUserPicker(
-          selectedUserIds: $selectedAssigneeIds,
-          availableUsers: actions.availableUsers,
-          currentUserId: actions.currentUserId
-        )
-        .navigationTitle("Assign Users")
-        #if os(iOS)
-          .navigationBarTitleDisplayMode(.inline)
-        #endif
-          .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-              Button("Cancel") {
-                showAssigneePicker = false
-              }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-              Button("Done") {
-                if let item = editingWorkItem {
-                  actions.onAssigneesChanged(item, Array(selectedAssigneeIds))
-                }
-                showAssigneePicker = false
-              }
-            }
+      MultiUserPickerSheet(
+        selectedUserIds: $selectedAssigneeIds,
+        availableUsers: actions.availableUsers,
+        currentUserId: actions.currentUserId,
+        onDone: {
+          if let item = editingWorkItem {
+            actions.onAssigneesChanged(item, Array(selectedAssigneeIds))
           }
-      }
-      #if os(macOS)
-      .frame(minWidth: 300, minHeight: 400)
-      #endif
+          showAssigneePicker = false
+        }
+      )
     }
   }
 
