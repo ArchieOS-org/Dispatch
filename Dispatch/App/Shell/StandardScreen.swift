@@ -218,6 +218,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent, TitleMenu: Vi
       Text(title)
         .font(DS.Typography.largeTitle)
         .foregroundStyle(DS.Colors.Text.primary)
+        .accessibilityIdentifier("screen_title")
 
       if hasTitleMenu {
         titleMenu()
@@ -252,7 +253,7 @@ struct StandardScreen<Content: View, ToolbarItems: ToolbarContent, TitleMenu: Vi
           innerContent
         }
         #if os(iOS)
-        // Add bottom margin to clear floating buttons on iPhone
+        // Bottom margin clears floating buttons. Required for safeAreaInset placement.
         .contentMargins(.bottom, DS.Spacing.floatingButtonScrollInset, for: .scrollContent)
         #endif
         .modifier(PullToSearchTrackingConditionalModifier(enabled: pullToSearch && !pullToSearchDisabled))

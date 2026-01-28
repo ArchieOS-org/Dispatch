@@ -100,6 +100,7 @@ final class PropertySyncHandlerTests: XCTestCase {
     let propertyId = UUID()
     let existingProperty = makeProperty(id: propertyId, address: "Pending local edit")
     existingProperty.markPending()
+    existingProperty.updatedAt = Date().addingTimeInterval(1)
     context.insert(existingProperty)
     try context.save()
 

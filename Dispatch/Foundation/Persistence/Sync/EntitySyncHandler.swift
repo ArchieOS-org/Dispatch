@@ -166,12 +166,12 @@ final class EntitySyncHandler {
     try await activitySyncHandler.syncUp(context: context)
   }
 
-  func syncUpTaskAssignees(context: ModelContext) async throws {
-    try await taskSyncHandler.syncUpTaskAssignees(context: context)
+  func syncUpTaskAssignees(context: ModelContext, taskIdsToSync: Set<UUID>? = nil) async throws {
+    try await taskSyncHandler.syncUpTaskAssignees(context: context, taskIdsToSync: taskIdsToSync)
   }
 
-  func syncUpActivityAssignees(context: ModelContext) async throws {
-    try await activitySyncHandler.syncUpActivityAssignees(context: context)
+  func syncUpActivityAssignees(context: ModelContext, activityIdsToSync: Set<UUID>? = nil) async throws {
+    try await activitySyncHandler.syncUpActivityAssignees(context: context, activityIdsToSync: activityIdsToSync)
   }
 
   func syncUpListingTypes(context: ModelContext) async throws {
@@ -351,6 +351,11 @@ final class EntitySyncHandler {
       debugLog.log("      Warning: Parent task \(taskId) not found - relationship deferred", category: .sync)
       return
     }
+
+    debugLog.log(
+      "      RELATIONSHIP task=\(parentTask.id) assignee=\(assignee.id) taskState=\(parentTask.syncState)",
+      category: .sync
+    )
 
     if !parentTask.assignees.contains(where: { $0.id == assignee.id }) {
       parentTask.assignees.append(assignee)

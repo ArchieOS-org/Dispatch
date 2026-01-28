@@ -5,12 +5,20 @@
 //  iPhone-specific navigation view extracted from ContentView.
 //  Uses Things 3-style MenuPageView with push navigation.
 //
+//  iOS 26 Glass Styling:
+//  - GlobalFloatingButtons renders filter + FAB with native Liquid Glass on iOS 26+
+//  - Pre-iOS 26: Buttons use material-based glass fallbacks via DesignSystem
+//
+//  Architecture Note: Uses NavigationStack (not TabView), so `tabViewBottomAccessory` N/A.
+//
 
 #if os(iOS)
 import SwiftUI
 
 /// iPhone navigation container with Things 3-style menu and single NavigationStack.
 /// Extracted from ContentView to reduce complexity and enable platform-specific optimizations.
+///
+/// iOS 26 Glass Styling: GlobalFloatingButtons renders filter + FAB with native Liquid Glass on iOS 26+.
 struct iPhoneContentView: View {
 
   // MARK: Internal
@@ -49,22 +57,25 @@ struct iPhoneContentView: View {
   let onRequestSync: () -> Void
 
   var body: some View {
-    NavigationStack(path: phonePathBinding) {
-      PullToSearchHost {
-        MenuPageView(
-          stageCounts: stageCounts,
-          tabCounts: phoneTabCounts,
-          overdueCount: overdueCount
-        )
-      }
-      .appDestinations()
-      // GlobalFloatingButtons MUST be inside NavigationStack to receive environment values
-      // set by destination views (e.g., SettingsScreen sets .globalButtonsHidden)
-      .overlay(alignment: .bottom) {
-        if appState.overlayState == .none {
-          GlobalFloatingButtons()
+    // ZStack places GlobalFloatingButtons at the same level as NavigationStack,
+    // ensuring buttons persist across all pushed navigation destinations.
+    // Previous approach (overlay on root content) only showed buttons on MenuPageView.
+    ZStack(alignment: .bottom) {
+      NavigationStack(path: phonePathBinding) {
+        PullToSearchHost {
+          MenuPageView(
+            stageCounts: stageCounts,
+            tabCounts: phoneTabCounts,
+            overdueCount: overdueCount
+          )
         }
+        .appDestinations()
       }
+
+      // GlobalFloatingButtons is a sibling of NavigationStack, not a descendant.
+      // Visibility is controlled via AppOverlayState (EnvironmentObject), not Environment keys.
+      // The component handles its own visibility via shouldHideButtons (overlayState.isOverlayHidden).
+      GlobalFloatingButtons()
     }
     .overlay {
       // Search overlay - Conditional rendering per SwiftUI best practices

@@ -10,11 +10,14 @@ import SwiftUI
 import Testing
 @testable import DispatchApp
 
+/// Tests for WorkItemActions including UndoManager integration.
+/// Note: UndoManager requires MainActor isolation for proper functionality,
+/// as it's tied to the main run loop for undo/redo operations.
 @MainActor
 struct WorkItemActionsTests {
 
   @Test
-  func testCurrentUserIdUpdates() throws {
+  func testCurrentUserIdUpdates() {
     // Setup
     let actions = WorkItemActions()
     let initialID = actions.currentUserId
@@ -34,7 +37,7 @@ struct WorkItemActionsTests {
   // MARK: - UndoManager Integration Tests
 
   @Test
-  func testUndoManagerCanBeInjected() throws {
+  func testUndoManagerCanBeInjected() {
     // Given: A WorkItemActions instance
     let actions = WorkItemActions()
 
@@ -59,15 +62,17 @@ struct WorkItemActionsTests {
   /// the object would be retained. This test exists purely as documentation of the
   /// expected weak semantics, not as a runtime verification.
   @Test
-  func testUndoManagerIsWeakReference_DocumentationOnly() throws {
+  func testUndoManagerIsWeakReference_DocumentationOnly() {
     // Given: A WorkItemActions instance
     let actions = WorkItemActions()
 
     // When: We inject an UndoManager
     // This compiles successfully because undoManager is declared as `weak var`
-    let temporaryUndoManager = UndoManager()
-    actions.undoManager = temporaryUndoManager
-    // The weak reference allows assignment without ownership transfer
+    do {
+      let temporaryUndoManager = UndoManager()
+      actions.undoManager = temporaryUndoManager
+      // The weak reference allows assignment without ownership transfer
+    }
 
     // Note: We intentionally do NOT assert on the final value.
     // ARC timing is non-deterministic, so the reference may or may not be nil.
@@ -76,7 +81,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testUndoManagerRegistersUndoAction() throws {
+  func testUndoManagerRegistersUndoAction() {
     // Given: An UndoManager
     let undoManager = UndoManager()
     #expect(undoManager.canUndo == false)
@@ -117,7 +122,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testCompletionToggleUndoPattern() throws {
+  func testCompletionToggleUndoPattern() {
     // Given: An UndoManager and a mock completable item
     let undoManager = UndoManager()
     let item = MockCompletableItem()
@@ -155,7 +160,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testUncompleteUndoPattern() throws {
+  func testUncompleteUndoPattern() {
     // Given: An UndoManager and a completed mock item
     let undoManager = UndoManager()
     let completedDate = Date()
@@ -199,7 +204,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testAssigneeChangeUndoPattern() throws {
+  func testAssigneeChangeUndoPattern() {
     // Given: An UndoManager and a mock assignable item
     let undoManager = UndoManager()
     let assignee1 = UUID()
@@ -232,7 +237,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testRemoveAssigneeUndoPattern() throws {
+  func testRemoveAssigneeUndoPattern() {
     // Given: An UndoManager and a mock item with multiple assignees
     let undoManager = UndoManager()
     let assignee1 = UUID()
@@ -279,7 +284,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testNoteDeleteUndoPattern() throws {
+  func testNoteDeleteUndoPattern() {
     // Given: An UndoManager and a mock note
     let undoManager = UndoManager()
     let userId = UUID()
@@ -314,7 +319,7 @@ struct WorkItemActionsTests {
   // MARK: - Multiple Undo Actions Tests
 
   @Test
-  func testMultipleUndoActionsInSequence() throws {
+  func testMultipleUndoActionsInSequence() {
     // Given: An UndoManager and a mock item
     let undoManager = UndoManager()
     // Disable automatic undo grouping so each registerUndo is a separate undo step
@@ -363,7 +368,7 @@ struct WorkItemActionsTests {
   // MARK: - No UndoManager Tests
 
   @Test
-  func testNoUndoRegisteredWhenUndoManagerNil() throws {
+  func testNoUndoRegisteredWhenUndoManagerNil() {
     // Given: A nil UndoManager (simulating when undo is not supported)
     let undoManager: UndoManager? = nil
     let item = MockCompletableItem()
@@ -384,7 +389,7 @@ struct WorkItemActionsTests {
   // MARK: - Action Name Tests
 
   @Test
-  func testCorrectActionNamesForDifferentOperations() throws {
+  func testCorrectActionNamesForDifferentOperations() {
     // Given: An UndoManager
     let undoManager = UndoManager()
     undoManager.groupsByEvent = false
@@ -423,7 +428,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testListingStageChangeUndoPattern() throws {
+  func testListingStageChangeUndoPattern() {
     // Given: An UndoManager and a mock listing
     let undoManager = UndoManager()
     let listing = MockListingWithStage()
@@ -454,7 +459,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testListingStageMultipleChangesUndoPattern() throws {
+  func testListingStageMultipleChangesUndoPattern() {
     // Given: An UndoManager and a mock listing
     let undoManager = UndoManager()
     undoManager.groupsByEvent = false
@@ -507,7 +512,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testNoteAddUndoPattern() throws {
+  func testNoteAddUndoPattern() {
     // Given: An UndoManager and a mock note
     let undoManager = UndoManager()
     let userId = UUID()
@@ -538,7 +543,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testNoteAddToListingUndoPattern() throws {
+  func testNoteAddToListingUndoPattern() {
     // Given: An UndoManager, a mock listing with notes, and a new note
     let undoManager = UndoManager()
     let userId = UUID()
@@ -573,43 +578,39 @@ struct WorkItemActionsTests {
   // MARK: - WorkItemActions Callback Property Tests
 
   @Test
-  func testListingStageChangedCallbackCanBeSet() throws {
+  func testListingStageChangedCallbackCanBeSet() {
     // Given: A WorkItemActions instance
     let actions = WorkItemActions()
 
     // When: Callback is nil by default
-    let initialCallback = actions.onListingStageChanged
-    #expect(initialCallback == nil)
+    #expect(actions.onListingStageChanged == nil)
 
     // When: We set a callback
     actions.onListingStageChanged = { _, _ in }
 
     // Then: The callback should be set
-    let callback = actions.onListingStageChanged
-    #expect(callback != nil)
+    #expect(actions.onListingStageChanged != nil)
   }
 
   @Test
-  func testAddNoteToListingCallbackCanBeSet() throws {
+  func testAddNoteToListingCallbackCanBeSet() {
     // Given: A WorkItemActions instance
     let actions = WorkItemActions()
 
     // When: Callback is nil by default
-    let initialCallback = actions.onAddNoteToListing
-    #expect(initialCallback == nil)
+    #expect(actions.onAddNoteToListing == nil)
 
     // When: We set a callback
     actions.onAddNoteToListing = { _, _ in }
 
     // Then: The callback should be set
-    let callback = actions.onAddNoteToListing
-    #expect(callback != nil)
+    #expect(actions.onAddNoteToListing != nil)
   }
 
   // MARK: - Redo Support Tests
 
   @Test
-  func testRedoIsAvailableAfterUndo() throws {
+  func testRedoIsAvailableAfterUndo() {
     // Given: An UndoManager with a registered action
     let undoManager = UndoManager()
 
@@ -645,7 +646,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testRedoRestoresOriginalState() throws {
+  func testRedoRestoresOriginalState() {
     // Given: An UndoManager and a target that has been changed and undone
     let undoManager = UndoManager()
 
@@ -679,7 +680,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testUndoRedoUndoChainWorks() throws {
+  func testUndoRedoUndoChainWorks() {
     // Given: An UndoManager with redo support pattern
     let undoManager = UndoManager()
 
@@ -720,7 +721,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testCompletionToggleRedoPattern() throws {
+  func testCompletionToggleRedoPattern() {
     // Given: An UndoManager and a mock completable item
     let undoManager = UndoManager()
     let item = MockCompletableItem()
@@ -759,7 +760,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testAssigneeChangeRedoPattern() throws {
+  func testAssigneeChangeRedoPattern() {
     // Given: An UndoManager and a mock assignable item
     let undoManager = UndoManager()
     let assignee1 = UUID()
@@ -791,7 +792,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testNoteDeleteRedoPattern() throws {
+  func testNoteDeleteRedoPattern() {
     // Given: An UndoManager and a mock deletable note
     let undoManager = UndoManager()
     let userId = UUID()
@@ -823,7 +824,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testNoteAddRedoPattern() throws {
+  func testNoteAddRedoPattern() {
     // Given: An UndoManager and a mock creatable note
     let undoManager = UndoManager()
     let userId = UUID()
@@ -853,7 +854,7 @@ struct WorkItemActionsTests {
   }
 
   @Test
-  func testListingStageChangeRedoPattern() throws {
+  func testListingStageChangeRedoPattern() {
     // Given: An UndoManager and a mock listing
     let undoManager = UndoManager()
     let listing = MockListingWithStage()

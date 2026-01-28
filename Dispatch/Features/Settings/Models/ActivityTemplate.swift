@@ -89,7 +89,12 @@ final class ActivityTemplate {
 // MARK: RealtimeSyncable
 
 extension ActivityTemplate: RealtimeSyncable {
+  /// Mark as pending when modified.
+  /// During sync, relationship mutations trigger SwiftData dirty tracking.
+  /// Suppress state changes to prevent sync loops.
+  @MainActor
   func markPending() {
+    guard !shouldSuppressPending else { return }
     syncState = .pending
     lastSyncError = nil
     updatedAt = Date()

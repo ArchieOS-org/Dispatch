@@ -243,6 +243,9 @@ final class TaskSyncHandlerTests: XCTestCase {
     let taskId = UUID()
     let existingTask = makeTask(id: taskId, title: "Pending Local Edit")
     existingTask.markPending()
+    // Set local timestamp AFTER calling markPending() to ensure it's newer than the DTO's timestamp
+    // This simulates real-world conditions where local pending edits have newer timestamps
+    existingTask.updatedAt = Date().addingTimeInterval(10)
     context.insert(existingTask)
     try context.save()
 
@@ -571,6 +574,9 @@ final class TaskSyncHandlerTests: XCTestCase {
       userId: userId
     )
     existingAssignee.markPending()
+    // Set local timestamp AFTER calling markPending() to ensure it's newer than the DTO's timestamp
+    // This simulates real-world conditions where local pending edits have newer timestamps
+    existingAssignee.updatedAt = Date().addingTimeInterval(10)
     context.insert(existingAssignee)
     try context.save()
 
